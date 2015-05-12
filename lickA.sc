@@ -8,12 +8,13 @@ int baitDur
 int bait1 = 0
 int soundDur
 int preDelay = 1000
+int postDelay = 2000
 int trialState
 int itiDur
 
 function 1
     disp('Initiating trial')
-    trialState = 3
+    trialState = 4
     do in itiDur
         trialState = 1
         do in preDelay
@@ -31,6 +32,9 @@ function 1
                     do in rewLength
                         portout[4] = 0
                         disp(rewLength)
+                        do in postDelay
+                            trialState = 4
+                        end
                     end
             end
         end
