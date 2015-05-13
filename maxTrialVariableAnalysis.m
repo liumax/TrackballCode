@@ -1,4 +1,5 @@
-function [] = maxTrialVariableAnalysis();
+function [trialStates,trialParams,portStates] =...
+    maxTrialVariableAnalysis();
 
 clear
 clc
@@ -247,72 +248,12 @@ xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
 ylabel('Number of Licks')
 
 
-%%Calculates total licks between cue and water delivery (excludes
-%%consummatory licks)
-
-
-
-
-
-
-
-
-
-
-antilicks=zeros(size(startCue,1),2);
-antilicksb=zeros(size(bigcue,1),1);
-antilickss=zeros(size(smallcue,1),1);
-
-for i=1:size(startCue,1)
-    antilicks(i,1)=sum(lickstart(startCue(i):startWater(i)));
-    antilicks(i,2)=master(i,1);
-end
-
-for i=1:size(antilicksb,1)
-    antilicksb(i)=sum(lickstart(startCue(bigcue(i)):startWater(bigrewards(i))));
-end
-
-for i=1:size(antilickss,1)
-    antilickss(i)=sum(lickstart(startCue(smallcue(i)):startWater(smallrewards(i))));
-end
-
 figure
-subplot(2,1,1)
-hist(antilickss,10)
-title(['Histogram of Anticipatory Licks, Small Reward, Mean of ',num2str(mean(antilickss)),' Licks/Trial'])
-xlabel('Number of Licks')
-subplot(2,1,2)
-hist(antilicksb,10)
-title(['Histogram of Anticipatory Licks, Big Reward, Mean of ',num2str(mean(antilicksb)),' Licks/Trial'])
-xlabel('Number of Licks')
-
-%find latency to first lick
-licklatb=cell(size(bigcue,1),1);
-licklats=cell(size(bigcue,1),1);
-
-for i=1:size(bigcue,1)
-    licklatb{i}=find(lickstart(startCue(bigcue(i)):startWater(bigrewards(i)))==1,1,'first');
-end
-
-for i=1:size(smallcue,1)
-    licklats{i}=find(lickstart(startCue(smallcue(i)):startWater(smallrewards(i)))==1,1,'first');
-end
-
-licklatb=cell2mat(licklatb(~cellfun('isempty',licklatb)));
-licklats=cell2mat(licklats(~cellfun('isempty',licklats)));
-licklatbmean=mean(licklatb);
-licklatsmean=mean(licklats);
-
-figure
-subplot(2,1,1)
-hist(licklats)
-title(['Histogram of Lick Latency, Small Rewards Mean of ' num2str(licklatsmean) ' msec'])
-xlabel('Milliseconds')
-subplot(2,1,2)
-hist(licklatb)
-title(['Histogram of Lick Latency, Big Rewards Mean of ' num2str(licklatbmean) ' msec'])
-xlabel('Milliseconds')
-
+hold on
+plot(preLick,'k','linewidth',2)
+plot(antiLick,'b','linewidth',2)
+plot(postLick,'g','linewidth',2)
+axis([0 400 0 30])
 
 end
 
