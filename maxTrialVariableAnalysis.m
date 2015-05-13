@@ -1,5 +1,4 @@
-function [trialStates,trialParams,portStates] =...
-    maxTrialVariableAnalysis();
+function [] = maxTrialVariableAnalysis(trialStates,trialParams,portStates);
 
 clear
 clc
@@ -125,30 +124,30 @@ end
 
 [cueCounts,cueCenters]=hist(cueRaster(:,2),(window(2)-window(1))/freqbin);
 
-figure
-subplot(2,2,1)
-plot(waterRaster(:,2),waterRaster(:,1),'b.')
-title('Raster Relative to Water')
-xlabel('Time (s)')
-ylabel('Rasters')
-
-subplot(2,2,2)
-plot(cueRaster(:,2),cueRaster(:,1),'r.')
-title('Raster Relative to Cue')
-xlabel('Time (s)')
-ylabel('Rasters')
-
-subplot(2,2,3)
-plot(waterCenters,waterCounts,'b')
-title('Total Licks Relative to Water')
-xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
-ylabel('Number of Licks')
-
-subplot(2,2,4)
-plot(cueCenters,cueCounts,'r')
-title('Total Licks Relative to Cue')
-xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
-ylabel('Number of Licks')
+% % figure
+% % subplot(2,2,1)
+% % plot(waterRaster(:,2),waterRaster(:,1),'b.')
+% % title('Raster Relative to Water')
+% % xlabel('Time (s)')
+% % ylabel('Rasters')
+% % 
+% % subplot(2,2,2)
+% % plot(cueRaster(:,2),cueRaster(:,1),'r.')
+% % title('Raster Relative to Cue')
+% % xlabel('Time (s)')
+% % ylabel('Rasters')
+% % 
+% % subplot(2,2,3)
+% % plot(waterCenters,waterCounts,'b')
+% % title('Total Licks Relative to Water')
+% % xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
+% % ylabel('Number of Licks')
+% % 
+% % subplot(2,2,4)
+% % plot(cueCenters,cueCounts,'r')
+% % title('Total Licks Relative to Cue')
+% % xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
+% % ylabel('Number of Licks')
 
 rewardSize=trialStates.rewLength;
 minSize=str2double(trialParams.minRew);
