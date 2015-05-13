@@ -1,9 +1,4 @@
-function [] = maxTrialVariableAnalysis(trialStates,trialParams,portStates);
-
-clear
-clc
-
-load(FileName)
+function [cleanLicks] = maxTrialVariableAnalysis(trialStates,trialParams,portStates);
 
 lickUpper=150;
 lickLower=5;
@@ -15,17 +10,18 @@ freqbin=0.2; %bin size for calculating frequency of licking, used for psth
 %This is to check all values to make sure randomization is done
 %appropriately
 
-figure
-subplot(2,1,1)
-hist(diff(trialStates.soundOn)/1000,100)
-title('ITI times')
-xlabel('Time (s)')
-ylabel('Trials')
-subplot(2,1,2)
-hist(trialStates.rewDelivery - trialStates.soundOn,100)
-title('Time between Cue and Water')
-xlabel('Time (s)')
-ylabel('Trials')
+% figure
+% subplot(2,1,1)
+% hist(diff(trialStates.soundOn)/1000,100)
+% title('ITI times')
+% axis([0 20 0 400])
+% xlabel('Time (s)')
+% ylabel('Trials')
+% subplot(2,1,2)
+% hist(trialStates.rewDelivery - trialStates.soundOn,100)
+% title('Time between Cue and Water')
+% xlabel('Time (s)')
+% ylabel('Trials')
 
 lickArray = [portStates.tStamps',portStates.inStates(:,3)];
 
@@ -66,13 +62,13 @@ lickFreq=1./(lickPeriod/1000);
 
 
 %plots figures
-figure
-subplot(2,1,1)
-hist(lickdur,1000)
-title('Lick Durations')
-subplot(2,1,2)
-hist(lickfreq,1000);
-title(['Inter-Lick Interval in Hz with Median of ' ,num2str(lickmedian), 'Hz'])
+% figure
+% subplot(2,1,1)
+% hist(lickDur,1000)
+% title('Lick Durations')
+% subplot(2,1,2)
+% hist(lickFreq,1000);
+% title(['Inter-Lick Interval in Hz'])
 
 
 %%Finds Start of Water Delivery
@@ -226,22 +222,22 @@ end
 %Plots data out.
 figure
 subplot(2,2,1)
-plot(swRaster(:,2),swRaster(:,1),'k.',bwRaster(:,2),bwRaster(:,1),'m.')
-title('Rasters of Small (black) and Large (Magenta) Rewards Relative to Water')
+plot(swRaster(:,2),swRaster(:,1),'k.',bwRaster(:,2),bwRaster(:,1),'r.')
+title('Rasters of Small (black) and Large (Red) Rewards Relative to Water')
 xlabel('Time (s)')
 ylabel('Rasters')
 subplot(2,2,3)
-plot(swCenters,swCounts,'k',bwCenters,bwCounts,'m')
+plot(swCenters,swCounts,'k',bwCenters,bwCounts,'r')
 title('Histograms of Licks Relative to Water ')
 xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
 ylabel('Number of Licks')
 subplot(2,2,2)
-plot(scRaster(:,2),scRaster(:,1),'k.',bcRaster(:,2),bcRaster(:,1),'m.')
-title('Rasters of Small (black) and Large (Magenta) Rewards Relative to Cue')
+plot(scRaster(:,2),scRaster(:,1),'k.',bcRaster(:,2),bcRaster(:,1),'r.')
+title('Rasters of Small (black) and Large (Red) Rewards Relative to Cue')
 xlabel('Time (s)')
 ylabel('Rasters')
 subplot(2,2,4)
-plot(scCenters,scCounts,'k',bcCenters,bcCounts,'m')
+plot(scCenters,scCounts,'k',bcCenters,bcCounts,'r')
 title('Histograms of Licks Relative to Cue ')
 xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
 ylabel('Number of Licks')
@@ -249,10 +245,14 @@ ylabel('Number of Licks')
 
 figure
 hold on
-plot(preLick,'k','linewidth',2)
-plot(antiLick,'b','linewidth',2)
-plot(postLick,'g','linewidth',2)
+plot(trialStates.preLick,'k','linewidth',2)
+plot(trialStates.postLick,'b','linewidth',2)
+plot(trialStates.antiLick,'g','linewidth',2)
 axis([0 400 0 30])
+title('Licks Over Session')
+xlabel('Trials')
+ylabel('Licks')
+hold off
 
 end
 
