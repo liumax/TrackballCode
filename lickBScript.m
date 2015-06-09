@@ -126,8 +126,8 @@ master(:,2)=master(:,2)-master(:,3);
 %none.
 
 master(:,4)=rand(triallength,1);
-master(master(:,4)>=scQtUserData.rewProb,5)=0;
-master(master(:,4)<scQtUserData.rewProb,5)=1;
+master(master(:,4)>=scQtUserData.rewProb,4)=0;
+master(master(:,4)<scQtUserData.rewProb,4)=1;
 
 %master(:,5) determines probability of laser; 1 means delivery, 0 means
 %none.
