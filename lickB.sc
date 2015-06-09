@@ -1,5 +1,5 @@
 %This is the sc file
-%This has only one sound (port 2)
+%This has two sounds (ports 1&2)
 %This has lickometer at port 3, solenoid at port 4
 
 int rewLength % CHANGE THIS IN BLOCKS
