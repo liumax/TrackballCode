@@ -64,7 +64,7 @@ sendScQtControlMessage(['disp(''Mouse ID: ', scQtUserData.mouseID,''')']);
 sendScQtControlMessage(['disp(''minRew: ', num2str(scQtUserData.minRew),''')']);
 sendScQtControlMessage(['disp(''maxRew: ', num2str(scQtUserData.maxRew),''')']);
 sendScQtControlMessage(['disp(''rewProb: ', num2str(scQtUserData.rewProb),''')']);
-sendScQtControlMessage(['disp(''laserProb: ', num2str(scQtUserData.rewProb),''')']);
+sendScQtControlMessage(['disp(''laserProb: ', num2str(scQtUserData.laserProb),''')']);
 sendScQtControlMessage(['disp(''blocks: ', num2str(scQtUserData.blocks),''')']);
 sendScQtControlMessage(['disp(''blockSize: ', num2str(scQtUserData.blockSize),''')']);
 sendScQtControlMessage(['disp(''minITI: ', num2str(scQtUserData.minITI),''')']);
@@ -123,15 +123,15 @@ master(:,2)=master(:,2)-master(:,3);
 %none.
 
 master(:,4)=rand(triallength,1);
-master(master(:,4)>=scQtUserData.rewProb,5)=0;
-master(master(:,4)<scQtUserData.rewProb,5)=1;
+master(master(:,4)>=scQtUserData.rewProb,4)=0;
+master(master(:,4)<scQtUserData.rewProb,4)=1;
 
 %master(:,5) determines probability of laser; 1 means delivery, 0 means
 %none.
 
 master(:,5)=rand(triallength,1);
-master(master(:,5)>=scQtUserData.rewProb,5)=0;
-master(master(:,5)<scQtUserData.rewProb,5)=1;
+master(master(:,5)>=scQtUserData.laserProb,5)=0;
+master(master(:,5)<scQtUserData.laserProb,5)=1;
 
 %This will be for pre-cue licks
 master(:,6)=zeros(triallength,1);
