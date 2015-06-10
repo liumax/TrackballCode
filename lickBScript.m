@@ -7,7 +7,7 @@ prompt = {'Mouse ID:',...  1
     'Min Reward (msec):',...       2
     'Max Reward (msec):',...       3
     'Reward Prob:',...      4
-    'Laser Prob:',...       5
+    'Reverse Contingency?:',...       5
     'Blocks:',...           6
     'Block Size:',...       7
     'Sound:'...             8
@@ -17,7 +17,7 @@ prompt = {'Mouse ID:',...  1
     'Notes:'}; %the bracket is to end the prompt     12
 dlg_title = 'LickTask:';
 num_lines=1;
-def={'','50','200','1','0','8','50','','3000','','1',''};
+def={'','50','200','1','n','8','50','','3000','','1',''};
 answer = inputdlg(prompt,dlg_title,num_lines,def);
 pause(2); % need to pause for microcontroller or things break!
 
@@ -36,7 +36,7 @@ scQtUserData.mouseID = answer{i};i=i+1;
 scQtUserData.minRew = str2double(answer{i});i=i+1;
 scQtUserData.maxRew = str2double(answer{i});i=i+1;
 scQtUserData.rewProb = str2double(answer{i});i=i+1;
-scQtUserData.laserProb = str2double(answer{i});i=i+1;
+scQtUserData.reversal = answer{i};i=i+1;
 scQtUserData.blocks = str2double(answer{i});i=i+1;
 scQtUserData.blockSize = str2double(answer{i});i=i+1;
 scQtUserData.sound = answer{i};i=i+1;
@@ -66,13 +66,13 @@ sendScQtControlMessage(['disp(''Mouse ID: ', scQtUserData.mouseID,''')']);
 sendScQtControlMessage(['disp(''minRew: ', num2str(scQtUserData.minRew),''')']);
 sendScQtControlMessage(['disp(''maxRew: ', num2str(scQtUserData.maxRew),''')']);
 sendScQtControlMessage(['disp(''rewProb: ', num2str(scQtUserData.rewProb),''')']);
-sendScQtControlMessage(['disp(''laserProb: ', num2str(scQtUserData.rewProb),''')']);
+sendScQtControlMessage(['disp(''reversal: ', scQtUserData.reversal,''')']);
 sendScQtControlMessage(['disp(''blocks: ', num2str(scQtUserData.blocks),''')']);
 sendScQtControlMessage(['disp(''blockSize: ', num2str(scQtUserData.blockSize),''')']);
 sendScQtControlMessage(['disp(''minITI: ', num2str(scQtUserData.minITI),''')']);
 sendScQtControlMessage(['disp(''maxITI: ', num2str(scQtUserData.maxITI),''')']);
 sendScQtControlMessage(['disp(''waterWindow: ', num2str(scQtUserData.waterWindow),''')']);
-sendScQtControlMessage(['disp(''sound: ', num2str(scQtUserData.sound),''')']);
+sendScQtControlMessage(['disp(''sound: ', scQtUserData.sound,''')']);
 sendScQtControlMessage(['disp(''soundDur: ', num2str(scQtUserData.soundDur),''')']);
 sendScQtControlMessage(['disp(''weight: ', scQtUserData.weight,''')']);
 sendScQtControlMessage(['disp(''taskID: ', scQtUserData.taskID,''')']);
@@ -91,9 +91,24 @@ master=zeros(triallength,12);
 
 %master(:,1) determines reward size. fills in rewards sizes so can pull by
 %trial number
-master(:,1)=scQtUserData.minRew;
-for x=2:2:scQtUserData.blocks
-    master(1+(x-1)*scQtUserData.blockSize:x*scQtUserData.blockSize,1)=scQtUserData.maxRew;
+
+if ~isempty(strfind(scQtUserData.sound,'lo'))
+    master(:,1)=scQtUserData.minRew;
+elseif ~isempty(strfind(scQtUserData.sound,'hi'))
+    master(:,1)=scQtUserData.maxRew;
+elseif ~isempty(strfind(scQtUserData.sound,'both'))
+    starter=rand;
+    if starter > 0.5
+        master(:,1)=scQtUserData.minRew;
+        for x=2:2:scQtUserData.blocks
+            master(1+(x-1)*scQtUserData.blockSize:x*scQtUserData.blockSize,1)=scQtUserData.maxRew;
+        end
+    else
+        master(:,1)=scQtUserData.maxRew;
+        for x=2:2:scQtUserData.blocks
+            master(1+(x-1)*scQtUserData.blockSize:x*scQtUserData.blockSize,1)=scQtUserData.minRew;
+        end
+    end
 end
 
 %master(:,2) will implement an exponential for the ITI distribution, with
@@ -132,9 +147,9 @@ master(master(:,4)<scQtUserData.rewProb,4)=1;
 %master(:,5) determines probability of laser; 1 means delivery, 0 means
 %none.
 
-master(:,5)=rand(triallength,1);
-master(master(:,5)>=scQtUserData.rewProb,5)=0;
-master(master(:,5)<scQtUserData.rewProb,5)=1;
+% % master(:,5)=rand(triallength,1);
+% % master(master(:,5)>=scQtUserData.rewProb,5)=0; PROBABLY BUGGY
+% % master(master(:,5)<scQtUserData.rewProb,5)=1;
 
 %This will be for pre-cue licks
 master(:,6)=zeros(triallength,1);
@@ -155,18 +170,36 @@ master(:,10)=zeros(triallength,1);
 master(:,11)=zeros(triallength,1);
 
 %This is for calculation of which sound to deliver
-
-if ~isempty(strfind(scQtUserData.sound,'lo'))
-    master(:,12) = 1;
-elseif ~isempty(strfind(scQtUserData.sound,'hi'))
-    master(:,12) = 2;
-elseif ~isempty(strfind(scQtUserData.sound,'both'))
-    master(:,12) = rand(triallength,1);
-    master(master(:,12)>0.5,12)=2;
-    master(master(:,12)<0.5,12)=1;
-else
-    disp 'NO SOUND SELECTED ABORT'
-    pause
+if ~isempty(strfind(scQtUserData.reversal,'y'))
+    if ~isempty(strfind(scQtUserData.sound,'lo'))
+        master(:,12) = 2;
+    elseif ~isempty(strfind(scQtUserData.sound,'hi'))
+        master(:,12) = 1;
+    elseif ~isempty(strfind(scQtUserData.sound,'both'))
+        master(:,12) = master(:,1);
+        bigRew=max(master(:,12));
+        smallRew=min(master(:,12));
+        master(master(:,12)==bigRew,12)=1;
+        master(master(:,12)==smallRew,12)=2;
+    else
+        disp 'NO SOUND SELECTED ABORT'
+        pause
+    end
+elseif ~isempty(strfind(scQtUserData.reversal,'n'))
+    if ~isempty(strfind(scQtUserData.sound,'lo'))
+        master(:,12) = 1;
+    elseif ~isempty(strfind(scQtUserData.sound,'hi'))
+        master(:,12) = 2;
+    elseif ~isempty(strfind(scQtUserData.sound,'both'))
+        master(:,12) = master(:,1);
+        bigRew=max(master(:,12));
+        smallRew=min(master(:,12));
+        master(master(:,12)==bigRew,12)=2;
+        master(master(:,12)==smallRew,12)=1;
+    else
+        disp 'NO SOUND SELECTED ABORT'
+        pause
+    end
 end
 
 scQtUserData.master=master;
