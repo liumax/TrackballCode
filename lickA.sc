@@ -28,10 +28,11 @@ function 1
             do in soundRewDel
                 trialState = 3
                 disp('Reward Delivered')
+                disp(rewLength)
                 portout[4] = 1
                     do in rewLength
                         portout[4] = 0
-                        disp(rewLength)
+                        disp('Reward Completed')
                         do in postDelay
                             trialState = 4
                         end
