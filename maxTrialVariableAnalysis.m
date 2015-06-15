@@ -163,7 +163,7 @@ end
 counter=1;
 for i=1:size(bwprep,2)
     findlicksize=size(bwprep{i},1);
-    bwRaster(counter:counter+findlicksize-1,2)=bwprep{i};
+    bwRaster(counter:counter+findlicksize-1,2)=bwprep{i}/1000;
     bwRaster(counter:counter+findlicksize-1,1)=i;
     counter=counter+findlicksize;
 end
@@ -178,7 +178,7 @@ end
 counter=1;
 for i=1:size(swprep,2)
     findlicksize=size(swprep{i},1);
-    swRaster(counter:counter+findlicksize-1,2)=swprep{i};
+    swRaster(counter:counter+findlicksize-1,2)=swprep{i}/1000;
     swRaster(counter:counter+findlicksize-1,1)=i;
     counter=counter+findlicksize;
 end
@@ -196,7 +196,7 @@ end
 counter=1;
 for i=1:size(bcprep,2)
     findlicksize=size(bcprep{i},1);
-    bcRaster(counter:counter+findlicksize-1,2)=bcprep{i};
+    bcRaster(counter:counter+findlicksize-1,2)=bcprep{i}/1000;
     bcRaster(counter:counter+findlicksize-1,1)=i;
     counter=counter+findlicksize;
 end
@@ -211,13 +211,30 @@ end
 counter=1;
 for i=1:size(scprep,2)
     findlicksize=size(scprep{i},1);
-    scRaster(counter:counter+findlicksize-1,2)=scprep{i};
+    scRaster(counter:counter+findlicksize-1,2)=scprep{i}/1000;
     scRaster(counter:counter+findlicksize-1,1)=i;
     counter=counter+findlicksize;
 end
 
 [scCounts,scCenters]=hist(scRaster(:,2),(window(2)-window(1))/freqbin);
 
+%set up rasters for display
+
+for i = 1:size(bwRaster,1)
+    bwRaster(i,1)= bigRewards(bwRaster(i,1));
+end
+
+for i = 1:size(bcRaster,1)
+    bcRaster(i,1)= bigRewards(bcRaster(i,1));
+end
+
+for i = 1:size(swRaster,1)
+    swRaster(i,1)= smallRewards(swRaster(i,1));
+end
+
+for i = 1:size(scRaster,1)
+    scRaster(i,1)= smallRewards(scRaster(i,1));
+end
 
 %Plots data out.
 figure
@@ -227,20 +244,20 @@ title('Rasters of Small (black) and Large (Red) Rewards Relative to Water')
 xlabel('Time (s)')
 ylabel('Rasters')
 subplot(2,2,3)
-plot(swCenters,swCounts,'k',bwCenters,bwCounts,'r')
+plot(swCenters,swCounts/freqbin/size(smallRewards,2),'k',bwCenters,bwCounts/freqbin/size(bigRewards,2),'r')
 title('Histograms of Licks Relative to Water ')
 xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
-ylabel('Number of Licks')
+ylabel('Lick Frequency (Hz)')
 subplot(2,2,2)
 plot(scRaster(:,2),scRaster(:,1),'k.',bcRaster(:,2),bcRaster(:,1),'r.')
 title('Rasters of Small (black) and Large (Red) Rewards Relative to Cue')
 xlabel('Time (s)')
 ylabel('Rasters')
 subplot(2,2,4)
-plot(scCenters,scCounts,'k',bcCenters,bcCounts,'r')
+plot(scCenters,scCounts/freqbin/size(smallRewards,2),'k',bcCenters,bcCounts/freqbin/size(bigRewards,2),'r')
 title('Histograms of Licks Relative to Cue ')
 xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
-ylabel('Number of Licks')
+ylabel('Lick Frequency (Hz)')
 
 
 figure
