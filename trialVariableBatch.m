@@ -9,6 +9,7 @@ for i=1:m
     fname=filelist(i,:);
     [trialStates, portStates, trialParams] = maxTrialVariables(fname);
     [cleanLicks] = maxTrialVariableAnalysis(trialStates,trialParams,portStates);
+    holder{i} = cleanLicks;
 end
 
 
