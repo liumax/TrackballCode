@@ -260,17 +260,29 @@ xlabel(['Time (s) in ',num2str(freqbin),'sec bins'])
 ylabel('Lick Frequency (Hz)')
 
 
-figure
-hold on
-plot(trialStates.preLick,'k','linewidth',2)
-plot(trialStates.postLick,'b','linewidth',2)
-plot(trialStates.antiLick,'g','linewidth',2)
-axis([0 400 0 30])
-title('Licks Over Session')
-xlabel('Trials')
-ylabel('Licks')
-hold off
+% figure
+% hold on
+% plot(trialStates.preLick,'k','linewidth',2)
+% plot(trialStates.postLick,'b','linewidth',2)
+% plot(trialStates.antiLick,'g','linewidth',2)
+% axis([0 400 0 30])
+% title('Licks Over Session')
+% xlabel('Trials')
+% ylabel('Licks')
+% hold off
 
+cleanLicks.swRaster = swRaster;
+cleanLicks.bwRaster = bwRaster;
+cleanLicks.scRaster = scRaster;
+cleanLicks.bcRaster = bcRaster;
+cleanLicks.swCenters = swCenters;
+cleanLicks.swCounts = swCounts/freqbin/size(smallRewards,2);
+cleanLicks.scCenters = scCenters;
+cleanLicks.scCounts = scCounts/freqbin/size(smallRewards,2);
+cleanLicks.bwCenters = bwCenters;
+cleanLicks.bwCounts = bwCounts/freqbin/size(bigRewards,2);
+cleanLicks.bcCenters = bcCenters;
+cleanLicks.bcCounts = bcCounts/freqbin/size(bigRewards,2);
 end
 
 
