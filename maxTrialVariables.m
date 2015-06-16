@@ -1,4 +1,4 @@
- function [trialStates, portStates, trialParams] = ...
+ function [trialStates, portStates, trialParams,trackStates] = ...
     maxTrialVariables(fname)   
 
 %These are counters
@@ -42,6 +42,11 @@ tStamps = [];
 inStates = [];
 outStates = [];
 
+%These are running speed variabls
+upA = [];
+upAtimes = [];
+upCounter = 1; %This is a placeholder for filling in upA
+
 
 disp(fname); %This displays the fname you are using
 fid = fopen(fname); %fopen opens the file
@@ -55,6 +60,13 @@ while ischar(tline) %repeats loop as long as tline has characters
             thisTime = str2double(tline(1:(findSpaces(1)-1))); %saves the timestamp
             eventLineNum = eventLineNum + 1; %updates the eventline counter
             eventStrings{eventLineNum} = tline((findSpaces(1)+1):end); %converts the string to component of cell array
+            
+            if ~isempty(strfind(eventStrings{eventLineNum},'upA'))
+                upA(upCounter) = str2double(eventStrings{eventLineNum}(...
+                    (find(eventStrings{eventLineNum}=='=')+1):end));
+                upAtimes(upCounter) = str2double(tline(1:(findSpaces(1)-1)));
+                upCounter = upCounter + 1;
+            end
             
             %This updates trialNum counter
             if ~isempty(strfind(eventStrings{eventLineNum},'Trial = '))
@@ -251,6 +263,9 @@ trialParams.training = training;
 portStates.tStamps = tStamps;
 portStates.inStates = inStates;
 portStates.outStates = outStates;
+
+trackStates.times = upAtimes;
+trackStates.velocity = upA;
 
 fclose(fid);
 
