@@ -21,22 +21,22 @@ function 1
         trialState = 1
         do in preDelay
             trialState = 2
-            if sound == 1
+            if sound == 1 do
                 portout[1] = 1 % sound on
-            elseif sound == 2
+            elseif sound == 2 do
                 portout[2] = 1 % sound on
             end
             disp('SoundOn')
             do in soundDur
-                if sound == 1
+                if sound == 1 do
                     portout[1] = 0 % sound off
-                elseif sound == 2
+                elseif sound == 2 do
                     portout[2] = 0 % sound off
                 end
                 disp('SoundOff')
             end
             do in soundRewDel
-                if rewProb == 1
+                if rewProb == 1 do
                     trialState = 3
                     disp('Reward Delivered')
                     portout[4] = 1
@@ -47,7 +47,7 @@ function 1
                                 trialState = 4
                             end
                         end
-                elseif rewProb == 0
+                elseif rewProb == 0 do
                     trialState = 4
                     disp('Empty Trial')
                 end

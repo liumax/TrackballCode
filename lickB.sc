@@ -20,16 +20,16 @@ function 1
         trialState = 1
         do in preDelay
             trialState = 2
-            if sound == 1
+            if sound == 1 do
                 portout[1] = 1 % sound on
-            elseif sound == 2
+            elseif sound == 2 do
                 portout[2] = 1 % sound on
             end
             disp('SoundOn')
             do in soundDur
-                if sound == 1
+                if sound == 1 do
                     portout[1] = 0 % sound off
-                elseif sound == 2
+                elseif sound == 2 do
                     portout[2] = 0 % sound off
                 end
                 disp('SoundOff')
