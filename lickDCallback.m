@@ -19,10 +19,14 @@ if (~isempty(strfind(newLine,'Trial = 400')))
     scQtUserData.tripSwitch = 1;
 end
 
+if scQtUserData.trial>1 && (~isempty(strfind(newLine,'SoundOn')))
+    scQtUserData.master(scQtUserData.trial,12) = str2double(newLine(findSpaces(1:(findSpaces(1)-1));
+end
+
 
 if scQtUserData.trial>1 && (~isempty(strfind(newLine,'SoundOff')))
     scQtUserData.master(scQtUserData.trial,11) = (scQtUserData.master(scQtUserData.trial,10)...
-        -scQtUserData.master(scQtUserData.trial-1,10))/1000;
+        -scQtUserData.master(scQtUserData.trial-1,10))/1000; %This is to log sound off times and ITIs
     sendScQtControlMessage(['disp(''ITI = ',num2str(scQtUserData.master(scQtUserData.trial,11)),''')']);
     
     if ~isfield(scQtUserData,'updateFig')
@@ -31,40 +35,56 @@ if scQtUserData.trial>1 && (~isempty(strfind(newLine,'SoundOff')))
     end
     if ~ishandle(scQtUserData.updateFig)
         scQtUserData.updateFig = figure('color','w');
-        scQtUserData.corrAx = subplot(2,1,1,'parent',scQtUserData.updateFig);
-        scQtUserData.durAx = subplot(2,1,2,'parent',scQtUserData.updateFig);
-        hold(scQtUserData.corrAx,'on');
+        scQtUserData.lickAx = subplot(3,1,1,'parent',scQtUserData.updateFig);
+        scQtUserData.durAx = subplot(3,1,2,'parent',scQtUserData.updateFig);
+        scQtUserData.velAx = subplot(3,1,3,'parent',scQtUserData.updateFig);
+        hold(scQtUserData.lickAx,'on');
         hold(scQtUserData.durAx,'on');
-        ylabel(scQtUserData.corrAx,'Licks');
+        hold(scQtUserData.velAx,'on');
+        ylabel(scQtUserData.lickAx,'Licks');
         ylabel(scQtUserData.durAx,'Reward Dur (ms)');
+        ylabel(scQtUserData.velAx,'Speed (cm/s)');
     end
 
-    cla(scQtUserData.corrAx);
+    cla(scQtUserData.lickAx);
     
-    title(scQtUserData.corrAx,[...
+    title(scQtUserData.lickAx,[...
         'Total trials ', num2str(scQtUserData.trial),...
         ' Black = prelick',' Blue = Anticipatory', ' Green = post', 'Red = other']), ...
     % Plot pre-licks
     plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,6),'linewidth',2,...
-        'color','k','parent',scQtUserData.corrAx);
+        'color','k','parent',scQtUserData.lickAx);
     % Plot anticipatory licks
     plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,7),'linewidth',2,...
-        'color','b','parent',scQtUserData.corrAx);
+        'color','b','parent',scQtUserData.lickAx);
     %Plot post-delivery licks
     plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,8),'linewidth',2,...
-        'color','g','parent',scQtUserData.corrAx);
+        'color','g','parent',scQtUserData.lickAx);
     %Plot all other licks
     plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,9),'linewidth',2,...
-        'color','r','parent',scQtUserData.corrAx);
+        'color','r','parent',scQtUserData.lickAx);
     %Plot all other licks
     plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,11),'linewidth',3,...
-        'color','c','parent',scQtUserData.corrAx);
+        'color','c','parent',scQtUserData.lickAx);
     % Plot reward size
     plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,1),'color','k','linewidth',3,...
         'parent',scQtUserData.durAx);
 
-    set(scQtUserData.corrAx,'ylim',[0 30],'ytick',0:1:30,'ygrid','on');
+    set(scQtUserData.lickAx,'ylim',[0 30],'ytick',0:1:30,'ygrid','on');
     set(scQtUserData.durAx,'ygrid','on');
+end
+
+if (~isempty(strfind(newLine,'SessionStart')))
+    scQtUserData.trial = scQtUserData.trial + 1;
+    sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
+    sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.master(scQtUserData.trial,2))]); 
+    sendScQtControlMessage(['soundRewDel = ',num2str(scQtUserData.master(scQtUserData.trial,3))]);
+    sendScQtControlMessage(['rewLength = ',num2str(scQtUserData.master(scQtUserData.trial,1))]);
+    spaceFinder = find(newLine == ' ');
+    scQtUserData.master(scQtUserData.trial,10) = str2num(newLine(1:spaceFinder(1)-1));
+%     sendScQtControlMessage(['disp(''SoundTime = ',num2str(scQtUserData.master(...
+%         scQtUserData.trial,10)),''')']);
+    sendScQtControlMessage('trigger(1)');
 end
 
 if (~isempty(strfind(newLine,'SoundOff'))) && scQtUserData.tripSwitch == 0;
@@ -104,7 +124,11 @@ if (~isempty(strfind(newLine,'trialState')))
     disp 'State Value Updated'
 end
 
-if (~isempty(strfind(newLine,'velCount'))) && scQtUserData.tripSwitch == 0;
+if (~isempty(strfind(newLine,'velCount')))
+    findSpaces=find(newLine == ' ');
+    scQtUserData.velocity(scQtUserData.velCounter,1) = str2double(newLine(findSpaces(end)+1:end));
+    scQtUserData.velocity(scQtUserData.velCounter,2) = str2double(newLine(findSpaces(1:(findSpaces(1)-1));
+    scQtUserData.velCounter = scQtUserData.velCounter + 1;
 end
 
 end

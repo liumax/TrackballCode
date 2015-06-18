@@ -7,16 +7,15 @@ prompt = {'Mouse ID:',...  1
     'Min Reward (msec):',...       2
     'Max Reward (msec):',...       3
     'Reward Prob:',...      4
-    'Laser Prob:',...       5
-    'Blocks:',...           6
-    'Block Size:',...       7
-    'Sound Duration (ms)',...    8
-    'Weight:',...           9
-    'sessionID:',...        10
-    'Notes:'}; %the bracket is to end the prompt     11
+    'Blocks:',...           5
+    'Block Size:',...       6
+    'Sound Duration (ms)',...    7
+    'Weight:',...           8
+    'sessionID:',...        9
+    'Notes:'}; %the bracket is to end the prompt     10
 dlg_title = 'LickTask:';
 num_lines=1;
-def={'','50','200','1','0','8','50','3000','','1',''};
+def={'','50','200','0','8','50','3000','','1',''};
 answer = inputdlg(prompt,dlg_title,num_lines,def);
 pause(2); % need to pause for microcontroller or things break!
 
@@ -35,7 +34,6 @@ scQtUserData.mouseID = answer{i};i=i+1;
 scQtUserData.minRew = str2double(answer{i});i=i+1;
 scQtUserData.maxRew = str2double(answer{i});i=i+1;
 scQtUserData.rewProb = str2double(answer{i});i=i+1;
-scQtUserData.laserProb = str2double(answer{i});i=i+1;
 scQtUserData.blocks = str2double(answer{i});i=i+1;
 scQtUserData.blockSize = str2double(answer{i});i=i+1;
 scQtUserData.soundDur = str2double(answer{i});i=i+1;
@@ -64,7 +62,6 @@ sendScQtControlMessage(['disp(''Mouse ID: ', scQtUserData.mouseID,''')']);
 sendScQtControlMessage(['disp(''minRew: ', num2str(scQtUserData.minRew),''')']);
 sendScQtControlMessage(['disp(''maxRew: ', num2str(scQtUserData.maxRew),''')']);
 sendScQtControlMessage(['disp(''rewProb: ', num2str(scQtUserData.rewProb),''')']);
-sendScQtControlMessage(['disp(''laserProb: ', num2str(scQtUserData.laserProb),''')']);
 sendScQtControlMessage(['disp(''blocks: ', num2str(scQtUserData.blocks),''')']);
 sendScQtControlMessage(['disp(''blockSize: ', num2str(scQtUserData.blockSize),''')']);
 sendScQtControlMessage(['disp(''minITI: ', num2str(scQtUserData.minITI),''')']);
@@ -127,11 +124,7 @@ master(master(:,4)>=scQtUserData.rewProb,4)=0;
 master(master(:,4)<scQtUserData.rewProb,4)=1;
 
 %master(:,5) determines probability of laser; 1 means delivery, 0 means
-%none.
-
-master(:,5)=rand(triallength,1);
-master(master(:,5)>=scQtUserData.laserProb,5)=0;
-master(master(:,5)<scQtUserData.laserProb,5)=1;
+%none. this has been removed.
 
 %This will be for pre-cue licks
 master(:,6)=zeros(triallength,1);
@@ -145,11 +138,14 @@ master(:,8)=zeros(triallength,1);
 %This is for licks in all other intervals
 master(:,9)=zeros(triallength,1);
 
-%This is found Sound Times (triggered by SoundOff)
+%This is for Sound Times (triggered by SoundOff)
 master(:,10)=zeros(triallength,1);
 
 %This is for calculation of ITIs (marked by sound-off)
 master(:,11)=zeros(triallength,1);
+
+%This is for sound onsets!
+master(:,12) = zeros(triallength,1);
 
 scQtUserData.master=master;
 
@@ -158,4 +154,4 @@ scQtUserData.velCounter = 1;
 
 sendScQtControlMessage(['soundDur=',num2str(scQtUserData.soundDur)]);
 sendScQtControlMessage(['baitDur=',num2str(baitDur)]);
-sendScQtControlMessage(['disp(''SoundOff'')']);
+sendScQtControlMessage(['disp(''SessionStart'')']);
