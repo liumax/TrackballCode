@@ -15,10 +15,6 @@ if (scQtInitiated == 0)
     newLine = 'start next trial';
 end
 
-if (~isempty(strfind(newLine,'Trial = 400')))
-    scQtUserData.tripSwitch = 1;
-end
-
 
 if scQtUserData.trial>1 && (~isempty(strfind(newLine,'SoundOff')))
     scQtUserData.master(scQtUserData.trial,11) = (scQtUserData.master(scQtUserData.trial,10)...
