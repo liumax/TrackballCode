@@ -135,10 +135,10 @@ master(:,8)=zeros(triallength,1);
 %This is for licks in all other intervals
 master(:,9)=zeros(triallength,1);
 
-%This is for Sound Times (triggered by TriggerMatlab)
+%This is for Sound Times (triggered by soundOff)
 master(:,10)=zeros(triallength,1);
 
-%This is for calculation of ITIs (marked by sound-off)
+%This is for calculation of ITIs 
 master(:,11)=zeros(triallength,1);
 
 %This is for sound onsets!

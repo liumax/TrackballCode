@@ -24,7 +24,7 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'SoundOn')))
 end
 
 
-if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
+if scQtUserData.trial>1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     scQtUserData.master(scQtUserData.trial,11) = (scQtUserData.master(scQtUserData.trial,10)...
         -scQtUserData.master(scQtUserData.trial-1,10))/1000; %This is to log sound off times and ITIs
     sendScQtControlMessage(['disp(''ITI = ',num2str(scQtUserData.master(scQtUserData.trial,11)),''')']);
@@ -103,11 +103,14 @@ if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
     sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.master(scQtUserData.trial,2))]); 
     sendScQtControlMessage(['soundRewDel = ',num2str(scQtUserData.master(scQtUserData.trial,3))]);
     sendScQtControlMessage(['rewLength = ',num2str(scQtUserData.master(scQtUserData.trial,1))]);
-    spaceFinder = find(newLine == ' ');
-    scQtUserData.master(scQtUserData.trial,10) = str2num(newLine(1:spaceFinder(1)-1));
 %     sendScQtControlMessage(['disp(''SoundTime = ',num2str(scQtUserData.master(...
 %         scQtUserData.trial,10)),''')']);
     sendScQtControlMessage('trigger(1)');
+end
+
+if (~isempty(strfind(newLine,'SoundOff'))) && scQtUserData.tripSwitch == 0;
+    spaceFinder = find(newLine == ' ');
+    scQtUserData.master(scQtUserData.trial,10) = str2num(newLine(1:spaceFinder(1)-1));
 end
 
 if (~isempty(strfind(newLine,'trialState')))
