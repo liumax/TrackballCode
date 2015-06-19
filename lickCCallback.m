@@ -10,7 +10,7 @@ global scQtInitiated; %the callback function should set this to 1 once all user 
 global scQtUserData;
 
 if (scQtInitiated == 0)
-    lickBScript;
+    lickCScript;
     scQtInitiated = 1;
     newLine = 'start next trial';
 end
@@ -36,7 +36,7 @@ if scQtUserData.trial>1 && (~isempty(strfind(newLine,'SoundOff')))
         hold(scQtUserData.corrAx,'on');
         hold(scQtUserData.durAx,'on');
         ylabel(scQtUserData.corrAx,'Licks');
-        ylabel(scQtUserData.durAx,'Reward Dur (ms)');
+        ylabel(scQtUserData.durAx,'Reward Prob');
     end
 
     cla(scQtUserData.corrAx);

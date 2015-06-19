@@ -18,33 +18,49 @@ function 1
     trialState = 4
     do in itiDur
         trialState = 1
-        do in preDelay
-            trialState = 2
-            if sound == 1 do
-                portout[1] = 1 % sound on
-            elseif sound == 2 do
-                portout[2] = 1 % sound on
-            end
-            disp('SoundOn')
-            do in soundDur
-                if sound == 1 do
-                    portout[1] = 0 % sound off
-                elseif sound == 2 do
-                    portout[2] = 0 % sound off
+        if sound == 1 do
+            do in preDelay
+                trialState = 2
+                portout[1] = 1
+                disp('SoundOn')
+                do in soundDur
+                    portout[1] = 0
+                    disp('SoundOff')
                 end
-                disp('SoundOff')
-            end
-            do in soundRewDel
-                trialState = 3
-                disp('Reward Delivered')
-                portout[4] = 1
-                    do in rewLength
-                        portout[4] = 0
-                        disp(rewLength)
-                        do in postDelay
-                            trialState = 4
+                do in soundRewDel
+                    trialState = 3
+                    disp('Reward Delivered')
+                    portout[4] = 1
+                        do in rewLength
+                            portout[4] = 0
+                            disp(rewLength)
+                            do in postDelay
+                                trialState = 4
+                            end
                         end
-                    end
+                end
+            end
+        else if sound == 2 do
+            do in preDelay
+                trialState = 2
+                portout[2] = 1
+                disp('SoundOn')
+                do in soundDur
+                    portout[2] = 0
+                    disp('SoundOff')
+                end
+                do in soundRewDel
+                    trialState = 3
+                    disp('Reward Delivered')
+                    portout[4] = 1
+                        do in rewLength
+                            portout[4] = 0
+                            disp(rewLength)
+                            do in postDelay
+                                trialState = 4
+                            end
+                        end
+                end
             end
         end
     end

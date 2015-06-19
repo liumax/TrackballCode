@@ -23,14 +23,14 @@ function 1
             trialState = 2
             if sound == 1 do
                 portout[1] = 1 % sound on
-            elseif sound == 2 do
+            else if sound == 2 do
                 portout[2] = 1 % sound on
             end
             disp('SoundOn')
             do in soundDur
                 if sound == 1 do
                     portout[1] = 0 % sound off
-                elseif sound == 2 do
+                else if sound == 2 do
                     portout[2] = 0 % sound off
                 end
                 disp('SoundOff')
@@ -47,7 +47,7 @@ function 1
                                 trialState = 4
                             end
                         end
-                elseif rewProb == 0 do
+                else if rewProb == 0 do
                     trialState = 4
                     disp('Empty Trial')
                 end

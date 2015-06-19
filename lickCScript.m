@@ -36,7 +36,7 @@ scQtUserData.mouseID = answer{i};i=i+1;
 scQtUserData.rewSize = str2double(answer{i});i=i+1;
 scQtUserData.minProb = str2double(answer{i});i=i+1;
 scQtUserData.maxProb = str2double(answer{i});i=i+1;
-scQtUserData.reversal = str2double(answer{i});i=i+1;
+scQtUserData.reversal = answer{i};i=i+1;
 scQtUserData.blocks = str2double(answer{i});i=i+1;
 scQtUserData.blockSize = str2double(answer{i});i=i+1;
 scQtUserData.maxSound = answer{i};i=i+1;
@@ -66,7 +66,7 @@ sendScQtControlMessage(['disp(''Mouse ID: ', scQtUserData.mouseID,''')']);
 sendScQtControlMessage(['disp(''rewSize: ', num2str(scQtUserData.rewSize),''')']);
 sendScQtControlMessage(['disp(''minProb: ', num2str(scQtUserData.minProb),''')']);
 sendScQtControlMessage(['disp(''maxProb: ', num2str(scQtUserData.maxProb),''')']);
-sendScQtControlMessage(['disp(''reversal: ', num2str(scQtUserData.reversal),''')']);
+sendScQtControlMessage(['disp(''reversal: ', scQtUserData.reversal,''')']);
 sendScQtControlMessage(['disp(''blocks: ', num2str(scQtUserData.blocks),''')']);
 sendScQtControlMessage(['disp(''blockSize: ', num2str(scQtUserData.blockSize),''')']);
 sendScQtControlMessage(['disp(''minITI: ', num2str(scQtUserData.minITI),''')']);
@@ -166,32 +166,32 @@ master(:,11)=zeros(triallength,1);
 %This is for calculation of which sound to deliver
 
 master(:,12) = master(:,1);
-big=max(master(:,12));
-small=min(master(:,12));
-
 
 if ~isempty(strfind(scQtUserData.reversal,'y'))
     if ~isempty(strfind(scQtUserData.maxSound,'lo'))
-        master(master(:,12)==big,12) = 2;
-        master(master(:,12)==small,12) = 1;
+        master((master(:,12)==scQtUserData.maxProb),12)=2;
+        master((master(:,12)==scQtUserData.minProb),12)=1;
     elseif ~isempty(strfind(scQtUserData.maxSound,'hi'))
-        master(master(:,12)==big,12) = 1;
-        master(master(:,12)==small,12) = 2;
+        master((master(:,12)==scQtUserData.maxProb),12)=1;
+        master((master(:,12)==scQtUserData.minProb),12)=2;
     else
         disp 'NO SOUND SELECTED ABORT'
         pause
     end
 elseif ~isempty(strfind(scQtUserData.reversal,'n'))
     if ~isempty(strfind(scQtUserData.maxSound,'lo'))
-        master(master(:,12)==big,12) = 1;
-        master(master(:,12)==small,12) = 2;
+        master((master(:,12)==scQtUserData.maxProb),12)=1;
+        master((master(:,12)==scQtUserData.minProb),12)=2;
     elseif ~isempty(strfind(scQtUserData.maxSound,'hi'))
-        master(master(:,12)==big,12) = 2;
-        master(master(:,12)==small,12) = 1;
+        master((master(:,12)==scQtUserData.maxProb),12)=2;
+        master((master(:,12)==scQtUserData.minProb),12)=1;
     else
         disp 'NO SOUND SELECTED ABORT'
         pause
     end
+else
+    disp 'FAILURE OF REVERSAL VARIABLE'
+    pause
 end
 
 scQtUserData.master=master;
