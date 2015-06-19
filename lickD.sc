@@ -5,14 +5,15 @@
 int rewLength % CHANGE THIS IN BLOCKS
 int soundRewDel % CHANGE THIS EVERY TRIAL
 int soundDur %maybe hardcode this? doesnt change.
-int preDelay = 1000
-int postDelay = 2000
+int preDelay %Delay to generate trialstate1, or pre-emptive licks
+int postDelay %delay to generate trialstate 4, or other licks
+int timeDelay %delay to trigger matlab callback later.
 int trialState
 int itiDur
 
 %These are variables for tracking running disk.
 int upA = 0
-int velCount = 0
+int vCount = 0
 int intWindow1 = 500
 
 function 1
@@ -27,6 +28,9 @@ function 1
             do in soundDur
                 portout[2] = 0 % sound off
                 disp('SoundOff')
+                do in timeDelay
+                    disp('TriggerMatlab')
+                end
             end
             do in soundRewDel
                 trialState = 3
@@ -52,12 +56,12 @@ end;
 callback portin[7] up 
     upA = upA + 1
     if upA == 3 do
-        velCount = velCount + 1
-        disp(velCount)
+        vCount = vCount + 1
+        disp(vCount)
         upA = 0
         do in intWindow1
-            velCount = velCount - 1
-            disp(velCount)
+            vCount = vCount - 1
+            disp(vCount)
         end
     end
 end;
