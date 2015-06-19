@@ -39,7 +39,7 @@ scQtUserData.taskID = 'LickTask';
 scQtUserData.sessionID = answer{i};i=i+1;
 scQtUserData.notes = answer{i};i=i+1;
 
-scQtUserData.minITI=scQtUserData.soundDur+4000;
+scQtUserData.minITI=scQtUserData.soundDur+6000;
 scQtUserData.maxITI=scQtUserData.minITI+5000;
 
 scQtUserData.waterWindow=waterWindow;
