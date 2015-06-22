@@ -3,19 +3,13 @@
 %This has output A going to 7, B going to 8
 
 int upA = 0
-int velCount = 0
-
-int intWindow1 = 500
+int intWindow = 500
 
 callback portin[7] up 
     upA = upA + 1
-    if upA == 3 do
-        velCount = velCount + 1
-        disp(velCount)
-        upA = 0
-        do in intWindow1
-            velCount = velCount - 1
-            disp(velCount)
-        end
+    disp(upA)
+    do in intWindow
+        upA = upA - 1
+        disp(upA)
     end
 end;
