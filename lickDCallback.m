@@ -19,15 +19,12 @@ if (~isempty(strfind(newLine,'Trial = 400')))
     scQtUserData.tripSwitch = 1;
 end
 
-if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'SoundOn')))
-    scQtUserData.master(scQtUserData.trial,12) = str2double(newLine(findSpaces(1:(findSpaces(1)-1))));
-end
-
-
-if scQtUserData.trial>1 && (~isempty(strfind(newLine,'TriggerMatlab')))
-    scQtUserData.master(scQtUserData.trial,11) = (scQtUserData.master(scQtUserData.trial,10)...
-        -scQtUserData.master(scQtUserData.trial-1,10))/1000; %This is to log sound off times and ITIs
-    sendScQtControlMessage(['disp(''ITI = ',num2str(scQtUserData.master(scQtUserData.trial,11)),''')']);
+if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
+    if scQtUserData.trial>1
+        scQtUserData.master(scQtUserData.trial,11) = (scQtUserData.master(scQtUserData.trial,10)...
+            -scQtUserData.master(scQtUserData.trial-1,10))/1000; %This is to log sound off times and ITIs
+%     sendScQtControlMessage(['disp(''ITI = ',num2str(scQtUserData.master(scQtUserData.trial,11)),''')']);
+    end
     
     if ~isfield(scQtUserData,'updateFig') %This code is just to make sure updateFig has a value.
         disp('resetting updateFig');
@@ -51,8 +48,16 @@ if scQtUserData.trial>1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     
     %currently can only update the following trial, since figure updates at
     %a time that isnt conducive to this?
-    scQtUserData.velStart(scQtUserData.trial) = find(scQtUserData.velocity(:,1)<scQtUserData.master(scQtUserData.trial,12)-2000);
-    scQtUserData.velEnd(scQtUserData.trial) = find(scQtUserData.velocity(:,1)>scQtUserData.master(scQtUserData.trial,10)+2000);
+%     scQtUserData.velStart(scQtUserData.trial) = find(scQtUserData.velocity(:,1)<scQtUserData.master(scQtUserData.trial,10)-5000);
+%     scQtUserData.velEnd(scQtUserData.trial) = find(scQtUserData.velocity(:,1)>scQtUserData.master(scQtUserData.trial,10)+2000);
+    
+    velFinder = find(scQtUserData.velocity(:,1)>scQtUserData.master(scQtUserData.trial,10)-5000 & ...
+        scQtUserData.velocity(:,1)<scQtUserData.master(scQtUserData.trial,10)+2000);
+    if ~isempty(velFinder)
+        velStart = velFinder(1)
+        velEnd = velFinder(end)
+        velEnd-velStart
+    end
     
     
     title(scQtUserData.lickAx,[...
@@ -77,11 +82,18 @@ if scQtUserData.trial>1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,1),'color','k','linewidth',3,...
         'parent',scQtUserData.durAx);
     %Plot out velocity during trial!
-    plot(0:scQtUserData.velocity(scQtUserData.velEnd(scQtUserData.trial,1))...
-        -scQtUserData.velocity(scQtUserData.velStart(scQtUserData.trial,1)),...
-        scQtUserData.velocity(scQtUserData.velStart(scQtUserData.trial),2):...
-        scQtUserData.velocity(scQtUserData.velEnd(scQtUserData.trial),2),...
-        'color','k','linewidth',2,'parent',scQtUserData.velAx);
+    size(scQtUserData.velocity(velStart,1)...
+            :scQtUserData.velocity(velEnd,1))
+    size(scQtUserData.velocity(velStart,2)...
+            :scQtUserData.velocity(velEnd,2)) 
+    
+%     if ~isempty(velStart) && ~isempty(velEnd) 
+%         plot((scQtUserData.velocity(velStart,1)...
+%             :scQtUserData.velocity(velEnd,1)),...
+%             scQtUserData.velocity(velStart,2):...
+%             scQtUserData.velocity(velEnd,2),...
+%             'color','k','linewidth',2,'parent',scQtUserData.velAx);
+%     end
 
     set(scQtUserData.lickAx,'ylim',[0 30],'ytick',0:1:30,'ygrid','on');
     set(scQtUserData.durAx,'ygrid','on');
@@ -103,8 +115,6 @@ if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
     sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.master(scQtUserData.trial,2))]); 
     sendScQtControlMessage(['soundRewDel = ',num2str(scQtUserData.master(scQtUserData.trial,3))]);
     sendScQtControlMessage(['rewLength = ',num2str(scQtUserData.master(scQtUserData.trial,1))]);
-%     sendScQtControlMessage(['disp(''SoundTime = ',num2str(scQtUserData.master(...
-%         scQtUserData.trial,10)),''')']);
     sendScQtControlMessage('trigger(1)');
 end
 
@@ -137,10 +147,12 @@ if (~isempty(strfind(newLine,'trialState')))
     disp 'State Value Updated'
 end
 
-if (~isempty(strfind(newLine,'vCount')))
-    findSpaces=find(newLine == ' ');
-    scQtUserData.velocity(scQtUserData.velCounter,1) = str2double(newLine(findSpaces(1:(findSpaces(1)-1))));
-    scQtUserData.velocity(scQtUserData.velCounter,2) = str2double(newLine(findSpaces(end)+1:end));
+if (~isempty(strfind(newLine,'upA')))
+    findSpacer=find(newLine == ' ');
+    scQtUserData.velocity(scQtUserData.velCounter,1) = str2double(newLine(1:(findSpacer(1)-1)));
+    scQtUserData.velocity(scQtUserData.velCounter,2) = str2double(newLine(findSpacer(end)+1:end));
+    x=scQtUserData.velocity(scQtUserData.velCounter,1)
+    y=scQtUserData.velocity(scQtUserData.velCounter,2)
     scQtUserData.velCounter = scQtUserData.velCounter + 1;
 end
 

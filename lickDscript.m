@@ -29,11 +29,11 @@ i=1;
 t = clock;
 rand('seed',sum(round(clock)));
 scQtUserData.mouseID = answer{i};i=i+1;
-scQtUserData.minRew = str2double(answer{i});i=i+1;
-scQtUserData.maxRew = str2double(answer{i});i=i+1;
-scQtUserData.blocks = str2double(answer{i});i=i+1;
-scQtUserData.blockSize = str2double(answer{i});i=i+1;
-scQtUserData.soundDur = str2double(answer{i});i=i+1;
+scQtUserData.minRew = str2num(answer{i});i=i+1;
+scQtUserData.maxRew = str2num(answer{i});i=i+1;
+scQtUserData.blocks = str2num(answer{i});i=i+1;
+scQtUserData.blockSize = str2num(answer{i});i=i+1;
+scQtUserData.soundDur = str2num(answer{i});i=i+1;
 scQtUserData.weight = answer{i};i=i+1;
 scQtUserData.taskID = 'LickTask';
 scQtUserData.sessionID = answer{i};i=i+1;
@@ -54,21 +54,21 @@ scQtUserData.trial = 0; % keep track of trial number
 
 pause(0.2);
 
-sendScQtControlMessage(['disp(''Mouse ID: ', scQtUserData.mouseID,''')']);
-sendScQtControlMessage(['disp(''minRew: ', num2str(scQtUserData.minRew),''')']);
-sendScQtControlMessage(['disp(''maxRew: ', num2str(scQtUserData.maxRew),''')']);
-sendScQtControlMessage(['disp(''blocks: ', num2str(scQtUserData.blocks),''')']);
-sendScQtControlMessage(['disp(''blockSize: ', num2str(scQtUserData.blockSize),''')']);
-sendScQtControlMessage(['disp(''minITI: ', num2str(scQtUserData.minITI),''')']);
-sendScQtControlMessage(['disp(''maxITI: ', num2str(scQtUserData.maxITI),''')']);
-sendScQtControlMessage(['disp(''waterWindow: ', num2str(scQtUserData.waterWindow),''')']);
-sendScQtControlMessage(['disp(''soundDur: ', num2str(scQtUserData.soundDur),''')']);
-sendScQtControlMessage(['disp(''weight: ', scQtUserData.weight,''')']);
-sendScQtControlMessage(['disp(''taskID: ', scQtUserData.taskID,''')']);
-sendScQtControlMessage(['disp(''date: ', scQtUserData.date,''')']);
-sendScQtControlMessage(['disp(''time: ', scQtUserData.time,''')']);
-sendScQtControlMessage(['disp(''sessionID: ', scQtUserData.sessionID,''')']);
-sendScQtControlMessage(['disp(''notes: ', scQtUserData.notes,''')']);
+sendScQtControlMessage(['disp(''Mouse ID:', scQtUserData.mouseID,''')']);
+sendScQtControlMessage(['disp(''minRew:', num2str(scQtUserData.minRew),''')']);
+sendScQtControlMessage(['disp(''maxRew:', num2str(scQtUserData.maxRew),''')']);
+sendScQtControlMessage(['disp(''blocks:', num2str(scQtUserData.blocks),''')']);
+sendScQtControlMessage(['disp(''blockSize:', num2str(scQtUserData.blockSize),''')']);
+sendScQtControlMessage(['disp(''minITI:', num2str(scQtUserData.minITI),''')']);
+sendScQtControlMessage(['disp(''maxITI:', num2str(scQtUserData.maxITI),''')']);
+sendScQtControlMessage(['disp(''waterWindow:', num2str(scQtUserData.waterWindow),''')']);
+sendScQtControlMessage(['disp(''soundDur:', num2str(scQtUserData.soundDur),''')']);
+sendScQtControlMessage(['disp(''weight:', scQtUserData.weight,''')']);
+sendScQtControlMessage(['disp(''taskID:', scQtUserData.taskID,''')']);
+sendScQtControlMessage(['disp(''date:', scQtUserData.date,''')']);
+sendScQtControlMessage(['disp(''time:', scQtUserData.time,''')']);
+sendScQtControlMessage(['disp(''sessionID:', scQtUserData.sessionID,''')']);
+sendScQtControlMessage(['disp(''notes:', scQtUserData.notes,''')']);
 
 pause(1) %Need to put all my timings in before this stuff
 
@@ -141,8 +141,6 @@ master(:,10)=zeros(triallength,1);
 %This is for calculation of ITIs 
 master(:,11)=zeros(triallength,1);
 
-%This is for sound onsets!
-master(:,12) = zeros(triallength,1);
 
 scQtUserData.master=master;
 
