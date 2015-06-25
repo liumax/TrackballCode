@@ -144,7 +144,7 @@ master(:,11)=zeros(triallength,1);
 
 scQtUserData.master=master;
 
-scQtUserData.velocity = zeros(1,2);
+scQtUserData.velocity = zeros(100000,2);
 scQtUserData.velCounter = 1;
 
 sendScQtControlMessage(['soundDur=',num2str(scQtUserData.soundDur)]);

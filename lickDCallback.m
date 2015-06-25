@@ -15,7 +15,7 @@ if (scQtInitiated == 0)
     newLine = 'start next trial';
 end
 
-if (~isempty(strfind(newLine,'Trial = 400')))
+if (~isempty(strfind(newLine,['Trial = ',num2str(scQtUserData.blocks*scQtUserData.blockSize)])))
     scQtUserData.tripSwitch = 1;
 end
 
@@ -92,6 +92,9 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
             scQtUserData.velocity(velStart:velEnd,2)*2*0.1,...
             'color','r','linewidth',1,'parent',scQtUserData.velAx);
     end
+    
+    scQtUserData.velocity = zeros(100000,2);
+    scQtUserData.velCounter = 1;
 
     set(scQtUserData.lickAx,'ylim',[0 30],'ytick',0:5:30,'ygrid','on');
     set(scQtUserData.durAx,'ygrid','on');
