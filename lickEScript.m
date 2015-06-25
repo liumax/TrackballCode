@@ -14,7 +14,7 @@ prompt = {'Mouse ID:',...  1
     'Notes:'}; %the bracket is to end the prompt     10
 dlg_title = 'LickTask:';
 num_lines=1;
-def={'','50','200','8','50','3000','','1',''};
+def={'','50','200','8','50','500','','1',''};
 answer = inputdlg(prompt,dlg_title,num_lines,def);
 pause(2); % need to pause for microcontroller or things break!
 
@@ -23,6 +23,7 @@ pause(2); % need to pause for microcontroller or things break!
 % sHandle = scConnect(comValStr,@pokeE_Callback);
 % pause(1);
 
+waterWindow=1000;
 
 i=1;
 t = clock;
@@ -38,19 +39,20 @@ scQtUserData.taskID = 'LickTask';
 scQtUserData.sessionID = answer{i};i=i+1;
 scQtUserData.notes = answer{i};i=i+1;
 
-scQtUserData.minITI=scQtUserData.soundDur+4000;
+scQtUserData.minITI=scQtUserData.soundDur+6000;
 scQtUserData.maxITI=scQtUserData.minITI+5000;
 
+scQtUserData.waterWindow=waterWindow;
 scQtUserData.date = date;
 scQtUserData.time = strcat(num2str(t(4)),':',num2str(t(5)));
 scQtUserData.tripSwitch = 0;
 
 % my additional fields:
 scQtUserData.trial = 0; % keep track of trial number
+% scQtUserData.trInit = false;
+% scQtUserData.trBait = false;
 
-pause(1);
-
-
+pause(0.2);
 
 sendScQtControlMessage(['disp(''Mouse ID:', scQtUserData.mouseID,''')']);
 sendScQtControlMessage(['disp(''minRew:', num2str(scQtUserData.minRew),''')']);
@@ -59,6 +61,7 @@ sendScQtControlMessage(['disp(''blocks:', num2str(scQtUserData.blocks),''')']);
 sendScQtControlMessage(['disp(''blockSize:', num2str(scQtUserData.blockSize),''')']);
 sendScQtControlMessage(['disp(''minITI:', num2str(scQtUserData.minITI),''')']);
 sendScQtControlMessage(['disp(''maxITI:', num2str(scQtUserData.maxITI),''')']);
+sendScQtControlMessage(['disp(''waterWindow:', num2str(scQtUserData.waterWindow),''')']);
 sendScQtControlMessage(['disp(''soundDur:', num2str(scQtUserData.soundDur),''')']);
 sendScQtControlMessage(['disp(''weight:', scQtUserData.weight,''')']);
 sendScQtControlMessage(['disp(''taskID:', scQtUserData.taskID,''')']);
@@ -69,24 +72,24 @@ sendScQtControlMessage(['disp(''notes:', scQtUserData.notes,''')']);
 
 pause(1) %Need to put all my timings in before this stuff
 
+triallength=scQtUserData.blocks*scQtUserData.blockSize;
+
 %master array for all calculations
-master=zeros(scQtUserData.blocks*scQtUserData.blockSize,11);
+master=zeros(triallength,11);
 
-triallength = scQtUserData.blocks*scQtUserData.blockSize;
-
-% %master(:,1) determines reward size. fills in rewards sizes so can pull by
-% %trial number
+%master(:,1) determines reward size. fills in rewards sizes so can pull by
+%trial number
 master(:,1)=scQtUserData.minRew;
 for x=2:2:scQtUserData.blocks
     master(1+(x-1)*scQtUserData.blockSize:x*scQtUserData.blockSize,1)=scQtUserData.maxRew;
 end
 
-% %master(:,2) will implement an exponential for the ITI distribution, with
-% %random noise inserted.
+%master(:,2) will implement an exponential for the ITI distribution, with
+%random noise inserted.
 
 scQtUserData.preDelay = 1000; %generates a 1 second window before sound onset
 scQtUserData.postDelay = 2000; %generates 2 second window after licking for random licking
-scQtUserData.timeDelay = 3000; %generates 3 second delay so callback triggered later.
+scQtUserData.timeDelay = 5500; %generates 3 second delay so callback triggered later.
 
 
 k = 2.5;
@@ -105,7 +108,7 @@ master(:,2)= x;
 %master(:,3) will calculate delay time from tone presentation. Will use
 %flat distribution utilizing random numbers.
 
-delayRatio=1000;
+delayRatio=waterWindow;
 master(:,3)=round(scQtUserData.soundDur-(rand(triallength,1)*delayRatio));
 
 %This next line subtracts master(:,3) from master(:,2). This is because the
@@ -132,18 +135,16 @@ master(:,8)=zeros(triallength,1);
 %This is for licks in all other intervals
 master(:,9)=zeros(triallength,1);
 
-%This is for Sound Times (triggered by TriggerMatlab)
+%This is for Sound Times (triggered by soundOff)
 master(:,10)=zeros(triallength,1);
 
-%This is for calculation of ITIs (marked by sound-off)
+%This is for calculation of ITIs 
 master(:,11)=zeros(triallength,1);
 
-%This is for sound onsets! ma
-master(:,12) = zeros(triallength,1);
 
 scQtUserData.master=master;
 
-scQtUserData.velocity = zeros(1,2);
+scQtUserData.velocity = zeros(100000,2);
 scQtUserData.velCounter = 1;
 
 sendScQtControlMessage(['soundDur=',num2str(scQtUserData.soundDur)]);
