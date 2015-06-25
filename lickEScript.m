@@ -23,17 +23,16 @@ pause(2); % need to pause for microcontroller or things break!
 % sHandle = scConnect(comValStr,@pokeE_Callback);
 % pause(1);
 
-waterWindow=1000;
 
 i=1;
 t = clock;
 rand('seed',sum(round(clock)));
 scQtUserData.mouseID = answer{i};i=i+1;
-scQtUserData.minRew = str2double(answer{i});i=i+1;
-scQtUserData.maxRew = str2double(answer{i});i=i+1;
-scQtUserData.blocks = str2double(answer{i});i=i+1;
-scQtUserData.blockSize = str2double(answer{i});i=i+1;
-scQtUserData.soundDur = str2double(answer{i});i=i+1;
+scQtUserData.minRew = str2num(answer{i});i=i+1;
+scQtUserData.maxRew = str2num(answer{i});i=i+1;
+scQtUserData.blocks = str2num(answer{i});i=i+1;
+scQtUserData.blockSize = str2num(answer{i});i=i+1;
+scQtUserData.soundDur = str2num(answer{i});i=i+1;
 scQtUserData.weight = answer{i};i=i+1;
 scQtUserData.taskID = 'LickTask';
 scQtUserData.sessionID = answer{i};i=i+1;
@@ -42,50 +41,48 @@ scQtUserData.notes = answer{i};i=i+1;
 scQtUserData.minITI=scQtUserData.soundDur+4000;
 scQtUserData.maxITI=scQtUserData.minITI+5000;
 
-scQtUserData.waterWindow=waterWindow;
 scQtUserData.date = date;
 scQtUserData.time = strcat(num2str(t(4)),':',num2str(t(5)));
 scQtUserData.tripSwitch = 0;
 
 % my additional fields:
 scQtUserData.trial = 0; % keep track of trial number
-% scQtUserData.trInit = false;
-% scQtUserData.trBait = false;
 
-pause(0.2);
+pause(1);
 
-sendScQtControlMessage(['disp(''Mouse ID: ', scQtUserData.mouseID,''')']);
-sendScQtControlMessage(['disp(''minRew: ', num2str(scQtUserData.minRew),''')']);
-sendScQtControlMessage(['disp(''maxRew: ', num2str(scQtUserData.maxRew),''')']);
-sendScQtControlMessage(['disp(''blocks: ', num2str(scQtUserData.blocks),''')']);
-sendScQtControlMessage(['disp(''blockSize: ', num2str(scQtUserData.blockSize),''')']);
-sendScQtControlMessage(['disp(''minITI: ', num2str(scQtUserData.minITI),''')']);
-sendScQtControlMessage(['disp(''maxITI: ', num2str(scQtUserData.maxITI),''')']);
-sendScQtControlMessage(['disp(''waterWindow: ', num2str(scQtUserData.waterWindow),''')']);
-sendScQtControlMessage(['disp(''soundDur: ', num2str(scQtUserData.soundDur),''')']);
-sendScQtControlMessage(['disp(''weight: ', scQtUserData.weight,''')']);
-sendScQtControlMessage(['disp(''taskID: ', scQtUserData.taskID,''')']);
-sendScQtControlMessage(['disp(''date: ', scQtUserData.date,''')']);
-sendScQtControlMessage(['disp(''time: ', scQtUserData.time,''')']);
-sendScQtControlMessage(['disp(''sessionID: ', scQtUserData.sessionID,''')']);
-sendScQtControlMessage(['disp(''notes: ', scQtUserData.notes,''')']);
+
+
+sendScQtControlMessage(['disp(''Mouse ID:', scQtUserData.mouseID,''')']);
+sendScQtControlMessage(['disp(''minRew:', num2str(scQtUserData.minRew),''')']);
+sendScQtControlMessage(['disp(''maxRew:', num2str(scQtUserData.maxRew),''')']);
+sendScQtControlMessage(['disp(''blocks:', num2str(scQtUserData.blocks),''')']);
+sendScQtControlMessage(['disp(''blockSize:', num2str(scQtUserData.blockSize),''')']);
+sendScQtControlMessage(['disp(''minITI:', num2str(scQtUserData.minITI),''')']);
+sendScQtControlMessage(['disp(''maxITI:', num2str(scQtUserData.maxITI),''')']);
+sendScQtControlMessage(['disp(''soundDur:', num2str(scQtUserData.soundDur),''')']);
+sendScQtControlMessage(['disp(''weight:', scQtUserData.weight,''')']);
+sendScQtControlMessage(['disp(''taskID:', scQtUserData.taskID,''')']);
+sendScQtControlMessage(['disp(''date:', scQtUserData.date,''')']);
+sendScQtControlMessage(['disp(''time:', scQtUserData.time,''')']);
+sendScQtControlMessage(['disp(''sessionID:', scQtUserData.sessionID,''')']);
+sendScQtControlMessage(['disp(''notes:', scQtUserData.notes,''')']);
 
 pause(1) %Need to put all my timings in before this stuff
 
-triallength=scQtUserData.blocks*scQtUserData.blockSize;
-
 %master array for all calculations
-master=zeros(triallength,11);
+master=zeros(scQtUserData.blocks*scQtUserData.blockSize,11);
 
-%master(:,1) determines reward size. fills in rewards sizes so can pull by
-%trial number
+triallength = scQtUserData.blocks*scQtUserData.blockSize;
+
+% %master(:,1) determines reward size. fills in rewards sizes so can pull by
+% %trial number
 master(:,1)=scQtUserData.minRew;
 for x=2:2:scQtUserData.blocks
     master(1+(x-1)*scQtUserData.blockSize:x*scQtUserData.blockSize,1)=scQtUserData.maxRew;
 end
 
-%master(:,2) will implement an exponential for the ITI distribution, with
-%random noise inserted.
+% %master(:,2) will implement an exponential for the ITI distribution, with
+% %random noise inserted.
 
 scQtUserData.preDelay = 1000; %generates a 1 second window before sound onset
 scQtUserData.postDelay = 2000; %generates 2 second window after licking for random licking
@@ -108,7 +105,7 @@ master(:,2)= x;
 %master(:,3) will calculate delay time from tone presentation. Will use
 %flat distribution utilizing random numbers.
 
-delayRatio=waterWindow;
+delayRatio=1000;
 master(:,3)=round(scQtUserData.soundDur-(rand(triallength,1)*delayRatio));
 
 %This next line subtracts master(:,3) from master(:,2). This is because the
@@ -141,7 +138,7 @@ master(:,10)=zeros(triallength,1);
 %This is for calculation of ITIs (marked by sound-off)
 master(:,11)=zeros(triallength,1);
 
-%This is for sound onsets!
+%This is for sound onsets! ma
 master(:,12) = zeros(triallength,1);
 
 scQtUserData.master=master;

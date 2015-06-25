@@ -13,8 +13,9 @@ int itiDur
 
 %These are variables for tracking running disk.
 int upA = 0
-int vCount = 0
+int upB = 0
 int intWindow1 = 500
+int intWindow2 = 1000
 
 function 1
     disp('Initiating trial')
@@ -55,14 +56,10 @@ end;
 
 callback portin[7] up 
     upA = upA + 1
-    if upA == 3 do
-        %vCount = vCount + 1
-        disp(vCount)
-        upA = 0
-        do in intWindow1
-            %vCount = vCount - 1
-            disp(vCount)
-        end
-
+    disp(upA)
+    do in intWindow1
+        upA = upA - 1
+        disp(upA)
     end
+
 end;
