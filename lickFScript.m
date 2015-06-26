@@ -149,10 +149,9 @@ scQtUserData.lickHist = zeros(80,2); %This is optimized for looking at an 8 seco
 %with 2 sec before sound onset, sound, and 3 seconds after. Set for 100 ms
 %bins. First column is for small reward, second column for big rewards.
 
-scQtUserData.lickAxes = [-2:0.1:6];
+scQtUserData.lickAxes = [-2:0.1:5.9];
 
 sendScQtControlMessage(['soundDur=',num2str(scQtUserData.soundDur)]);
 sendScQtControlMessage(['preDelay=',num2str(scQtUserData.preDelay)]);
-sendScQtControlMessage(['postDelay=',num2str(scQtUserData.postDelay)]);
 sendScQtControlMessage(['timeDelay=',num2str(scQtUserData.timeDelay)]);
 sendScQtControlMessage(['disp(''StartSession'')']);

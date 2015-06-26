@@ -10,7 +10,7 @@ global scQtInitiated; %the callback function should set this to 1 once all user 
 global scQtUserData;
 
 if (scQtInitiated == 0)
-    lickDScript;
+    lickFScript;
     scQtInitiated = 1;
     newLine = 'start next trial';
 end
@@ -38,7 +38,7 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
         hold(scQtUserData.lickAx,'on');
         hold(scQtUserData.durAx,'on');
         hold(scQtUserData.histAx,'on');
-        ylabel(scQtUserData.lickAx,'Licks');
+        ylabel(scQtUserData.lickAx,'Time (s)');
         ylabel(scQtUserData.durAx,'Reward Dur (ms)');
         ylabel(scQtUserData.histAx,'Licks');
     end
@@ -48,7 +48,10 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     %currently can only update the following trial, since figure updates at
     %a time that isnt conducive to this?
     
-    scQtUserData.licks = round(scQtUserData.licks - scQtUserData.master(scQtUserData.trial,10),-2)/100+20;
+    
+    scQtUserData.licks = round((scQtUserData.licks - scQtUserData.master(scQtUserData.trial,10))/100)+20;
+    scQtUserData.licks(scQtUserData.licks > 80) = [];
+    scQtUserData.licks(scQtUserData.licks < 1) = [];
     
     if scQtUserData.master(scQtUserData.trial,1) == scQtUserData.minRew;
         scQtUserData.lickHist([scQtUserData.licks],1)=scQtUserData.lickHist([scQtUserData.licks],1)+1;
@@ -67,11 +70,11 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     % Plot reward size
     plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,1),'color','k','linewidth',3,...
         'parent',scQtUserData.durAx);
-    plot(scQtUserData.lickAxes,scQtUserData.lickHist(:,1),'color','k','linewidth','2'...
+    plot(scQtUserData.lickAxes,scQtUserData.lickHist(:,1),'color','k','linewidth',2,...
         'parent',scQtUserData.histAx);
-    plot(scQtUserData.lickAxes,scQtUserData.lickHist(:,2),'color','r','linewidth','2'...
+    plot(scQtUserData.lickAxes,scQtUserData.lickHist(:,2),'color','r','linewidth',2,...
         'parent',scQtUserData.histAx);
-    
+%     
     
     scQtUserData.licks = zeros(1000,1);
     scQtUserData.lickCounter = 1;
@@ -99,7 +102,9 @@ if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
 end
 
 if ~isempty(strfind(newLine,'Lick Detected')) && scQtUserData.tripSwitch == 0;
+    spaceFinder= find(newLine == ' ');
     scQtUserData.licks(scQtUserData.lickCounter,1) = str2num(newLine(1:spaceFinder(1)-1));
+    scQtUserData.lickCounter= scQtUserData.lickCounter+1;
 end
 
 if (~isempty(strfind(newLine,'SoundOn'))) && scQtUserData.tripSwitch == 0;
