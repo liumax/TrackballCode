@@ -79,7 +79,7 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     scQtUserData.licks = zeros(1000,1);
     scQtUserData.lickCounter = 1;
 
-    set(scQtUserData.lickAx,'ylim',[0 30],'ytick',0:5:30,'ygrid','on');
+    set(scQtUserData.lickAx,'ygrid','on');
     set(scQtUserData.durAx,'ygrid','on');
 end
 
