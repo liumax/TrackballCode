@@ -42,8 +42,10 @@ scQtUserData.notes = answer{i};i=i+1;
 scQtUserData.minITI=scQtUserData.soundDur+6000;
 scQtUserData.maxITI=scQtUserData.minITI+5000;
 
-scQtUserData.preDelay = 1000; %generates a 1 second window before sound onset
 scQtUserData.timeDelay = 4000; %generates 3 second delay so callback triggered later.
+scQtUserData.lickWindow = 2000; %generates a 2 second window for licking. this will be used before sound
+%so that there is an enforced no lick period, and after sound onset, for
+%lick-triggering of reward.
 
 scQtUserData.waterWindow=waterWindow;
 scQtUserData.date = date;
@@ -98,15 +100,12 @@ end
 %master(:,2) will implement an exponential for the ITI distribution, with
 %random noise inserted.
 
-
-
-
 k = 2.5;
 p = (1-exp(-k))*rand(triallength,1);
 tau = (scQtUserData.maxITI-scQtUserData.minITI)/k;
 % x = round(scQtUserData.minITI - scQtUserData.soundDur +
 % (-log(1-p))*tau)-2000; THIS MAY BE PROBLEM WITH ITIs
-x = round(scQtUserData.minITI + (-log(1-p))*tau)-scQtUserData.preDelay-scQtUserData.timeDelay; 
+x = round(scQtUserData.minITI + (-log(1-p))*tau)-scQtUserData.lickWindow-scQtUserData.timeDelay; 
 %This is adjusted to allow for SoundOff to be trigger for matlab. -1000 is
 %adjustment for pre delays (1000 each) in callback. Post delays do not affect 
 %when 'SoundOff' appears, so they are not accounted for in here. 
@@ -132,9 +131,19 @@ master(:,2)=master(:,2)-master(:,3);
 %master(:,5) determines probability of laser; 1 means delivery, 0 means
 %none. this has been removed, since there is no plan currently for lasers
 
+%This will be for pre-cue licks
+master(:,6)=zeros(triallength,1);
 
+%This is for anticipatory licks
+master(:,7)=zeros(triallength,1);
 
-%This is for Sound Times (triggered by soundOff)
+%This is for consummatory licks
+master(:,8)=zeros(triallength,1);
+
+%This is for licks in all other intervals
+master(:,9)=zeros(triallength,1);
+
+%This is for Sound Times (triggered by SoundOn)
 master(:,10)=zeros(triallength,1);
 
 %This is for calculation of ITIs 
@@ -152,6 +161,6 @@ scQtUserData.lickHist = zeros(80,2); %This is optimized for looking at an 8 seco
 scQtUserData.lickAxes = [-2:0.1:5.9];
 
 sendScQtControlMessage(['soundDur=',num2str(scQtUserData.soundDur)]);
-sendScQtControlMessage(['preDelay=',num2str(scQtUserData.preDelay)]);
+sendScQtControlMessage(['lickWindow=',num2str(scQtUserData.lickWindow)]);
 sendScQtControlMessage(['timeDelay=',num2str(scQtUserData.timeDelay)]);
 sendScQtControlMessage(['disp(''StartSession'')']);
