@@ -146,6 +146,11 @@ master(:,10)=zeros(triallength,1);
 %This is for calculation of ITIs 
 master(:,11)=zeros(triallength,1);
 
+%placeholders for graphing of completed trials, no licks, and badlicks.
+master(:,12) = zeros(triallength,1);
+master(:,13) = zeros(triallength,1);
+master(:,14) = zeros(triallength,1);
+
 scQtUserData.master=master;
 
 scQtUserData.licks = zeros(1000,1);

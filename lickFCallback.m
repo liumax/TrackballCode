@@ -73,6 +73,12 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     % Plot reward size
     plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,1),'color','k','linewidth',3,...
         'parent',scQtUserData.durAx);
+    plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,12),'color','g','linestyle','none',...
+        'marker','.','parent',scQtUserData.durAx)
+    plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,13),'color','r','linestyle','none',...
+        'marker','.','parent',scQtUserData.durAx)
+    plot(1:scQtUserData.trial,scQtUserData.master(1:scQtUserData.trial,14),'color','b','linestyle','none',...
+        'marker','o','parent',scQtUserData.durAx)
     plot(scQtUserData.lickAxes,scQtUserData.lickHist(:,1),'color','k','linewidth',2,...
         'parent',scQtUserData.histAx);
     plot(scQtUserData.lickAxes,scQtUserData.lickHist(:,2),'color','r','linewidth',2,...
@@ -117,14 +123,17 @@ end
 
 if (~isempty(strfind(newLine,'Reward Delivered'))) && scQtUserData.tripSwitch == 0;
     scQtUserData.master(scQtUserData.trial,6) = 1;
+    scQtUserData.master(scQtUserData.trial,12) = scQtUserData.master(scQtUserData.trial,1);
 end
 
 if (~isempty(strfind(newLine,'No Reward'))) && scQtUserData.tripSwitch == 0;
     scQtUserData.master(scQtUserData.trial,7) = 1;
+    scQtUserData.master(scQtUserData.trial,13) = scQtUserData.master(scQtUserData.trial,1);
 end
 
 if (~isempty(strfind(newLine,'Bad Licks'))) && scQtUserData.tripSwitch == 0;
     scQtUserData.master(scQtUserData.trial,8) = 1;
+    scQtUserData.master(scQtUserData.trial,14) = scQtUserData.master(scQtUserData.trial,1);
 end
 
 

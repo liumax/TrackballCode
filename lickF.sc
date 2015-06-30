@@ -84,20 +84,32 @@ function 1
     end
 end;
 
+function 3 %This is for training trials.
+    portout[2] = 1 % sound on
+    disp('SoundOn')
+    do in soundDur
+        portout[2] = 0 % sound off
+        disp('SoundOff')
+        do in timeDelay
+            disp('TriggerMatlab')
+        end
+    end
+    do in soundRewDel
+        disp('Reward Delivered')
+        disp(rewLength)
+        portout[4] = 1
+            do in rewLength
+                portout[4] = 0
+                disp('Reward Completed')
+            end
+    end
+end;
+
 callback portin[3] up % lickometer activated
     lickCounter = lickCounter + 1
     disp('Lick Detected')
     do in lickWindow
         lickCounter = lickCounter - 1
-    end
-end;
-
-callback portin[7] up 
-    upA = upA + 1
-    disp(upA)
-    do in intWindow
-        upA = upA - 1
-        disp(upA)
     end
 end;
 
