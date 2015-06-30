@@ -21,17 +21,17 @@ function 2
     disp('Bad Licks!')
     do in lickWindow
         if lickCounter < 1 do
-            do in lickWindow
-                portout[2] = 1 % sound on
-                disp('SoundOn')
-                do in soundDur
-                    portout[2] = 0 % sound off
-                    disp('SoundOff')
-                    do in timeDelay
-                        disp('TriggerMatlab')
-                    end
+            portout[2] = 1 % sound on
+            disp('SoundOn')
+            do in soundDur
+                portout[2] = 0 % sound off
+                disp('SoundOff')
+                do in timeDelay
+                    disp('TriggerMatlab')
                 end
-                do in soundRewDel
+            end
+            do in soundRewDel
+                if lickCounter > 0 do
                     disp('Reward Delivered')
                     disp(rewLength)
                     portout[4] = 1
@@ -39,6 +39,8 @@ function 2
                             portout[4] = 0
                             disp('Reward Completed')
                         end
+                else do
+                    disp('No Reward Delivered')
                 end
             end
         else do
@@ -63,13 +65,17 @@ function 1
                     end
                 end
                 do in soundRewDel
-                    disp('Reward Delivered')
-                    disp(rewLength)
-                    portout[4] = 1
-                        do in rewLength
-                            portout[4] = 0
-                            disp('Reward Completed')
-                        end
+                    if lickCounter > 0 do
+                        disp('Reward Delivered')
+                        disp(rewLength)
+                        portout[4] = 1
+                            do in rewLength
+                                portout[4] = 0
+                                disp('Reward Completed')
+                            end
+                    else do
+                        disp('No Reward Delivered')
+                    end
                 end
             end
         else do
@@ -78,7 +84,7 @@ function 1
     end
 end;
 
-callback portin[1] up % lickometer activated
+callback portin[3] up % lickometer activated
     lickCounter = lickCounter + 1
     disp('Lick Detected')
     do in lickWindow
