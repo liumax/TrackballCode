@@ -40,7 +40,7 @@ function 2
                             disp('Reward Completed')
                         end
                 else do
-                    disp('No Reward Delivered')
+                    disp('No Reward')
                 end
             end
         else do
@@ -74,7 +74,7 @@ function 1
                                 disp('Reward Completed')
                             end
                     else do
-                        disp('No Reward Delivered')
+                        disp('No Reward')
                     end
                 end
             end
@@ -92,4 +92,12 @@ callback portin[3] up % lickometer activated
     end
 end;
 
+callback portin[7] up 
+    upA = upA + 1
+    disp(upA)
+    do in intWindow
+        upA = upA - 1
+        disp(upA)
+    end
+end;
 
