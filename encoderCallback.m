@@ -23,7 +23,7 @@ if (~isempty(strfind(newLine,'upA')))
     scQtUserData.plotCounter = scQtUserData.plotCounter + 1;
 end
 
-if scQtUserData.plotCounter == 10
+if scQtUserData.plotCounter == 100
     scQtUserData.plotCounter = 0;
     if ~isfield(scQtUserData,'updateFig') %This code is just to make sure updateFig has a value.
         disp('resetting updateFig');
