@@ -53,8 +53,8 @@ end;
 function 1
     disp('Initiating trial')
     do in itiDur
-        if lickCounter < 1 do
-            do in lickWindow
+        do in lickWindow
+            if lickCounter < 1 do
                 portout[2] = 1 % sound on
                 disp('SoundOn')
                 do in soundDur
@@ -77,14 +77,14 @@ function 1
                         disp('No Reward')
                     end
                 end
+            else do
+                trigger(2)
             end
-        else do
-            trigger(2)
         end
     end
 end;
 
-callback portin[3] up % lickometer activated
+callback portin[1] up % lickometer activated
     lickCounter = lickCounter + 1
     disp('Lick Detected')
     do in lickWindow
