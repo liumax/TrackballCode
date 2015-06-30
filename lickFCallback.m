@@ -61,7 +61,10 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     
     
     title(scQtUserData.lickAx,[...
-        'Total trials ', num2str(scQtUserData.trial),...
+        'Total trials: ', num2str(scQtUserData.trial),...
+        'Completed trials: ', num2str(sum(scQtUserData.master(:,6))),...
+        'Incomplete Trials: ', num2str(sum(scQtUserData.master(:,7))),...
+        'Premature Licking: ', num2str(sum(scQtUserData.master(:,8))),...
         ' C = ITI']), ...
 
     %Plot ITI
@@ -110,6 +113,18 @@ end
 if (~isempty(strfind(newLine,'SoundOn'))) && scQtUserData.tripSwitch == 0;
     spaceFinder = find(newLine == ' ');
     scQtUserData.master(scQtUserData.trial,10) = str2num(newLine(1:spaceFinder(1)-1));
+end
+
+if (~isempty(strfind(newLine,'Reward Delivered'))) && scQtUserData.tripSwitch == 0;
+    scQtUserData.master(scQtUserData.trial,6) = 1;
+end
+
+if (~isempty(strfind(newLine,'No Reward'))) && scQtUserData.tripSwitch == 0;
+    scQtUserData.master(scQtUserData.trial,7) = 1;
+end
+
+if (~isempty(strfind(newLine,'Bad Licks'))) && scQtUserData.tripSwitch == 0;
+    scQtUserData.master(scQtUserData.trial,8) = 1;
 end
 
 

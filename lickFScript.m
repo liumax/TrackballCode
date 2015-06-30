@@ -131,17 +131,14 @@ master(:,2)=master(:,2)-master(:,3);
 %master(:,5) determines probability of laser; 1 means delivery, 0 means
 %none. this has been removed, since there is no plan currently for lasers
 
-%This will be for pre-cue licks
+%This will be for correctly completed trials
 master(:,6)=zeros(triallength,1);
 
-%This is for anticipatory licks
+%This is for failed trials with no licks
 master(:,7)=zeros(triallength,1);
 
-%This is for consummatory licks
+%This is for trials with badlicks
 master(:,8)=zeros(triallength,1);
-
-%This is for licks in all other intervals
-master(:,9)=zeros(triallength,1);
 
 %This is for Sound Times (triggered by SoundOn)
 master(:,10)=zeros(triallength,1);

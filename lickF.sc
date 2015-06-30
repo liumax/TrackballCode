@@ -84,7 +84,7 @@ function 1
     end
 end;
 
-callback portin[1] up % lickometer activated
+callback portin[3] up % lickometer activated
     lickCounter = lickCounter + 1
     disp('Lick Detected')
     do in lickWindow
