@@ -12,10 +12,6 @@ int itiDur
 int lickCounter = 0
 int lickWindow
 
-%These are variables for tracking running disk.
-int upA = 0
-int intWindow = 500
-
 
 function 2
     disp('Bad Licks!')
