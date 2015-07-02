@@ -10,7 +10,7 @@ global scQtInitiated; %the callback function should set this to 1 once all user 
 global scQtUserData;
 
 if (scQtInitiated == 0)
-    lickTrainingScript;
+    lickTwoToneScript;
     scQtInitiated = 1;
     newLine = 'start next trial';
 end
