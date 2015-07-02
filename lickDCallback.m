@@ -148,7 +148,7 @@ if (~isempty(strfind(newLine,'trialState')))
     disp 'State Value Updated'
 end
 
-if (~isempty(strfind(newLine,'upA')))
+if (~isempty(strfind(newLine,'vel')))
     findSpacer=find(newLine == ' ');
     scQtUserData.velocity(scQtUserData.velCounter,1) = str2double(newLine(1:(findSpacer(1)-1)));
     scQtUserData.velocity(scQtUserData.velCounter,2) = str2double(newLine(findSpacer(end)+1:end));

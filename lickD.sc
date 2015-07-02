@@ -13,6 +13,7 @@ int itiDur
 
 %These are variables for tracking running disk.
 int upA = 0
+int vel = 0
 int intWindow = 500
 
 function 1
@@ -54,10 +55,14 @@ end;
 
 callback portin[7] up 
     upA = upA + 1
-    disp(upA)
-    do in intWindow
-        upA = upA - 1
-        disp(upA)
+    if upA == 3 do
+        vel = vel + 1
+        disp(vel)
+        upA = 0
+        do in intWindow
+            vel = vel - 1
+            disp(vel)
+        end
     end
 end;
 
