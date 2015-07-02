@@ -1,6 +1,6 @@
 %This is the Matlab Callback
 
-function lickTrainingCallback(newLine)
+function toneAllNothingCallback(newLine)
 
 global scQtHistory; %multipurpose place to store processed event history
 global scQtControllerOutput; %the text output from the microcontroller 
@@ -10,7 +10,7 @@ global scQtInitiated; %the callback function should set this to 1 once all user 
 global scQtUserData;
 
 if (scQtInitiated == 0)
-    lickTwoToneScript;
+    toneAllNothingScript;
     scQtInitiated = 1;
     newLine = 'start next trial';
 end
