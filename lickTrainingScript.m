@@ -13,7 +13,7 @@ prompt = {'Mouse ID:',...  1
     'Notes:'}; %the bracket is to end the prompt     10
 dlg_title = 'LickTask:';
 num_lines=1;
-def={'','50','200','8','50','3000','','1',''};
+def={'','50','8','50','3000','','1',''};
 answer = inputdlg(prompt,dlg_title,num_lines,def);
 pause(2); % need to pause for microcontroller or things break!
 
