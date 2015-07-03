@@ -15,7 +15,7 @@ if (scQtInitiated == 0)
     newLine = 'start next trial';
 end
 
-if (~isempty(strfind(newLine,'upA')))
+if (~isempty(strfind(newLine,'vel')))
     findSpacer=find(newLine == ' ');
     scQtUserData.velocity(scQtUserData.velCounter,1) = str2double(newLine(1:(findSpacer(1)-1)));
     scQtUserData.velocity(scQtUserData.velCounter,2) = str2double(newLine(findSpacer(end)+1:end));
@@ -46,7 +46,8 @@ if scQtUserData.plotCounter == 100
 %     scQtUserData.velEnd(scQtUserData.trial) = find(scQtUserData.velocity(:,1)>scQtUserData.master(scQtUserData.trial,10)+2000);
     
     title(scQtUserData.velAx,'Mouse Speed (cm/s)'), ...
-    plot((scQtUserData.velocity(:,1)-scQtUserData.velocity(1,1))/1000,scQtUserData.velocity(:,2)*2*0.1,'color','k','linewidth',2,...
+    plot((scQtUserData.velocity(1:scQtUserData.velCounter,1)-scQtUserData.velocity(1,1))/1000,...
+    scQtUserData.velocity(1:scQtUserData.velCounter,2)*2*0.1*3,'color','k','linewidth',2,...
     'parent',scQtUserData.velAx);
 
     set(scQtUserData.velAx,'ygrid','on');

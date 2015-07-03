@@ -95,10 +95,10 @@ k = 2.5;
 p = (1-exp(-k))*rand(scQtUserData.totalTrials,1);
 tau = (scQtUserData.maxITI-scQtUserData.minITI)/k;
 x = round(scQtUserData.minITI + (-log(1-p))*tau)-scQtUserData.lickWindow-scQtUserData.timeDelay; 
-scQtUserData.itiTime = x - scQtUserData.soundRewDel;
+scQtUserData.ITI = x - scQtUserData.soundRewDel;
 
 sendScQtControlMessage(['soundDur=',num2str(scQtUserData.soundDur)]);
-sendScQtControlMessage(['rewLength',num2str(scQtUserData.rewSize)]);
+sendScQtControlMessage(['rewLength=',num2str(scQtUserData.rewSize)]);
 sendScQtControlMessage(['lickWindow=',num2str(scQtUserData.lickWindow)]);
 sendScQtControlMessage(['timeDelay=',num2str(scQtUserData.timeDelay)]);
 sendScQtControlMessage(['disp(''StartSession'')']);
