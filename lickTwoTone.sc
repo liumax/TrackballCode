@@ -6,6 +6,7 @@ int rewLength
 int soundRewDel % CHANGE THIS EVERY TRIAL
 int soundDur 
 int sound
+int toneRule
 
 int timeDelay %delay to trigger matlab callback later.
 int itiDur
@@ -22,36 +23,47 @@ function 2
                 portout[1] = 1 % sound on
                 disp('SoundOn')
                 disp('White Noise')
-                do in soundDur
-                    portout[1] = 0 % sound off
-                    disp('SoundOff')
-                    do in timeDelay
-                        disp('TriggerMatlab')
-                    end
-                end
             else if sound == 1 do
                 portout[2] = 1 % sound on
                 disp('SoundOn')
                 disp('Pure Tone')
-                do in soundDur
-                    portout[2] = 0 % sound off
-                    disp('SoundOff')
-                    do in timeDelay
-                        disp('TriggerMatlab')
-                    end
+            end
+            do in soundDur
+                if sound == 0 do
+                    portout[1] = 0 % sound off
+                else if sound == 1 do
+                    portout[2] = 1 % sound on
                 end
-                do in soundRewDel
+                disp('SoundOff')
+                do in timeDelay
+                    disp('TriggerMatlab')
+                end
+            end
+            do in soundRewDel
+                if sound == 0 && toneRule == 0 do
                     if lickCounter > 0 do
                         disp('Reward Delivered')
-                        disp(rewLength)
                         portout[4] = 1
-                            do in rewLength
-                                portout[4] = 0
-                                disp('Reward Completed')
-                            end
+                        do in rewLength
+                            portout[4] = 0
+                            disp('Reward Completed')
+                        end
                     else do
                         disp('No Reward')
                     end
+                else if sound == 1 && toneRule == 1 do
+                    if lickCounter > 0 do
+                        disp('Reward Delivered')
+                        portout[4] = 1
+                        do in rewLength
+                            portout[4] = 0
+                            disp('Reward Completed')
+                        end
+                    else do
+                        disp('No Reward')
+                    end
+                else do
+                    disp('Unrewarded')
                 end
             end
         else do
@@ -60,147 +72,66 @@ function 2
     end
 end;
 
-function 4
-    disp('Bad Licks!')
-    do in lickWindow
-        if lickCounter < 1 do
-            if sound == 0 do
-                portout[2] = 1 % sound on
-                disp('SoundOn')
-                disp('Pure Tone')
-                do in soundDur
-                    portout[2] = 0 % sound off
-                    disp('SoundOff')
-                    do in timeDelay
-                        disp('TriggerMatlab')
-                    end
-                end
-            else if sound == 1 do
-                portout[1] = 1 % sound on
-                disp('SoundOn')
-                disp('White Noise')
-                do in soundDur
-                    portout[1] = 0 % sound off
-                    disp('SoundOff')
-                    do in timeDelay
-                        disp('TriggerMatlab')
-                    end
-                end
-                do in soundRewDel
-                    if lickCounter > 0 do
-                        disp('Reward Delivered')
-                        disp(rewLength)
-                        portout[4] = 1
-                            do in rewLength
-                                portout[4] = 0
-                                disp('Reward Completed')
-                            end
-                    else do
-                        disp('No Reward')
-                    end
-                end
-            end
-        else do
-            trigger(4)
-        end
-    end
-end;
+
+
 
 function 1
     disp('Initiating trial')
     do in itiDur
-        do in lickWindow
-            if lickCounter < 1 do
+        if lickCounter < 1 do
+            if sound == 0 do
+                portout[1] = 1 % sound on
+                disp('SoundOn')
+                disp('White Noise')
+            else if sound == 1 do
+                portout[2] = 1 % sound on
+                disp('SoundOn')
+                disp('Pure Tone')
+            end
+            do in soundDur
                 if sound == 0 do
-                    portout[1] = 1 % sound on, 
-                    disp('SoundOn')
-                    disp('White Noise')
-                    do in soundDur
-                        portout[1] = 0 % sound off
-                        disp('SoundOff')
-                        do in timeDelay
-                            disp('TriggerMatlab')
-                        end
-                    end
+                    portout[1] = 0 % sound off
                 else if sound == 1 do
                     portout[2] = 1 % sound on
-                    disp('SoundOn')
-                    disp('Pure Tone')
-                    do in soundDur
-                        portout[2] = 0 % sound off
-                        disp('SoundOff')
-                        do in timeDelay
-                            disp('TriggerMatlab')
-                        end
-                    end
-                    do in soundRewDel
-                        if lickCounter > 0 do
-                            disp('Reward Delivered')
-                            disp(rewLength)
-                            portout[4] = 1
-                                do in rewLength
-                                    portout[4] = 0
-                                    disp('Reward Completed')
-                                end
-                        else do
-                            disp('No Reward')
-                        end
-                    end
                 end
-            else do
-                trigger(2)
+                disp('SoundOff')
+                do in timeDelay
+                    disp('TriggerMatlab')
+                end
             end
+            do in soundRewDel
+                if sound == 0 && toneRule == 0 do
+                    if lickCounter > 0 do
+                        disp('Reward Delivered')
+                        portout[4] = 1
+                        do in rewLength
+                            portout[4] = 0
+                            disp('Reward Completed')
+                        end
+                    else do
+                        disp('No Reward')
+                    end
+                else if sound == 1 && toneRule == 1 do
+                    if lickCounter > 0 do
+                        disp('Reward Delivered')
+                        portout[4] = 1
+                        do in rewLength
+                            portout[4] = 0
+                            disp('Reward Completed')
+                        end
+                    else do
+                        disp('No Reward')
+                    end
+                else do
+                    disp('Unrewarded')
+                end
+            end
+        else do
+            trigger(2)
         end
     end
 end;
 
-function 3
-    disp('Initiating trial')
-    do in itiDur
-        do in lickWindow
-            if lickCounter < 1 do
-                if sound == 0 do
-                    portout[2] = 1 % sound on, 
-                    disp('SoundOn')
-                    disp('Pure Tone')
-                    do in soundDur
-                        portout[2] = 0 % sound off
-                        disp('SoundOff')
-                        do in timeDelay
-                            disp('TriggerMatlab')
-                        end
-                    end
-                else if sound == 1 do
-                    portout[1] = 1 % sound on
-                    disp('SoundOn')
-                    disp('White Noise')
-                    do in soundDur
-                        portout[1] = 0 % sound off
-                        disp('SoundOff')
-                        do in timeDelay
-                            disp('TriggerMatlab')
-                        end
-                    end
-                    do in soundRewDel
-                        if lickCounter > 0 do
-                            disp('Reward Delivered')
-                            disp(rewLength)
-                            portout[4] = 1
-                                do in rewLength
-                                    portout[4] = 0
-                                    disp('Reward Completed')
-                                end
-                        else do
-                            disp('No Reward')
-                        end
-                    end
-                end
-            else do
-                trigger(4)
-            end
-        end
-    end
-end;
 
 callback portin[3] up % lickometer activated
     lickCounter = lickCounter + 1
