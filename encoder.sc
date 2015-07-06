@@ -10,9 +10,17 @@ callback portin[7] up
     upA = upA + 1
     if upA == 10 do
         vel = vel + 1
+        portout[1] = 1
+        do in 100
+            portout[1] = 0
+        end
         disp(vel)
         upA = 0
         do in intWindow
+            portout[2] = 1
+            do in 100
+                portout[2] = 0
+            end
             vel = vel - 1
             disp(vel)
         end
