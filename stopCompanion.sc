@@ -10,9 +10,11 @@ callback portin[7] up
     counter = counter + 1
     if counter == 3 do
         vel = vel + 1
+        disp(vel)
         counter = 0
         do in intWindow
             vel = vel - 1
+            disp(vel)
             if vel < 5 do %This is lower limit for running speed
                 portout[1] = 0
             end
