@@ -1,12 +1,12 @@
 
 
-fileName = 'Tone and DA Trials DV18 drive 2postlat2'
+fileName = 'Tone and DA Trials DV34'
 
 %Reads in NEX File
 [nexFile] = readNexFile(strcat(char(fileName),'.nex'));
 
 %Variables I may want to adjust
-rasterWindow = [-2,5];
+rasterWindow = [-1,2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
 histBin = 0.1; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
@@ -37,8 +37,8 @@ end
 %Generates raster plot for tone times as well as histogram
 rasterHolder = 1;
 toneRaster = zeros(100000,2);
-masterToneRaster = cell(3,1);
-masterToneHist = cell(3,1);
+masterToneRaster = cell(cellSize,1);
+masterToneHist = cell(cellSize,1);
 for j = 1:cellSize
     for i = 1:length(toneTimes)
         toneHolder = cellData{j}(cellData{j}>toneTimes(i)+rasterWindow(1) & cellData{j} < toneTimes(i) + rasterWindow(2));
@@ -60,8 +60,8 @@ end
 %Generates raster plot and histogram for tone+stim times
 rasterHolder = 1;
 toneStimRaster = zeros(100000,2);
-masterToneStimRaster = cell(3,1);
-masterToneStimHist = cell(3,1);
+masterToneStimRaster = cell(cellSize,1);
+masterToneStimHist = cell(cellSize,1);
 for j = 1:cellSize
     for i = 1:length(toneStimTimes)
         toneHolder = cellData{j}(cellData{j}>toneStimTimes(i)+rasterWindow(1) & cellData{j} < toneStimTimes(i) + rasterWindow(2));
@@ -97,19 +97,17 @@ end
 
 plotSizer = length(masterToneHist);
 
-figure
+figure('Name','Blue is Tone Only, Red is Tone + Stim','NumberTitle','off')
 for i = 1:plotSizer
     subplot(2,plotSizer,i)
     plot(masterToneRaster{i}(:,2),masterToneRaster{i}(:,1),'b.',...
         masterToneStimRaster{i}(:,2),masterToneStimRaster{i}(:,1),'r.')
     title(['Cell #',num2str(i),' Raster'])
-    legend('Tone Only','Tone + Stim')
     xlabel('Seconds')
     subplot(2,plotSizer,i+plotSizer)
     plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*10/length(toneTimes),...
         masterToneStimHist{i}(:,2),masterToneStimHist{i}(:,1)*10/length(toneStimTimes),'r')
     title(['Cell #',num2str(i),' Histogram with Binsize ',num2str(histBin)])
-    legend('Tone Only','Tone + Stim')
     xlabel('Seconds')
     ylabel('Average Firing Rate (Hz)')
     xlim(rasterWindow);
