@@ -63,9 +63,14 @@ pause(0.2);
 
 sendScQtControlMessage(['disp(''Mouse ID:', scQtUserData.mouseID,''')']);
 sendScQtControlMessage(['disp(''rewSize:', num2str(scQtUserData.rewSize),''')']);
+sendScQtControlMessage(['disp(''punSize:', num2str(scQtUserData.punSize),''')']);
 sendScQtControlMessage(['disp(''totalTrials:', num2str(scQtUserData.totalTrials),''')']);
 sendScQtControlMessage(['disp(''minITI:', num2str(scQtUserData.minITI),''')']);
 sendScQtControlMessage(['disp(''maxITI:', num2str(scQtUserData.maxITI),''')']);
+sendScQtControlMessage(['disp(''warning:', num2str(scQtUserData.warning),''')']);
+sendScQtControlMessage(['disp(''warningDelay:', num2str(scQtUserData.cueDur),''')']);
+sendScQtControlMessage(['disp(''graceDur:', num2str(scQtUserData.graceDur),''')']);
+sendScQtControlMessage(['disp(''cueDur:', num2str(scQtUserData.warningDelay),''')']);
 sendScQtControlMessage(['disp(''weight:', scQtUserData.weight,''')']);
 sendScQtControlMessage(['disp(''taskID:', scQtUserData.taskID,''')']);
 sendScQtControlMessage(['disp(''date:', scQtUserData.date,''')']);
