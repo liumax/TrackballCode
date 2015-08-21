@@ -86,7 +86,7 @@ scQtUserData.itiTime = x;
 
 scQtUserData.sessionType = zeros(scQtUserData.totalTrials,1);
 if scQtUserData.session == 1
-    scQtUserData.sessionType(:,1) = 2
+    scQtUserData.sessionType(:,1) = 2;
 elseif scQtUserData.session == 2
     x = randperm(scQtUserData.totalTrials);
     y = scQtUserData.totalTrials/2;

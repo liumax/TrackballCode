@@ -1,6 +1,7 @@
 %This is the sc file
 %port 1 is lickometer
-%port 2-3 is solenoid control
+%port 2 is reward solenoid
+%port 3 is punishment solenoid 
 %ports 4-7 are lights
 
 int warning
@@ -57,7 +58,6 @@ function 1
                 disp('TriggerMatlab')
             end
         end
-
     end
 end;
 
@@ -111,6 +111,7 @@ function 3
                 disp('TriggerMatlab')
             end
         end
-
     end
 end;
+
+
