@@ -1,6 +1,6 @@
 
 
-fileName = '5ms pulse 20 hz 20 pulses 20isi'
+fileName = 'DA only Trials DV18 drive 2postlat'
 
 %Reads in NEX File
 [nexFile] = readNexFile(strcat(char(fileName),'.nex'));
@@ -15,6 +15,11 @@ histBinVector = [rasterWindow(1)-histBin/2:histBin:rasterWindow(2)-histBin/2];
 %Currently not in use, could be used to automate event name detection
 eventSize = length(nexFile.events);
 eventNames = cell(eventSize,1);
+eventTstamps = cell(eventSize,1);
+for i= 1:eventSize
+    eventNames{i} = nexFile.events{i,1}.name;
+    eventTstamps{i} = nexFile.events{i,1}.timestamps;
+end
 
 %Fills in Tone and Tone+Stim times, also figures out how Tone+Stim
 %integrates with regular Tone delivery.
@@ -62,13 +67,14 @@ figure
 for i = 1:plotSizer
     subplot(2,plotSizer,i)
     plot(masterToneRaster{i}(:,2),masterToneRaster{i}(:,1),'b.')
-    title(['Cell #',num2str(i),' Raster'])
-    xlabel('Seconds')
+%     title(['Cell #',num2str(i),' Raster'])
+%     xlabel('Seconds')
+    xlim(rasterWindow);
     subplot(2,plotSizer,i+plotSizer)
-    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*10/length(toneTimes))
-    title(['Cell #',num2str(i),' Histogram with Binsize ',num2str(histBin)])
-    xlabel('Seconds')
-    ylabel('Average Firing Rate (Hz)')
+    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*(1/histBin)/length(toneTimes))
+%     title(['Cell #',num2str(i),' Histogram with Binsize ',num2str(histBin)])
+%     xlabel('Seconds')
+%     ylabel('Average Firing Rate (Hz)')
     xlim(rasterWindow);
 end
 

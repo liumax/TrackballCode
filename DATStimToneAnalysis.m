@@ -1,6 +1,6 @@
 
 
-fileName = 'Tone and DA Trials DV34'
+fileName = 'Tone and DA Trials DV18 drive 2postlat2'
 
 %Reads in NEX File
 [nexFile] = readNexFile(strcat(char(fileName),'.nex'));
@@ -8,13 +8,18 @@ fileName = 'Tone and DA Trials DV34'
 %Variables I may want to adjust
 rasterWindow = [-1,2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
-histBin = 0.1; %bin size in seconds
+histBin = 0.05; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
 histBinVector = [rasterWindow(1)-histBin/2:histBin:rasterWindow(2)-histBin/2];
 
 %Currently not in use, could be used to automate event name detection
 eventSize = length(nexFile.events);
 eventNames = cell(eventSize,1);
+eventTstamps = cell(eventSize,1);
+for i= 1:eventSize
+    eventNames{i} = nexFile.events{i,1}.name;
+    eventTstamps{i} = nexFile.events{i,1}.timestamps;
+end
 
 %Fills in Tone and Tone+Stim times, also figures out how Tone+Stim
 %integrates with regular Tone delivery.
@@ -102,14 +107,14 @@ for i = 1:plotSizer
     subplot(2,plotSizer,i)
     plot(masterToneRaster{i}(:,2),masterToneRaster{i}(:,1),'b.',...
         masterToneStimRaster{i}(:,2),masterToneStimRaster{i}(:,1),'r.')
-    title(['Cell #',num2str(i),' Raster'])
-    xlabel('Seconds')
+%     title(['Cell #',num2str(i),' Raster'])
+%     xlabel('Seconds')
     subplot(2,plotSizer,i+plotSizer)
-    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*10/length(toneTimes),...
-        masterToneStimHist{i}(:,2),masterToneStimHist{i}(:,1)*10/length(toneStimTimes),'r')
-    title(['Cell #',num2str(i),' Histogram with Binsize ',num2str(histBin)])
-    xlabel('Seconds')
-    ylabel('Average Firing Rate (Hz)')
+    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*(1/histBin)/length(toneTimes),...
+        masterToneStimHist{i}(:,2),masterToneStimHist{i}(:,1)*(1/histBin)/length(toneStimTimes),'r')
+%     title(['Cell #',num2str(i),' Histogram with Binsize ',num2str(histBin)])
+%     xlabel('Seconds')
+%     ylabel('Average Firing Rate (Hz)')
     xlim(rasterWindow);
 end
 

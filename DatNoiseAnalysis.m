@@ -1,6 +1,7 @@
+%This is code meant for the analysis of just noise presentation, without
+%accompanying dopamine stimulation or tuning curves
 
-
-fileName = 'ML150730B_AP17_DV1894_whitenoise'
+fileName = 'ML150730_AP17_DV2070_3to6secISIrand_NoDAT'
 
 %Reads in NEX File
 [nexFile] = readNexFile(strcat(char(fileName),'.nex'));
@@ -8,7 +9,7 @@ fileName = 'ML150730B_AP17_DV1894_whitenoise'
 %Variables I may want to adjust
 rasterWindow = [-1,2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
-histBin = 0.1; %bin size in seconds
+histBin = 0.05; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
 histBinVector = [rasterWindow(1)-histBin/2:histBin:rasterWindow(2)-histBin/2];
 
@@ -64,8 +65,9 @@ for i = 1:plotSizer
     plot(masterToneRaster{i}(:,2),masterToneRaster{i}(:,1),'b.')
     title(['Cell #',num2str(i),' Raster'])
     xlabel('Seconds')
+    xlim(rasterWindow)
     subplot(2,plotSizer,i+plotSizer)
-    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*10/length(toneTimes))
+    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*(1/histBin)/length(toneTimes))
     title(['Cell #',num2str(i),' Histogram with Binsize ',num2str(histBin)])
     xlabel('Seconds')
     ylabel('Average Firing Rate (Hz)')
