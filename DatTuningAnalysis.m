@@ -46,10 +46,27 @@ rasterHolder = 1;
 toneRaster = zeros(100000,3);
 masterToneRaster = cell(cellSize,1);
 masterToneHist = cell(cellSize,1);
+indivToneHist = cell(cellSize,length(toneTimes));
 for j = 1:cellSize
     for i = 1:length(toneTimes)
         toneHolder = cellData{j}(cellData{j}>toneTimes(i)+rasterWindow(1) & cellData{j} < toneTimes(i) + rasterWindow(2));
         toneHolder = toneHolder - toneTimes(i);
+         %This will generate a histogram based on each individual trace,
+        %which can be used to generate standard deviations.
+        [counts,centers] = hist(toneHolder,histBinVector);
+        %below code necessary to prevent bugs with row vectors
+        countSize = size(counts);
+        centerSize = size(centers);
+        if countSize(1)>countSize(2)
+            counts = counts';
+        end
+        if centerSize(1)>centerSize(2)
+            centers = centers';
+        end
+        indivToneHist{j,i} = [counts'*(1/histBin),centers'];
+        counts = [];
+        centers = [];
+        %fills in large raster plot. holder updated position.
         toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,1) = i;
         toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,2) = toneHolder;
         toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,3) = toneRecord(i,2);
@@ -60,11 +77,35 @@ for j = 1:cellSize
     masterToneRaster{j} = toneRaster;
     toneRaster = zeros(100000,2);
     [counts,centers] = hist(masterToneRaster{j}(:,2),histBinVector);
-    masterToneHist{j} = [counts',centers'];
+    %below code necessary to prevent bugs with row vectors
+    countSize = size(counts);
+    centerSize = size(centers);
+    if countSize(1)>countSize(2)
+        counts = counts';
+    end
+    if centerSize(1)>centerSize(2)
+        centers = centers';
+    end
+    masterToneHist{j} = [counts'*(1/histBin)/length(toneTimes),centers'];
     counts = [];
     centers = [];
 end
 
+stdHolder = zeros(length(histBinVector),length(toneTimes));
+steHolder = zeros(length(histBinVector),cellSize);
+
+for i = 1:cellSize
+    for j = 1:length(toneTimes)
+        stdHolder(:,j) = indivToneHist{i,j}(:,1);
+    end
+    steHolder(:,i) = std(stdHolder,0,2)/sqrt(length(toneTimes));
+end
+
+stePlotter = zeros(length(histBinVector),cellSize,2);
+for i = 1:cellSize
+    stePlotter(:,i,1) = masterToneHist{i,1}(:,1)-steHolder(:,i);
+    stePlotter(:,i,2) = masterToneHist{i,1}(:,1)+steHolder(:,i);
+end
 
 % tuningRaster = masterToneRaster;
 % for j = 1:length(tuningRaster)
@@ -89,18 +130,18 @@ for j = 1:length(masterToneRaster)
     for i = 1:length(toneValues)
         tuningSpecRaster{i,j}= masterToneRaster{j}(masterToneRaster{j}(:,3)==toneValues(i),2);
         [counts,centers] = hist(tuningSpecRaster{i,j},histBinVector);
-        countSize = size(counts);%this is here because matlab is dumb and sometimes it comes as columns
-        centerSize = size(centers); %sometimes as rows
-        if countSize(1)>countSize(2) && centerSize(1) > centerSize(2)
-            tuningSpecHist{i,j} = [counts,centers];
-        elseif countSize(1)<countSize(2) && centerSize(1) < centerSize(2)
-            tuningSpecHist{i,j} = [counts',centers'];
-        elseif countSize(1)>countSize(2) && centerSize(1) < centerSize(2)
-            tuningSpecHist{i,j} = [counts,centers'];
-        elseif countSize(1)<countSize(2) && centerSize(1) > centerSize(2)
-            tuningSpecHist{i,j} = [counts',centers];
+        %below code necessary to prevent bugs with row vectors
+        countSize = size(counts);
+        centerSize = size(centers);
+        if countSize(1)>countSize(2)
+            counts = counts';
         end
-        
+        if centerSize(1)>centerSize(2)
+            centers = centers';
+        end
+        tuningSpecHist{i,j} = [counts'*(1/histBin)/toneReps(i,2),centers'];
+        counts = [];
+        centers = [];
     end
 end
 
@@ -131,7 +172,9 @@ for i = 1:plotSizer
     xlabel('Seconds')
     xlim(rasterWindow)
     subplot(3,plotSizer,i+plotSizer)
-    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*(1/histBin)/length(toneTimes),'k')
+    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1),'k',...
+        masterToneHist{i}(:,2),stePlotter(:,i,1),'k--',...
+        masterToneHist{i}(:,2),stePlotter(:,i,2),'k--')
     title(['Cell #',num2str(i),' Hist Binsize ',num2str(histBin)])
     xlabel('Seconds')
     ylabel('Av. Firing Rate (Hz)')
@@ -139,7 +182,7 @@ for i = 1:plotSizer
     subplot(3,plotSizer,i+2*(plotSizer))
     hold on
     for j = 1:length(toneValues)
-        plot(tuningSpecHist{j,i}(:,2),tuningSpecHist{j,i}(:,1)*(1/histBin)/toneReps(i,2),...
+        plot(tuningSpecHist{j,i}(:,2),tuningSpecHist{j,i}(:,1),...
             'Color',colorArray{j})
     end
     hold off
