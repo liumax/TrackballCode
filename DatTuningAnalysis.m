@@ -12,12 +12,12 @@ soundDur = 500; %sound duration, in MS
 
 
 %insert matlab file name here
-matName = 'ML150730B_150805_AP14DV3468_soundSet'
+matName = 'ML150730B_150805_AP14DV2913_soundSet'
 %open matlab file
 load(matName);
 toneRecord(toneRecord(:,2)==0,:) = [];
 
-fileName = 'ML150730B_AP14_DV3468_tuning'
+fileName = 'ML150730B_AP14_DV2913_tuning'
 
 %Reads in NEX File
 [nexFile] = readNexFile(strcat(char(fileName),'.nex'));
@@ -131,7 +131,7 @@ for i = 1:plotSizer
     xlabel('Seconds')
     xlim(rasterWindow)
     subplot(3,plotSizer,i+plotSizer)
-    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*10/length(toneTimes),'k')
+    plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)*(1/histBin)/length(toneTimes),'k')
     title(['Cell #',num2str(i),' Hist Binsize ',num2str(histBin)])
     xlabel('Seconds')
     ylabel('Av. Firing Rate (Hz)')
@@ -139,7 +139,7 @@ for i = 1:plotSizer
     subplot(3,plotSizer,i+2*(plotSizer))
     hold on
     for j = 1:length(toneValues)
-        plot(tuningSpecHist{j,i}(:,2),tuningSpecHist{j,i}(:,1)*10/toneReps(i,2),...
+        plot(tuningSpecHist{j,i}(:,2),tuningSpecHist{j,i}(:,1)*(1/histBin)/toneReps(i,2),...
             'Color',colorArray{j})
     end
     hold off
@@ -147,6 +147,7 @@ for i = 1:plotSizer
     xlabel('Seconds')
     ylabel('Av. Firing Rate (Hz)')
     title(['Cell #',num2str(i),' Histogram by Tone Freq'])
+    box on
 end
 
 
