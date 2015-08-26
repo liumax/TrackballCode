@@ -1,6 +1,6 @@
 
 
-fileName = 'ML150730B_AP17_DV1894_whitenoise'
+fileName = '5ms pulse 20 hz 20 pulses 20isi'
 
 %Reads in NEX File
 [nexFile] = readNexFile(strcat(char(fileName),'.nex'));
@@ -94,11 +94,27 @@ if realEventNum ==1 %if only a single event!
         if centerSize(1)>centerSize(2)
             centers = centers';
         end
-        masterToneHist{j} = [counts'*(1/histBin),centers'];
+        masterToneHist{j} = [counts'*(1/histBin)/length(toneTimes),centers'];
         counts = [];
         centers = [];
     end
+    
+    stdHolder = zeros(length(histBinVector),length(toneTimes));
+    steHolder = zeros(length(histBinVector),cellSize);
 
+    for i = 1:cellSize
+        for j = 1:length(toneTimes)
+            stdHolder(:,j) = indivToneHist{i,j}(:,1);
+        end
+        steHolder(:,i) = std(stdHolder,0,2)/sqrt(length(toneTimes));
+    end
+    
+    stePlotter = zeros(length(histBinVector),cellSize,2);
+    for i = 1:cellSize
+        stePlotter(:,i,1) = masterToneHist{i,1}(:,1)-steHolder(:,i);
+        stePlotter(:,i,2) = masterToneHist{i,1}(:,1)+steHolder(:,i);
+    end
+    
     plotSizer = length(masterToneHist);
 
     figure
@@ -109,7 +125,9 @@ if realEventNum ==1 %if only a single event!
     %     xlabel('Seconds')
         xlim(rasterWindow);
         subplot(2,plotSizer,i+plotSizer)
-        plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)/length(toneTimes))
+        plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1),...
+            masterToneHist{i}(:,2),stePlotter(:,i,1),'b--',...
+            masterToneHist{i}(:,2),stePlotter(:,i,2),'b--')
     %     title(['Cell #',num2str(i),' Histogram with Binsize ',num2str(histBin)])
     %     xlabel('Seconds')
     %     ylabel('Average Firing Rate (Hz)')
@@ -176,10 +194,27 @@ elseif realEventNum == 2
         if centerSize(1)>centerSize(2)
             centers = centers';
         end
-        masterToneHist{j} = [counts'*(1/histBin),centers'];
+        masterToneHist{j} = [counts'*(1/histBin)/length(toneTimes),centers'];
         counts = [];
         centers = [];
     end
+    
+    stdHolder = zeros(length(histBinVector),length(toneTimes));
+    steHolder = zeros(length(histBinVector),cellSize);
+
+    for i = 1:cellSize
+        for j = 1:length(toneTimes)
+            stdHolder(:,j) = indivToneHist{i,j}(:,1);
+        end
+        steHolder(:,i) = std(stdHolder,0,2)/sqrt(length(toneTimes));
+    end
+    
+    stePlotter = zeros(length(histBinVector),cellSize,2);
+    for i = 1:cellSize
+        stePlotter(:,i,1) = masterToneHist{i,1}(:,1)-steHolder(:,i);
+        stePlotter(:,i,2) = masterToneHist{i,1}(:,1)+steHolder(:,i);
+    end
+    
     
     rasterHolder = 1;
     toneStimRaster = zeros(100000,2);
@@ -222,9 +257,25 @@ elseif realEventNum == 2
         if centerSize(1)>centerSize(2)
             centers = centers';
         end
-        masterToneStimHist{j} = [counts'*(1/histBin),centers'];
+        masterToneStimHist{j} = [counts'*(1/histBin)/length(toneStimTimes),centers'];
         counts = [];
         centers = [];
+    end
+    
+    stdStimHolder = zeros(length(histBinVector),length(toneStimTimes));
+    steStimHolder = zeros(length(histBinVector),cellSize);
+
+    for i = 1:cellSize
+        for j = 1:length(toneStimTimes)
+            stdStimHolder(:,j) = indivToneStimHist{i,j}(:,1);
+        end
+        steStimHolder(:,i) = std(stdStimHolder,0,2)/sqrt(length(toneStimTimes));
+    end
+    
+    steStimPlotter = zeros(length(histBinVector),cellSize,2);
+    for i = 1:cellSize
+        steStimPlotter(:,i,1) = masterToneStimHist{i,1}(:,1)-steStimHolder(:,i);
+        steStimPlotter(:,i,2) = masterToneStimHist{i,1}(:,1)+steStimHolder(:,i);
     end
     
     %Adjusts rasters so that all of them are aligned to the appropriate
@@ -254,8 +305,12 @@ elseif realEventNum == 2
     %     title(['Cell #',num2str(i),' Raster'])
     %     xlabel('Seconds')
         subplot(2,plotSizer,i+plotSizer)
-        plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1)/length(toneTimes),...
-            masterToneStimHist{i}(:,2),masterToneStimHist{i}(:,1)/length(toneStimTimes),'r')
+        plot(masterToneHist{i}(:,2),masterToneHist{i}(:,1),...
+            masterToneHist{i}(:,2),stePlotter(:,i,1),'b--',...
+             masterToneHist{i}(:,2),stePlotter(:,i,2),'b--',...
+            masterToneStimHist{i}(:,2),masterToneStimHist{i}(:,1),'r',...
+             masterToneStimHist{i}(:,2),steStimPlotter(:,i,1),'r--',...
+             masterToneStimHist{i}(:,2),steStimPlotter(:,i,2),'r--')
     %     title(['Cell #',num2str(i),' Histogram with Binsize ',num2str(histBin)])
     %     xlabel('Seconds')
     %     ylabel('Average Firing Rate (Hz)')
