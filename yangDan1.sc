@@ -2,7 +2,7 @@
 %port 1 is lickometer
 %port 2 is reward solenoid
 %port 3 is punishment solenoid 
-%ports 4-7 are lights
+%ports 4-6 are lights, 4 warning 5 reward 6 punishment
 
 int warning
 int warningDelay
@@ -47,13 +47,17 @@ function 1
     end
     do in warningDelay
         disp('Cue Light On')
+        portout[4] = 1
         portout[5] = 1
+        portout[6] = 1
         do in graceDur
             disp('Grace Period Ended')
         end
         do in cueDur
             disp('Cue Light Off')
+            portout[4] = 0
             portout[5] = 0
+            portout[6] = 0
             do in itiDur
                 disp('TriggerMatlab')
             end
@@ -71,14 +75,14 @@ function 2
     end
     do in warningDelay
         disp('Cue Light On')
-        portout[6] = 1
+        portout[5] = 1
         do in graceDur
             disp('Grace Period Ended')
             rewSwitch = 1
         end
         do in cueDur
             disp('Cue Light Off')
-            portout[6] = 0
+            portout[5] = 0
             rewSwitch = 0
             do in itiDur
                 disp('TriggerMatlab')
@@ -98,14 +102,14 @@ function 3
     end
     do in warningDelay
         disp('Cue Light On')
-        portout[7] = 1
+        portout[6] = 1
         do in graceDur
             disp('Grace Period Ended')
             punSwitch = 1
         end
         do in cueDur
             disp('Cue Light Off')
-            portout[7] = 0
+            portout[6] = 0
             punSwitch = 0
             do in itiDur
                 disp('TriggerMatlab')
