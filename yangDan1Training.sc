@@ -18,7 +18,36 @@ callback portin[1] up
     disp('Lick Detected')
 end
 
+
 function 1
+    disp('Initiating Neutral Trial')
+    disp('Warning Light On')
+    portout[4] = 1
+    do in warning
+        disp('Warning Light Off')
+        portout[4] = 0
+    end
+    do in warningDelay
+        disp('Cue Light On')
+        portout[6] = 1
+        portout[5] = 1
+        portout[4] = 1
+        do in graceDur
+            disp('Grace Period Ended')
+        end
+        do in cueDur
+            disp('Cue Light Off')
+            portout[6] = 0
+            portout[5] = 0
+            portout[4] = 0
+            do in itiDur
+                disp('TriggerMatlab')
+            end
+        end
+    end
+end;
+
+function 2
     disp('Initiating Reward Trial')
     disp('Warning Light On')
     portout[4] = 1
@@ -47,32 +76,5 @@ function 1
     end
 end;
 
-function 2
-    disp('Initiating Neutral Trial')
-    disp('Warning Light On')
-    portout[4] = 1
-    do in warning
-        disp('Warning Light Off')
-        portout[4] = 0
-    end
-    do in warningDelay
-        disp('Cue Light On')
-        portout[6] = 1
-        portout[5] = 1
-        portout[4] = 1
-        do in graceDur
-            disp('Grace Period Ended')
-        end
-        do in cueDur
-            disp('Cue Light Off')
-            portout[6] = 0
-            portout[5] = 0
-            portout[4] = 0
-            do in itiDur
-                disp('TriggerMatlab')
-            end
-        end
-    end
-end;
 
 

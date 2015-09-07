@@ -89,12 +89,15 @@ scQtUserData.sessionType(:,1) = x;
 scQtUserData.LickTime = zeros (1000,1);
 
 %These are storage for rasters
+scQtUserData.neutRast = zeros (10000,2);
 scQtUserData.rewRast = zeros (10000,2);
 
 %These are placekeeper for rasters
+scQtUserData.neutHolder = 1;
 scQtUserData.rewHolder = 1;
 
 %These are storage for histograms
+scQtUserData.neutHist = zeros ((scQtUserData.warningDelay + scQtUserData.cueDur + 2000)/scQtUserData.binSize,1);
 scQtUserData.rewHist = zeros ((scQtUserData.warningDelay + scQtUserData.cueDur + 2000)/scQtUserData.binSize,1);
 
 %These are holding event times for plotting

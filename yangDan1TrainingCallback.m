@@ -33,9 +33,9 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
         scQtUserData.ax2 = subplot(2,1,2,'parent',scQtUserData.updateFig);
         hold(scQtUserData.ax1,'on');
         hold(scQtUserData.ax2,'on');
-        ylabel(scQtUserData.ax1,'Licks');
+        ylabel(scQtUserData.ax1,'Trial #');
         xlabel(scQtUserData.ax1,'Time (s)');
-        ylabel(scQtUserData.ax2,'Licks/Sec');
+        ylabel(scQtUserData.ax2,'Cumulative Licks');
         xlabel(scQtUserData.ax2,'Time (s)');
     end
     
@@ -48,22 +48,32 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     scQtUserData.LickTime(scQtUserData.LickTime < 1) = [];
     
     %this sorts data into respective rasters and histograms
-   
-    scQtUserData.rewHist([scQtUserData.LickTime],1)=scQtUserData.rewHist([scQtUserData.LickTime],1)+1;
-    scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,1) = scQtUserData.trial;
-    scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,2) = scQtUserData.LickTime-20;
-    scQtUserData.rewHolder = scQtUserData.rewHolder + length(scQtUserData.LickTime);
-    
+    if scQtUserData.sessionType(scQtUserData.trial) == 1
+        scQtUserData.neutHist([scQtUserData.LickTime],1)=scQtUserData.neutHist([scQtUserData.LickTime],1)+1;
+        scQtUserData.neutRast(scQtUserData.neutHolder:scQtUserData.neutHolder+length(scQtUserData.LickTime)-1,1) = scQtUserData.trial;
+        scQtUserData.neutRast(scQtUserData.neutHolder:scQtUserData.neutHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUser.binSize;
+        scQtUserData.neutHolder = scQtUserData.neutHolder + length(scQtUserData.LickTime);
+    elseif scQtUserData.sessionType(scQtUserData.trial) == 2
+        scQtUserData.rewHist([scQtUserData.LickTime],1)=scQtUserData.rewHist([scQtUserData.LickTime],1)+1;
+        scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,1) = scQtUserData.trial;
+        scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUser.binSize;
+        scQtUserData.rewHolder = scQtUserData.rewHolder + length(scQtUserData.LickTime);
+    end
     
     title(scQtUserData.ax1,[...
         'Total trials: ', num2str(scQtUserData.trial)]), ...
 
     %plot raster
+    plot(scQtUserData.neutRast(:,2),scQtUserData.neutRast(:,1),'b.',...
+        'parent',scQtUserData.ax1);
     plot(scQtUserData.rewRast(:,2),scQtUserData.rewRast(:,1),'g.',...
         'parent',scQtUserData.ax1);
+    axis(scQtUserData.ax1,[-2 5 0 scQtUserData.trial])
 
     %plot histogram
-     plot(scQtUserData.graphAxes,scQtUserData.rewHist,'color','g','linewidth',1,...
+    plot(scQtUserData.graphAxes,scQtUserData.neutHist,'color','b','linewidth',1,...
+        'parent',scQtUserData.ax2);
+    plot(scQtUserData.graphAxes,scQtUserData.rewHist,'color','g','linewidth',1,...
         'parent',scQtUserData.ax2);
     
     set(scQtUserData.ax1,'ygrid','on');
