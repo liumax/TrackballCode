@@ -22,7 +22,6 @@ callback portin[1] up
         rewSwitch = 0
         portout[2] = 1
         do in rewDur
-            disp('Reward Terminated')
             portout[2] = 0
         end
     end
@@ -31,7 +30,6 @@ callback portin[1] up
         punSwitch = 0
         portout[3] = 1
         do in punDur
-            disp('Punishment Terminated')
             portout[3] = 0
         end
     end

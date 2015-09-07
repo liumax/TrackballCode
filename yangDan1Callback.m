@@ -33,7 +33,7 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
         scQtUserData.ax2 = subplot(2,1,2,'parent',scQtUserData.updateFig);
         hold(scQtUserData.ax1,'on');
         hold(scQtUserData.ax2,'on');
-        ylabel(scQtUserData.ax1,'Licks');
+        ylabel(scQtUserData.ax1,'Trial #');
         xlabel(scQtUserData.ax1,'Time (s)');
         ylabel(scQtUserData.ax2,'Licks/Sec');
         xlabel(scQtUserData.ax2,'Time (s)');
@@ -51,17 +51,17 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     if scQtUserData.sessionType(scQtUserData.trial) == 1
         scQtUserData.neutHist([scQtUserData.LickTime],1)=scQtUserData.neutHist([scQtUserData.LickTime],1)+1;
         scQtUserData.neutRast(scQtUserData.neutHolder:scQtUserData.neutHolder+length(scQtUserData.LickTime)-1,1) = scQtUserData.trial;
-        scQtUserData.neutRast(scQtUserData.neutHolder:scQtUserData.neutHolder+length(scQtUserData.LickTime)-1,2) = scQtUserData.LickTime-20;
+        scQtUserData.neutRast(scQtUserData.neutHolder:scQtUserData.neutHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUserData.binSize;
         scQtUserData.neutHolder = scQtUserData.neutHolder + length(scQtUserData.LickTime);
     elseif scQtUserData.sessionType(scQtUserData.trial) == 2
         scQtUserData.rewHist([scQtUserData.LickTime],1)=scQtUserData.rewHist([scQtUserData.LickTime],1)+1;
         scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,1) = scQtUserData.trial;
-        scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,2) = scQtUserData.LickTime-20;
+        scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUserData.binSize;
         scQtUserData.rewHolder = scQtUserData.rewHolder + length(scQtUserData.LickTime);
     elseif scQtUserData.sessionType(scQtUserData.trial) == 3
         scQtUserData.punHist([scQtUserData.LickTime],1)=scQtUserData.punHist([scQtUserData.LickTime],1)+1;
         scQtUserData.punRast(scQtUserData.punHolder:scQtUserData.punHolder+length(scQtUserData.LickTime)-1,1) = scQtUserData.trial;
-        scQtUserData.punRast(scQtUserData.punHolder:scQtUserData.punHolder+length(scQtUserData.LickTime)-1,2) = scQtUserData.LickTime-20;
+        scQtUserData.punRast(scQtUserData.punHolder:scQtUserData.punHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUserData.binSize;
         scQtUserData.punHolder = scQtUserData.punHolder + length(scQtUserData.LickTime);
     end
     
@@ -75,7 +75,12 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
         'parent',scQtUserData.ax1);
     plot(scQtUserData.punRast(:,2),scQtUserData.punRast(:,1),'r.',...
         'parent',scQtUserData.ax1);
-
+    plot(scQtUserData.rewTime(:,2),scQtUserData.rewTime(:,1),'go',...
+        'parent',scQtUserData.ax1);
+    plot(scQtUserData.punTime(:,2),scQtUserData.punTime(:,1),'ro',...
+        'parent',scQtUserData.ax1);
+    axis(scQtUserData.ax1,[-2 5 0.5 scQtUserData.trial])
+    
     %plot histogram
      plot(scQtUserData.graphAxes,scQtUserData.neutHist,'color','b','linewidth',1,...
         'parent',scQtUserData.ax2);
@@ -114,6 +119,20 @@ if (~isempty(strfind(newLine,'Lick Detected')));
     spaceFinder = find(newLine == ' ');
     scQtUserData.LickTime(scQtUserData.lickHolder) = str2num(newLine(1:spaceFinder(1)-1));
     scQtUserData.lickHolder = scQtUserData.lickHolder + 1;
+end
+
+if (~isempty(strfind(newLine,'Reward Delivered')));
+    spaceFinder = find(newLine == ' ');
+    scQtUserData.rewTime(scQtUserData.trial,1) = scQtUserData.trial;
+    scQtUserData.rewTime(scQtUserData.trial,2) = round((str2num(newLine(1:spaceFinder(1)-1))-...
+        scQtUserData.cueTime(scQtUserData.trial))/scQtUserData.binSize)/1000*scQtUserData.binSize;
+end
+
+if (~isempty(strfind(newLine,'Punishment Delivered')));
+    spaceFinder = find(newLine == ' ');
+    scQtUserData.punTime(scQtUserData.trial,1) = scQtUserData.trial;
+    scQtUserData.punTime(scQtUserData.trial,2) = round((str2num(newLine(1:spaceFinder(1)-1))-...
+        scQtUserData.cueTime(scQtUserData.trial))/scQtUserData.binSize)/1000*scQtUserData.binSize;
 end
 
 end
