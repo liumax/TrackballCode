@@ -2,7 +2,7 @@
 %port 1 is lickometer
 %port 2 is reward solenoid
 %port 3 is punishment solenoid 
-%ports 4-7 are lights
+%ports 4-6 are lights. 4 warning 5 reward 6 punishment
 
 int warning
 int warningDelay
@@ -19,7 +19,7 @@ callback portin[1] up
 end
 
 function 1
-    disp('Initiating Training Trial')
+    disp('Initiating Reward Trial')
     disp('Warning Light On')
     portout[4] = 1
     do in warning
@@ -40,6 +40,34 @@ function 1
         do in cueDur
             disp('Cue Light Off')
             portout[6] = 0
+            do in itiDur
+                disp('TriggerMatlab')
+            end
+        end
+    end
+end;
+
+function 2
+    disp('Initiating Neutral Trial')
+    disp('Warning Light On')
+    portout[4] = 1
+    do in warning
+        disp('Warning Light Off')
+        portout[4] = 0
+    end
+    do in warningDelay
+        disp('Cue Light On')
+        portout[6] = 1
+        portout[5] = 1
+        portout[4] = 1
+        do in graceDur
+            disp('Grace Period Ended')
+        end
+        do in cueDur
+            disp('Cue Light Off')
+            portout[6] = 0
+            portout[5] = 0
+            portout[4] = 0
             do in itiDur
                 disp('TriggerMatlab')
             end

@@ -77,14 +77,14 @@ if (~isempty(strfind(newLine,'StartSession')))
     scQtUserData.trial = scQtUserData.trial + 1;
     sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
     sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.itiTime(scQtUserData.trial))]); 
-    sendScQtControlMessage('trigger(1)');
+    sendScQtControlMessage(['trigger(',num2str(scQtUserData.sessionType(scQtUserData.trial)),')']);
 end
 
 if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
     scQtUserData.trial = scQtUserData.trial + 1;
     sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
     sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.itiTime(scQtUserData.trial))]); 
-    sendScQtControlMessage(['trigger(1)']);
+    sendScQtControlMessage(['trigger(',num2str(scQtUserData.sessionType(scQtUserData.trial)),')']);
 end
 
 if (~isempty(strfind(newLine,'Cue Light On')));

@@ -78,6 +78,13 @@ tau = (scQtUserData.maxITI-scQtUserData.minITI)/k;
 x = round(scQtUserData.minITI + (-log(1-p))*tau); 
 scQtUserData.itiTime = x;
 
+scQtUserData.sessionType = zeros(scQtUserData.totalTrials,1);
+x = randperm(scQtUserData.totalTrials);
+y = scQtUserData.totalTrials/2;
+x(x<=y) = 1;
+x(x>y) = 2;
+scQtUserData.sessionType(:,1) = x;
+
 %These are temporary placeholders, which get wiped every trial
 scQtUserData.LickTime = zeros (1000,1);
 
