@@ -31,14 +31,18 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     
     if ~ishandle(scQtUserData.updateFig) %This is to set the basis for all the plots!
         scQtUserData.updateFig = figure('color','w');
-        scQtUserData.ax1 = subplot(2,1,1,'parent',scQtUserData.updateFig);
-        scQtUserData.ax2 = subplot(2,1,2,'parent',scQtUserData.updateFig);
+        scQtUserData.ax1 = subplot(3,1,1,'parent',scQtUserData.updateFig);
+        scQtUserData.ax2 = subplot(3,1,2,'parent',scQtUserData.updateFig);
+        scQtUserData.ax3 = subplot(3,1,3,'parent',scQtUserData.updateFig);
         hold(scQtUserData.ax1,'on');
+        hold(scQtUserData.ax2,'on');
         hold(scQtUserData.ax2,'on');
         ylabel(scQtUserData.ax1,'Trial #');
         xlabel(scQtUserData.ax1,'Time (s)');
         ylabel(scQtUserData.ax2,'Cumulative Licks');
         xlabel(scQtUserData.ax2,'Time (s)');
+        ylabel(scQtUserData.ax3,'Reaction Time (s)');
+        xlabel(scQtUserData.ax3,'Trial Number');
     end
     
     cla(scQtUserData.ax1);
@@ -69,8 +73,14 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     plot(scQtUserData.graphAxes,scQtUserData.rewHist,'color','g','linewidth',1,...
         'parent',scQtUserData.ax2);
     
+    %plot reaction timing
+    plot(1:1:scQtUserData.totalTrials,scQtUserData.rewTime,'k.',...
+        'parent',scQtUserData.ax3);
+    axis(scQtUserData.ax3,[1 scQtUserData.totalTrials 0.2 100])
+    
     set(scQtUserData.ax1,'ygrid','on');
     set(scQtUserData.ax2,'ygrid','on');
+    set(scQtUserData.ax3,'ygrid','on');
     
     scQtUserData.LickTime = zeros (1000,1);
     scQtUserData.lickHolder = 1;
@@ -99,6 +109,12 @@ if (~isempty(strfind(newLine,'Lick Detected')));
     spaceFinder = find(newLine == ' ');
     scQtUserData.LickTime(scQtUserData.lickHolder) = str2num(newLine(1:spaceFinder(1)-1));
     scQtUserData.lickHolder = scQtUserData.lickHolder + 1;
+end
+
+if (~isempty(strfind(newLine,'Reward Delivered')));
+    spaceFinder = find(newLine == ' ');
+    scQtUserData.rewTime(scQtUserData.trial) = (str2num(newLine(1:spaceFinder(1)-1))...
+        -scQtUserData.cueTime(scQtUserData.trial))/1000;
 end
 
 end

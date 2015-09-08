@@ -95,6 +95,7 @@ scQtUserData.rewHist = zeros ((scQtUserData.warningDelay + scQtUserData.cueDur +
 
 %These are holding event times for plotting
 scQtUserData.cueTime = zeros(scQtUserData.totalTrials,1);
+scQtUserData.rewTime = zeros(scQtUserData.totalTrials,1);
 
 sendScQtControlMessage(['rewDur=',num2str(scQtUserData.rewSize)]);
 sendScQtControlMessage(['graceDur=',num2str(scQtUserData.graceDur)]);

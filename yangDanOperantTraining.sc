@@ -14,6 +14,7 @@ int rewDur
 int rewSwitch = 0
 
 
+
 callback portin[1] up
     disp('Lick Detected')
     if rewSwitch == 1 do
