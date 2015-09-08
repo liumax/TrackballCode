@@ -51,12 +51,12 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     if scQtUserData.sessionType(scQtUserData.trial) == 1
         scQtUserData.neutHist([scQtUserData.LickTime],1)=scQtUserData.neutHist([scQtUserData.LickTime],1)+1;
         scQtUserData.neutRast(scQtUserData.neutHolder:scQtUserData.neutHolder+length(scQtUserData.LickTime)-1,1) = scQtUserData.trial;
-        scQtUserData.neutRast(scQtUserData.neutHolder:scQtUserData.neutHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUser.binSize;
+        scQtUserData.neutRast(scQtUserData.neutHolder:scQtUserData.neutHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUserData.binSize;
         scQtUserData.neutHolder = scQtUserData.neutHolder + length(scQtUserData.LickTime);
     elseif scQtUserData.sessionType(scQtUserData.trial) == 2
         scQtUserData.rewHist([scQtUserData.LickTime],1)=scQtUserData.rewHist([scQtUserData.LickTime],1)+1;
         scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,1) = scQtUserData.trial;
-        scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUser.binSize;
+        scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUserData.binSize;
         scQtUserData.rewHolder = scQtUserData.rewHolder + length(scQtUserData.LickTime);
     end
     
@@ -68,7 +68,7 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
         'parent',scQtUserData.ax1);
     plot(scQtUserData.rewRast(:,2),scQtUserData.rewRast(:,1),'g.',...
         'parent',scQtUserData.ax1);
-    axis(scQtUserData.ax1,[-2 5 0 scQtUserData.trial])
+    axis(scQtUserData.ax1,[-2 5 0.5 scQtUserData.trial])
 
     %plot histogram
     plot(scQtUserData.graphAxes,scQtUserData.neutHist,'color','b','linewidth',1,...
