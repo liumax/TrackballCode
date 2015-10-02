@@ -1,5 +1,5 @@
- function [trialStates, portStates, trialParams,trackStates] = ...
-    maxTrialVariables(fname)   
+ function [trialStates, portStates, trialParams] = ...
+    maxTrialVariablesYangDan(fname)   
 
 %These are counters
 allLineNum = 0; %This is the counter for all lines. Serves as a general counter for repeats of the while loop
@@ -185,9 +185,6 @@ while ischar(tline) %repeats loop as long as tline has characters
                     (find(eventStrings{eventLineNum}==':')+1):end);
             end
             
-            if ~isempty(strfind(eventStrings{eventLineNum},'Training'))
-                training = 1;
-            end
             %Below code is for portstate changes
         elseif ~isnan(str2double(tline(findSpaces(1)+1))) %this picks up the portstate changes
             portLineNum = portLineNum + 1; %updates port line counter
@@ -237,9 +234,6 @@ trialParams.warningDelay = warningDelay;
 trialParams.graceDur = graceDur;
 trialParams.minITI = minITI;
 trialParams.maxITI = maxITI;
-trialParams.waterWindow = waterWindow;
-trialParams.baitDur = baitDur;
-trialParams.training = training;
 
 portStates.tStamps = tStamps;
 portStates.inStates = inStates;
