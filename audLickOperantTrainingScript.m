@@ -35,9 +35,10 @@ scQtUserData.notes = answer{i};i=i+1;
 
 
 %hardcoded values
-scQtUserData.minITI = 5000;
-scQtUserData.maxITI = 10000;
+scQtUserData.minITI = 7000;
+scQtUserData.maxITI = 12000;
 scQtUserData.cueDelay = 500;
+scQtUserData.histLim = [-2,4.9];%edges of the histogram
 
 %Placeholders
 scQtUserData.lickHolder = 1;
@@ -50,7 +51,8 @@ scQtUserData.time = strcat(num2str(t(4)),':',num2str(t(5)));
 scQtUserData.trial = 0; % keep track of trial number
 scQtUserData.tripSwitch = 0; %triggers end of trials at set number of trials
 scQtUserData.binSize = 100; %msec per bin for rasters/histograms
-scQtUserData.graphAxes = [-2:scQtUserData.binSize/1000:4.9];
+scQtUserData.graphAxes = [scQtUserData.histLim(1):scQtUserData.binSize/1000:scQtUserData.histLim(2)];
+
 
 pause(0.2);
 

@@ -49,8 +49,9 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     cla(scQtUserData.ax2); %clears ax2
     
     %this preps licking data by effectively binning it
-    scQtUserData.LickTime = round((scQtUserData.LickTime - scQtUserData.cueTime(scQtUserData.trial))/scQtUserData.binSize)+20; %note the 20 fudge factor here
-    scQtUserData.LickTime(scQtUserData.LickTime > 70) = [];
+    scQtUserData.LickTime = round((scQtUserData.LickTime - scQtUserData.cueTime(scQtUserData.trial))/scQtUserData.binSize)...
+        +((scQtUserData.histLim(1)*-1)*1000/scQtUserData.binSize); %note the fudge factor here
+    scQtUserData.LickTime(scQtUserData.LickTime > length(scQtUserData.graphAxes)) = [];
     scQtUserData.LickTime(scQtUserData.LickTime < 1) = [];
     
     %this sorts data into respective rasters and histograms
@@ -58,7 +59,6 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,1) = scQtUserData.trial;
     scQtUserData.rewRast(scQtUserData.rewHolder:scQtUserData.rewHolder+length(scQtUserData.LickTime)-1,2) = (scQtUserData.LickTime-20)/1000*scQtUserData.binSize;
     scQtUserData.rewHolder = scQtUserData.rewHolder + length(scQtUserData.LickTime);
-
     
     title(scQtUserData.ax1,[...
         'Total trials: ', num2str(scQtUserData.trial)]), ...
