@@ -38,7 +38,7 @@ scQtUserData.notes = answer{i};i=i+1;
 scQtUserData.minITI = 7000;
 scQtUserData.maxITI = 12000;
 scQtUserData.cueDelay = 500;
-scQtUserData.histLim = [-2,4.9];%edges of the histogram
+scQtUserData.histLim = [-1,5];%edges of the histogram
 
 %Placeholders
 scQtUserData.lickHolder = 1;
@@ -91,7 +91,7 @@ scQtUserData.rewRast = zeros (10000,2);
 scQtUserData.rewHolder = 1;
 
 %These are storage for histograms
-scQtUserData.rewHist = zeros ((7000)/scQtUserData.binSize,1);%%% PROBLEM HERE???
+scQtUserData.rewHist = zeros (length(scQtUserData.graphAxes),1);
 
 %These are holding event times for plotting
 scQtUserData.cueTime = zeros(scQtUserData.totalTrials,1);

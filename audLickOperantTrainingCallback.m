@@ -49,7 +49,7 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     cla(scQtUserData.ax2); %clears ax2
     
     %this preps licking data by effectively binning it
-    scQtUserData.LickTime = round((scQtUserData.LickTime - scQtUserData.cueTime(scQtUserData.trial))/scQtUserData.binSize)...
+       scQtUserData.LickTime = round((scQtUserData.LickTime - scQtUserData.cueTime(scQtUserData.trial))/scQtUserData.binSize)...
         +((scQtUserData.histLim(1)*-1)*1000/scQtUserData.binSize); %note the fudge factor here
     scQtUserData.LickTime(scQtUserData.LickTime > length(scQtUserData.graphAxes)) = [];
     scQtUserData.LickTime(scQtUserData.LickTime < 1) = [];
@@ -66,7 +66,7 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     %plot raster
     plot(scQtUserData.rewRast(:,2),scQtUserData.rewRast(:,1),'g.',...
         'parent',scQtUserData.ax1);
-    axis(scQtUserData.ax1,[-2 5 0.5 scQtUserData.trial])
+    axis(scQtUserData.ax1,[scQtUserData.histLim(1) scQtUserData.histLim(2) 0.5 scQtUserData.trial])
 
     %plot histogram
     plot(scQtUserData.graphAxes,scQtUserData.rewHist,'color','g','linewidth',1,...
@@ -75,7 +75,6 @@ if scQtUserData.trial>=1 && (~isempty(strfind(newLine,'TriggerMatlab')))
     %plot reaction timing
     plot(1:1:scQtUserData.totalTrials,scQtUserData.rewTime,'k.',...
         'parent',scQtUserData.ax3);
-    axis(scQtUserData.ax3,[1 scQtUserData.totalTrials 0.2 100])
     
     set(scQtUserData.ax1,'ygrid','on');
     set(scQtUserData.ax2,'ygrid','on');
@@ -89,7 +88,7 @@ if (~isempty(strfind(newLine,'StartSession')))
     scQtUserData.trial = scQtUserData.trial + 1;
     sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
     sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.itiTime(scQtUserData.trial))]); 
-    sendScQtControlMessage('trigger(1)');
+    sendScQtControlMessage('trigger(2)');
 end
 
 if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;

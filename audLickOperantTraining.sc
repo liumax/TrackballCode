@@ -36,5 +36,14 @@ function 1
     rewSwitch = 1
 end;
 
+function 2
+    disp('Initiating Reward Trial')
+    do in itiDur
+        disp('Cue Light On')
+        portout[cueID] = 1
+        rewSwitch = 1
+    end
+end;
+
 
 
