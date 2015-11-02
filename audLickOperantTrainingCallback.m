@@ -98,7 +98,7 @@ if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
     sendScQtControlMessage('trigger(1)');
 end
 
-if (~isempty(strfind(newLine,'Cue Light On')));
+if (~isempty(strfind(newLine,'Cue On')));
     spaceFinder = find(newLine == ' ');
     scQtUserData.cueTime(scQtUserData.trial) = str2num(newLine(1:spaceFinder(1)-1));
 end

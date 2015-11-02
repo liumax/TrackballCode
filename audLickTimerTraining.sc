@@ -45,33 +45,16 @@ function 2
         else if lickTicker == 0 do
             disp('Initiating Reward Trial')
             disp('Cue On')
-            if cueID == 0 do
-                portout[3] = 1
-                rewSwitch = 1
-                do in cueDur
-                    portout[3] = 0
-                end
-                do in rewWin
-                    if rewSwitch == 1 do
-                        rewSwitch = 0
-                        do in itiDur
-                            disp('TriggerMatlab')
-                        end
-                    end
-                end
+            portout[cueID] = 1
+            rewSwitch = 1
+            do in cueDur
+                portout[cueID] = 0
             end
-            if cueID == 1 do
-                portout[4] = 1
-                rewSwitch = 1
-                do in cueDur
-                    portout[4] = 0
-                end
-                do in rewWin
-                    if rewSwitch == 1 do
-                        rewSwitch = 0
-                        do in itiDur
-                            disp('TriggerMatlab')
-                        end
+            do in rewWin
+                if rewSwitch == 1 do
+                    rewSwitch = 0
+                    do in itiDur
+                        disp('TriggerMatlab')
                     end
                 end
             end
@@ -91,33 +74,17 @@ function 1
     else if lickTicker == 0 do
         disp('Initiating Reward Trial')
         disp('Cue On')
-        if cueID == 0 do
-            portout[3] = 1
-            rewSwitch = 1
-            do in cueDur
-                portout[3] = 0
-            end
-            do in rewWin
-                if rewSwitch == 1 do
-                    rewSwitch = 0
-                    do in itiDur
-                        disp('TriggerMatlab')
-                    end
-                end
-            end
+        portout[cueID] = 1
+        rewSwitch = 1
+        do in cueDur
+            portout[cueID] = 0
         end
-        if cueID == 1 do
-            portout[4] = 1
-            rewSwitch = 1
-            do in cueDur
-                portout[4] = 0
-            end
-            do in rewWin
-                if rewSwitch == 1 do
-                    rewSwitch = 0
-                    do in itiDur
-                        disp('TriggerMatlab')
-                    end
+        do in rewWin
+            if rewSwitch == 1 do
+                rewSwitch = 0
+                do in itiDur
+                    disp(itiDur)
+                    disp('TriggerMatlab')
                 end
             end
         end

@@ -39,7 +39,7 @@ end;
 function 2
     disp('Initiating Reward Trial')
     do in itiDur
-        disp('Cue Light On')
+        disp('Cue On')
         portout[cueID] = 1
         rewSwitch = 1
     end
