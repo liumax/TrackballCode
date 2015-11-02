@@ -5,7 +5,7 @@ global scQtUserData;
 % UI prompt:
 prompt = {'Mouse ID:',...  
     'Reward (msec):',...       
-    'Tone (0=lo,1=hi)',...
+    'Tone (3=lo,4=hi)',...
     'Number of Trials:',...           
     'Weight:',...           
     'sessionID:',...        
@@ -39,7 +39,7 @@ scQtUserData.minITI = 7000;
 scQtUserData.maxITI = 12000;
 scQtUserData.cueDur = 500;%duration of cue
 scQtUserData.rewWin = 2000; %how long the animal has to lick in response to cue
-scQtUserData.histLim = [-2,4.9];%edges of the histogram
+scQtUserData.histLim = [-2,5];%edges of the histogram
 scQtUserData.noLick = 3000;%period where licks are not permitted
 
 %Placeholders
@@ -87,19 +87,19 @@ scQtUserData.itiTime = x;
 scQtUserData.LickTime = zeros (1000,1);
 
 %These are storage for rasters
-
 scQtUserData.rewRast = zeros (10000,2);
 
 %These are placekeeper for rasters
-
 scQtUserData.rewHolder = 1;
 
 %These are storage for histograms
-scQtUserData.rewHist = zeros (length(scQtUserData.graphAxes),1);%%% PROBLEM HERE???
+scQtUserData.rewHist = zeros (length(scQtUserData.graphAxes),1);
 
 %These are holding event times for plotting
 scQtUserData.cueTime = zeros(scQtUserData.totalTrials,1);
-scQtUserData.rewTime = zeros(scQtUserData.totalTrials,1);
+scQtUserData.rewTime = zeros(scQtUserData.totalTrials,1); %this should plot time from cue onset to reward delivery
+scQtUserData.itiRecord = zeros(scQtUserData.totalTrials,1); %this tells ITI by cue onset timing
+scQtUserData.rewCounter = 0; %this counts number of rewards delivered
 
 sendScQtControlMessage(['rewDur=',num2str(scQtUserData.rewSize)]);
 sendScQtControlMessage(['cueDur=',num2str(scQtUserData.cueDur)]);
