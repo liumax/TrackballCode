@@ -19,12 +19,7 @@ callback portin[1] up
         do in rewDur
             portout[2] = 0
             do in cueDelay
-                if cueID == 0 do
-                    portout[3] = 0
-                end
-                if cueID == 1 do
-                    portout[4] = 0
-                end
+                portout[cueID] = 0
             end
             do in itiDur
                 disp('TriggerMatlab')
@@ -37,12 +32,7 @@ end
 function 1
     disp('Initiating Reward Trial')
     disp('Cue Light On')
-    if cueID == 0 do
-        portout[3] = 1
-    end
-    if cueID == 1 do
-        portout[4] = 1
-    end
+    portout[cueID] = 1
     rewSwitch = 1
 end;
 
