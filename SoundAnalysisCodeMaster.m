@@ -12,4 +12,8 @@ for i=1:length(files)
     y = strfind(x,'.');
     x = x(1:y-1);
     batchDataStructure.(x) = s;
+    [output] = auditoryGraphing(nexFile,fileName);
+    batchDataStructure.(x).Plotting = output;
+    [statsGraph] = auditoryStatGraph(batchDataStructure,x);
+    batchDataStructure.(x).ResponsesStats = statsGraph;
 end
