@@ -1,20 +1,8 @@
 function [s] = auditoryStatsAnalysis(nexFile,fileName);
-% 
-% fileName = 'ML150730B_AP14_DV2913_whitenoise'
 
-%Reads in NEX File
-% [nexFile] = readNexFile(strcat(char(fileName),'.nex'));
-% [nexFile] = readNexFile(fileName);
-tic
+disp(fileName)
+
 %Variables I may want to adjust
-rasterWindow = [-1,2];
-rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
-
-histBin = 0.025; %bin size in seconds
-histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
-histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
-%histBinVector is for the purposes of graphing. This provides a nice axis
-%for graphing purposes.
 
 %these are variables for doing stats. 
 statsWindow = [-0.500,0.500];
@@ -39,26 +27,8 @@ for i= 1:eventSize
     eventTstampSize(i) = length(eventTstamps{i});
 end
 
-%find start time
-x = strfind(eventNames,'Start');
-y = find(not(cellfun('isempty', x)));
-startTime = eventTstamps{y};
-
-x = [];
-y = [];
-
-%find end time
-x = strfind(eventNames,'Stop');
-y = find(not(cellfun('isempty', x)));
-stopTime = eventTstamps{y};
-
-x = [];
-y = [];
-
-totalTime = stopTime - startTime; %total recording time in seconds. 
-%precision down to 1/10th of millisecond
-
-%determines how many repeated events there were
+%determines how many repeated events there were. This only works with
+%single event type!!!
 realEvents = find(eventTstampSize>1);
 realEventNum = length(realEvents);
 
@@ -96,13 +66,6 @@ for i = 1:length(cellIndex)
     cellIndex(i,3) = multiunitIndex(find(multiunitIndex(:,1) == cellIndex(i,1)),2);
 end
 
-%%
-%This is to compute average firing rate of every 'true' unit.
-averageFiringRate = zeros(trueUnits,1);
-for i = 1:trueUnits
-    averageFiringRate(i) = length(nexFile.neurons{unitCells(i),1}.timestamps)/totalTime;
-end
-
 %% finds when noise is delivered
 toneTimes= nexFile.events{realEvents}.timestamps;
 y=diff(toneTimes);
@@ -119,17 +82,9 @@ for i = 1:cellSize
     cellData{i} = nexFile.neurons{i}.timestamps;
 end
 
-disp('Basic Setup')
-toc
 
+%this bins data into prespecified bins
 
-%Generates raster plot for tone times as well as histogram
-tic
-toneRaster = zeros(100000,2); %temporary holder for raster info for each unit
-%over the course of all tone presentations
-masterToneRaster = cell(cellSize,1); %final holder for raster info
-masterToneHist = cell(cellSize,1); %final holder for histogram info
-indivToneHist = cell(cellSize,length(toneTimes)); %info for individual 
 indivStatHist = cell(cellSize,length(toneTimes));%info for individual for stats
 
 %Combines all bins from before cue, and preserves bins post cue
@@ -188,9 +143,7 @@ for k = 1:length(statsBin)
     preCueTimes{k} = indivStatHist{j,i}(indivStatHist{j,i}(:,2)<0,2);
     postCueTimes{k} = indivStatHist{j,i}(indivStatHist{j,i}(:,2)>0,2);
 end
-disp('First Stats')
-toc
-tic
+
 %this will store alpha values for the stats bins.
 binStats = cell(cellSize,length(statsBin));
 
@@ -209,151 +162,19 @@ for k = 1:length(statsBin)
         end
     end
 end
-disp('Second Stats')
-toc
-tic
-%cycles through cells and makes rasters relative to cue. also makes
-%histograms
-for j = 1:cellSize
-    rasterHolder = 1; %holds position of raster position!
-    %cycles through tones presentation times. extracts info for
-    %individual and overall rasters.
-    for i = 1:length(toneTimes)
-        %This makes all points relative to event. Also eliminates
-        %points outside desired range
-        toneHolder = cellData{j}(cellData{j}>toneTimes(i)+rasterWindow(1) & cellData{j} < toneTimes(i) + rasterWindow(2));
-        toneHolder = toneHolder - toneTimes(i);
-        %This will generate a histogram based on each individual trace,
-        %which can be used to generate standard deviations.
-        [counts,centers] = hist(toneHolder,histBinVector);
-        %below code necessary to prevent bugs with row vectors
-        countSize = size(counts);
-        centerSize = size(centers);
-        if countSize(1)>countSize(2)
-            counts = counts';
-        end
-        if centerSize(1)>centerSize(2)
-            centers = centers';
-        end
-        indivToneHist{j,i} = [counts'*(1/histBin),centers'];
-        counts = [];
-        centers = [];
-        %fills in large raster plot. holder updated position.
-        toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,1) = i;
-        toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,2) = toneHolder;
-        rasterHolder = rasterHolder + length(toneHolder);
-        toneRaster(toneRaster(:,1) == 0,:) = [];
-        toneHolder = [];
-    end
-    masterToneRaster{j} = toneRaster;
-    toneRaster = zeros(100000,2);
-    [counts,centers] = hist(masterToneRaster{j}(:,2),histBinVector);
-    countSize = size(counts);
-    centerSize = size(centers);
-    if countSize(1)>countSize(2)
-        counts = counts';
-    end
-    if centerSize(1)>centerSize(2)
-        centers = centers';
-    end
-    masterToneHist{j} = [counts'*(1/histBin)/length(toneTimes),centers'];
-    counts = [];
-    centers = [];
-end
-disp('Raster Prep')
-toc
-%pre-opens holders for standard error traces
-stdHolder = zeros(length(histBinVector),length(toneTimes));
-steHolder = zeros(length(histBinVector),cellSize);
 
-for i = 1:cellSize
-    for j = 1:length(toneTimes)
-        stdHolder(:,j) = indivToneHist{i,j}(:,1);
-    end
-    steHolder(:,i) = std(stdHolder,0,2)/sqrt(length(toneTimes));
-end
-
-%generates lines representing standard error.
-stePlotter = zeros(length(histBinVector),cellSize,2);
-for i = 1:cellSize
-    stePlotter(:,i,1) = masterToneHist{i,1}(:,1)-steHolder(:,i);
-    stePlotter(:,i,2) = masterToneHist{i,1}(:,1)+steHolder(:,i);
-end
-
-set(0, 'DefaulttextInterpreter', 'none')
-
-for i = 1:length(cellIndex)
-    hFig = figure;
-    set(hFig,'Units','inches');
-    set(hFig,'Position',[1 1 6 8]);
-
-    subplot(3,2,1)
-    plot(unitWaves{i})
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[0 5.5 3 2.7]);
-    title('Average Waveform')
-
-    mTextBox = uicontrol('style','text');
-    descr = {'File:';
-        fileName;
-        'Unit:';
-        unitNames{cellIndex(i,2)}
-        'Average Firing Rate (Hz):';
-        averageFiringRate(i)};
-    set(mTextBox,'String',descr);
-    set(mTextBox,'Units','inches');
-    set(mTextBox,'Position',[3,5.5,3,2.5])
-
-    subplot(3,2,3)
-    plot(masterToneRaster{cellIndex(i,3)}(:,2),masterToneRaster{cellIndex(i,3)}(:,1),'b.')
-    xlim(rasterWindow);
-    ylim([1,length(toneTimes)]);
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[0.1 3 3 2.5]);
-    title('Multiunit Raster Relative to Tone')
-
-    subplot(3,2,4)
-    plot(masterToneHist{cellIndex(i,3)}(:,2),masterToneHist{cellIndex(i,3)}(:,1),...
-        masterToneHist{cellIndex(i,3)}(:,2),stePlotter(:,cellIndex(i,3),1),'b--',...
-        masterToneHist{cellIndex(i,3)}(:,2),stePlotter(:,cellIndex(i,3),2),'b--')
-    xlim(rasterWindow);
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[3.1 3 3 2.5]);
-    title('Multiunit Histogram Relative to Tone')
-
-    subplot(3,2,5)
-    plot(masterToneRaster{cellIndex(i,2)}(:,2),masterToneRaster{cellIndex(i,2)}(:,1),'b.')
-    xlim(rasterWindow);
-    ylim([1,length(toneTimes)]);
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[0.1 0.2 3 2.5]);
-    title('Unit Raster Relative to Tone')
-
-    subplot(3,2,6)
-    plot(masterToneHist{cellIndex(i,2)}(:,2),masterToneHist{cellIndex(i,2)}(:,1),...
-        masterToneHist{cellIndex(i,2)}(:,2),stePlotter(:,cellIndex(i,2),1),'b--',...
-        masterToneHist{cellIndex(i,2)}(:,2),stePlotter(:,cellIndex(i,2),2),'b--')
-    xlim(rasterWindow);
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[3.1 0.2 3 2.5]);
-    title('Unit Histogram Relative to Tone')     
-end
     %% 
 s = struct;
 
-s.AnalysisVariables.rasterWindow = rasterWindow;
-s.AnalysisVariables.rasterAxis = rasterAxis;
-s.AnalysisVariables.histBin = histBin;
-s.AnalysisVariables.statsWindow = statsWindow;
-s.AnalysisVariables.statsBin = statsBin;
+s.AnalysisVariables.StatsWindow = statsWindow;
+s.AnalysisVariables.StatsBins = statsBin;
 
 s.Events.EventNames = eventNames;
 s.Events.EventTimeStamps = eventTstamps;
-s.Events.TotalTime = totalTime;
+s.Events.TrialRepetitions = length(toneTimes);
 
 s.Units.Names = unitNames;
 s.Units.Waves = unitWaves;
-s.Units.AverageFiringRate = averageFiringRate;
 s.Units.UnitIndex = cellIndex;
 
 %this generates cellIndex, in which column 1 is the probe channel, column
