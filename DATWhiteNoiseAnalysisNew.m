@@ -1,14 +1,15 @@
-
-
-fileName = 'ML150730B_AP14_DV2913_whitenoise'
+function [masterToneRaster] = DATWhiteNoiseAnalysisNew(fileName);
+% 
+% fileName = 'ML150730B_AP14_DV2913_whitenoise'
 
 %Reads in NEX File
-[nexFile] = readNexFile(strcat(char(fileName),'.nex'));
+% [nexFile] = readNexFile(strcat(char(fileName),'.nex'));
+[nexFile] = readNexFile(fileName);
 
 %Variables I may want to adjust
 rasterWindow = [-1,2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
-histBin = 0.1; %bin size in seconds
+histBin = 0.025; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
 histBinVector = [rasterWindow(1)-histBin/2:histBin:rasterWindow(2)-histBin/2];
 
@@ -191,14 +192,14 @@ if realEventNum ==1 %if only a single event! this is usually just whitenoise
         set(gca,'OuterPosition',[0 5.5 3 2.7]);
         title('Average Waveform')
         
-        mTextBox = uicontrol('style','text')
+        mTextBox = uicontrol('style','text');
         descr = {'File:';
             fileName;
             'Unit:';
             unitNames{cellIndex(i,2)}
             'Average Firing Rate (Hz):';
             averageFiringRate(i)};
-        set(mTextBox,'String',descr)
+        set(mTextBox,'String',descr);
         set(mTextBox,'Units','inches');
         set(mTextBox,'Position',[3,5.5,3,2.5])
 
@@ -466,3 +467,4 @@ end
 
 
 
+end
