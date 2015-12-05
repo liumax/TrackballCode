@@ -6,6 +6,11 @@ L = toneDur*fs; %number of samples at correct sampling frequency
 prePause = 0.1; %pause in seconds before tone
 postPause = 0.2; %pause in seconds after tone
 
+warningCheck = (postPause - toneDur)<0;
+if warningCheck == 1
+    disp('TONE DURATION LONGER THAN ITI')
+end
+
 % laserPrecede = ;
 % laserProb = 0; %probability of laser light
 % laserOnly = 0; %number of trials with laser only
@@ -128,12 +133,12 @@ ttlSig(1:fs/1000) = 1;
 
 %actual code for running behavior!
 for i = 1:length(master)
-    pause(0.1)
+    pause(prePause)
     toneFreq = master(i,1);
     toneAmpl = master(i,2);
     toneWave = sin(2*pi*(toneFreq/fs)*(1:L))';
     finalWave = toneWave.*rampProfile;
     soundVector = [finalWave,ttlSig];
     sound(soundVector,fs);
-    pause(0.2)
+    pause(postPause)
 end
