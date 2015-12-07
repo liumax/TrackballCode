@@ -1,5 +1,5 @@
 toneReps = 20; %number of repetitions of each tone/amplitude pair
-toneDur = 1; %tone duration in seconds
+toneDur = 0.05; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
 
@@ -10,10 +10,6 @@ warningCheck = (postPause - toneDur)<0;
 if warningCheck == 1
     disp('TONE DURATION LONGER THAN ITI')
 end
-
-% laserPrecede = ;
-% laserProb = 0; %probability of laser light
-% laserOnly = 0; %number of trials with laser only
 
 startF = 4000; %starting frequency in Hz
 endF = 64000; %ending frequency in Hz
@@ -46,6 +42,8 @@ for i = 1:length(freqs)
     end
 end
 
+%HERE I NEED TO GO THROUGH FULLLIST AND ADJUST VALUES BASED ON CALIBRATION
+
 % proxyList = fullList;
 
 fillIndex = zeros(toneReps*length(freqs)*length(dBs),1);
@@ -67,53 +65,7 @@ for i = 1:length(fillIndex)
     fullList(holder(randIndex),:) = [];
 end
 
-%%%This code is commented out. previous attempt at making pseudorandom list
-%%%of all pairs of amplitudes and frequencies.
 
-% % % master = zeros(length(freqs)*length(dBs)*toneReps,2);
-% % % 
-% % % %sets first value of master array. This is outside of the inside loop
-% % % %because this way I can have different code running this.
-% % % counter = 1;
-% % % randArray = randperm(length(proxyList));
-% % % master(counter,:) = proxyList(randArray(1),:);
-% % % proxyList(randArray(1),:) = [];
-% % % counter = counter + 1;
-% % % 
-% % % while ~isempty(proxyList)
-% % %     randArray = randperm(size(proxyList,1));
-% % %     correctArray = randArray(proxyList(randArray,1)~=master(counter-1,1));
-% % %     if isempty(correctArray)
-% % %         disp 'FAILURE'
-% % %     end
-% % %     master(counter,:) = proxyList(correctArray(1),:);
-% % %     proxyList(randArray(1),:) = [];
-% % %     counter = counter + 1;
-% % % end
-% % % 
-% % % %master array will have frequencies in first column, amplitudes in second
-% % % master = zeros(length(freqs)*length(dBs)*toneReps,2);
-% % % 
-% % % %fills in frequency placeholders
-% % % j=1;
-% % % for i = 1:length(master)/length(freqs)
-% % %     master(j:j+length(freqs)-1,1) = randperm(length(freqs));
-% % %     j = j+length(freqs)-1;
-% % % end
-% % % %replaces with actual frequencies
-% % % for i = 1:length(freqs)
-% % %     master(master(:,1) == i,1) = freqs(i);
-% % % end
-% % % %fills in amplitude placeholders
-% % % j=1;
-% % % for i = 1:length(master)/length(dBs)
-% % %     master(j:j+length(dBs)-1,2) = randperm(length(dBs));
-% % %     j = j+length(dBs)-1;
-% % % end
-% % % %replaces with actual amplitudes
-% % % for i = 1:length(dBs)
-% % %     master(master(:,2) == i,2) = dBs(i);
-% % % end
 % % % %%%THIS NEEDS ADJUSTING: MUST DO TUNING AND MAP OUT VALUE VS DB
 
 %ramp times for onset and offset in seconds
@@ -131,7 +83,7 @@ rampProfile(end-(onRampDur*fs):end) = [1:-1/(onRampDur*fs):0];
 ttlSig = zeros(L,1);
 ttlSig(1:fs/1000) = 1;
 
-%actual code for running behavior!
+%actual code for performing tuning
 for i = 1:length(master)
     pause(prePause)
     toneFreq = master(i,1);
@@ -142,3 +94,7 @@ for i = 1:length(master)
     sound(soundVector,fs);
     pause(postPause)
 end
+
+soundData = struct;
+soundData.Frequencies = master(:,1);
+soundData.Amplitudes = master(:,2);
