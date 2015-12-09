@@ -1,3 +1,4 @@
+[fname pname] = uiputfile('test1');
 
 toneReps = 20; %number of repetitions of each tone/amplitude pair
 toneDur = 1; %tone duration in seconds
@@ -15,9 +16,9 @@ startF = 4000; %starting frequency in Hz
 endF = 64000; %ending frequency in Hz
 octFrac = 0.5; %fractions of octaves to move
 
-startdB = 60; %starting decibel value
+startdB = 80; %starting decibel value
 enddB = 30; %lowest decibel value
-dbSteps = 5; %resolution of decible steps
+dbSteps = 10; %resolution of decible steps
 
 %this generates a vector with the frequencies that will be used
 octRange = log2(endF/startF);
@@ -28,16 +29,22 @@ for i = 2:octRange/octFrac+1
 end
 
 %this generates a vector of all decibel steps
-dBs = [enddB:dbSteps:startdB];
+dBs = [startdB:-dbSteps:enddB];
+amps = zeros (length(dBs),1);
+amps(1) = 1;
+for i = 2:length(amps)
+    amps(i) = (amps(i-1)/sqrt(10));
+end
 
 %list of all frequency/dB pairs
-fullList = zeros(length(freqs)*length(dBs),2);
+fullList = zeros(length(freqs)*length(dBs),3);
 counter = 1;
 
 for i = 1:length(freqs)
     for j = 1:length(dBs)
         fullList(counter:counter+toneReps-1,1) = freqs(i);
         fullList(counter:counter+toneReps-1,2) = dBs(j);
+        fullList(counter:counter+toneReps-1,3) = amps(j);
         counter = counter+toneReps;
     end
 end
@@ -51,7 +58,7 @@ for i = 1:toneReps*length(dBs)
     counter = counter + length(freqs);
 end
 
-master = zeros(length(freqs)*length(dBs)*toneReps,2);
+master = zeros(length(freqs)*length(dBs)*toneReps,3);
 
 for i = 1:length(fillIndex)
     master(i,1) = freqs(fillIndex(i));
@@ -60,6 +67,7 @@ for i = 1:length(fillIndex)
     holderSize = size(holder,1);
     randIndex = randi(holderSize);
     master(i,2) = fullList(holder(randIndex),2);
+    master(i,3) = fullList(holder(randIndex),3);
     fullList(holder(randIndex),:) = [];
 end
 
@@ -96,7 +104,7 @@ for i = 1:length(master)
     TDT.SetTargetVal('RZ5(1).Play',0);
     pause(prePause)
     toneFreq = master(i,1);
-    toneAmpl = master(i,2);
+    toneAmpl = master(i,3);
     TDT.SetTargetVal('RZ5(1).Amplitude',toneAmpl);
     TDT.SetTargetVal('RZ5(1).Freq',toneFreq);
     TDT.SetTargetVal('RZ5(1).Play',1);
@@ -104,6 +112,7 @@ for i = 1:length(master)
     
     toneWave = sin(2*pi*(toneFreq/fs)*(1:L))';
     finalWave = toneWave.*rampProfile;
+    finalWave = finalWave*toneAmpl;
     soundVector = [finalWave,ttlSig];
     
     sound(soundVector,fs);
@@ -116,3 +125,11 @@ end
 TDT.SetSysMode(0);
 
 TDT.CloseConnection;
+
+soundData = struct;
+soundData.Frequencies = master(:,1);
+soundData.dBs = master(:,2);
+soundData.Amplitudes = master(:,3);
+
+save(fullfile(pname,fname),'master','t0','Cue_times','H20_times','Record_times','LickData','LickTime');
+
