@@ -1,11 +1,11 @@
-[fname pname] = uiputfile('test1');
+[fname pname] = uiputfile('test1.mat');
 
 toneReps = 20; %number of repetitions of each tone/amplitude pair
-toneDur = 1; %tone duration in seconds
+toneDur = 0.05; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
 
-prePause = 0.2; %pause in seconds before tone
+prePause = 0.1; %pause in seconds before tone
 postPause = 0.3; %pause in seconds after tone
 
 % laserPrecede = ;
@@ -104,11 +104,13 @@ for i = 1:length(master)
     TDT.SetTargetVal('RZ5(1).Play',0);
     pause(prePause)
     toneFreq = master(i,1);
+    toneDB = master(i,2);
     toneAmpl = master(i,3);
-    TDT.SetTargetVal('RZ5(1).Amplitude',toneAmpl);
+    TDT.SetTargetVal('RZ5(1).Amplitude',toneDB);
     TDT.SetTargetVal('RZ5(1).Freq',toneFreq);
     TDT.SetTargetVal('RZ5(1).Play',1);
-    TDT.GetTargetVal('RZ5(1).Freq');
+%     TDT.GetTargetVal('RZ5(1).Freq')
+    disp(length(master)-i)
     
     toneWave = sin(2*pi*(toneFreq/fs)*(1:L))';
     finalWave = toneWave.*rampProfile;
@@ -131,5 +133,5 @@ soundData.Frequencies = master(:,1);
 soundData.dBs = master(:,2);
 soundData.Amplitudes = master(:,3);
 
-save(fullfile(pname,fname),'master','t0','Cue_times','H20_times','Record_times','LickData','LickTime');
+save(fullfile(pname,fname),'soundData');
 
