@@ -104,6 +104,9 @@ soundData = struct;
 soundData.Frequencies = master(:,1);
 soundData.dBs = master(:,2);
 soundData.Amplitudes = master(:,3);
+soundData.ToneRepetitions = toneReps;
+soundData.ToneDuration = toneDur;
+
 
 
 save(fullfile(pname,fname),'soundData');

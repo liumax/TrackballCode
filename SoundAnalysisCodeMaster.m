@@ -1,4 +1,5 @@
-dirName = 'E:\tempAcuteRecordings\Processed\ML151104A';
+dirName = 'E:\tempAcuteRecordings\Processed\ML151202A';
+% dirName = 'E:\tempAcuteRecordings\Processed\ML151104A';
 files = dir(fullfile(dirName,'*.nex'));
 files = {files.name};
 
@@ -7,6 +8,8 @@ batchDataStructure = struct;
 for i=1:length(files)
     fileName = files{i};
     [nexFile] = readNexFile(fileName);
+    %note that you need to be in the directory with the files for
+    %readNexFile to work!
     [s] = auditoryStatsAnalysis(nexFile,fileName);
     x = fileName;
     y = strfind(x,'.');
