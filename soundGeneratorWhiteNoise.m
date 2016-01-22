@@ -1,16 +1,16 @@
+%this code is to generate white noise. have not added laser functionality.
+
 %control over settings here
 toneReps = 150; %number of repetitions of each tone/amplitude pair
-laserToneReps = 50;
-laserReps = 50;
-totalReps = toneReps + laserToneReps + laserReps;
-toneDur = 0.1; %tone duration in seconds
+totalReps = toneReps;
+toneDur = 0.2; %tone duration in seconds
 ttlDur = 0.01; %duration of signaling TTL in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs;
 
-
-minPause = 2;
-maxPause = 4;
+%pausing times!
+minPause = 0.8;
+maxPause = 2;
 
 prePause = 0.5; %pause in seconds before tone
 
@@ -18,7 +18,7 @@ prePause = 0.5; %pause in seconds before tone
 k = 2.5;
 p = (1-exp(-k))*rand(totalReps,1);
 tau = (maxPause-minPause)/k;
-x = round(minPause + (-log(1-p))*tau); 
+x = minPause + (-log(1-p))*tau; 
 
 
 warningCheck = (minPause - toneDur)<0;
@@ -27,12 +27,17 @@ if warningCheck == 1
 end
 
 %generate white gaussian noise of correct size
-y = wgn(fs,1,0);
-
+y = wgn(fs*toneDur,1,0);
 
 %filters white gaussian noise (courtesy of RYAN MORRILL)
-Wn = 3.9e3/(0.5*fs); % pass above 3.9 kHz
+Wn = 4e3/(0.5*fs); % pass above 3.9 kHz 160121 Adjusted to 4kHz
 n = 1000; % 1000th order filter (slower? but 100-order was too low)
+%160121 Adjusted from 1000 to 100000, this gets greater attenuation, which is
+%necessary for my higher volumes. This achieves 90dB attenuation for all
+%frequencies below 4kHz.
+%160121 Returned to 1000. Increasing n to 100000 causes failure of
+%filtfilt. Checked by doing fft(X,n) with n = number of samples, seems to
+%filter out everything below 4kHz very effectively. 
 b = fir1(n, Wn, 'high'); 
 audio_data = filtfilt(b,1,y);
 
@@ -60,5 +65,5 @@ for i = 1:toneReps
     pause(prePause)
     sound(soundVector,fs);
     disp(tonereps - i)
-    pause(postPause)
+    pause(x(i))
 end
