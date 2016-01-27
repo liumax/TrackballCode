@@ -1,6 +1,6 @@
 function [output] = auditoryGraphing(nexFile,fileName);
 
-rasterWindow = [-0.1,0.2];
+rasterWindow = [-0.5,0.5];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
 
 histBin = 0.025; %bin size in seconds
@@ -170,64 +170,64 @@ end
 
 
 %actual graphing code
-set(0, 'DefaulttextInterpreter', 'none')
-
-for i = 1:size(cellIndex,1)
-    hFig = figure;
-    set(hFig,'Units','inches');
-    set(hFig,'Position',[1 1 6 8]);
-
-    subplot(3,2,1)
-    plot(unitWaves{i})
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[0 5.5 3 2.7]);
-    title('Average Waveform')
-
-    mTextBox = uicontrol('style','text');
-    descr = {'File:';
-        fileName;
-        'Unit:';
-        unitNames{cellIndex(i,2)}
-        'Average Firing Rate (Hz):';
-        averageFiringRate(i)};
-    set(mTextBox,'String',descr);
-    set(mTextBox,'Units','inches');
-    set(mTextBox,'Position',[3,5.5,3,2.5])
-
-    subplot(3,2,3)
-    plot(masterToneRaster{cellIndex(i,3)}(:,2),masterToneRaster{cellIndex(i,3)}(:,1),'b.')
-    xlim(rasterWindow);
-    ylim([1,length(toneTimes)]);
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[0.1 3 3 2.5]);
-    title('Multiunit Raster Relative to Tone')
-
-    subplot(3,2,4)
-    plot(masterToneHist{cellIndex(i,3)}(:,2),masterToneHist{cellIndex(i,3)}(:,1),...
-        masterToneHist{cellIndex(i,3)}(:,2),stePlotter(:,cellIndex(i,3),1),'b--',...
-        masterToneHist{cellIndex(i,3)}(:,2),stePlotter(:,cellIndex(i,3),2),'b--')
-    xlim(rasterWindow);
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[3.1 3 3 2.5]);
-    title('Multiunit Histogram Relative to Tone')
-
-    subplot(3,2,5)
-    plot(masterToneRaster{cellIndex(i,2)}(:,2),masterToneRaster{cellIndex(i,2)}(:,1),'b.')
-    xlim(rasterWindow);
-    ylim([1,length(toneTimes)]);
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[0.1 0.2 3 2.5]);
-    title('Unit Raster Relative to Tone')
-
-    subplot(3,2,6)
-    plot(masterToneHist{cellIndex(i,2)}(:,2),masterToneHist{cellIndex(i,2)}(:,1),...
-        masterToneHist{cellIndex(i,2)}(:,2),stePlotter(:,cellIndex(i,2),1),'b--',...
-        masterToneHist{cellIndex(i,2)}(:,2),stePlotter(:,cellIndex(i,2),2),'b--')
-    xlim(rasterWindow);
-    set(gca, 'Units', 'inches');
-    set(gca,'OuterPosition',[3.1 0.2 3 2.5]);
-    title('Unit Histogram Relative to Tone')     
-end
+% set(0, 'DefaulttextInterpreter', 'none')
+% 
+% for i = 1:size(cellIndex,1)
+%     hFig = figure;
+%     set(hFig,'Units','inches');
+%     set(hFig,'Position',[1 1 6 8]);
+% 
+%     subplot(3,2,1)
+%     plot(unitWaves{i})
+%     set(gca, 'Units', 'inches');
+%     set(gca,'OuterPosition',[0 5.5 3 2.7]);
+%     title('Average Waveform')
+% 
+%     mTextBox = uicontrol('style','text');
+%     descr = {'File:';
+%         fileName;
+%         'Unit:';
+%         unitNames{cellIndex(i,2)}
+%         'Average Firing Rate (Hz):';
+%         averageFiringRate(i)};
+%     set(mTextBox,'String',descr);
+%     set(mTextBox,'Units','inches');
+%     set(mTextBox,'Position',[3,5.5,3,2.5])
+% 
+%     subplot(3,2,3)
+%     plot(masterToneRaster{cellIndex(i,3)}(:,2),masterToneRaster{cellIndex(i,3)}(:,1),'b.')
+%     xlim(rasterWindow);
+%     ylim([1,length(toneTimes)]);
+%     set(gca, 'Units', 'inches');
+%     set(gca,'OuterPosition',[0.1 3 3 2.5]);
+%     title('Multiunit Raster Relative to Tone')
+% 
+%     subplot(3,2,4)
+%     plot(masterToneHist{cellIndex(i,3)}(:,2),masterToneHist{cellIndex(i,3)}(:,1),...
+%         masterToneHist{cellIndex(i,3)}(:,2),stePlotter(:,cellIndex(i,3),1),'b--',...
+%         masterToneHist{cellIndex(i,3)}(:,2),stePlotter(:,cellIndex(i,3),2),'b--')
+%     xlim(rasterWindow);
+%     set(gca, 'Units', 'inches');
+%     set(gca,'OuterPosition',[3.1 3 3 2.5]);
+%     title('Multiunit Histogram Relative to Tone')
+% 
+%     subplot(3,2,5)
+%     plot(masterToneRaster{cellIndex(i,2)}(:,2),masterToneRaster{cellIndex(i,2)}(:,1),'b.')
+%     xlim(rasterWindow);
+%     ylim([1,length(toneTimes)]);
+%     set(gca, 'Units', 'inches');
+%     set(gca,'OuterPosition',[0.1 0.2 3 2.5]);
+%     title('Unit Raster Relative to Tone')
+% 
+%     subplot(3,2,6)
+%     plot(masterToneHist{cellIndex(i,2)}(:,2),masterToneHist{cellIndex(i,2)}(:,1),...
+%         masterToneHist{cellIndex(i,2)}(:,2),stePlotter(:,cellIndex(i,2),1),'b--',...
+%         masterToneHist{cellIndex(i,2)}(:,2),stePlotter(:,cellIndex(i,2),2),'b--')
+%     xlim(rasterWindow);
+%     set(gca, 'Units', 'inches');
+%     set(gca,'OuterPosition',[3.1 0.2 3 2.5]);
+%     title('Unit Histogram Relative to Tone')     
+% end
 
 output = struct;
 

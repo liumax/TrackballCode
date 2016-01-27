@@ -33,7 +33,7 @@ uniqueResponses = cell(length(rasters),1);
 percentResponses = zeros(length(rasters),1);
 for i = 1:length(rasters)
     uniqueResponses{i} = unique(responseRasters{i}(:,1));
-    percentResponses(i) = length(uniqueResponses{i}/trialReps);
+    percentResponses(i) = length(uniqueResponses{i})/trialReps;
 end
 
 %eliminates data outside of the stats window
