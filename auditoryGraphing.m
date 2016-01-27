@@ -72,7 +72,7 @@ trueUnits = length(unitCells);
 
 cellIndex = [channelID(unitCells,1),unitCells];
 multiunitIndex = [channelID(unitNoise,1),unitNoise];
-for i = 1:length(cellIndex)
+for i = 1:size(cellIndex,1)
     cellIndex(i,3) = multiunitIndex(find(multiunitIndex(:,1) == cellIndex(i,1)),2);
 end
 
@@ -172,7 +172,7 @@ end
 %actual graphing code
 set(0, 'DefaulttextInterpreter', 'none')
 
-for i = 1:length(cellIndex)
+for i = 1:size(cellIndex,1)
     hFig = figure;
     set(hFig,'Units','inches');
     set(hFig,'Position',[1 1 6 8]);
