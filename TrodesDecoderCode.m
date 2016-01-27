@@ -8,7 +8,7 @@
 %You must be in the directory with the actual recordings for this code to
 %work.
 
-fileName = '151217_ML151211A_R17_2400_noSound';
+fileName = '151217_ML151211A_R17_2000_noSound';
 
 extractSpikeBinaryFiles(fileName);
 
