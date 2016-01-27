@@ -1,4 +1,4 @@
-dirName = 'E:\tempAcuteRecordings\Processed\ML151202A';
+dirName = 'Z:\Max\AcuteRecordings\Processed\forAnalysis';
 % dirName = 'E:\tempAcuteRecordings\Processed\ML151104A';
 files = dir(fullfile(dirName,'*.nex'));
 files = {files.name};
@@ -15,6 +15,7 @@ for i=1:length(files)
     y = strfind(x,'.');
     x = x(1:y-1);
     batchDataStructure.(x) = s;
+%     batchDataStructure.(x) = 0;
     [output] = auditoryGraphing(nexFile,fileName);
     batchDataStructure.(x).Plotting = output;
     [statsGraph] = auditoryStatGraph(batchDataStructure,x);
