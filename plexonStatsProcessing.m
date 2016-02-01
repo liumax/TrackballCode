@@ -84,6 +84,7 @@ for i = 1:totalNum
         multiunits.AlphaValues(:,multiHolder) = statsProcessing.AlphaValues{i};
         multiunits.TimePoints = statsProcessing.TimePoints{i};
         multiunits.HistData(:,multiHolder) = statsProcessing.HistData{i}(:,1);
+        multiunits.Placeholder(multiHolder) = i;
         multiHolder = multiHolder + 1;
     elseif statsProcessing.Multi(i) == 0;
         realUnits.Names{realHolder} = statsProcessing.Names{i};
@@ -93,6 +94,7 @@ for i = 1:totalNum
         realUnits.TimePoints = statsProcessing.TimePoints{i};
         realUnits.AverageFire(realHolder) = statsProcessing.AverageFire(i);
         realUnits.HistData(:,realHolder) = statsProcessing.HistData{i}(:,1);
+        realUnits.Placeholder(realHolder) = i;
         realHolder = realHolder + 1;
     end
 end
@@ -101,7 +103,7 @@ end
 %here will be to be above (or rather, below) a threshold. 
 alphaHolder = realUnits.AlphaValues;
 for i =1:100
-    for j = 1:170
+    for j = 1:unitNum
         if alphaHolder(i,j) < 0.001
             alphaHolder(i,j) = 1;
         else
@@ -116,12 +118,12 @@ end
 
 diffEvents = diff(alphaHolder); %this generates diff, which picks up end of string of 1s
 
-firstEvents = cell(170,1);
-firstEnd = cell(170,1);
-eventSum = zeros(170,1);
+firstEvents = cell(unitNum,1);
+firstEnd = cell(unitNum,1);
+eventSum = zeros(unitNum,1);
 
 
-for i = 1:170
+for i = 1:unitNum
     firstEvents{i} = find(alphaHolder(:,i)==1,1,'first');
     firstEnd{i} = find(diffEvents(:,i)==-1,1,'first');
     eventSum(i) = sum(alphaHolder(:,i));
@@ -140,10 +142,14 @@ end
 x= find(responderDur(:,2) >1);
 y = find(responderDur(:,2) == 1);
 
-for i = 1:length(y)
-    figure
-    plot(realUnits.HistData(:,responderDur(y(i),1)));
-end
+%this finds the index in statsProcessing of the correct things
+responderIndex = responderDur(x);
+fullResponderIndex = realUnits.Placeholder(responderIndex);
+
+% for i = 1:length(y)
+%     figure
+%     plot(realUnits.HistData(:,responderDur(y(i),1)));
+% end
 
 responseLags = zeros(length(x),1);
 responseRel = zeros(length(x),1);
@@ -151,6 +157,59 @@ for i = 1:length(x)
     responseLags(i) = realUnits.TimePoints(firstEvents{responderDur(x(i),1)});
     responseRel(i) = realUnits.ResponsePercentage(firstEvents{responderDur(x(i),1)});
 end
+
+%pulls in records from CSV file
+records = table2cell(readtable('records.csv'));
+
+%pulls individual components from table
+recordNames = (records(:,3));
+recordChannels = (records(:,4));
+recordUnits = (records(:,5));
+
+%generates correct unit names
+for i=1:190
+    if recordChannels{i} < 10
+        recordUnitNames{i} = strcat('sig00',num2str(recordChannels{i}),recordUnits{i});
+    else
+        recordUnitNames{i} = strcat('sig0',num2str(recordChannels{i}),recordUnits{i});
+    end
+end
+
+%generate full names for search
+
+for i =1:unitNum
+    unitFullNames{i} = strcat(realUnits.Names{i},'_',realUnits.UnitName{i});
+end
+
+for i = 1:190
+    recordFullNames{i} = strcat(recordNames{i},'_',recordUnitNames{i});
+end
+
+statsProcessing.FullNames = unitFullNames;
+
+%actually finds all the record matches
+for i = 1:190
+    recordCheck = strfind(unitFullNames,recordFullNames{i});
+    recordMatchIndex{i} = find(not(cellfun('isempty', recordCheck)));
+end
+recordMatchIndex = recordMatchIndex';
+
+output = struct;
+for i = 1:length(recordMatchIndex)
+    output.Names{i} = 
+    output.UnitName{i} = 
+    output.HistData(:,i) = 
+    output.ResponsePercentage(:,i) = 
+    output.CellType{i} = 
+end
+
+
+
+
+
+
+
+
 
 
 
