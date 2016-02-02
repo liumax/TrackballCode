@@ -1,5 +1,5 @@
- function [trialStates, portStates, trialParams,trackStates] = ...
-    maxTrialVariablesTuning(fname)   
+ function [portStates] = ...
+    maxTrialVariableNoTask(fname)   
 
 %These are counters
 allLineNum = 0; %This is the counter for all lines. Serves as a general counter for repeats of the while loop
@@ -12,8 +12,6 @@ trialNum = 0; %trial number counter
 tStamps = [];
 inStates = [];
 outStates = [];
-
-
 
 disp(fname); %This displays the fname you are using
 fid = fopen(fname); %fopen opens the file
@@ -49,9 +47,6 @@ end
 portStates.tStamps = tStamps;
 portStates.inStates = inStates;
 portStates.outStates = outStates;
-
-trackStates.times = upAtimes;
-trackStates.velocity = upA;
 
 fclose(fid);
 
