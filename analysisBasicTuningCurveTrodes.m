@@ -16,15 +16,43 @@ histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes.
 %%
-matclustName = 'matclust_param_nt16';
-soundName = '160129_ML150108A_L17_2300_toneFinder';
-mbedName = '160129_ML150108A_L17_2300_toneFinder';
+%extracts matclust file names
+dirName = 'C:\TrodesRecordings\160129_ML150108A_L17_2800_toneFinder\160129_ML150108A_L17_2800_toneFinder.matclust';
+files = dir(fullfile(dirName,'*.mat'));
+files = {files.name};
+matclustFiles = cell(0);
 
-matclustName = strcat(matclustName,'.mat');
+fileHolder = 1;
+
+for i = 1:length(files)
+    if strfind(files{i},'matclust')==1
+        matclustFiles{fileHolder} = files{i};
+        fileHolder = fileHolder + 1;
+    end
+end
+%removes periods which allow structured array formation.
+truncatedNames = matclustFiles;
+numTrodes = length(truncatedNames);
+for i = 1:length(truncatedNames)
+    truncatedNames{i} = truncatedNames{i}(1:find(truncatedNames{i} == '.')-1);
+end
+
+%generates structured array for storage of data
+matclustStruct = struct;
+for i = 1:length(truncatedNames);
+    matclustStruct.(truncatedNames{i}) = [];
+end
+
+%%
+% matclustName = 'matclust_param_nt1';
+soundName = '160129_ML150108A_L17_2800_toneFinder';
+mbedName = '160129_ML150108A_L17_2800_toneFinder';
+
+% matclustName = strcat(matclustName,'.mat');
 soundName = strcat(soundName,'.mat');
 mbedName = strcat(mbedName,'.txt');
 
-matclustFile = open(matclustName);
+% matclustFile = open(matclustName);
 soundFile = open(soundName);
 %%
 %extracts port states!
@@ -38,34 +66,64 @@ master(:,1) = inTimes/1000;
 %extracts frequency information.
 master(:,2) = soundFile.soundData.Frequencies;
 
+matclustStruct.SoundTimes = master(:,1);
+matclustStruct.Frequencies = master(:,2);
+
 %%
 %extracts times of clustered spikes.
+for i = 1:numTrodes
+    matclustFile = open(matclustFiles{i});
+    %this extracts indexes for cluster components
+    clusterSizer= length(matclustFile.clustattrib.clusters);
+    matclustStruct.(truncatedNames{i}).ClusterNumber = length(matclustFile.clustattrib.clusters);
 
-%this extracts indexes for cluster components
-clusterSizer = length(matclustFile.clustattrib.clusters);
+    clusterIndex = cell(clusterSizer,1);
 
-clusterIndex = cell(clusterSizer,1);
-
-for i = 1:clusterSizer
-    clusterIndex{i} = matclustFile.clustattrib.clusters{1,i}.index;
-end
-%replaces indices with real times
-for i = 1:clusterSizer
-    clusterIndex{i} = matclustFile.clustdata.params(clusterIndex{i},1);
-end
-
-%%
-rasterHolder = 1;
-%generate rasters and histograms, ignores frequency information
-for j = 1:clusterSizer
-    rasterHolder = 1;
-    for i = 1:length(inTimes)
-        toneHolder = clusterIndex{j}(clusterIndex{j}>master(i,1)+rasterWindow(1) & clusterIndex{j}<master(i,1)+rasterWindow(2));
-        toneHolder = toneHolder - master(i,1);
-        %This will generate a histogram based on each individual trace,
-        %which can be used to generate standard deviations.
-        [counts,centers] = hist(toneHolder,histBinVector);
-        %below code necessary to prevent bugs with row vectors
+    for j = 1:clusterSizer
+        clusterIndex{j} = matclustFile.clustattrib.clusters{1,j}.index;
+    end
+    %replaces indices with real times
+    for j = 1:clusterSizer
+        clusterIndex{j} = matclustFile.clustdata.params(clusterIndex{j},1);
+    end
+    
+    %puts clusterIndex into structured array
+    matclustStruct.(truncatedNames{i}).SpikeIndices = clusterIndex;
+    
+    masterToneRaster = [];
+    masterToneHist = [];
+    %generate rasters and histograms, ignores frequency information
+    for j = 1:clusterSizer
+        rasterHolder = 1;
+        for k = 1:length(inTimes)
+            toneHolder = clusterIndex{j}(clusterIndex{j}>master(k,1)+rasterWindow(1) & clusterIndex{j}<master(k,1)+rasterWindow(2));
+            toneHolder = toneHolder - master(k,1);
+            %This will generate a histogram based on each individual trace,
+            %which can be used to generate standard deviations.
+            [counts,centers] = hist(toneHolder,histBinVector);
+            %below code necessary to prevent bugs with row vectors
+            countSize = size(counts);
+            centerSize = size(centers);
+            if countSize(1)>countSize(2)
+                counts = counts';
+            end
+            if centerSize(1)>centerSize(2)
+                centers = centers';
+            end
+            indivToneHist{j,k} = [counts'*(1/histBin),centers'];
+            counts = [];
+            centers = [];
+            %fills in large raster plot. holder updated position.
+            toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,1) = k;
+            toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,2) = toneHolder;
+            toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,3) = master(k,2);
+            rasterHolder = rasterHolder + length(toneHolder);
+            toneRaster(toneRaster(:,1) == 0,:) = [];
+            toneHolder = [];
+        end
+        masterToneRaster{j} = toneRaster;
+        toneRaster = zeros(100000,2);
+        [counts,centers] = hist(masterToneRaster{j}(:,2),histBinVector);
         countSize = size(counts);
         centerSize = size(centers);
         if countSize(1)>countSize(2)
@@ -74,83 +132,59 @@ for j = 1:clusterSizer
         if centerSize(1)>centerSize(2)
             centers = centers';
         end
-        indivToneHist{j,i} = [counts'*(1/histBin),centers'];
+        masterToneHist{j} = [counts'*(1/histBin)/length(master(:,1)),centers'];
         counts = [];
         centers = [];
-        %fills in large raster plot. holder updated position.
-        toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,1) = i;
-        toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,2) = toneHolder;
-        rasterHolder = rasterHolder + length(toneHolder);
-        toneRaster(toneRaster(:,1) == 0,:) = [];
-        toneHolder = [];
     end
-    masterToneRaster{j} = toneRaster;
-    toneRaster = zeros(100000,2);
-    [counts,centers] = hist(masterToneRaster{j}(:,2),histBinVector);
-    countSize = size(counts);
-    centerSize = size(centers);
-    if countSize(1)>countSize(2)
-        counts = counts';
+    matclustStruct.(truncatedNames{i}).Rasters = masterToneRaster;
+    matclustStruct.(truncatedNames{i}).Histogram = masterToneHist;
+
+    
+    stdHolder = zeros(length(histBinVector),length(master(:,1)));
+    steHolder = zeros(length(histBinVector),clusterSizer);
+
+    for j = 1:clusterSizer
+        for k = 1:length(master(:,1))
+            stdHolder(:,k) = indivToneHist{j,k}(:,1);
+        end
+        steHolder(:,j) = std(stdHolder,0,2)/sqrt(length(master(:,1)));
     end
-    if centerSize(1)>centerSize(2)
-        centers = centers';
+
+    %generates lines representing standard error.
+    stePlotter = zeros(length(histBinVector),clusterSizer,2);
+    for j = 1:clusterSizer
+        stePlotter(:,j,1) = masterToneHist{j}(:,1)-steHolder(:,j);
+        stePlotter(:,j,2) = masterToneHist{j}(:,1)+steHolder(:,j);
     end
-    masterToneHist{j} = [counts'*(1/histBin)/length(master(:,1)),centers'];
-    counts = [];
-    centers = [];
+    matclustStruct.(truncatedNames{j}).StandardError = steHolder;
+    matclustStruct.(truncatedNames{j}).StandardErrorPlotting = stePlotter;
+    
+    %calculates responses binned per tone frequency
+    processRaster = cell(clusterSizer,1);
+    uniqueFreqs = unique(master(:,2));
+    %this pulls out correct frequency and correct timing, then finds which
+    %indices are correct for both.
+    for j = 1:clusterSizer
+        processRaster{j} = zeros(length(uniqueFreqs),1);
+        for k = 1:length(uniqueFreqs)
+            corrFreq = find(masterToneRaster{j}(:,3) == uniqueFreqs(k));
+            corrTime = find(masterToneRaster{j}(:,2) > tuningWindow(1) & masterToneRaster{j}(:,2) < tuningWindow(2));
+            processRaster{j}(k) = length(intersect(corrFreq,corrTime));
+        end
+    end
+    
+    matclustStruct.(truncatedNames{i}).FrequencyResponse = processRaster;
+    matclustStruct.(truncatedNames{i}).Frequencies = uniqueFreqs;
+    
+    masterToneRaster = [];
+    masterToneHist = [];
+    steHolder = [];
+    stePlotter = [];
+    indivToneHist = [];
+    processRaster = [];
 end
 
-stdHolder = zeros(length(histBinVector),length(master(:,1)));
-steHolder = zeros(length(histBinVector),clusterSizer);
-
-for i = 1:clusterSizer
-    for j = 1:length(master(:,1))
-        stdHolder(:,j) = indivToneHist{i,j}(:,1);
-    end
-    steHolder(:,i) = std(stdHolder,0,2)/sqrt(length(master(:,1)));
-end
-
-%generates lines representing standard error.
-stePlotter = zeros(length(histBinVector),clusterSizer,2);
-for i = 1:clusterSizer
-    stePlotter(:,i,1) = masterToneHist{i}(:,1)-steHolder(:,i);
-    stePlotter(:,i,2) = masterToneHist{i}(:,1)+steHolder(:,i);
-end
 %%
-%This section is for generation of a tuning curve plot. Sadly, no amplitude
-%data appears to be available for this :D
-
-rasterHolder = 1;
-toneRaster = zeros(100000,4);
-freqToneRaster = cell(clusterSizer,1);
-
-for j = 1:clusterSizer
-    for i = 1:length(inTimes)
-        toneHolder = clusterIndex{j}(clusterIndex{j}>master(i,1)+tuningWindow(1) & clusterIndex{j}<master(i,1)+tuningWindow(2));
-        toneHolder = toneHolder - master(i,1);
-        %fills in large raster plot. holder updated position.
-        toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,1) = i;
-        toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,2) = toneHolder;
-        toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,3) = master(i,2);
-%         toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,4) = dBs(i,1);
-        rasterHolder = rasterHolder + length(toneHolder);
-        toneRaster(toneRaster(:,1) == 0,:) = [];
-        toneHolder = [];
-    end
-    freqToneRaster{j} = toneRaster;
-    toneRaster = zeros(100000,2);
-end
-
-processRaster = cell(clusterSizer,1);
-uniqueFreqs = unique(master(:,2));
-
-for i = 1:clusterSizer
-    processRaster{i} = zeros(length(uniqueFreqs),1);
-    for j = 1:length(uniqueFreqs)
-            processRaster{i}(j) = length(find(freqToneRaster{i}(:,3) == uniqueFreqs(j)));
-    end
-end
-
 
 
 
