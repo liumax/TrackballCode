@@ -1,4 +1,4 @@
-dirName = 'Z:\Max\AcuteRecordings\Processed\forAnalysis';
+dirName = 'Z:\Max\AcuteRecordings\Processed\whiteNoiseAnalysis';
 % dirName = 'E:\tempAcuteRecordings\Processed\ML151104A';
 files = dir(fullfile(dirName,'*.nex'));
 files = {files.name};
