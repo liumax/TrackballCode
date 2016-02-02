@@ -65,6 +65,7 @@ master(:,1) = inTimes/1000;
 
 %extracts frequency information.
 master(:,2) = soundFile.soundData.Frequencies;
+uniqueFreqs = unique(master(:,2));
 
 matclustStruct.SoundTimes = master(:,1);
 matclustStruct.Frequencies = master(:,2);
@@ -161,7 +162,7 @@ for i = 1:numTrodes
     
     %calculates responses binned per tone frequency
     processRaster = cell(clusterSizer,1);
-    uniqueFreqs = unique(master(:,2));
+    
     %this pulls out correct frequency and correct timing, then finds which
     %indices are correct for both.
     for j = 1:clusterSizer
@@ -184,7 +185,28 @@ for i = 1:numTrodes
     processRaster = [];
 end
 
-%%
+%%Graphing!
+
+for i = 1:numTrodes
+    for j = 1:matclustStruct.(truncatedNames{i}).ClusterNumber
+        figure
+        title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
+        %plots rasters
+        subplot(3,1,1)
+        plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.')
+        title('Raster')
+        %plots histogram
+        subplot(3,1,2)
+        plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).Histogram{j}(:,1))
+        title('Histogram')
+        subplot(3,1,3)
+        plot(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})
+        title('Frequency Response')
+        set(gca,'XTickLabel',uniqueFreqs)
+    end
+end
 
 
 
