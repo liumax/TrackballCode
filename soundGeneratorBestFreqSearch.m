@@ -7,8 +7,8 @@
 %hopefully increase salience. 
 
 %tone properties
-toneReps = 15; %number of repetitions of each tone/amplitude pair
-toneDur = 0.05; %tone duration in seconds
+toneReps = 20; %number of repetitions of each tone/amplitude pair
+toneDur = 0.1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
 
@@ -69,7 +69,7 @@ rampProfile(end-(onRampDur*fs):end) = [1:-1/(onRampDur*fs):0];
 
 %this makes the profile for the TTL signal
 ttlSig = zeros(L,1);
-ttlSig(1:fs/1000) = 1;
+ttlSig(1:fs/100) = 1;
 
 %actual code for performing tuning
 for i = 1:length(master)
@@ -79,6 +79,7 @@ for i = 1:length(master)
     finalWave = toneWave.*rampProfile;
     soundVector = [finalWave,ttlSig];
     sound(soundVector,fs);
+    length(master) - i
     pause(master(i,2))
 end
 
