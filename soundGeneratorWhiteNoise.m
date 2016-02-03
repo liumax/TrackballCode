@@ -64,6 +64,6 @@ soundVector = [finalWave,ttlSig];
 for i = 1:toneReps
     pause(prePause)
     sound(soundVector,fs);
-    disp(tonereps - i)
+    disp(toneReps - i)
     pause(x(i))
 end
