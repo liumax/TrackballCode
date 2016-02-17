@@ -1,7 +1,7 @@
 [fname pname] = uiputfile('test1.mat');
 
 toneReps = 1; %number of repetitions of each tone/amplitude pair
-toneDur = 0.05; %tone duration in seconds
+toneDur = 0.1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
 
