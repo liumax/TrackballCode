@@ -10,6 +10,9 @@
 
 fileName = '151217_ML151211A_R17_2000_noSound';
 
+%this extracts timestamps
+extractTimeBinaryFile(fileName)
+
 extractSpikeBinaryFiles(fileName);
 
 %this should create matclust file folder
