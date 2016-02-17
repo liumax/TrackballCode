@@ -17,7 +17,7 @@ histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %
 %for graphing purposes.
 %%
 %extracts matclust file names
-dirName = 'C:\TrodesRecordings\160129_ML150108A_L17_2800_toneFinder\160129_ML150108A_L17_2800_toneFinder.matclust';
+dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
 files = dir(fullfile(dirName,'*.mat'));
 files = {files.name};
 matclustFiles = cell(0);
@@ -45,8 +45,8 @@ end
 
 %%
 % matclustName = 'matclust_param_nt1';
-soundName = '160129_ML150108A_L17_2800_toneFinder';
-mbedName = '160129_ML150108A_L17_2800_toneFinder';
+soundName = '160203_ML150108A_R12_2600_toneFinder';
+mbedName = '160203_ML150108A_R12_2600_toneFinder';
 
 % matclustName = strcat(matclustName,'.mat');
 soundName = strcat(soundName,'.mat');
@@ -59,7 +59,7 @@ soundFile = open(soundName);
 [portStates] = maxTrialVariableNoTask(mbedName);
 
 %Extracts times of audio inputs.
-inTimes = find(portStates.inStates(:,inputPort)==1);
+inTimes = find(diff([0;portStates.inStates(:,2)])==1);
 inTimes = portStates.tStamps(inTimes)';
 master(:,1) = inTimes/1000;
 
@@ -157,8 +157,8 @@ for i = 1:numTrodes
         stePlotter(:,j,1) = masterToneHist{j}(:,1)-steHolder(:,j);
         stePlotter(:,j,2) = masterToneHist{j}(:,1)+steHolder(:,j);
     end
-    matclustStruct.(truncatedNames{j}).StandardError = steHolder;
-    matclustStruct.(truncatedNames{j}).StandardErrorPlotting = stePlotter;
+    matclustStruct.(truncatedNames{i}).StandardError = steHolder;
+    matclustStruct.(truncatedNames{i}).StandardErrorPlotting = stePlotter;
     
     %calculates responses binned per tone frequency
     processRaster = cell(clusterSizer,1);
@@ -190,12 +190,12 @@ end
 for i = 1:numTrodes
     for j = 1:matclustStruct.(truncatedNames{i}).ClusterNumber
         figure
-        title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
+        
         %plots rasters
         subplot(3,1,1)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.')
-        title('Raster')
+        title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
         %plots histogram
         subplot(3,1,2)
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
