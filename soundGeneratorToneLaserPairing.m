@@ -5,15 +5,15 @@
 %control over tone settings here
 toneReps = 150; %number of repetitions of each tone/amplitude pair
 totalReps = toneReps;
-toneFreq = 8000; %frequency in Hz
-toneDur = 1; %overall duration in seconds
+toneFreq = 4000; %frequency in Hz
+toneDur = 0.2; %overall duration in seconds
 
 %control over individual sound pips.
 pipNum = 10; %number of tone pips per rep
 pipDur = 50; %duration of each pip in msec
 
 %control over laser settings here
-laserDelay = ; %delay between onset of auditory stimulus and laser onset. 
+laserDelay = 10; %delay between onset of auditory stimulus and laser onset. 
 %positive numbers indicate laser follows auditory stimulus, negative
 %indicates that laser precedes auditory stimulus.
 ttlDur = 0.01; %duration of laser signaling TTL in seconds
@@ -66,6 +66,6 @@ soundVector = [finalWave,ttlSig];
 for i = 1:toneReps
     pause(prePause)
     sound(soundVector,fs);
-    disp(tonereps - i)
+    disp(toneReps - i)
     pause(x(i))
 end
