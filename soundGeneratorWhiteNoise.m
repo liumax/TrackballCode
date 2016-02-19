@@ -3,16 +3,16 @@
 %control over settings here
 toneReps = 150; %number of repetitions of each tone/amplitude pair
 totalReps = toneReps;
-toneDur = 0.2; %tone duration in seconds
+toneDur = 0.1; %tone duration in seconds
 ttlDur = 0.01; %duration of signaling TTL in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs;
 
 %pausing times!
-minPause = 0.8;
-maxPause = 2;
+minPause = 0.6;
+maxPause = 1;
 
-prePause = 0.5; %pause in seconds before tone
+prePause = 0.1; %pause in seconds before tone
 
 %generates random ITIs using exponential function
 k = 2.5;
