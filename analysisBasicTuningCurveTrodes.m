@@ -17,7 +17,7 @@ histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %
 %for graphing purposes.
 %%
 %extracts matclust file names
-dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
+dirName = 'C:\TrodesRecordings\160217_ML160211A_R17M_2200_toneFinderFiles\160217_ML160211A_R17M_2200_toneFinder.matclust';
 files = dir(fullfile(dirName,'*.mat'));
 files = {files.name};
 matclustFiles = cell(0);
@@ -45,8 +45,8 @@ end
 
 %%
 % matclustName = 'matclust_param_nt1';
-soundName = '160203_ML150108A_R12_2600_toneFinder';
-mbedName = '160203_ML150108A_R12_2600_toneFinder';
+soundName = '160217_ML160211A_R17M_2200_toneFinder';
+mbedName = '160217_ML160211A_R17M_2200_toneFinder';
 
 % matclustName = strcat(matclustName,'.mat');
 soundName = strcat(soundName,'.mat');
