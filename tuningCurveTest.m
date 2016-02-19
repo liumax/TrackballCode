@@ -1,14 +1,16 @@
 [fname pname] = uiputfile('test1.mat');
 
-toneReps = 1; %number of repetitions of each tone/amplitude pair
+toneReps = 15; %number of repetitions of each tone/amplitude pair
 toneDur = 0.1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
 
 prePause = 0.1; %pause in seconds before tone
-postPause = 0.2; %pause in seconds after tone
+postPauseMin = 600; %pause in milliseconds after tone
+postPauseMax = 1000; %pause in milliseconds after tone
 
-warningCheck = (postPause - toneDur)<0;
+
+warningCheck = (postPauseMin/1000 - toneDur)<0;
 if warningCheck == 1
     disp('TONE DURATION LONGER THAN ITI')
 end
@@ -72,6 +74,13 @@ for i = 1:length(fillIndex)
     fullList(holder(randIndex),:) = [];
 end
 
+k = 2.5;
+p = (1-exp(-k))*rand(length(master),1);
+tau = (postPauseMax-postPauseMin)/k;
+x = round(postPauseMin + (-log(1-p))*tau); 
+
+master(:,4) = x/1000;
+
 %ramp times for onset and offset in seconds
 onRampDur = 0.005; 
 offRampDur = 0.005;
@@ -85,7 +94,7 @@ rampProfile(end-(onRampDur*fs):end) = [1:-1/(onRampDur*fs):0];
 
 %this makes the profile for the TTL signal
 ttlSig = zeros(L,1);
-ttlSig(1:fs/1000) = 1;
+ttlSig(1:fs/100) = 1;
 
 %actual code for performing tuning
 for i = 1:length(master)
@@ -97,13 +106,15 @@ for i = 1:length(master)
     finalWave = finalWave*toneAmpl;
     soundVector = [finalWave,ttlSig];
     sound(soundVector,fs);
-    pause(postPause)
+    length(master) - i
+    pause(master(i,4))
 end
 
 soundData = struct;
 soundData.Frequencies = master(:,1);
 soundData.dBs = master(:,2);
 soundData.Amplitudes = master(:,3);
+soundData.Delays = master(:,4);
 soundData.ToneRepetitions = toneReps;
 soundData.ToneDuration = toneDur;
 
