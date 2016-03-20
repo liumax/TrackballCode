@@ -5,6 +5,10 @@
 %spikes, matlab file with audio order
 %and log file from MBED. 
 
+% dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
+soundName = '160225_ML160218A_L12_2500_toneFinder';
+mbedName = '160225_ML160218A_L12_2500_toneFinder';
+
 inputPort = 2;
 rasterWindow = [-0.5,0.5];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
@@ -17,8 +21,8 @@ histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %
 %for graphing purposes.
 %%
 %extracts matclust file names
-dirName = 'C:\TrodesRecordings\160217_ML160211A_R17M_2200_toneFinderFiles\160217_ML160211A_R17M_2200_toneFinder.matclust';
-files = dir(fullfile(dirName,'*.mat'));
+
+files = dir(fullfile(pwd,'*.mat'));
 files = {files.name};
 matclustFiles = cell(0);
 
@@ -45,8 +49,7 @@ end
 
 %%
 % matclustName = 'matclust_param_nt1';
-soundName = '160217_ML160211A_R17M_2200_toneFinder';
-mbedName = '160217_ML160211A_R17M_2200_toneFinder';
+
 
 % matclustName = strcat(matclustName,'.mat');
 soundName = strcat(soundName,'.mat');
