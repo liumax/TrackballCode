@@ -79,7 +79,7 @@ trueUnits = length(unitCells);
 
 cellIndex = [channelID(unitCells,1),unitCells];
 multiunitIndex = [channelID(unitNoise,1),unitNoise];
-for i = 1:length(cellIndex)
+for i = 1:size(cellIndex,1)
     cellIndex(i,3) = multiunitIndex(find(multiunitIndex(:,1) == cellIndex(i,1)),2);
 end
 
@@ -87,7 +87,7 @@ end
 %This is to compute average firing rate of every 'true' unit.
 averageFiringRate = zeros(trueUnits,1);
 for i = 1:trueUnits
-    averageFiringRate(i) = length(nexFile.neurons{i,1}.timestamps)/totalTime;
+    averageFiringRate(i) = length(nexFile.neurons{cellIndex(i,2),1}.timestamps)/totalTime;
 end
 
 
@@ -181,13 +181,13 @@ if realEventNum ==1 %if only a single event! this is usually just whitenoise
     
     set(0, 'DefaulttextInterpreter', 'none')
     
-    for i = 1:length(cellIndex)
+    for i = 1:size(cellIndex,1)
         hFig = figure;
         set(hFig,'Units','inches');
         set(hFig,'Position',[1 1 6 8]);
         
         subplot(3,2,1)
-        plot(unitWaves{i})
+        plot(unitWaves{cellIndex(i,2)})
         set(gca, 'Units', 'inches');
         set(gca,'OuterPosition',[0 5.5 3 2.7]);
         title('Average Waveform')
