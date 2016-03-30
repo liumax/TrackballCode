@@ -6,10 +6,10 @@
 %and log file from MBED. 
 
 % dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
-soundName = '160225_ML160218A_L12_2500_fullTuning';
-mbedName = '160225_ML160218A_L12_2500_fullTuning';
+fileName = '160225_ML160218A_L12_2500_fullTuning';
 
-saveName = strcat(soundName,'BasicAnalysis','.mat');
+
+saveName = strcat(fileName,'BasicAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
 
 inputPort = 2;
@@ -55,8 +55,8 @@ end
 
 
 % matclustName = strcat(matclustName,'.mat');
-soundName = strcat(soundName,'.mat');
-mbedName = strcat(mbedName,'.txt');
+soundName = strcat(fileName,'.mat');
+mbedName = strcat(fileName,'.txt');
 
 % matclustFile = open(matclustName);
 soundFile = open(soundName);
