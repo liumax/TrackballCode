@@ -1,16 +1,16 @@
 %this code is to generate white noise. have not added laser functionality.
 
 %control over settings here
-toneReps = 150; %number of repetitions of each tone/amplitude pair
+toneReps = 100; %number of repetitions of each tone/amplitude pair
 totalReps = toneReps;
-toneDur = 0.1; %tone duration in seconds
+toneDur = 0.3; %tone duration in seconds
 ttlDur = 0.01; %duration of signaling TTL in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs;
 
 %pausing times!
-minPause = 0.6;
-maxPause = 1;
+minPause = 1.5;
+maxPause = 3;
 
 prePause = 0.1; %pause in seconds before tone
 

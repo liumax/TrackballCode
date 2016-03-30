@@ -14,7 +14,7 @@ L = toneDur*fs; %number of samples at correct sampling frequency
 
 %pausing times
 prePause = 0.1; %pause in seconds before tone
-postPauseMin = 600; %pause in milliseconds after tone
+postPauseMin = 450; %pause in milliseconds after tone
 postPauseMax = 1000; %pause in milliseconds after tone
 
 warningCheck = (postPauseMin/1000 - toneDur)<0;

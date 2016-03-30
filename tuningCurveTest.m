@@ -1,12 +1,12 @@
 [fname pname] = uiputfile('test1.mat');
 
-toneReps = 15; %number of repetitions of each tone/amplitude pair
+toneReps = 20; %number of repetitions of each tone/amplitude pair
 toneDur = 0.1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
 
 prePause = 0.1; %pause in seconds before tone
-postPauseMin = 600; %pause in milliseconds after tone
+postPauseMin = 450; %pause in milliseconds after tone
 postPauseMax = 1000; %pause in milliseconds after tone
 
 
@@ -17,7 +17,7 @@ end
 
 startF = 4000; %starting frequency in Hz
 endF = 64000; %ending frequency in Hz
-octFrac = 0.5; %fractions of octaves to move
+octFrac = 0.25; %fractions of octaves to move
 
 startdB = 80; %starting decibel value
 enddB = 30; %lowest decibel value
