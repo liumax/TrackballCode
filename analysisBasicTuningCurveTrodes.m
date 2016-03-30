@@ -6,7 +6,7 @@
 %and log file from MBED. 
 
 % dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
-fileName = '160225_ML160218A_L12_2500_toneFinder';
+fileName = '160225_ML160218A_L12_2500_fullTuning';
 
 saveName = strcat(fileName,'BasicAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
@@ -71,11 +71,48 @@ master(:,1) = inTimes/1000;
 %extracts frequency information.
 master(:,2) = soundFile.soundData.Frequencies;
 uniqueFreqs = unique(master(:,2));
+matclustStruct.UniqueFreqs = uniqueFreqs;
 
 matclustStruct.SoundTimes = master(:,1);
 matclustStruct.Frequencies = master(:,2);
+%also stores parameters for rep number and tone duration.
+matclustStruct.ToneReps = soundFile.soundData.ToneRepetitions;
+matclustStruct.ToneDur = soundFile.soundData.ToneDuration;
+
+%here, need to find new index that goes from low freq to high freq, and
+%within each frequency, goes from low amp to high amp
+
+master(:,3) = 1:1:size(master,1);
+master(:,4) = zeros;
+
+sortingCounter = 1;
+
+for i = 1:size(uniqueFreqs,1)
+    sortingFinder = find(master(:,2) == uniqueFreqs(i));
+    master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
+    sortingCounter = sortingCounter + size(sortingFinder,1);
+end
 
 %%
+%extract all spike times total. this is to calculate ISIs for individual
+%clusters
+for i = 1:numTrodes
+    matclustFile = open(matclustFiles{i});
+    %this extracts indexes for cluster components
+    clusterSizer= size(matclustFile.clustattrib.clustersOn,1);
+    matclustStruct.(truncatedNames{i}).ClusterNumber =  clusterSizer;
+    
+    clusterSpikes = cell(clusterSizer,1);
+    clearedSpikes = cell(clusterSizer,1);
+    
+    for j = 1:clusterSizer
+        clusterSpikes{j} = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(j)}.index;
+        clusterSpikes{j} = diff(matclustFile.clustdata.params(clusterSpikes{j},1));
+        clearedSpikes{j} = clusterSpikes{j}(clusterSpikes{j}<0.2); %removes long pauses
+    end
+    matclustStruct.(truncatedNames{i}).ISIData = clearedSpikes;
+end
+
 %extracts times of clustered spikes.
 for i = 1:numTrodes
     matclustFile = open(matclustFiles{i});
@@ -123,6 +160,7 @@ for i = 1:numTrodes
             toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,1) = k;
             toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,2) = toneHolder;
             toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,3) = master(k,2);
+            toneRaster(rasterHolder:rasterHolder + length(toneHolder)-1,4) = master(k,3);
             rasterHolder = rasterHolder + length(toneHolder);
             toneRaster(toneRaster(:,1) == 0,:) = [];
             toneHolder = [];
@@ -195,18 +233,30 @@ end
 for i = 1:numTrodes
     for j = 1:matclustStruct.(truncatedNames{i}).ClusterNumber
         figure
-        
         %plots rasters
-        subplot(3,1,1)
+        subplot(3,2,3)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.')
+        ylim([0 size(matclustStruct.SoundTimes,1)])
         title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
+        %plots frequency organized raster
+        subplot(3,2,4)
+        plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).Rasters{j}(:,4),'k.')
+        hold on
+        for k = 1:size(uniqueFreqs,1)
+            plot(rasterWindow,...
+                [soundFile.soundData.ToneRepetitions*k soundFile.soundData.ToneRepetitions*k],...
+                'k')
+        end
+        ylim([0 size(matclustStruct.SoundTimes,1)])
+        title(strcat('Frequency Sorted ',truncatedNames{i},' Cluster ',num2str(j)))
         %plots histogram
-        subplot(3,1,2)
+        subplot(3,2,5)
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Histogram{j}(:,1))
         title('Histogram')
-        subplot(3,1,3)
+        subplot(3,2,6)
         plot(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})
         title('Frequency Response')
         set(gca,'XTickLabel',uniqueFreqs)

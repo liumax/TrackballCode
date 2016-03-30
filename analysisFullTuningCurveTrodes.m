@@ -118,7 +118,7 @@ for i = 1:numTrodes
     for j = 1:clusterSizer
         clusterSpikes{j} = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(j)}.index;
         clusterSpikes{j} = diff(matclustFile.clustdata.params(clusterSpikes{j},1));
-        clearedSpikes{j} = clusterSpikes{j}(clusterSpikes{j}<0.5); %removes long pauses
+        clearedSpikes{j} = clusterSpikes{j}(clusterSpikes{j}<0.2); %removes long pauses
     end
     matclustStruct.(truncatedNames{i}).ISIData = clearedSpikes;
 end
@@ -270,15 +270,18 @@ end
 for i = 1:numTrodes
     for j = 1:matclustStruct.(truncatedNames{i}).ClusterNumber
         figure
-        %plots rasters
-        subplot(3,2,2)
-        hist(matclustStruct.(truncatedNames{i}).ISIData{j},100)
+        %plots ISI
+        subplot(3,1,1)
+        hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
+        xlim([0 0.1])
         title('ISI')
+        %plots simple rasters
         subplot(3,2,3)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.')
         ylim([0 size(matclustStruct.SoundTimes,1)])
         title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
+        %plots rasters organized by frequency and amp
         subplot(3,2,4)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,5),'k.')
@@ -297,7 +300,12 @@ for i = 1:numTrodes
         %plots histogram
         subplot(3,2,5)
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
-            matclustStruct.(truncatedNames{i}).Histogram{j}(:,1))
+            matclustStruct.(truncatedNames{i}).Histogram{j}(:,1),'k','LineWidth',2)
+        hold on
+        plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).StandardErrorPlotting(:,j,1),'b')
+        plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).StandardErrorPlotting(:,j,2),'b')
         title('Histogram')
         %plots heatmap
         subplot(3,2,6)
