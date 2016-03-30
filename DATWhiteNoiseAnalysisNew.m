@@ -1,4 +1,4 @@
-function [masterToneRaster] = DATWhiteNoiseAnalysisNew(fileName);
+function [s] = DATWhiteNoiseAnalysisNew(fileName);
 % 
 % fileName = 'ML150730B_AP14_DV2913_whitenoise'
 
@@ -7,7 +7,7 @@ function [masterToneRaster] = DATWhiteNoiseAnalysisNew(fileName);
 [nexFile] = readNexFile(fileName);
 
 %Variables I may want to adjust
-rasterWindow = [-1,2];
+rasterWindow = [-2,4];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
 histBin = 0.025; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
@@ -465,6 +465,20 @@ elseif realEventNum == 2
     end
 end
 
+s = struct;
+s.AnalysisWindow = rasterWindow;
+s.AnalysisBins = histBin;
 
+s.Events.EventNames = eventNames;
+s.Events.EventTimeStamps = eventTstamps;
+s.Events.Trials = length(toneTimes);
+
+s.Units.Names = unitNames;
+s.Units.AverageWaves = unitWaves;
+s.Units.AverageFiringRate = averageFiringRate;
+s.Units.UnitIndex = cellIndex;
+
+s.Plotting.Rasters = masterToneRaster;
+s.Plotting.Histograms = masterToneHist;
 
 end
