@@ -1,4 +1,4 @@
-dirName = 'Z:\Max\AcuteRecordings\Processed\whiteNoiseAnalysis';
+dirName = 'E:\626CDatStimAnalysisForF30';
 % dirName = 'E:\tempAcuteRecordings\Processed\ML151104A';
 files = dir(fullfile(dirName,'*.nex'));
 files = {files.name};
@@ -12,8 +12,7 @@ for i=1:length(files)
     %readNexFile to work!
     [s] = auditoryStatsAnalysis(nexFile,fileName);
     x = fileName;
-    y = strfind(x,'.');
-    x = x(1:y-1);
+    x = genvarname(x);
     batchDataStructure.(x) = s;
 %     batchDataStructure.(x) = 0;
     [output] = auditoryGraphing(nexFile,fileName);
