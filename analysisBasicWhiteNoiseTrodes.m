@@ -10,6 +10,9 @@ clear
 % dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
 mbedName = '160225_ML160218A_L12_2500_whiteNoise';
 
+saveName = strcat(fileName,'BasicAnalysis','.mat');
+[fname pname] = uiputfile(saveName);
+
 inputPort = 2;
 rasterWindow = [-0.5,0.5];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
@@ -69,22 +72,8 @@ histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes.
 %%
-%extracts matclust file names
 
-files = dir(fullfile(pwd,'*.mat'));
-files = {files.name};
-matclustFiles = cell(0);
-
-fileHolder = 1;
-
-for i = 1:length(files)
-    if strfind(files{i},'matclust')==1
-        matclustFiles{fileHolder} = files{i};
-        fileHolder = fileHolder + 1;
-    end
-end
 master(:,1) = inTimes/1000;
-
 
 matclustStruct.SoundTimes = master(:,1);
 
@@ -93,13 +82,14 @@ matclustStruct.SoundTimes = master(:,1);
 for i = 1:numTrodes
     matclustFile = open(matclustFiles{i});
     %this extracts indexes for cluster components
-    clusterSizer= length(matclustFile.clustattrib.clusters);
-    matclustStruct.(truncatedNames{i}).ClusterNumber = length(matclustFile.clustattrib.clusters);
+    clusterSizer= size(matclustFile.clustattrib.clustersOn,1);
+    matclustStruct.(truncatedNames{i}).ClusterNumber = clusterSizer;
+    %this will find which clusters actually have info
 
     clusterIndex = cell(clusterSizer,1);
 
     for j = 1:clusterSizer
-        clusterIndex{j} = matclustFile.clustattrib.clusters{1,j}.index;
+        clusterIndex{j} = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(j)}.index;
     end
     %replaces indices with real times
     for j = 1:clusterSizer
@@ -205,7 +195,8 @@ end
 
 clear
 
-
+%saves matclustStruct
+save(fullfile(pname,fname),'matclustStruct');
 
 
 

@@ -6,8 +6,10 @@
 %and log file from MBED. 
 
 % dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
-soundName = '160225_ML160218A_L12_2500_toneFinder';
-mbedName = '160225_ML160218A_L12_2500_toneFinder';
+fileName = '160225_ML160218A_L12_2500_toneFinder';
+
+saveName = strcat(fileName,'BasicAnalysis','.mat');
+[fname pname] = uiputfile(saveName);
 
 inputPort = 2;
 rasterWindow = [-0.5,0.5];
@@ -52,8 +54,8 @@ end
 
 
 % matclustName = strcat(matclustName,'.mat');
-soundName = strcat(soundName,'.mat');
-mbedName = strcat(mbedName,'.txt');
+soundName = strcat(fileName,'.mat');
+mbedName = strcat(fileName,'.txt');
 
 % matclustFile = open(matclustName);
 soundFile = open(soundName);
@@ -78,13 +80,13 @@ matclustStruct.Frequencies = master(:,2);
 for i = 1:numTrodes
     matclustFile = open(matclustFiles{i});
     %this extracts indexes for cluster components
-    clusterSizer= length(matclustFile.clustattrib.clusters);
-    matclustStruct.(truncatedNames{i}).ClusterNumber = length(matclustFile.clustattrib.clusters);
+    clusterSizer= size(matclustFile.clustattrib.clustersOn,1);
+    matclustStruct.(truncatedNames{i}).ClusterNumber =  clusterSizer;
 
     clusterIndex = cell(clusterSizer,1);
 
     for j = 1:clusterSizer
-        clusterIndex{j} = matclustFile.clustattrib.clusters{1,j}.index;
+        clusterIndex{j} = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(j)}.index;
     end
     %replaces indices with real times
     for j = 1:clusterSizer
@@ -212,7 +214,8 @@ for i = 1:numTrodes
 end
 
 
-
+%saves matclustStruct
+save(fullfile(pname,fname),'matclustStruct');
 
 
 

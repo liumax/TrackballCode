@@ -84,13 +84,13 @@ matclustStruct.dBs = master(:,3);
 for i = 1:numTrodes
     matclustFile = open(matclustFiles{i});
     %this extracts indexes for cluster components
-    clusterSizer= length(matclustFile.clustattrib.clusters);
-    matclustStruct.(truncatedNames{i}).ClusterNumber = length(matclustFile.clustattrib.clusters);
+    clusterSizer= size(matclustFile.clustattrib.clustersOn,1);
+    matclustStruct.(truncatedNames{i}).ClusterNumber =  clusterSizer;
 
     clusterIndex = cell(clusterSizer,1);
 
     for j = 1:clusterSizer
-        clusterIndex{j} = matclustFile.clustattrib.clusters{1,j}.index;
+        clusterIndex{j} = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(j)}.index;
     end
     %replaces indices with real times
     for j = 1:clusterSizer
