@@ -6,7 +6,7 @@
 %and log file from MBED. 
 
 % dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
-fileName = '160225_ML160218A_L12_2500_fullTuning';
+fileName = '160405_ML160218B_R17_2559_fullTune2';
 
 
 saveName = strcat(fileName,'BasicAnalysis','.mat');
@@ -125,11 +125,6 @@ end
 
 %extracts times of clustered spikes.
 for i = 1:numTrodes
-    matclustFile = open(matclustFiles{i});
-    %this extracts indexes for cluster components
-    clusterSizer= size(matclustFile.clustattrib.clustersOn,1);
-    matclustStruct.(truncatedNames{i}).ClusterNumber =  clusterSizer;
-
     clusterIndex = cell(clusterSizer,1);
 
     for j = 1:clusterSizer
@@ -194,28 +189,34 @@ for i = 1:numTrodes
     matclustStruct.(truncatedNames{i}).Rasters = masterToneRaster;
     matclustStruct.(truncatedNames{i}).Histogram = masterToneHist;
     
-    %code to pull out histograms of each frequency on its own
-    %this pulls out just frequency and timing, not the tone presentation
-    %number
-    freqHistHolder = matclustStruct.(truncatedNames{i}).Rasters{1}(:,2:3);
-    for j=1:length(matclustStruct.Frequencies);
-        spikeTimeHolder = freqHistHolder(freqHistHolder(:,2) == ...
-            matclustStruct.Frequencies(j),1);
-        [counts centers] = hist(spikeTimeHolder,histBinVector);
-        countSize = size(counts);
-        centerSize = size(centers);
-        if countSize(1)>countSize(2)
-            counts = counts';
+    %code to make histograms for each set of frequencies and amplitudes.
+    %Extracts data from rasters, generates new histograms for each
+    %frequency/amplitude pair.
+    for k = 1:clusterSizer
+        freqHistHolder = matclustStruct.(truncatedNames{i}).Rasters{k}(:,2:4);
+        for j=1:size(matclustStruct.UniqueFreqs,1);
+            for l = 1:size(matclustStruct.UniqueDBs,1);
+                spikeTimeHolder = freqHistHolder(freqHistHolder(:,2) == ...
+                matclustStruct.UniqueFreqs(j) & ...
+                freqHistHolder(:,3) == matclustStruct.UniqueDBs(l),1);
+                [counts centers] = hist(spikeTimeHolder,histBinVector);
+                countSize = size(counts);
+                centerSize = size(centers);
+                if countSize(1)>countSize(2)
+                    counts = counts';
+                end
+                if centerSize(1)>centerSize(2)
+                    centers = centers';
+                end
+                freqDBHist{j,l} = [counts'*(1/histBin)/length(master(:,1)),centers'];
+                counts = [];
+                centers = [];
+            end
         end
-        if centerSize(1)>centerSize(2)
-            centers = centers';
-        end
-        freqSpecHist{j} = [counts'*(1/histBin)/length(master(:,1)),centers'];
-        counts = [];
-        centers = [];
+        masterFreqDBHist{k} = freqDBHist;
     end
     
-    matclustStruct.(truncatedNames{i}).FreqSpecificHist = freqSpecHist;
+    matclustStruct.(truncatedNames{i}).FreqDBSpecificHist = masterFreqDBHist;
 
     
     stdHolder = zeros(length(histBinVector),length(master(:,1)));
@@ -315,7 +316,6 @@ for i = 1:numTrodes
             num2str(max(max(matclustStruct.(truncatedNames{i}).FrequencyResponse{j}))),...
             'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})))))
         set(gca,'YTickLabel',uniqueDBs)
-        set(gca,'XTickLabel',uniqueFreqs)
     end
 end
 
