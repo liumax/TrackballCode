@@ -8,7 +8,7 @@
 clear
 
 % dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
-mbedName = '160225_ML160218A_L12_2500_whiteNoise';
+fileName = 'ML160218B_L17_2965_whiteNoise';
 
 saveName = strcat(fileName,'BasicAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
@@ -56,7 +56,7 @@ end
 
 
 % matclustName = strcat(matclustName,'.mat');
-mbedName = strcat(mbedName,'.txt');
+mbedName = strcat(fileName,'.txt');
 
 %%
 %extracts port states!
