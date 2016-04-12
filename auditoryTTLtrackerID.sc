@@ -24,6 +24,7 @@ int pulseCounter = 0
 int toggle = 0
 int idITI = 500
 int idPulseDur = 10
+int idCounter = 0
 
 clock(slave)
 
@@ -40,11 +41,14 @@ function 1
 end;
 
 function 2
-    while toggle == 1 do every idITI
-        portout[3] = 1
-        do in idPulseDur
-            portout[3] = 0
-    end
+	while toggle == 1 do every idITI
+		portout[3] = 1
+		do in idPulseDur
+			portout[3] = 0
+		end
+		idCounter = idCounter + 1
+		disp(idCounter)
+	end
 end;
 
 callback portin[2] up
@@ -65,8 +69,10 @@ callback portin[4] up
     if toggle == 0 do
         toggle = 1
         trigger(2)
-    elseif toggle == 1 do
+    else do
         toggle = 0
+	idCounter = 0
+	disp('Stop ID')
     end
 end;
 
