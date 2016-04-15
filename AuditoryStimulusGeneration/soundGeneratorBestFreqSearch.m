@@ -8,13 +8,13 @@
 
 %tone properties
 toneReps = 20; %number of repetitions of each tone/amplitude pair
-toneDur = 0.1; %tone duration in seconds
+toneDur = 0.5; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
 
 %pausing times
 prePause = 0.1; %pause in seconds before tone
-postPauseMin = 450; %pause in milliseconds after tone
+postPauseMin = 700; %pause in milliseconds after tone
 postPauseMax = 1000; %pause in milliseconds after tone
 
 warningCheck = (postPauseMin/1000 - toneDur)<0;
@@ -24,7 +24,7 @@ end
 
 %frequency profile
 startF = 4000; %starting frequency in Hz
-endF = 64000; %ending frequency in Hz
+endF = 8000; %ending frequency in Hz
 octFrac = 0.5; %fractions of octaves to move
 
 %this generates a vector with the frequencies that will be used
@@ -57,15 +57,14 @@ x = round(postPauseMin + (-log(1-p))*tau);
 master(:,2) = x/1000;
 
 %ramp times for onset and offset in seconds
-onRampDur = 0.005; 
-offRampDur = 0.005;
-
-%this code generates linear ramps for onset and offset. this reduces issues
-%with sharp white noises
+onRampDur = 0.005*fs; 
+offRampDur = 0.20*fs;
+remainingPoints = L-onRampDur-offRampDur;
+onRampProfile = (cos((0:1:onRampDur)/onRampDur*pi-pi)+1)/2;
+offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;
 rampProfile = ones(L,1);
-rampProfile(1:(onRampDur*fs)) = [0:1/(onRampDur*fs):1-1/(onRampDur*fs)];
-rampProfile(end-(onRampDur*fs):end) = [1:-1/(onRampDur*fs):0];
-
+rampProfile(1:onRampDur+1) = onRampProfile;
+rampProfile(end-offRampDur:end) = offRampProfile;
 
 %this makes the profile for the TTL signal
 ttlSig = zeros(L,1);
