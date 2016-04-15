@@ -16,7 +16,7 @@ if warningCheck == 1
 end
 
 startF = 4000; %starting frequency in Hz
-endF = 64000; %ending frequency in Hz
+endF = 16000; %ending frequency in Hz
 octFrac = 0.25; %fractions of octaves to move
 
 startdB = 80; %starting decibel value
@@ -82,19 +82,20 @@ x = round(postPauseMin + (-log(1-p))*tau);
 master(:,4) = x/1000;
 
 %ramp times for onset and offset in seconds
-onRampDur = 0.005; 
-offRampDur = 0.005;
-
-%this code generates linear ramps for onset and offset. this reduces issues
-%with sharp white noises
+onRampDur = 0.005*fs; 
+offRampDur = 0.005*fs;
+remainingPoints = L-onRampDur-offRampDur;
+onRampProfile = (cos((0:1:onRampDur)/onRampDur*pi-pi)+1)/2;
+offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;
 rampProfile = ones(L,1);
-rampProfile(1:(onRampDur*fs)) = [0:1/(onRampDur*fs):1-1/(onRampDur*fs)];
-rampProfile(end-(onRampDur*fs):end) = [1:-1/(onRampDur*fs):0];
+rampProfile(1:onRampDur+1) = onRampProfile;
+rampProfile(end-offRampDur:end) = offRampProfile;
 
 
 %this makes the profile for the TTL signal
 ttlSig = zeros(L,1);
 ttlSig(1:fs/100) = 1;
+ttlSig(end-(fs/100):end) = 1;
 
 %actual code for performing tuning
 for i = 1:length(master)
