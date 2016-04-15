@@ -6,7 +6,7 @@
 %and log file from MBED. 
 
 % dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
-fileName = '160225_ML160218A_L12_2500_fullTuning';
+fileName = '160405_ML160218B_R17_2372_toneFinder';
 
 saveName = strcat(fileName,'BasicAnalysis','.mat');
 [fname pname] = uiputfile(saveName);

@@ -188,8 +188,7 @@ for i = 1:numTrodes
     end
 end
 
-clear
-
+clearvars -except matclustStruct fname pname
 %saves matclustStruct
 save(fullfile(pname,fname),'matclustStruct');
 
