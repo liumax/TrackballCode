@@ -1,6 +1,11 @@
 holder = matclustStruct;
 
-targetCellRasters = holder.matclust_param_nt15.Rasters{1,1};
+targetCellRasters = holder.matclust_param_nt13.Rasters{1,1};
+
+rasterWindow = [-0.5,0.5];
+histBin = 0.01; %bin size in seconds
+histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
+histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
 
 freqSize = size(holder.UniqueFreqs,1);
 dbSize = size(holder.UniqueDBs,1);
@@ -9,6 +14,9 @@ repSize = holder.ToneReps;
 responseCellArray = cell(6,13);
 averageResp = zeros(6,13);
 averageSTD = zeros(6,13);
+
+indivTrialRasters = cell(6,13);
+trialHolder = cell(repSize,1);
 
 for i = 1:freqSize
     for j = 1:dbSize
@@ -21,24 +29,27 @@ for i = 1:freqSize
         responseHolder = zeros(size(trialNumHolder,1),2);
         responseHolder(:,1) = trialNumHolder;
         for k = 1:repSize
-            indivResponse = size(find(targetCellRasters(:,2)>0 & ...
-            targetCellRasters(:,2)<holder.ToneDur & ...
-            targetCellRasters(:,3)==holder.UniqueFreqs(i) & ...
+            indivResponse = targetCellRasters(targetCellRasters(:,3)==holder.UniqueFreqs(i) & ...
             targetCellRasters(:,4)==holder.UniqueDBs(j) &...
-            targetCellRasters(:,1)==responseHolder(k,1)),1);
-            responseHolder(k,2) = indivResponse;
+            targetCellRasters(:,1)==responseHolder(k,1),2);
+        %This pulls out total number of spikes in the response period
+            responseHolder(k,2) = size(find(indivResponse > 0 & indivResponse < holder.ToneDur),1);
+            %This pulls out the actual spike times for calculating errors. 
+            trialHolder{k} = indivResponse;
         end
-        averageResp(j,i) = mean(responseHolder(:,2))/repSize;
+        averageResp(j,i) = mean(responseHolder(:,2));
         averageSTD(j,i) = std(responseHolder(:,2));
         responseCellArray{j,i} = responseHolder;
-        
-        %now I want to extract individual traces for frequency/amplitude. I
-        %will do this by extracting all points from rasters and making them
-        %into histograms. 
-        extractHolder = targetCellRasters(targetCellRasters(:,3) == holder.UniqueFreqs(i) &...
-            targetCellRasters(:,4) == holder.UniqueDBs(j),2);
-        
-        hist(extractHolder
-        
+        indivTrialRasters{j,i} = trialHolder;        
+    end
+end
+
+
+%below is code for comparing different responses (each individual response)
+%between two conditions. 
+statsHolder = zeros(6,13);
+for i = 1:6
+    for j = 1:13
+        statsHolder(i,j) = signrank(adjustedResponses{i,j}(:,2),origResponses{i,j}(:,2))
     end
 end
