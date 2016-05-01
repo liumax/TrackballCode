@@ -6,7 +6,7 @@
 %and log file from MBED. 
 
 
-fileName = '160411_ML160218E_L17_3137_fullTune';
+fileName = '160405_ML160218B_R17_2559_fullTune2';
 %sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
@@ -14,6 +14,7 @@ saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 %parameters I can play with
 rasterWindow = [-0.5,0.5];
 clusterWindow = [0,0.05];
+lfpWindow = [-0.5,0.5];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
 
 histBin = 0.010; %bin size in seconds
@@ -121,6 +122,98 @@ for i = 1:size(uniqueFreqs,1)
 end
 %now, master(:,5) is the index if I want to sort rasters by frequency and
 %amplitude
+%%
+%now I will extract LFP information!
+
+%this code picks out the LFP folder and moves to that folder
+lfpFinder =dir;
+lfpFinder = {lfpFinder.name};
+lfpIndex = strfind(lfpFinder,'LFP');
+lfpIndex = find(not(cellfun('isempty', lfpIndex)));
+lfpFolder = lfpFinder{lfpIndex};
+newDir = strcat(pwd,'\',lfpFolder);
+cd(newDir)
+%this code pulls the file names of the LFP files, and reorders them in
+%natural order (1,2,10, not 1,10,2)
+lfpFinder = dir;
+lfpFinder = {lfpFinder.name};
+lfpIndex = strfind(lfpFinder,'LFP');
+lfpIndex = find(not(cellfun('isempty', lfpIndex)));
+lfpFiles = cell(size(lfpIndex,2),1);
+lfpFiles= lfpFinder(lfpIndex);
+[cs index] = sort_nat(lfpFiles);
+lfpFiles = cs;
+%this generates the set of colors I want to use
+colorArray = zeros(30,3);
+colorArray(1,:) = [0,0,1];
+for i = 1:14
+    colorArray(i+1,:) = [0,(i)/14,(14-i)/14];
+end
+for i = 1:15
+    colorArray(i+15,:) = [(i)/15,(15-i)/15,0];
+end 
+
+spacer = floor(size(colorArray,1)/size(uniqueFreqs,1));
+plotColors = colorArray(1:spacer:spacer*size(uniqueFreqs,1),:);
+
+%this cell array will hold lfp information organized by nTrode
+lfpMaster = cell(size(lfpFiles,2),1);
+%this next code extracts all LFP traces for all trials. 
+% These are stored into the cell array
+for i = 1:size(lfpFiles,2)
+    lfp = readTrodesExtractedDataFile(lfpFiles{i});
+    %counts number of LFP samples
+    lfpSamples = size(lfp.fields.data,1);
+    %makes LFP time points based on # of samples and decimation
+    %adjust time to actual time (to match master)
+    lfpTimes = (((0:1:lfpSamples-1)*lfp.decimation)+lfp.first_timestamp)'/30000;
+    lfpSignals = lfp.fields.data;
+    %calculates number of samples in the viewing window
+    viewSamples = (lfpWindow(2)-lfpWindow(1))*lfp.clockrate/lfp.decimation;
+    %holds all LFP traces
+    lfpHolder = zeros(size(master,1),viewSamples);
+    for j = 1:size(master,1)
+        finder = find(lfpTimes>master(j,1)+lfpWindow(1),1);
+        lfpHolder(j,:) = lfpSignals(finder:finder+viewSamples-1);
+    end
+    lfpMaster{i} = lfpHolder;
+    lfp = [];
+    lfpSamples = [];
+    lfpTimes = [];
+    lfpSignals = [];
+    finder = [];
+    lfpHolder = [];
+end
+%This generates a 4D array for storage of plotting data
+lfpPlotHolder = zeros(size(lfpFiles,2),size(uniqueDBs,1),size(uniqueFreqs,1),viewSamples);
+
+for i = 1:size(lfpFiles,2)
+    tempHolder = lfpMaster{i};
+    for j = 1:size(uniqueDBs,1)
+        for k = 1:size(uniqueFreqs,1)
+            traceHolder = tempHolder(intersect(find(master(:,3) == uniqueDBs(j)),find(master(:,2) == uniqueFreqs(k))),:);
+            meanHolder = mean(traceHolder);
+            lfpPlotHolder(i,j,k,:) = meanHolder;
+        end
+    end
+end
+
+h = figure;
+hold on
+for i = 1:size(lfpFiles,2)
+    subplot(size(lfpFiles,2)/4,4,i)
+    plot([viewSamples/2 viewSamples/2],[min(min(min(lfpPlotHolder(i,:,:,:)))) max(max(max(lfpPlotHolder(i,:,:,:))))],'k');
+    hold on
+    for j = 1:size(uniqueFreqs,1)
+        x = mean(squeeze(lfpPlotHolder(i,:,j,:)));
+%         plot(x)
+        plot(x,'color',plotColors(j,:));
+    end
+    xlim([0 viewSamples])
+    ylim([min(min(min(lfpPlotHolder(i,:,:,:)))) max(max(max(lfpPlotHolder(i,:,:,:))))])
+    set(gca, 'XTick', [], 'YTick', [])
+end
+
 %%
 
 %extracts times of clustered spikes.
