@@ -23,7 +23,6 @@ histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes.
 
-%
 %Establishes folders and extracts files!
 currFolder = pwd;
 subFolders = genpath(currFolder);
@@ -92,6 +91,9 @@ uniqueFreqs = unique(master(:,2));
 master(:,3) = soundFile.soundData.dBs;
 uniqueDBs = unique(master(:,3));
 
+numFreqs = size(uniqueFreqs,1);
+numDBs = size(uniqueDBs,1);
+
 %stores info on total frequencies and magnitudes
 matclustStruct.UniqueFreqs = uniqueFreqs;
 matclustStruct.UniqueDBs = uniqueDBs;
@@ -113,8 +115,8 @@ master(:,5) = zeros;
 
 sortingCounter = 1;
 
-for i = 1:size(uniqueFreqs,1)
-    for j = 1:size(uniqueDBs,1)
+for i = 1:numFreqs
+    for j = 1:numDBs
         sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == uniqueDBs(j));
         master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
         sortingCounter = sortingCounter + size(sortingFinder,1);
@@ -143,6 +145,7 @@ lfpFiles = cell(size(lfpIndex,2),1);
 lfpFiles= lfpFinder(lfpIndex);
 [cs index] = sort_nat(lfpFiles);
 lfpFiles = cs;
+numLFPs = size(lfpFiles,2);
 %this generates the set of colors I want to use
 colorArray = zeros(30,3);
 colorArray(1,:) = [0,0,1];
@@ -157,10 +160,10 @@ spacer = floor(size(colorArray,1)/size(uniqueFreqs,1));
 plotColors = colorArray(1:spacer:spacer*size(uniqueFreqs,1),:);
 
 %this cell array will hold lfp information organized by nTrode
-lfpMaster = cell(size(lfpFiles,2),1);
+lfpMaster = cell(numLFPs,1);
 %this next code extracts all LFP traces for all trials. 
 % These are stored into the cell array
-for i = 1:size(lfpFiles,2)
+for i = 1:numLFPs
     lfp = readTrodesExtractedDataFile(lfpFiles{i});
     %counts number of LFP samples
     lfpSamples = size(lfp.fields.data,1);
@@ -187,32 +190,83 @@ end
 %This generates a 4D array for storage of plotting data
 lfpPlotHolder = zeros(size(lfpFiles,2),size(uniqueDBs,1),size(uniqueFreqs,1),viewSamples);
 
-for i = 1:size(lfpFiles,2)
+for i = 1:numLFPs
     tempHolder = lfpMaster{i};
-    for j = 1:size(uniqueDBs,1)
-        for k = 1:size(uniqueFreqs,1)
+    for j = 1:numDBs
+        for k = 1:numFreqs
             traceHolder = tempHolder(intersect(find(master(:,3) == uniqueDBs(j)),find(master(:,2) == uniqueFreqs(k))),:);
             meanHolder = mean(traceHolder);
             lfpPlotHolder(i,j,k,:) = meanHolder;
         end
     end
 end
+%makes array of LFP means by frequency
+lfpMeans = zeros(viewSamples,numLFPs,numFreqs);
 
+for i = 1:numLFPs
+    for j = 1:numFreqs
+        lfpMeans(:,i,j) = mean(squeeze(lfpPlotHolder(i,:,j,:)));
+    end
+end
+%calculates absolute min and max for averages, this is to set graph bounds
+minLFP = min(min(min(lfpMeans)));
+maxLFP = max(max(max(lfpMeans)));
+
+%calculates the zero point based on number of samples
+totalLFPWindow = lfpWindow(2)-lfpWindow(1);
+lfpZero = abs(lfpWindow(1))*viewSamples/totalLFPWindow;
+toneEnd = abs(matclustStruct.ToneDur)*viewSamples/totalLFPWindow;
+
+%generates figure with one plot per nTrode, and frequency coded by color. 
 h = figure;
-hold on
-for i = 1:size(lfpFiles,2)
-    subplot(size(lfpFiles,2)/4,4,i)
-    plot([viewSamples/2 viewSamples/2],[min(min(min(lfpPlotHolder(i,:,:,:)))) max(max(max(lfpPlotHolder(i,:,:,:))))],'k');
+set(h, 'Position', [100 100 1000 1000])
+%generates text box with information!
+mTextBox = uicontrol('style','text');
+descr = {'LFP By Frequency';
+    'File:';
+    fileName;
+    'Window (s):';
+    lfpWindow;
+    'Tone Duration(s):';
+    matclustStruct.ToneDur};
+set(mTextBox,'String',descr);
+set(mTextBox,'Units','normalized');
+set(mTextBox,'Position',[0.5,0.74,0.3,0.2])
+for i = 1:numLFPs
+    subplot(numLFPs,2,1+(2*(i-1)))
+    plot([lfpZero lfpZero],[minLFP maxLFP],'k');
     hold on
-    for j = 1:size(uniqueFreqs,1)
-        x = mean(squeeze(lfpPlotHolder(i,:,j,:)));
-%         plot(x)
-        plot(x,'color',plotColors(j,:));
+    plot([lfpZero+toneEnd lfpZero+toneEnd],[minLFP maxLFP],'k')
+    hold on
+    for j = 1:numFreqs
+        plot(lfpMeans(:,i,j),'color',plotColors(j,:));
     end
     xlim([0 viewSamples])
-    ylim([min(min(min(lfpPlotHolder(i,:,:,:)))) max(max(max(lfpPlotHolder(i,:,:,:))))])
+    ylim([minLFP maxLFP])
     set(gca, 'XTick', [], 'YTick', [])
+    sub_pos = get(gca,'position'); % get subplot axis position
+    set(gca,'position',sub_pos.*[1 1 1 1.4]) % stretch its width and height
 end
+%generates cell array of frequency names for use in legend
+freqNameHolder = cell(1,numFreqs);
+for i =1:numFreqs
+    freqNameHolder{i} = num2str(uniqueFreqs(i));
+end
+%generates legend and places correctly in figure.
+hL = legend(freqNameHolder);
+set(hL,'Position', [0.5 0.4 0.3 0.2],'Units','normalized');
+
+legendHolder = zeros(numFreqs,1);
+for i = 1:numFreqs
+    legendHolder(i) = plot(1,'color',plotColors(i,:));
+end
+
+hLegend = legend(legendHolder,uniqueFreqs);
+
+set(h,'Units','Inches');
+pos = get(h,'Position');
+set(h,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(h,'filename','-dpdf','-r0')
 
 %%
 
