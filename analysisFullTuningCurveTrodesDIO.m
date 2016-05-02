@@ -14,7 +14,7 @@ saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 %parameters I can play with
 rasterWindow = [-0.5,0.5];
 clusterWindow = [0,0.05];
-lfpWindow = [-0.5,0.5];
+lfpWindow = [-0.1,0.2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
 
 histBin = 0.010; %bin size in seconds
@@ -24,8 +24,8 @@ histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %
 %for graphing purposes.
 
 %Establishes folders and extracts files!
-currFolder = pwd;
-subFolders = genpath(currFolder);
+homeFolder = pwd;
+subFolders = genpath(homeFolder);
 addpath(subFolders)
 subFoldersCell = strsplit(subFolders,';')';
 
@@ -172,7 +172,7 @@ for i = 1:numLFPs
     lfpTimes = (((0:1:lfpSamples-1)*lfp.decimation)+lfp.first_timestamp)'/30000;
     lfpSignals = lfp.fields.data;
     %calculates number of samples in the viewing window
-    viewSamples = (lfpWindow(2)-lfpWindow(1))*lfp.clockrate/lfp.decimation;
+    viewSamples = round((lfpWindow(2)-lfpWindow(1))*lfp.clockrate/lfp.decimation);
     %holds all LFP traces
     lfpHolder = zeros(size(master,1),viewSamples);
     for j = 1:size(master,1)
@@ -200,6 +200,9 @@ for i = 1:numLFPs
         end
     end
 end
+%removes lfpMaster to clear memory
+lfpMaster = [];
+
 %makes array of LFP means by frequency
 lfpMeans = zeros(viewSamples,numLFPs,numFreqs);
 
@@ -216,6 +219,12 @@ maxLFP = max(max(max(lfpMeans)));
 totalLFPWindow = lfpWindow(2)-lfpWindow(1);
 lfpZero = abs(lfpWindow(1))*viewSamples/totalLFPWindow;
 toneEnd = abs(matclustStruct.ToneDur)*viewSamples/totalLFPWindow;
+
+%saves to structured array!
+matclustStruct.LFP.Means = lfpMeans;
+matclustStruct.LFP.Window = lfpWindow;
+matclustStruct.LFP.ZeroTime = lfpZero;
+matclustStruct.LFP.ToneEndTime = toneEnd;
 
 %generates figure with one plot per nTrode, and frequency coded by color. 
 h = figure;
@@ -256,17 +265,18 @@ end
 hL = legend(freqNameHolder);
 set(hL,'Position', [0.5 0.4 0.3 0.2],'Units','normalized');
 
-legendHolder = zeros(numFreqs,1);
-for i = 1:numFreqs
-    legendHolder(i) = plot(1,'color',plotColors(i,:));
-end
+%returns to original directory
+cd(homeFolder)
 
-hLegend = legend(legendHolder,uniqueFreqs);
+%save as matlab figure with correct name (fileName+LFP)
+lfpName = strcat(fileName,'LFPGraph');
+savefig(h,lfpName);
 
+%save as PDF with correct name
 set(h,'Units','Inches');
 pos = get(h,'Position');
 set(h,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(h,'filename','-dpdf','-r0')
+print(h,lfpName,'-dpdf','-r0')
 
 %%
 
@@ -500,23 +510,23 @@ end
 
 for i = 1:numTrodes
     for j = 1:matclustStruct.(truncatedNames{i}).ClusterNumber
-        hFig = figure
-        set(hFig, 'Position', [100 100 1000 800])
+        hFig = figure;
+        set(hFig, 'Position', [100 100 1280 1000])
         %plots average waveform
-        subplot(4,4,1)
+        subplot(4,3,1)
         hold on
         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,2),'LineWidth',2)
         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,1),'r','LineWidth',1)
         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,3),'r','LineWidth',1)
         title(strcat('AverageFiringRate:',num2str(matclustStruct.(truncatedNames{i}).AverageFiringRate(j))))
         %plots ISI
-        subplot(4,4,5)
+        subplot(4,3,4)
         hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
         xlim([0 0.05])
         title('ISI')
         
         %plots heatmap
-        subplot(4,4,9)
+        subplot(4,3,7)
         imagesc(matclustStruct.UniqueFreqs,...
             matclustStruct.UniqueDBs,...
             matclustStruct.(truncatedNames{i}).FrequencyResponse{j})
@@ -526,7 +536,7 @@ for i = 1:numTrodes
             'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})))))
         
         %plots reliability of response in heat map
-        subplot(4,4,13)
+        subplot(4,3,10)
         imagesc(matclustStruct.UniqueFreqs,...
             matclustStruct.UniqueDBs,...
             matclustStruct.(truncatedNames{i}).ResponseReliability{j}')
@@ -536,13 +546,13 @@ for i = 1:numTrodes
             'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).ResponseReliability{j})))))
 
         %plots simple rasters
-        subplot(2,4,2)
+        subplot(2,3,2)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.')
         ylim([0 size(matclustStruct.SoundTimes,1)])
         title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
         %plots rasters organized by frequency and amp
-        subplot(2,4,6)
+        subplot(2,3,5)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,5),'k.')
         hold on
@@ -558,7 +568,7 @@ for i = 1:numTrodes
         ylim([0 size(matclustStruct.SoundTimes,1)])
         title('Sorted Ascending')
         %plots histogram
-        subplot(2,4,3)
+        subplot(2,3,3)
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Histogram{j}(:,1),'k','LineWidth',2)
         hold on
@@ -566,9 +576,11 @@ for i = 1:numTrodes
             matclustStruct.(truncatedNames{i}).StandardErrorPlotting(:,j,1),'b')
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
             matclustStruct.(truncatedNames{i}).StandardErrorPlotting(:,j,2),'b')
+        plot([0 0],[ylim],'k');
+        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'k');
         title('Histogram')
         %plots histograms by frequencies
-        subplot(2,4,7)
+        subplot(2,3,6)
         x = matclustStruct.(truncatedNames{i}).AverageFrequencyHistogram{j};
         y = x/(max(max(x)));
         for k = 1:size(matclustStruct.UniqueFreqs,1)
@@ -576,8 +588,22 @@ for i = 1:numTrodes
         end
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
             y,'LineWidth',1)
+        hold on
+        plot([0 0],[0 k*0.3],'k');
+        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[0 k*0.3],'k');
         ylim([0 size(matclustStruct.UniqueFreqs,1)*0.3+0.5])
         title('Histogram By Frequency Ascending')
+        hL = legend(freqNameHolder);
+        set(hL,'Position', [0.9 0.2 0.1 0.2],'Units','normalized');
+        %save as matlab figure with correct name (fileName+LFP)
+        spikeGraphName = strcat(truncatedNames{i},' Cluster ',num2str(j),'SpikeAnalysis');
+        savefig(hFig,spikeGraphName);
+
+        %save as PDF with correct name
+        set(hFig,'Units','Inches');
+        pos = get(hFig,'Position');
+        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+        print(hFig,spikeGraphName,'-dpdf','-r0')
     end
 end
 
