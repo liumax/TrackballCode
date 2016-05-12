@@ -6,13 +6,15 @@
 %and log file from MBED. 
 
 % dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
-fileName = '160405_ML160218B_R17_2372_toneFinder';
+fileName = '160510_ML160410D_L17_2032_toneFinder';
 
 saveName = strcat(fileName,'BasicAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
 
 inputPort = 2;
 rasterWindow = [-0.5,0.5];
+clusterWindow = [0,0.05];
+lfpWindow = [-0.1,0.2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
 tuningWindow = [0,0.1]; %window over which responses are integrated for calculation of tuning!
 
@@ -22,6 +24,24 @@ histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes.
 %%
+%extracts matclust file names
+
+%Establishes folders and extracts files!
+homeFolder = pwd;
+subFolders = genpath(homeFolder);
+addpath(subFolders)
+subFoldersCell = strsplit(subFolders,';')';
+
+%find DIO folder and D1 file for analysis
+dioFinder = strfind(subFoldersCell,'DIO');%finds DIO folder
+dioFinder = find(~cellfun(@isempty,dioFinder)); %determines empty cells, finds index for target cell
+dioFolderName = subFoldersCell{dioFinder}; %pulls out the name for the DIO folder
+dioFolderSearch = dir(dioFolderName);%pulls dir from DIO folder
+dioFileNames = {dioFolderSearch.name}';%pulls names section
+D1FileFinder = strfind(dioFileNames,'D1'); %examines names for D1
+D1FileFinder = find(~cellfun(@isempty,D1FileFinder));%extracts index of correct file
+D1FileName = dioFileNames{D1FileFinder};%pulls out actual file name
+
 %extracts matclust file names
 
 files = dir(fullfile(pwd,'*.mat'));
@@ -36,6 +56,7 @@ for i = 1:length(files)
         fileHolder = fileHolder + 1;
     end
 end
+
 %removes periods which allow structured array formation.
 truncatedNames = matclustFiles;
 numTrodes = length(truncatedNames);
@@ -50,28 +71,24 @@ for i = 1:length(truncatedNames);
 end
 
 %%
-% matclustName = 'matclust_param_nt1';
+%extracts DIO stuffs! this code is written to extract inputs for d1
+[DIOData] = readTrodesExtractedDataFile(D1FileName);
+%extracts port states and times of changes
+dioState = double(DIOData.fields(2).data);
+dioTime = double(DIOData.fields(1).data);
 
+inTimes = dioTime(dioState == 1)/30000;
+dioState = [];
+dioTime = [];
+master = zeros(size(inTimes,1),5);
+master(:,1) = inTimes;
+inTimes = [];
 
-% matclustName = strcat(matclustName,'.mat');
+%%
+%% pulls out sound data array
 soundName = strcat(fileName,'.mat');
-mbedName = strcat(fileName,'.txt');
-
-% matclustFile = open(matclustName);
 soundFile = open(soundName);
 %%
-%extracts port states!
-[portStates] = maxTrialVariableNoTask(mbedName);
-
-%Extracts times of audio inputs.
-inTimes = find(diff([0;portStates.inStates(:,2)])==1);
-inTimes = portStates.tStamps(inTimes)';
-master(:,1) = inTimes/1000;
-
-%extracts frequency information.
-master(:,2) = soundFile.soundData.Frequencies;
-uniqueFreqs = unique(master(:,2));
-matclustStruct.UniqueFreqs = uniqueFreqs;
 
 matclustStruct.SoundTimes = master(:,1);
 matclustStruct.Frequencies = master(:,2);
