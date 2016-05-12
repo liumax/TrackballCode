@@ -41,7 +41,6 @@ D1FileName = dioFileNames{D1FileFinder};%pulls out actual file name
 
 %%
 %extracts matclust file names
-
 files = dir(fullfile(pwd,'*.mat'));
 files = {files.name};
 matclustFiles = cell(0);
@@ -124,6 +123,7 @@ end
 %amplitude
 %%
 
+%%
 %extracts times of clustered spikes.
 for i = 1:numTrodes
     %extract all spike times total. this is to calculate ISIs for individual
@@ -349,7 +349,7 @@ for i = 1:numTrodes
     indivToneHist = [];
     processRaster = [];
 end
-
+%%
 %%Graphing!
 
 for i = 1:numTrodes
@@ -434,7 +434,7 @@ for i = 1:numTrodes
         title('Histogram By Frequency Ascending')
     end
 end
-
+%%
 rmpath(subFolders) %removes folders from the path. This is to reduce chances for confusion with multiple runs of code
 clearvars -except matclustStruct fname pname
 %saves matclustStruct
