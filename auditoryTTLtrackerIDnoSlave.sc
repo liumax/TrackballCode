@@ -11,7 +11,7 @@
 %count is a holder for leaky integration. intWindow is the time over which
 %leaky integrator works. 
 int ttlCount = 0
-int intWindow = 200 %this is the window over which counts are integrated
+int intWindow = 10 %this is the window over which counts are integrated
 
 %These are variables for tone triggered TTLs. names describe function.
 int pulseNum = 20
@@ -23,7 +23,7 @@ int pulseCounter = 0
 %has been changed, also has TTL pulse information.
 int toggle = 0
 int idITI = 500
-int idPulseDur = 10
+int idPulseDur = 3
 int idCounter = 0
 
 function 1
@@ -51,7 +51,7 @@ end;
 
 callback portin[2] up
 	portout[1] = 1
-	do in 5
+	do in 2
 		portout[1] = 0
 	end
     ttlCount = ttlCount + 1
