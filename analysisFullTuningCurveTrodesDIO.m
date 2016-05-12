@@ -6,7 +6,7 @@
 %and log file from MBED. 
 
 
-fileName = '160405_ML160218B_R17_2559_fullTune2';
+fileName = '160511_ML160410D_R17_3300_fullTuninglowerDB';
 %sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
@@ -17,7 +17,7 @@ clusterWindow = [0,0.05];
 lfpWindow = [-0.1,0.2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
 
-histBin = 0.010; %bin size in seconds
+histBin = 0.005; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
 histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
@@ -30,32 +30,15 @@ addpath(subFolders)
 subFoldersCell = strsplit(subFolders,';')';
 
 %find DIO folder and D1 file for analysis
-dioFinder = strfind(subFoldersCell,'DIO');%finds DIO folder
-dioFinder = find(~cellfun(@isempty,dioFinder)); %determines empty cells, finds index for target cell
-dioFolderName = subFoldersCell{dioFinder}; %pulls out the name for the DIO folder
-dioFolderSearch = dir(dioFolderName);%pulls dir from DIO folder
-dioFileNames = {dioFolderSearch.name}';%pulls names section
-D1FileFinder = strfind(dioFileNames,'D1'); %examines names for D1
-D1FileFinder = find(~cellfun(@isempty,D1FileFinder));%extracts index of correct file
-D1FileName = dioFileNames{D1FileFinder};%pulls out actual file name
+[D1FileName] = functionFileFinder(subFoldersCell,'DIO','D1');
+D1FileName = D1FileName{1};
+
+%find matclust folder and matclust files for analysis
+[matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
+
 
 %%
-%extracts matclust file names
-
-files = dir(fullfile(pwd,'*.mat'));
-files = {files.name};
-matclustFiles = cell(0);
-
-fileHolder = 1;
-
-for i = 1:length(files)
-    if strfind(files{i},'matclust')==1
-        matclustFiles{fileHolder} = files{i};
-        fileHolder = fileHolder + 1;
-    end
-end
-
-%removes periods which allow structured array formation.
+%extracts matclust file names and removes periods which allow structured array formation.
 truncatedNames = matclustFiles;
 numTrodes = length(truncatedNames);
 for i = 1:length(truncatedNames)
@@ -317,7 +300,7 @@ for i = 1:numTrodes
     matclustStruct.(truncatedNames{i}).SpikeTimes = clusterIndex;
     
     %calculates average firing rate
-    totalTime = matclustFile.clustdata.datarange(2,1);
+    totalTime = matclustFile.clustdata.datarange(2,1)-matclustFile.clustdata.datarange(1,1);
     averageFiring = zeros(clusterSizer,1);
     for j = 1:clusterSizer
         averageFiring(j) = size(clusterIndex{j},1)/totalTime;
@@ -511,7 +494,7 @@ end
 for i = 1:numTrodes
     for j = 1:matclustStruct.(truncatedNames{i}).ClusterNumber
         hFig = figure;
-        set(hFig, 'Position', [100 100 1280 1000])
+        set(hFig, 'Position', [10 10 1280 1000])
         %plots average waveform
         subplot(4,3,1)
         hold on
@@ -549,6 +532,9 @@ for i = 1:numTrodes
         subplot(2,3,2)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.')
+        hold on
+        plot([0 0],[ylim],'r');
+        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
         ylim([0 size(matclustStruct.SoundTimes,1)])
         title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
         %plots rasters organized by frequency and amp
@@ -556,6 +542,8 @@ for i = 1:numTrodes
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,5),'k.')
         hold on
+        plot([0 0],[ylim],'r');
+        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
         for k = 1:size(matclustStruct.UniqueFreqs,1)*size(matclustStruct.UniqueDBs,1)
             plot(matclustStruct.RasterLimits,...
                 [soundFile.soundData.ToneRepetitions*k soundFile.soundData.ToneRepetitions*k])
@@ -576,8 +564,8 @@ for i = 1:numTrodes
             matclustStruct.(truncatedNames{i}).StandardErrorPlotting(:,j,1),'b')
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
             matclustStruct.(truncatedNames{i}).StandardErrorPlotting(:,j,2),'b')
-        plot([0 0],[ylim],'k');
-        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'k');
+        plot([0 0],[ylim],'r');
+        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
         title('Histogram')
         %plots histograms by frequencies
         subplot(2,3,6)
