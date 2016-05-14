@@ -6,13 +6,13 @@
 %and log file from MBED. 
 
 
-fileName = '160511_ML160410D_R17_3300_fullTuninglowerDB';
+fileName = '160513_ML160410E_R17_3000_fullTuning';
 %sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
 
 %parameters I can play with
-rasterWindow = [-0.5,0.5];
+rasterWindow = [-0.3,0.4];
 clusterWindow = [0,0.05];
 lfpWindow = [-0.1,0.2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
@@ -51,7 +51,20 @@ for i = 1:length(truncatedNames);
     matclustStruct.(truncatedNames{i}) = [];
 end
 
-%%
+%% pulls out sound data array
+soundName = strcat(fileName,'.mat');
+soundFile = open(soundName);
+
+%extracts frequency information.
+master = zeros(size(soundFile.soundData.Frequencies,1),5);
+master(:,2) = soundFile.soundData.Frequencies;
+uniqueFreqs = unique(master(:,2));
+master(:,3) = soundFile.soundData.dBs;
+uniqueDBs = unique(master(:,3));
+
+numFreqs = size(uniqueFreqs,1);
+numDBs = size(uniqueDBs,1);
+
 %extracts DIO stuffs! this code is written to extract inputs for d1
 [DIOData] = readTrodesExtractedDataFile(D1FileName);
 %extracts port states and times of changes
@@ -61,21 +74,16 @@ dioTime = double(DIOData.fields(1).data);
 inTimes = dioTime(dioState == 1)/30000;
 dioState = [];
 dioTime = [];
-master = zeros(size(inTimes,1),5);
+if size(inTimes,1) ~= size(master,1)
+    if size(inTimes,1) == size(master,1) + 1
+        inTimes(end) = [];
+    else
+        disp('HOLY SHIT YOUR TTL PULSES TO DIO 1 ARE FUCKED')
+    end
+end
 master(:,1) = inTimes;
 inTimes = [];
-%% pulls out sound data array
-soundName = strcat(fileName,'.mat');
-soundFile = open(soundName);
 
-%extracts frequency information.
-master(:,2) = soundFile.soundData.Frequencies;
-uniqueFreqs = unique(master(:,2));
-master(:,3) = soundFile.soundData.dBs;
-uniqueDBs = unique(master(:,3));
-
-numFreqs = size(uniqueFreqs,1);
-numDBs = size(uniqueDBs,1);
 
 %stores info on total frequencies and magnitudes
 matclustStruct.UniqueFreqs = uniqueFreqs;
@@ -109,7 +117,7 @@ end
 %amplitude
 %%
 %now I will extract LFP information!
-
+disp('Starting LFP Analysis')
 %this code picks out the LFP folder and moves to that folder
 lfpFinder =dir;
 lfpFinder = {lfpFinder.name};
@@ -130,17 +138,19 @@ lfpFiles= lfpFinder(lfpIndex);
 lfpFiles = cs;
 numLFPs = size(lfpFiles,2);
 %this generates the set of colors I want to use
-colorArray = zeros(30,3);
+colorArray = zeros(60,3);
 colorArray(1,:) = [0,0,1];
-for i = 1:14
-    colorArray(i+1,:) = [0,(i)/14,(14-i)/14];
+for i = 1:29
+    colorArray(i+1,:) = [0,(i)/29,(29-i)/29];
 end
-for i = 1:15
-    colorArray(i+15,:) = [(i)/15,(15-i)/15,0];
+for i = 1:30
+    colorArray(i+30,:) = [(i)/30,(30-i)/30,0];
 end 
 
-spacer = floor(size(colorArray,1)/size(uniqueFreqs,1));
-plotColors = colorArray(1:spacer:spacer*size(uniqueFreqs,1),:);
+spacer = size(colorArray,1)/size(uniqueFreqs,1);
+spacerArray = 1:1:size(uniqueFreqs,1);
+spacerArray = round(spacerArray*spacer);
+plotColors = colorArray(spacerArray,:);
 
 %this cell array will hold lfp information organized by nTrode
 lfpMaster = cell(numLFPs,1);
@@ -169,7 +179,9 @@ for i = 1:numLFPs
     lfpSignals = [];
     finder = [];
     lfpHolder = [];
+    disp(i)
 end
+disp('Done with Intial LFP Storage')
 %This generates a 4D array for storage of plotting data
 lfpPlotHolder = zeros(size(lfpFiles,2),size(uniqueDBs,1),size(uniqueFreqs,1),viewSamples);
 
@@ -185,7 +197,7 @@ for i = 1:numLFPs
 end
 %removes lfpMaster to clear memory
 lfpMaster = [];
-
+disp('Done with Storing All Plot Data')
 %makes array of LFP means by frequency
 lfpMeans = zeros(viewSamples,numLFPs,numFreqs);
 
@@ -194,6 +206,7 @@ for i = 1:numLFPs
         lfpMeans(:,i,j) = mean(squeeze(lfpPlotHolder(i,:,j,:)));
     end
 end
+disp('Done Calulating Means')
 %calculates absolute min and max for averages, this is to set graph bounds
 minLFP = min(min(min(lfpMeans)));
 maxLFP = max(max(max(lfpMeans)));
@@ -224,6 +237,13 @@ descr = {'LFP By Frequency';
 set(mTextBox,'String',descr);
 set(mTextBox,'Units','normalized');
 set(mTextBox,'Position',[0.5,0.74,0.3,0.2])
+
+%generates cell array of frequency names for use in legend
+freqNameHolder = cell(1,numFreqs);
+for i =1:numFreqs
+    freqNameHolder{i} = num2str(uniqueFreqs(i));
+end
+
 for i = 1:numLFPs
     subplot(numLFPs,2,1+(2*(i-1)))
     plot([lfpZero lfpZero],[minLFP maxLFP],'k');
@@ -233,17 +253,14 @@ for i = 1:numLFPs
     for j = 1:numFreqs
         plot(lfpMeans(:,i,j),'color',plotColors(j,:));
     end
+    
     xlim([0 viewSamples])
     ylim([minLFP maxLFP])
     set(gca, 'XTick', [], 'YTick', [])
     sub_pos = get(gca,'position'); % get subplot axis position
     set(gca,'position',sub_pos.*[1 1 1 1.4]) % stretch its width and height
 end
-%generates cell array of frequency names for use in legend
-freqNameHolder = cell(1,numFreqs);
-for i =1:numFreqs
-    freqNameHolder{i} = num2str(uniqueFreqs(i));
-end
+
 %generates legend and places correctly in figure.
 hL = legend(freqNameHolder);
 set(hL,'Position', [0.5 0.4 0.3 0.2],'Units','normalized');
