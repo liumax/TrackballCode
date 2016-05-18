@@ -6,7 +6,7 @@
 %and log file from MBED. 
 
 
-fileName = '160513_ML160410E_R17_3000_fullTuningtenthOctave';
+fileName = '160518_ML160410F_L17_3001_fullTuningtenthOctave';
 %sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
@@ -16,6 +16,7 @@ rasterWindow = [-0.3,0.4];
 clusterWindow = [0,0.05];
 lfpWindow = [-0.1,0.2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
+rpvTime = 0.0013;
 
 histBin = 0.005; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
@@ -72,16 +73,24 @@ dioState = double(DIOData.fields(2).data);
 dioTime = double(DIOData.fields(1).data);
 
 inTimes = dioTime(dioState == 1)/30000;
+inTimesSpacing = diff(inTimes);
 dioState = [];
 dioTime = [];
 if size(inTimes,1) ~= size(master,1)
     if size(inTimes,1) == size(master,1) + 1
         inTimes(end) = [];
+        master(:,1) = inTimes;
+    elseif inTimesSpacing(size(master,1)) > 3*mean(inTimesSpacing)
+        master(:,1) = inTimes(1:size(master,1));
+        disp('HOLY SHIT YOUR TTL PULSES TO DIO 1 ARE FUCKED, BUT ADJUSTED')
     else
-        disp('HOLY SHIT YOUR TTL PULSES TO DIO 1 ARE FUCKED')
+        disp('I DONT KNOW WHATS GOING ON')
+        pause
     end
+elseif size(inTimes,1) == size(master,1)
+    master(:,1) = inTimes;
 end
-master(:,1) = inTimes;
+
 inTimes = [];
 
 
@@ -97,6 +106,28 @@ matclustStruct.dBs = master(:,3);
 %also stores parameters for rep number and tone duration.
 matclustStruct.ToneReps = soundFile.soundData.ToneRepetitions;
 matclustStruct.ToneDur = soundFile.soundData.ToneDuration;
+
+%This finds the number of octaves
+totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(1)));
+%This then makes an array of the full octave steps I've made
+octaveRange = zeros(totalOctaves + 1,2);
+octaveRange(1,1) = uniqueFreqs(1);
+for i = 1:totalOctaves
+    octaveRange (i+1,1) = octaveRange(i,1)*2;
+end
+%next, I find the positions from uniqueFreqs that match octaveRange
+for i = 1:size(octaveRange,1);
+    octaveRange(i,2) = find(round(uniqueFreqs) == octaveRange(i,1));
+end
+
+%now lets do the same for dBs!
+totalDBs = (uniqueDBs(end) - uniqueDBs(1))/20;
+dbRange = zeros(totalDBs + 1,2);
+dbRange(:,1) = uniqueDBs(1):20:uniqueDBs(end);
+for i = 1:size(dbRange,1)
+    dbRange(i,2) = find(uniqueDBs == dbRange(i,1));
+end
+
 
 %here, need to find new index that goes from low freq to high freq, and
 %within each frequency, goes from low amp to high amp
@@ -137,17 +168,22 @@ for i = 1:numTrodes
     clusterSpikes = cell(clusterSizer,1);
     clusterWaves = cell(clusterSizer,1);
     clearedSpikes = cell(clusterSizer,1);
+    rpvViolationPercent = zeros(clusterSizer,1);
     %calculates inter-spike interval, saves this information
     for j = 1:clusterSizer
         %this line pulls the actual indices of spikes for the cluster
         clusterSpikes{j} = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(j)}.index;
         %this subtracts all adjacent spikes
         diffSpikes = diff(matclustFile.clustdata.params(clusterSpikes{j},1));
-        %this then windows that out, to only plot the small ISIs
+        %this calculates all spikes within the refractory period violation
+        %period
+        rpvViolationPercent(j) = size(diffSpikes(diffSpikes<rpvTime),1)/size(clusterSpikes{j},1)*100;
+        %this then windows out spikes, to only plot the small ISIs
         clearedSpikes{j} = diffSpikes(diffSpikes<clusterWindow(2)); %removes long pauses
         diffSpikes = [];
     end
     matclustStruct.(truncatedNames{i}).ISIData = clearedSpikes;
+    matclustStruct.(truncatedNames{i}).RPVs = rpvViolationPercent;
     clearedSpikes = [];
     
     %prepares cluster indices. Finds actual points of index per cluster.
@@ -367,14 +403,16 @@ for i = 1:numTrodes
         subplot(4,3,4)
         hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
         xlim([0 0.05])
-        title('ISI')
+        title(strcat('ISI RPV %: ',num2str(matclustStruct.(truncatedNames{i}).RPVs(j))))
         
         %plots heatmap
         subplot(4,3,7)
-        imagesc(matclustStruct.UniqueFreqs,...
-            matclustStruct.UniqueDBs,...
-            matclustStruct.(truncatedNames{i}).FrequencyResponse{j})
+        imagesc(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})
         colormap hot
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
         title(strcat('Frequency Response.Max',...
             num2str(max(max(matclustStruct.(truncatedNames{i}).FrequencyResponse{j}))),...
             'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})))))
@@ -385,6 +423,10 @@ for i = 1:numTrodes
             matclustStruct.UniqueDBs,...
             matclustStruct.(truncatedNames{i}).ResponseReliability{j}')
         colormap hot
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
         title(strcat('ResponseReliability.Max',...
             num2str(max(max(matclustStruct.(truncatedNames{i}).ResponseReliability{j}))),...
             'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).ResponseReliability{j})))))
