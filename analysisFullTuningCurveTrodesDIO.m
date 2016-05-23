@@ -6,7 +6,7 @@
 %and log file from MBED. 
 
 
-fileName = '160513_ML160410E_R17_3000_fullTuning';
+fileName = '160511_ML160410D_R17_2402_fullTuningFineGrain';
 %sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
@@ -553,6 +553,7 @@ for i = 1:numTrodes
         plot([0 0],[ylim],'r');
         plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
         ylim([0 size(matclustStruct.SoundTimes,1)])
+        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
         title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
         %plots rasters organized by frequency and amp
         subplot(2,3,5)
@@ -571,6 +572,7 @@ for i = 1:numTrodes
                 'k','LineWidth',2)
         end
         ylim([0 size(matclustStruct.SoundTimes,1)])
+        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
         title('Sorted Ascending')
         %plots histogram
         subplot(2,3,3)
@@ -583,6 +585,7 @@ for i = 1:numTrodes
             matclustStruct.(truncatedNames{i}).StandardErrorPlotting(:,j,2),'b')
         plot([0 0],[ylim],'r');
         plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
+        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
         title('Histogram')
         %plots histograms by frequencies
         subplot(2,3,6)
@@ -597,6 +600,7 @@ for i = 1:numTrodes
         plot([0 0],[0 k*0.3],'k');
         plot([matclustStruct.ToneDur matclustStruct.ToneDur],[0 k*0.3],'k');
         ylim([0 size(matclustStruct.UniqueFreqs,1)*0.3+0.5])
+        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
         title('Histogram By Frequency Ascending')
         hL = legend(freqNameHolder);
         set(hL,'Position', [0.9 0.2 0.1 0.2],'Units','normalized');
