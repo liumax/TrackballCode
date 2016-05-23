@@ -6,7 +6,7 @@
 %and log file from MBED. 
 
 
-fileName = '160513_ML160410E_R17_3000_fullTuning';
+fileName = '160518_ML160410F_L17_3001_fullTuning';
 %sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
@@ -16,6 +16,7 @@ rasterWindow = [-0.3,0.4];
 clusterWindow = [0,0.05];
 lfpWindow = [-0.1,0.2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
+rpvTime = 0.0013;
 
 histBin = 0.005; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
@@ -72,16 +73,24 @@ dioState = double(DIOData.fields(2).data);
 dioTime = double(DIOData.fields(1).data);
 
 inTimes = dioTime(dioState == 1)/30000;
+inTimesSpacing = diff(inTimes);
 dioState = [];
 dioTime = [];
 if size(inTimes,1) ~= size(master,1)
     if size(inTimes,1) == size(master,1) + 1
         inTimes(end) = [];
+        master(:,1) = inTimes;
+    elseif inTimesSpacing(size(master,1)) > 3*mean(inTimesSpacing)
+        master(:,1) = inTimes(1:size(master,1));
+        disp('HOLY SHIT YOUR TTL PULSES TO DIO 1 ARE FUCKED, BUT ADJUSTED')
     else
-        disp('HOLY SHIT YOUR TTL PULSES TO DIO 1 ARE FUCKED')
+        disp('I DONT KNOW WHATS GOING ON')
+        pause
     end
+elseif size(inTimes,1) == size(master,1)
+    master(:,1) = inTimes;
 end
-master(:,1) = inTimes;
+
 inTimes = [];
 
 
@@ -97,6 +106,28 @@ matclustStruct.dBs = master(:,3);
 %also stores parameters for rep number and tone duration.
 matclustStruct.ToneReps = soundFile.soundData.ToneRepetitions;
 matclustStruct.ToneDur = soundFile.soundData.ToneDuration;
+
+%This finds the number of octaves
+totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(1)));
+%This then makes an array of the full octave steps I've made
+octaveRange = zeros(totalOctaves + 1,2);
+octaveRange(1,1) = uniqueFreqs(1);
+for i = 1:totalOctaves
+    octaveRange (i+1,1) = octaveRange(i,1)*2;
+end
+%next, I find the positions from uniqueFreqs that match octaveRange
+for i = 1:size(octaveRange,1);
+    octaveRange(i,2) = find(round(uniqueFreqs) == octaveRange(i,1));
+end
+
+%now lets do the same for dBs!
+totalDBs = (uniqueDBs(end) - uniqueDBs(1))/20;
+dbRange = zeros(totalDBs + 1,2);
+dbRange(:,1) = uniqueDBs(1):20:uniqueDBs(end);
+for i = 1:size(dbRange,1)
+    dbRange(i,2) = find(uniqueDBs == dbRange(i,1));
+end
+
 
 %here, need to find new index that goes from low freq to high freq, and
 %within each frequency, goes from low amp to high amp
@@ -115,128 +146,6 @@ for i = 1:numFreqs
 end
 %now, master(:,5) is the index if I want to sort rasters by frequency and
 %amplitude
-%%
-%now I will extract LFP information!
-disp('Starting LFP Analysis')
-%this code picks out the LFP folder and moves to that folder
-lfpFinder =dir;
-lfpFinder = {lfpFinder.name};
-lfpIndex = strfind(lfpFinder,'LFP');
-lfpIndex = find(not(cellfun('isempty', lfpIndex)));
-lfpFolder = lfpFinder{lfpIndex};
-newDir = strcat(pwd,'\',lfpFolder);
-cd(newDir)
-%this code pulls the file names of the LFP files, and reorders them in
-%natural order (1,2,10, not 1,10,2)
-lfpFinder = dir;
-lfpFinder = {lfpFinder.name};
-lfpIndex = strfind(lfpFinder,'LFP');
-lfpIndex = find(not(cellfun('isempty', lfpIndex)));
-lfpFiles = cell(size(lfpIndex,2),1);
-lfpFiles= lfpFinder(lfpIndex);
-[cs index] = sort_nat(lfpFiles);
-lfpFiles = cs;
-numLFPs = size(lfpFiles,2);
-%this generates the set of colors I want to use
-colorArray = zeros(60,3);
-colorArray(1,:) = [0,0,1];
-for i = 1:29
-    colorArray(i+1,:) = [0,(i)/29,(29-i)/29];
-end
-for i = 1:30
-    colorArray(i+30,:) = [(i)/30,(30-i)/30,0];
-end 
-
-spacer = size(colorArray,1)/size(uniqueFreqs,1);
-spacerArray = 1:1:size(uniqueFreqs,1);
-spacerArray = round(spacerArray*spacer);
-plotColors = colorArray(spacerArray,:);
-
-%this cell array will hold lfp information organized by nTrode
-lfpMaster = cell(numLFPs,1);
-%this next code extracts all LFP traces for all trials. 
-% These are stored into the cell array
-for i = 1:numLFPs
-    lfp = readTrodesExtractedDataFile(lfpFiles{i});
-    %counts number of LFP samples
-    lfpSamples = size(lfp.fields.data,1);
-    %makes LFP time points based on # of samples and decimation
-    %adjust time to actual time (to match master)
-    lfpTimes = (((0:1:lfpSamples-1)*lfp.decimation)+lfp.first_timestamp)'/30000;
-    lfpSignals = lfp.fields.data;
-    %calculates number of samples in the viewing window
-    viewSamples = round((lfpWindow(2)-lfpWindow(1))*lfp.clockrate/lfp.decimation);
-    %holds all LFP traces
-    lfpHolder = zeros(size(master,1),viewSamples);
-    for j = 1:size(master,1)
-        finder = find(lfpTimes>master(j,1)+lfpWindow(1),1);
-        lfpHolder(j,:) = lfpSignals(finder:finder+viewSamples-1);
-    end
-    lfpMaster{i} = lfpHolder;
-    lfp = [];
-    lfpSamples = [];
-    lfpTimes = [];
-    lfpSignals = [];
-    finder = [];
-    lfpHolder = [];
-    disp(i)
-end
-disp('Done with Intial LFP Storage')
-%This generates a 4D array for storage of plotting data
-lfpPlotHolder = zeros(size(lfpFiles,2),size(uniqueDBs,1),size(uniqueFreqs,1),viewSamples);
-
-for i = 1:numLFPs
-    tempHolder = lfpMaster{i};
-    for j = 1:numDBs
-        for k = 1:numFreqs
-            traceHolder = tempHolder(intersect(find(master(:,3) == uniqueDBs(j)),find(master(:,2) == uniqueFreqs(k))),:);
-            meanHolder = mean(traceHolder);
-            lfpPlotHolder(i,j,k,:) = meanHolder;
-        end
-    end
-end
-%removes lfpMaster to clear memory
-lfpMaster = [];
-disp('Done with Storing All Plot Data')
-%makes array of LFP means by frequency
-lfpMeans = zeros(viewSamples,numLFPs,numFreqs);
-
-for i = 1:numLFPs
-    for j = 1:numFreqs
-        lfpMeans(:,i,j) = mean(squeeze(lfpPlotHolder(i,:,j,:)));
-    end
-end
-disp('Done Calulating Means')
-%calculates absolute min and max for averages, this is to set graph bounds
-minLFP = min(min(min(lfpMeans)));
-maxLFP = max(max(max(lfpMeans)));
-
-%calculates the zero point based on number of samples
-totalLFPWindow = lfpWindow(2)-lfpWindow(1);
-lfpZero = abs(lfpWindow(1))*viewSamples/totalLFPWindow;
-toneEnd = abs(matclustStruct.ToneDur)*viewSamples/totalLFPWindow;
-
-%saves to structured array!
-matclustStruct.LFP.Means = lfpMeans;
-matclustStruct.LFP.Window = lfpWindow;
-matclustStruct.LFP.ZeroTime = lfpZero;
-matclustStruct.LFP.ToneEndTime = toneEnd;
-
-%generates figure with one plot per nTrode, and frequency coded by color. 
-h = figure;
-set(h, 'Position', [100 100 1000 1000])
-%generates text box with information!
-mTextBox = uicontrol('style','text');
-descr = {'LFP By Frequency';
-    'File:';
-    fileName;
-    'Window (s):';
-    lfpWindow;
-    'Tone Duration(s):';
-    matclustStruct.ToneDur};
-set(mTextBox,'String',descr);
-set(mTextBox,'Units','normalized');
-set(mTextBox,'Position',[0.5,0.74,0.3,0.2])
 
 %generates cell array of frequency names for use in legend
 freqNameHolder = cell(1,numFreqs);
@@ -244,40 +153,11 @@ for i =1:numFreqs
     freqNameHolder{i} = num2str(uniqueFreqs(i));
 end
 
-for i = 1:numLFPs
-    subplot(numLFPs,2,1+(2*(i-1)))
-    plot([lfpZero lfpZero],[minLFP maxLFP],'k');
-    hold on
-    plot([lfpZero+toneEnd lfpZero+toneEnd],[minLFP maxLFP],'k')
-    hold on
-    for j = 1:numFreqs
-        plot(lfpMeans(:,i,j),'color',plotColors(j,:));
-    end
-    
-    xlim([0 viewSamples])
-    ylim([minLFP maxLFP])
-    set(gca, 'XTick', [], 'YTick', [])
-    sub_pos = get(gca,'position'); % get subplot axis position
-    set(gca,'position',sub_pos.*[1 1 1 1.4]) % stretch its width and height
-end
 
-%generates legend and places correctly in figure.
-hL = legend(freqNameHolder);
-set(hL,'Position', [0.5 0.4 0.3 0.2],'Units','normalized');
-
-%returns to original directory
-cd(homeFolder)
-
-%save as matlab figure with correct name (fileName+LFP)
-lfpName = strcat(fileName,'LFPGraph');
-savefig(h,lfpName);
-
-%save as PDF with correct name
-set(h,'Units','Inches');
-pos = get(h,'Position');
-set(h,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(h,lfpName,'-dpdf','-r0')
-
+%%
+%here I need to calculate LFPs!
+[s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
+matclustStruct.LFPData = s;
 %%
 
 %extracts times of clustered spikes.
@@ -293,17 +173,22 @@ for i = 1:numTrodes
     clusterSpikes = cell(clusterSizer,1);
     clusterWaves = cell(clusterSizer,1);
     clearedSpikes = cell(clusterSizer,1);
+    rpvViolationPercent = zeros(clusterSizer,1);
     %calculates inter-spike interval, saves this information
     for j = 1:clusterSizer
         %this line pulls the actual indices of spikes for the cluster
         clusterSpikes{j} = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(j)}.index;
         %this subtracts all adjacent spikes
         diffSpikes = diff(matclustFile.clustdata.params(clusterSpikes{j},1));
-        %this then windows that out, to only plot the small ISIs
+        %this calculates all spikes within the refractory period violation
+        %period
+        rpvViolationPercent(j) = size(diffSpikes(diffSpikes<rpvTime),1)/size(clusterSpikes{j},1)*100;
+        %this then windows out spikes, to only plot the small ISIs
         clearedSpikes{j} = diffSpikes(diffSpikes<clusterWindow(2)); %removes long pauses
         diffSpikes = [];
     end
     matclustStruct.(truncatedNames{i}).ISIData = clearedSpikes;
+    matclustStruct.(truncatedNames{i}).RPVs = rpvViolationPercent;
     clearedSpikes = [];
     
     %prepares cluster indices. Finds actual points of index per cluster.
@@ -523,14 +408,16 @@ for i = 1:numTrodes
         subplot(4,3,4)
         hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
         xlim([0 0.05])
-        title('ISI')
+        title(strcat('ISI RPV %: ',num2str(matclustStruct.(truncatedNames{i}).RPVs(j))))
         
         %plots heatmap
         subplot(4,3,7)
-        imagesc(matclustStruct.UniqueFreqs,...
-            matclustStruct.UniqueDBs,...
-            matclustStruct.(truncatedNames{i}).FrequencyResponse{j})
+        imagesc(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})
         colormap hot
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
         title(strcat('Frequency Response.Max',...
             num2str(max(max(matclustStruct.(truncatedNames{i}).FrequencyResponse{j}))),...
             'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})))))
@@ -541,6 +428,10 @@ for i = 1:numTrodes
             matclustStruct.UniqueDBs,...
             matclustStruct.(truncatedNames{i}).ResponseReliability{j}')
         colormap hot
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
         title(strcat('ResponseReliability.Max',...
             num2str(max(max(matclustStruct.(truncatedNames{i}).ResponseReliability{j}))),...
             'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).ResponseReliability{j})))))
@@ -553,6 +444,7 @@ for i = 1:numTrodes
         plot([0 0],[ylim],'r');
         plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
         ylim([0 size(matclustStruct.SoundTimes,1)])
+        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
         title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
         %plots rasters organized by frequency and amp
         subplot(2,3,5)
@@ -571,6 +463,7 @@ for i = 1:numTrodes
                 'k','LineWidth',2)
         end
         ylim([0 size(matclustStruct.SoundTimes,1)])
+        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
         title('Sorted Ascending')
         %plots histogram
         subplot(2,3,3)
@@ -583,6 +476,7 @@ for i = 1:numTrodes
             matclustStruct.(truncatedNames{i}).StandardErrorPlotting(:,j,2),'b')
         plot([0 0],[ylim],'r');
         plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
+        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
         title('Histogram')
         %plots histograms by frequencies
         subplot(2,3,6)
@@ -597,6 +491,7 @@ for i = 1:numTrodes
         plot([0 0],[0 k*0.3],'k');
         plot([matclustStruct.ToneDur matclustStruct.ToneDur],[0 k*0.3],'k');
         ylim([0 size(matclustStruct.UniqueFreqs,1)*0.3+0.5])
+        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
         title('Histogram By Frequency Ascending')
         hL = legend(freqNameHolder);
         set(hL,'Position', [0.9 0.2 0.1 0.2],'Units','normalized');
