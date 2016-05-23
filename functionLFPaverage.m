@@ -1,4 +1,4 @@
-function [targetFiles] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName);
+function [s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
 
 %%
 %now I will extract LFP information!
