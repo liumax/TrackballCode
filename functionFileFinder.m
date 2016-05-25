@@ -1,5 +1,7 @@
 function [targetFiles] = functionFileFinder(subFoldersCell,folderTarget,fileTarget);
-%find DIO folder and D1 file for analysis
+%This code is meant to find a folder (folderTarget) from a range of folders 
+%(subFoldersCell), and search that folder for specific contents 
+%(fileTarget), and make a cell array of said files.
 folderFinder = strfind(subFoldersCell,folderTarget);%finds DIO folder
 folderFinder = find(~cellfun(@isempty,folderFinder)); %determines empty cells, finds index for target cell
 targetFolderName = subFoldersCell{folderFinder}; %pulls out the name for the DIO folder

@@ -6,7 +6,7 @@
 %and log file from MBED. 
 
 
-fileName = '160518_ML160410F_L17_3001_fullTuning';
+fileName = '160518_ML160410F_L17_3001_fullTuningtenthOctave';
 %sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 [fname pname] = uiputfile(saveName);
@@ -153,11 +153,6 @@ for i =1:numFreqs
     freqNameHolder{i} = num2str(uniqueFreqs(i));
 end
 
-
-%%
-%here I need to calculate LFPs!
-[s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
-matclustStruct.LFPData = s;
 %%
 
 %extracts times of clustered spikes.
