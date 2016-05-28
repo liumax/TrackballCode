@@ -6,17 +6,19 @@
 %and log file from MBED. 
 
 
-fileName = '160518_ML160410F_L17_3001_fullTuning';
+fileName = '160405_ML160218B_R17_2372_fullTune3';
 %sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
-[fname pname] = uiputfile(saveName);
+fname = saveName;
+pname = pwd;
 
 %parameters I can play with
-rasterWindow = [-0.3,0.4];
-clusterWindow = [0,0.05];
+rasterWindow = [-0.1,0.3];
+clusterWindow = [-0.01,0.03];
 lfpWindow = [-0.1,0.2];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
-rpvTime = 0.0013;
+rpvTime = 0.0013; %time below which an ISI is considered an RPV
+clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
 
 histBin = 0.005; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
@@ -121,9 +123,10 @@ for i = 1:size(octaveRange,1);
 end
 
 %now lets do the same for dBs!
-totalDBs = (uniqueDBs(end) - uniqueDBs(1))/20;
+dbSteps = uniqueDBs(2) - uniqueDBs(1);
+totalDBs = (uniqueDBs(end) - uniqueDBs(1))/dbSteps;
 dbRange = zeros(totalDBs + 1,2);
-dbRange(:,1) = uniqueDBs(1):20:uniqueDBs(end);
+dbRange(:,1) = uniqueDBs(1):dbSteps:uniqueDBs(end);
 for i = 1:size(dbRange,1)
     dbRange(i,2) = find(uniqueDBs == dbRange(i,1));
 end
@@ -156,8 +159,8 @@ end
 
 %%
 %here I need to calculate LFPs!
-[s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
-matclustStruct.LFPData = s;
+% [s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
+% matclustStruct.LFPData = s;
 %%
 
 %extracts times of clustered spikes.
@@ -407,66 +410,13 @@ for i = 1:numTrodes
         %plots ISI
         subplot(4,3,4)
         hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
-        xlim([0 0.05])
+        histMax = max(hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000));
+        line([rpvTime rpvTime],[0 histMax],'LineWidth',1,'Color','red')
+        xlim(clusterWindow)
         title(strcat('ISI RPV %: ',num2str(matclustStruct.(truncatedNames{i}).RPVs(j))))
         
-        %plots heatmap
-        subplot(4,3,7)
-        imagesc(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})
-        colormap hot
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title(strcat('Frequency Response.Max',...
-            num2str(max(max(matclustStruct.(truncatedNames{i}).FrequencyResponse{j}))),...
-            'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).FrequencyResponse{j})))))
-        
-        %plots reliability of response in heat map
-        subplot(4,3,10)
-        imagesc(matclustStruct.UniqueFreqs,...
-            matclustStruct.UniqueDBs,...
-            matclustStruct.(truncatedNames{i}).ResponseReliability{j}')
-        colormap hot
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title(strcat('ResponseReliability.Max',...
-            num2str(max(max(matclustStruct.(truncatedNames{i}).ResponseReliability{j}))),...
-            'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).ResponseReliability{j})))))
-
-        %plots simple rasters
-        subplot(2,3,2)
-        plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
-            matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.')
-        hold on
-        plot([0 0],[ylim],'r');
-        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
-        ylim([0 size(matclustStruct.SoundTimes,1)])
-        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
-        title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
-        %plots rasters organized by frequency and amp
-        subplot(2,3,5)
-        plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
-            matclustStruct.(truncatedNames{i}).Rasters{j}(:,5),'k.')
-        hold on
-        plot([0 0],[ylim],'r');
-        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
-        for k = 1:size(matclustStruct.UniqueFreqs,1)*size(matclustStruct.UniqueDBs,1)
-            plot(matclustStruct.RasterLimits,...
-                [soundFile.soundData.ToneRepetitions*k soundFile.soundData.ToneRepetitions*k])
-        end
-        for k = 1:size(uniqueFreqs,1)
-            plot(matclustStruct.RasterLimits,...
-                [soundFile.soundData.ToneRepetitions*size(uniqueDBs,1)*k soundFile.soundData.ToneRepetitions*size(uniqueDBs,1)*k],...
-                'k','LineWidth',2)
-        end
-        ylim([0 size(matclustStruct.SoundTimes,1)])
-        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
-        title('Sorted Ascending')
-        %plots histogram
-        subplot(2,3,3)
+         %plots histogram
+        subplot(2,3,4)
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Histogram{j}(:,1),'k','LineWidth',2)
         hold on
@@ -478,23 +428,95 @@ for i = 1:numTrodes
         plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
         xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
         title('Histogram')
-        %plots histograms by frequencies
-        subplot(2,3,6)
-        x = matclustStruct.(truncatedNames{i}).AverageFrequencyHistogram{j};
-        y = x/(max(max(x)));
-        for k = 1:size(matclustStruct.UniqueFreqs,1)
-            y(:,k) = y(:,k) + (k-1)*0.3;
-        end
-        plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
-            y,'LineWidth',1)
+        
+        %plots simple rasters
+        subplot(2,3,2)
+        plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.','markersize',4)
         hold on
-        plot([0 0],[0 k*0.3],'k');
-        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[0 k*0.3],'k');
-        ylim([0 size(matclustStruct.UniqueFreqs,1)*0.3+0.5])
+        ylim([0 size(matclustStruct.SoundTimes,1)])
         xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
-        title('Histogram By Frequency Ascending')
-        hL = legend(freqNameHolder);
-        set(hL,'Position', [0.9 0.2 0.1 0.2],'Units','normalized');
+        plot([0 0],[ylim],'r');
+        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
+        
+        title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
+        
+        %plots rasters organized by frequency and amp
+        subplot(2,3,5)
+        plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).Rasters{j}(:,5),'k.','markersize',4)
+        hold on
+        plot([0 0],[ylim],'r');
+        plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
+        %removed blue lines to be able to see rasters better
+%         for k = 1:size(matclustStruct.UniqueFreqs,1)*size(matclustStruct.UniqueDBs,1)
+%             plot(matclustStruct.RasterLimits,...
+%                 [soundFile.soundData.ToneRepetitions*k soundFile.soundData.ToneRepetitions*k])
+%         end
+        rasterFreqLines = zeros(numFreqs,2);
+        rasterFreqLines(:,1) = soundFile.soundData.ToneRepetitions*size(uniqueDBs,1)/2:soundFile.soundData.ToneRepetitions*size(uniqueDBs,1):size(matclustStruct.SoundTimes,1);
+        rasterFreqLines(:,2) = uniqueFreqs;
+        %this generates green lines separating by Frequency
+        for k = 1:size(uniqueFreqs,1)
+            plot(matclustStruct.RasterLimits,...
+                [soundFile.soundData.ToneRepetitions*size(uniqueDBs,1)*k soundFile.soundData.ToneRepetitions*size(uniqueDBs,1)*k],...
+                'g','LineWidth',2)
+        end
+        set(gca,'YTick',rasterFreqLines(:,1));
+        set(gca,'YTickLabel',rasterFreqLines(:,2));
+        ylim([0 size(matclustStruct.SoundTimes,1)])
+        xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
+        title('Sorted Ascending')
+        
+        %plots heatmap. This uses a log10 scaling for change in firing
+        %rates. This way, no change is essentially zero on the imagesc
+        %scale, rather than having a linear scale where green actually
+        %represents a fairly large increase in response, and there is
+        %little room for inhibition
+        subplot(4,3,3)
+        imagesc(log10(matclustStruct.(truncatedNames{i}).FrequencyResponse{j}/matclustStruct.(truncatedNames{i}).AverageFiringRate(j)),clims1)
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
+        title(strcat('Normalized Frequency Response.Max',...
+            num2str(max(max(matclustStruct.(truncatedNames{i}).FrequencyResponse{j}))/matclustStruct.(truncatedNames{i}).AverageFiringRate(j)),...
+            'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).FrequencyResponse{j}))/matclustStruct.(truncatedNames{i}).AverageFiringRate(j))))
+        
+        %plots reliability of response in heat map
+        subplot(4,3,6)
+        clims = [0,1];
+        imagesc(matclustStruct.UniqueFreqs,...
+            matclustStruct.UniqueDBs,...
+            matclustStruct.(truncatedNames{i}).ResponseReliability{j}',clims)
+%         colormap hot
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
+        title(strcat('ResponseReliability.Max',...
+            num2str(max(max(matclustStruct.(truncatedNames{i}).ResponseReliability{j}))),...
+            'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).ResponseReliability{j})))))
+        
+        %plots heatmap by frequencies
+        subplot(2,3,6)
+        x = matclustStruct.(truncatedNames{i}).AverageFrequencyHistogram{j}/matclustStruct.(truncatedNames{i}).AverageFiringRate(j);
+        imagesc(log10(x'),clims1)
+        set(gca,'YTick',octaveRange(:,2));
+        set(gca,'YTickLabel',octaveRange(:,1));
+        set(gca,'XTick',[1:10:size(histBinVector,2)]);
+        set(gca,'XTickLabel',histBinVector(1:10:end));
+        histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
+        histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),matclustStruct.ToneDur);
+        line([histBinZero histBinZero],[0 14],'LineWidth',3,'Color','red')
+        line([histBinZero histBinZero],[0 14],'LineWidth',2,'Color','black')
+        line([histBinTone histBinTone],[0 14],'LineWidth',3,'Color','red')
+        line([histBinTone histBinTone],[0 14],'LineWidth',2,'Color','black')
+%         title('Heatmap by Frequency and Time Max')
+        title(strcat('Normalized Heatmap by F and T.Max',...
+            num2str(max(max(matclustStruct.(truncatedNames{i}).AverageFrequencyHistogram{j}))/matclustStruct.(truncatedNames{i}).AverageFiringRate(j)),...
+            'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).AverageFrequencyHistogram{j}))/matclustStruct.(truncatedNames{i}).AverageFiringRate(j))))
+        hold off
         %save as matlab figure with correct name (fileName+LFP)
         spikeGraphName = strcat(truncatedNames{i},' Cluster ',num2str(j),'SpikeAnalysis');
         savefig(hFig,spikeGraphName);
@@ -508,11 +530,11 @@ for i = 1:numTrodes
 end
 
 rmpath(subFolders) %removes folders from the path. This is to reduce chances for confusion with multiple runs of code
-clearvars -except matclustStruct fname pname
-%saves matclustStruct
-save(fullfile(pname,fname),'matclustStruct');
-% clear
 
+%saves matclustStruct
+% save(fullfile(pname,fname),'matclustStruct');
+% clear
+% clearvars
 
 
 
