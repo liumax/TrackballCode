@@ -8,8 +8,8 @@ interRep = 2; %seconds between tones
 
 toneDur = 1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
-optoDelay = -0.6; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
-optoDur = 0.8; %duration of all opto pulses.
+optoDelay = 0; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
+optoDur = 0.5; %duration of all opto pulses.
 optoTTL = 0.001; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
 
@@ -24,7 +24,7 @@ if optoDelay < 0 %if opto leads tone
         %GENERATES RAMP AT CORRECT TIME
         rampProfile = ones(L,1);
         rampProfile(1:fs*(optoDelay*-1+optoLag)) = 0;
-        rampProfile(fs*(optoDelay*-1+optoLag):fs*(optoDelay*-1+optoLag)+onRampDur+1) = onRampProfile;
+        rampProfile(fs*(optoDelay*-1+optoLag):fs*(optoDelay*-1+optoLag)+onRampDur) = onRampProfile;
         rampProfile(end-offRampDur:end) = offRampProfile;
         %generates TTL signature. 
         ttlSig = zeros(L,1);
@@ -40,7 +40,7 @@ if optoDelay < 0 %if opto leads tone
         %GENERATES RAMP AT CORRECT TIME
         rampProfile = ones(L,1);
         rampProfile(1:fs*(optoDelay*-1)) = 0;
-        rampProfile(fs*(optoDelay*-1):fs*(optoDelay*-1)+onRampDur+1) = onRampProfile;
+        rampProfile(fs*(optoDelay*-1):fs*(optoDelay*-1)+onRampDur) = onRampProfile;
         rampProfile(end-offRampDur:end) = offRampProfile;
         %generates TTL signature. 
         ttlSig = zeros(L,1);
@@ -92,7 +92,7 @@ elseif optoDelay == 0 %if opto stim is coincident with tone
         %GENERATES RAMP AT CORRECT TIME
         rampProfile = ones(L,1);
         rampProfile(1:fs*(optoLag)) = 0;
-        rampProfile(fs*(optoLag):fs*(optoLag)+onRampDur+1) = onRampProfile;
+        rampProfile(fs*(optoLag):fs*(optoLag)+onRampDur) = onRampProfile;
         rampProfile(end-offRampDur:end) = offRampProfile;
         %generates TTL signature. 
         ttlSig = zeros(L,1);
