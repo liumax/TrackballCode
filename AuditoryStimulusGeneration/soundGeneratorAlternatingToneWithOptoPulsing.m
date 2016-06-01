@@ -8,8 +8,8 @@ interRep = 2; %seconds between tones
 
 toneDur = 1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
-optoDelay = 0; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
-optoDur = 0.5; %duration of all opto pulses.
+optoDelay = 0.6; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
+optoDur = 1; %duration of all opto pulses.
 optoTTL = 0.001; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
 
@@ -30,11 +30,11 @@ if optoDelay < 0 %if opto leads tone
         ttlSig = zeros(L,1);
         controlTTL = zeros(L,1);
         %want double pulse at beginning to trigger laser.
-        ttlSig(1:fs/1000) = 1;
-        ttlSig(4*fs/1000:5*fs/1000) = 1;
+        ttlSig(1:fs*optoTTL) = 1;
+        ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
         %want single pulse to mark tone start
-        ttlSig((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-0.001)*-1*fs) = 1;
-        controlTTL((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-0.001)*-1*fs) = 1;
+        ttlSig((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-optoTTL)*-1*fs) = 1;
+        controlTTL((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-optoTTL)*-1*fs) = 1;
     elseif optoDur <= toneDur - optoDelay %if opto stim is shorter than duration of tone and lag period
         L = fs*(toneDur-optoDelay);
         %GENERATES RAMP AT CORRECT TIME
@@ -46,11 +46,11 @@ if optoDelay < 0 %if opto leads tone
         ttlSig = zeros(L,1);
         controlTTL = zeros(L,1);
         %want double pulse at beginning to trigger laser.
-        ttlSig(1:fs/1000) = 1;
-        ttlSig(4*fs/1000:5*fs/1000) = 1;
+        ttlSig(1:fs*optoTTL) = 1;
+        ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
         %want single pulse to mark tone start
-        ttlSig((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-0.001)*-1*fs) = 1;
-        controlTTL((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-0.001)*-1*fs) = 1;
+        ttlSig((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-optoTTL)*-1*fs) = 1;
+        controlTTL((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-optoTTL)*-1*fs) = 1;
     end
 elseif optoDelay > 0 %in cases where opto follows the tone
     if toneDur > optoDelay + optoDur %if the tone is longer than the opto stim and delay period
@@ -64,11 +64,11 @@ elseif optoDelay > 0 %in cases where opto follows the tone
         ttlSig = zeros(L,1);
         controlTTL = zeros(L,1);
         %want single pulse at beginning to mark tone
-        ttlSig(1:fs/1000) = 1;
-        controlTTL(1:fs/1000) = 1;
+        ttlSig(1:fs*optoTTL) = 1;
+        controlTTL(1:fs*optoTTL) = 1;
         %double pulse to trigger laser
-        ttlSig((optoDelay-optoLag)*fs:(optoDelay-optoLag+0.001)*fs) = 1;
-        ttlSig((optoDelay-optoLag+0.004)*fs:(optoDelay-optoLag+0.005)*fs) = 1;
+        ttlSig((optoDelay-optoLag)*fs:(optoDelay-optoLag+optoTTL)*fs) = 1;
+        ttlSig((optoDelay)*fs:(optoDelay+optoTTL)*fs) = 1;
     elseif toneDur <= optoDelay + optoDur %if the tone is shorter than the opto stim and delay period
         L = fs*(optoDelay + optoDur);
         %GENERATES RAMP AT CORRECT TIME
@@ -80,11 +80,11 @@ elseif optoDelay > 0 %in cases where opto follows the tone
         ttlSig = zeros(L,1);
         controlTTL = zeros(L,1);
         %want single pulse at beginning to mark tone
-        ttlSig(1:fs/1000) = 1;
-        controlTTL(1:fs/1000) = 1;
+        ttlSig(1:fs*optoTTL) = 1;
+        controlTTL(1:fs*optoTTL) = 1;
         %double pulse to trigger laser
-        ttlSig((optoDelay-optoLag)*fs:(optoDelay-optoLag+0.001)*fs) = 1;
-        ttlSig((optoDelay-optoLag+0.004)*fs:(optoDelay-optoLag+0.005)*fs) = 1;
+        ttlSig((optoDelay-optoLag)*fs:(optoDelay-optoLag+optoTTL)*fs) = 1;
+        ttlSig((optoDelay)*fs:(optoDelay+optoTTL)*fs) = 1;
     end
 elseif optoDelay == 0 %if opto stim is coincident with tone
     if optoDur + optoLag >= toneDur %if opto stim and lag is longer than duration of tone
@@ -98,10 +98,10 @@ elseif optoDelay == 0 %if opto stim is coincident with tone
         ttlSig = zeros(L,1);
         controlTTL = zeros(L,1);
         %want single pulse at beginning to mark tone
-        ttlSig(1:fs/1000) = 1;
-        controlTTL(1:fs/1000) = 1;
+        ttlSig(1:fs*optoTTL) = 1;
+        controlTTL(1:fs*optoTTL) = 1;
         %double pulse to trigger laser
-        ttlSig(4*fs/1000:5*fs/1000) = 1;
+        ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
     elseif optoDur + optoLag < toneDur %if tone duration exceeds opto stim
         L = fs*(toneDur);
         rampProfile = ones(L,1);
@@ -111,10 +111,10 @@ elseif optoDelay == 0 %if opto stim is coincident with tone
         ttlSig = zeros(L,1);
         controlTTL = zeros(L,1);
         %want single pulse at beginning to mark tone
-        ttlSig(1:fs/1000) = 1;
-        controlTTL(1:fs/1000) = 1;
+        ttlSig(1:fs*optoTTL) = 1;
+        controlTTL(1:fs*optoTTL) = 1;
         %double pulse to trigger laser
-        ttlSig(4*fs/1000:5*fs/1000) = 1;
+        ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
     end
 end
 
