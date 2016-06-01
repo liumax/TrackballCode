@@ -8,7 +8,7 @@ interRep = 2; %seconds between tones
 
 toneDur = 1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
-optoDelay = 0.1; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
+optoDelay = -0.6; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
 optoDur = 0.8; %duration of all opto pulses.
 optoTTL = 0.001; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
@@ -137,7 +137,7 @@ paddedWave = zeros(paddingL,1);
 paddedWave(1:size(finalWave,1)) = finalWave;
 paddedTTL = zeros(paddingL,1);
 paddedTTL(1:size(controlTTL,1)) = controlTTL;
-controlVector = [finalWave,paddedTTL];
+controlVector = [paddedWave,paddedTTL];
 
 %generates alternating array of ones and zeros
 controller = zeros(2*toneReps,1);
