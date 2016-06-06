@@ -1,10 +1,7 @@
 %this is meant to be the function version of the
 %soundGeneratorAlternatingToneWithOptoPulsing. 
 function [s] = functionPlayTwoTones(targetFreq,controlFreq,...
-    fs,targetAmpl,controlAmpl,toneReps,interRep,toneDur,fileName);
-
-pname = pwd;
-fname = strcat(fileName,'TonesNoPairing','.mat');
+    fs,targetAmpl,controlAmpl,toneReps,interRep,toneDur,TTLDur);
 
 onRampDur = 0.1*fs; 
 offRampDur = 0.1*fs;
@@ -23,7 +20,7 @@ rampProfile(end-offRampDur:end) = offRampProfile;
 
 
 ttlSig = zeros(paddingL,1);
-ttlSig(1:2*fs/1000) = 1;
+ttlSig(1:TTLDur*fs/1000) = 1;
 
 interRep = paddingL/fs+interRep;
 

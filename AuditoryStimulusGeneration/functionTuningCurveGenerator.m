@@ -1,10 +1,6 @@
 function [s] = functionTuningCurveGenerator(toneReps,toneDur,...
     fs,L,paddingL,prePause,postPauseMin,postPauseMax,startF,...
-    endF,octFrac,startdB,enddB,dbSteps,fileName);
-
-saveName = strcat(fileName,'TuningCurve','.mat');
-fname = saveName;
-pname = pwd;
+    endF,octFrac,startdB,enddB,dbSteps,TTLDur);
 
 warningCheck = (postPauseMin/1000 - toneDur)<0;
 if warningCheck == 1
@@ -82,7 +78,7 @@ rampProfile(end-offRampDur:end) = offRampProfile;
 
 %this makes the profile for the TTL signal
 ttlSig = zeros(paddingL,1);
-ttlSig(1:2*fs/1000) = 1;
+ttlSig(1:TTLDur*fs/1000) = 1;
 
 
 %actual code for performing tuning

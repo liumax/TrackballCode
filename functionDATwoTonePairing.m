@@ -2,24 +2,7 @@
 %soundGeneratorAlternatingToneWithOptoPulsing. 
 function [s] = functionDATwoTonePairing(targetFreq,controlFreq,...
     fs,targetAmpl,controlAmpl,toneReps,interRep,toneDur,optoDelay,...
-    optoDur,optoTTL,optoLag,fileName);
-
-pname = pwd;
-fname = strcat(fileName,'AuditoryPairing','.mat');
-
-targetFreq = 8000; %target frequency in Hz
-controlFreq = 16000;
-targetAmpl = 1; %target amplitude as fraction of 1
-controlAmpl = 1;
-toneReps = 200; %tone repetitions
-interRep = 2; %seconds between tones
-
-toneDur = 1; %tone duration in seconds
-fs = 192000; %sampling frequency in Hz
-optoDelay = 0.6; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
-optoDur = 1; %duration of all opto pulses.
-optoTTL = 0.001; %duration of opto TTL pulse send through audio card.
-optoLag = 0.004; %lag due to the double pulse requirement for triggering
+    optoDur,optoTTL,optoLag);
 
 onRampDur = 0.1*fs; 
 offRampDur = 0.1*fs;
@@ -175,6 +158,8 @@ soundData.ITI = interRep;
 soundData.ToneDuration = toneDur;
 soundData.OptoStimDelay = optoDelay;
 soundData.ToneOrder = freqRecord;
+soundData.OnRampDuration = onRampDur;
+soundData.OffRampDuration = offRampDur;
 
 s = soundData;
 

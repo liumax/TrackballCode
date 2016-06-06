@@ -18,6 +18,7 @@ fileName = fname(1:periodFinder-1);
 fs = 192000; %sampling frequency in Hz
 firstWait = 120; %first waiting period in seconds. 
 interFunctionPause = 2; %seconds to wait after a function to finish before starting next
+TTLDur = 0.002; %duration of TTL pulses to be sent via the sound card.
 
 %%
 %tuning curve parameters:
@@ -46,7 +47,7 @@ targetAmpl = 1; %target amplitude as fraction of 1
 controlAmpl = 1;
 baselineToneReps = 20; %tone repetitions for presentations of long tones before pairing
 pairingToneReps = 20; %tone repetitions for pairing experiment
-interRep = 2; %seconds between tones
+interRep = 5; %seconds between tones
 
 pairingToneDur = 1; %tone duration in seconds
 optoDelay = 0.6; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
@@ -56,7 +57,6 @@ optoLag = 0.004; %lag due to the double pulse requirement for triggering
 
 %%
 %parameters for TTLs that will signal shifts between functions
-signalTTLDur = 0.002; %duration of pulses
 signalTTLiti = 0.02; %ITI between signal pulse onsets
 signalTTLNum = 4; %number of signal pulses
 
@@ -90,7 +90,7 @@ pause(interFunctionPause);
 %curve
 [s] = functionTuningCurveGenerator(tuningReps,tuningToneDur,...
     fs,tuningL,tuningpaddingL,prePause,postPauseMin,postPauseMax,startF,...
-    endF,octFrac,startdB,enddB,dbSteps,strcat(fileName,'First'));
+    endF,octFrac,startdB,enddB,dbSteps,TTLDur);
 
 fullData.Tuning1=s;
 s = [];
@@ -107,7 +107,7 @@ pause(interFunctionPause);
 %properties of cells to longer tones.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
     fs,targetAmpl,controlAmpl,baselineToneReps,...
-    interRep,pairingToneDur,strcat(fileName,'First'));
+    interRep,pairingToneDur,TTLDur);
 
 fullData.Tones1=s;
 s = [];
@@ -124,7 +124,7 @@ pause(interFunctionPause);
 [s] = functionDATwoTonePairing(targetFreq,controlFreq,...
     fs,targetAmpl,controlAmpl,pairingToneReps,interRep,...
     pairingToneDur,optoDelay,...
-    optoDur,optoTTL,optoLag,fileName);
+    optoDur,optoTTL,optoLag);
 
 fullData.Pairing=s;
 s = [];
@@ -139,7 +139,7 @@ pause(interFunctionPause);
 %play tones again after pairing.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
     fs,targetAmpl,controlAmpl,baselineToneReps,...
-    interRep,pairingToneDur,strcat(fileName,'Second'));
+    interRep,pairingToneDur,TTLDur);
 
 fullData.Tones2=s;
 s = [];
@@ -155,18 +155,21 @@ pause(interFunctionPause);
 %curve. Plays double the number of repetitions.
 [s] = functionTuningCurveGenerator(tuningReps*2,tuningToneDur,...
     fs,tuningL,tuningpaddingL,prePause,postPauseMin,postPauseMax,startF,...
-    endF,octFrac,startdB,enddB,dbSteps,strcat(fileName,'Second'));
+    endF,octFrac,startdB,enddB,dbSteps,TTLDur);
 
 fullData.Tuning2=s;
 s = [];
 
 disp('Second Tuning Complete')
 
-fullData.DividerTTLNumber = signalTTLNum;
-fullData.DividerTTLDuration = signalTTLDur;
-fullData.DividerTTLiti = signalTTLiti;
+fullData.AllTTLDuration = TTLDur;
 fullData.BaselineDuration = firstWait;
 fullData.InterfunctionPausing = interFunctionPause;
+fullData.SamplingFrequency = fs;
+
+fullData.DividerTTLNumber = signalTTLNum;
+fullData.DividerTTLiti = signalTTLiti;
+
 
 save(fullfile(pname,fname),'fullData');
 
