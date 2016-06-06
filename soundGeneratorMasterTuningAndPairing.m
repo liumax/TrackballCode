@@ -17,10 +17,11 @@ fileName = fname(1:periodFinder-1);
 % general parameters:
 fs = 192000; %sampling frequency in Hz
 firstWait = 120; %first waiting period in seconds. 
+interFunctionPause = 2; %seconds to wait after a function to finish before starting next
 
 %%
 %tuning curve parameters:
-tuningReps = 20; %number of repetitions of each tone/amplitude pair
+tuningReps = 10; %number of repetitions of each tone/amplitude pair
 tuningToneDur = 0.1; %tone duration in seconds
 
 tuningL = tuningToneDur*fs; %number of samples at correct sampling frequency
@@ -36,7 +37,7 @@ octFrac = 0.5; %fractions of octaves to move
 
 startdB = 100; %starting decibel value
 enddB = 40; %lowest decibel value
-dbSteps = 20; %resolution of decible steps
+dbSteps = 60; %resolution of decible steps
 %%
 %auditory pairing parameters:
 targetFreq = 8000; %target frequency in Hz
@@ -44,7 +45,7 @@ controlFreq = 16000;
 targetAmpl = 1; %target amplitude as fraction of 1
 controlAmpl = 1;
 baselineToneReps = 20; %tone repetitions for presentations of long tones before pairing
-pairingToneReps = 200; %tone repetitions for pairing experiment
+pairingToneReps = 20; %tone repetitions for pairing experiment
 interRep = 2; %seconds between tones
 
 pairingToneDur = 1; %tone duration in seconds
@@ -58,7 +59,7 @@ optoLag = 0.004; %lag due to the double pulse requirement for triggering
 signalTTLDur = 0.002; %duration of pulses
 signalTTLiti = 0.02; %ITI between signal pulse onsets
 signalTTLNum = 4; %number of signal pulses
-interFunctionPause = 1; %seconds to wait after a function to finish before starting next
+
 
 %%
 %generates signal TTL signal
@@ -83,6 +84,7 @@ disp('End Wait Period')
 %pauses and sends out signal TTLs
 pause(interFunctionPause);
 sound(signalVector,fs);
+pause(interFunctionPause);
 
 %This plays the first tuning curve! Saves the file as the FIRST tuning
 %curve
@@ -98,6 +100,7 @@ disp('First Tuning Complete')
 %pauses and sends out signal TTLs
 pause(interFunctionPause);
 sound(signalVector,fs);
+pause(interFunctionPause);
 
 %this will play the stimuli that will soon be paired without any pairing.
 %This will help determine if there are any differences in teh response
@@ -114,6 +117,7 @@ disp('First Tone Presentation Complete')
 %pauses and sends out signal TTLs
 pause(interFunctionPause);
 sound(signalVector,fs);
+pause(interFunctionPause);
 
 %This should execute the pairing of auditory stimuli with dopamine
 %terminal/cellbody stimulation
@@ -130,6 +134,7 @@ disp('Pairing Complete')
 %pauses and sends out signal TTLs
 pause(interFunctionPause);
 sound(signalVector,fs);
+pause(interFunctionPause);
 
 %play tones again after pairing.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
@@ -144,6 +149,7 @@ disp('First Tone Presentation Complete')
 %pauses and sends out signal TTLs
 pause(interFunctionPause);
 sound(signalVector,fs);
+pause(interFunctionPause);
 
 %This plays the second tuning curve! Saves the file as the SECOND tuning
 %curve. Plays double the number of repetitions.
@@ -155,6 +161,12 @@ fullData.Tuning2=s;
 s = [];
 
 disp('Second Tuning Complete')
+
+fullData.DividerTTLNumber = signalTTLNum;
+fullData.DividerTTLDuration = signalTTLDur;
+fullData.DividerTTLiti = signalTTLiti;
+fullData.BaselineDuration = firstWait;
+fullData.InterfunctionPausing = interFunctionPause;
 
 save(fullfile(pname,fname),'fullData');
 
