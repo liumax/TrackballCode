@@ -1,4 +1,4 @@
-function [] = functionTuningCurveGenerator(toneReps,toneDur,...
+function [s] = functionTuningCurveGenerator(toneReps,toneDur,...
     fs,L,paddingL,prePause,postPauseMin,postPauseMax,startF,...
     endF,octFrac,startdB,enddB,dbSteps,fileName);
 
@@ -111,6 +111,6 @@ soundData.ToneDuration = toneDur;
 soundData.OnRamp = onRampDur;
 soundData.OffRamp = offRampDur;
 
-save(fullfile(pname,fname),'soundData');
+s=soundData;
 
 end

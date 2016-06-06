@@ -1,6 +1,6 @@
 %this is meant to be the function version of the
 %soundGeneratorAlternatingToneWithOptoPulsing. 
-function [] = functionPlayTwoTones(targetFreq,controlFreq,...
+function [s] = functionPlayTwoTones(targetFreq,controlFreq,...
     fs,targetAmpl,controlAmpl,toneReps,interRep,toneDur,fileName);
 
 pname = pwd;
@@ -70,6 +70,6 @@ soundData.ToneOrder = freqRecord;
 soundData.OnRamp = onRampDur;
 soundData.OffRamp = offRampDur;
 
-save(fullfile(pname,fname),'soundData');
+s = soundData;
 
 end

@@ -1,6 +1,6 @@
 %this is meant to be the function version of the
 %soundGeneratorAlternatingToneWithOptoPulsing. 
-function [] = functionDATwoTonePairing(targetFreq,controlFreq,...
+function [s] = functionDATwoTonePairing(targetFreq,controlFreq,...
     fs,targetAmpl,controlAmpl,toneReps,interRep,toneDur,optoDelay,...
     optoDur,optoTTL,optoLag,fileName);
 
@@ -176,6 +176,6 @@ soundData.ToneDuration = toneDur;
 soundData.OptoStimDelay = optoDelay;
 soundData.ToneOrder = freqRecord;
 
-save(fullfile(pname,fname),'soundData');
+s = soundData;
 
 end
