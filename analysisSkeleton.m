@@ -35,13 +35,35 @@ DIO1Data = double(DIO1Data.fields(1).data,DIO1Data.fields(2).data);
 DIO2Data = double(DIO2Data.fields(1).data,DIO2Data.fields(2).data);
 
 %pull all differences in state for DIO data (diff subtracts x(2)-x(1)). +1
-%fudge factor adjusts for indexing. 
+%fudge factor adjusts for indexing. MUST BE DOUBLE!!
 DIO1Diff = find(diff(DIO1Data(:,2))==1)+1;
 DIO1High = find(DIO1Data(:,2) == 1);
+%finds all points which are down to up states, extracts these times.
 DIO1True = intersect(DIO1Diff,DIO1High);
 DIO1True = DIO1Data(DIO1True,1);
+%finds differences between time points
+DIO1TrueDiff = diff(DIO1True);
 
-%pull all high timepoints
-DIO1High = DIO1Data(DIO1Data(:,2)==1 & DIO1Diff,1);
-DIO2High = DIO2Data(DIO2Data(:,2)==1,1);
+%%%VARIABLES HERE%%%
+signalITI = 20; %signal TTL ITI in msecs
+
+%%%Time Periods in Recording%%%
+baselineTimes = 
+tuningFirstTimes = 
+presentationFirstTimes = 
+pairingTimes = 
+presentationSecondTimes = 
+tuningSecondTimes = 
+
+baselineTTLs = 
+tuningFirstTTLs = 
+presentationFirstTTLs = 
+pairingTTLs = 
+presentationSecondTTLs = 
+tuningSecondTTLs = 
+
+
+
+
+
 
