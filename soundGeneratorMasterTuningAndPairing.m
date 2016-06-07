@@ -16,12 +16,14 @@ fileName = fname(1:periodFinder-1);
 %%
 % general parameters:
 fs = 192000; %sampling frequency in Hz
-firstWait = 120; %first waiting period in seconds. 
+firstWait = 12; %first waiting period in seconds. 
 interFunctionPause = 2; %seconds to wait after a function to finish before starting next
-TTLDur = 0.002; %duration of TTL pulses to be sent via the sound card.
+TTLDur = 2; %duration of TTL pulses is ms to be sent via the sound card.
 
 %%
 %tuning curve parameters:
+secondTuningRatio = 2; %ratio of second tuning/first tuning. >1 means more 
+%tones in the second tuning period
 tuningReps = 10; %number of repetitions of each tone/amplitude pair
 tuningToneDur = 0.1; %tone duration in seconds
 
@@ -57,11 +59,12 @@ optoLag = 0.004; %lag due to the double pulse requirement for triggering
 
 %%
 %parameters for TTLs that will signal shifts between functions
+signalTTLDur = TTLDur/1000;
 signalTTLiti = 0.02; %ITI between signal pulse onsets
 signalTTLNum = 4; %number of signal pulses
 
 
-%%
+%%test
 %generates signal TTL signal
 ttlSig = zeros(fs*0.5,1); %this is to generate TTL signals to the MBED
 for i = 1:signalTTLNum
@@ -153,7 +156,7 @@ pause(interFunctionPause);
 
 %This plays the second tuning curve! Saves the file as the SECOND tuning
 %curve. Plays double the number of repetitions.
-[s] = functionTuningCurveGenerator(tuningReps*2,tuningToneDur,...
+[s] = functionTuningCurveGenerator(tuningReps*secondTuningRatio,tuningToneDur,...
     fs,tuningL,tuningpaddingL,prePause,postPauseMin,postPauseMax,startF,...
     endF,octFrac,startdB,enddB,dbSteps,TTLDur);
 
@@ -169,6 +172,17 @@ fullData.SamplingFrequency = fs;
 
 fullData.DividerTTLNumber = signalTTLNum;
 fullData.DividerTTLiti = signalTTLiti;
+
+%to calculate number of repetitions in tuning curve
+octRange = log2(endF/startF);
+freqs = (octRange/octFrac+1);
+dBs = size([startdB:-dbSteps:enddB],2);
+totalToneReps = freqs*dBs*tuningReps;
+
+fullData.TuningRepetitions = totalToneReps;
+fullData.SecondTuningRatio = secondTuningRatio;
+fullData.PresentationRepetitions = baselineToneReps*2;
+fullData.PairingRepetitions = pairingToneReps*2;
 
 
 save(fullfile(pname,fname),'fullData');
