@@ -3,6 +3,8 @@
 %tones before and after, and the actual changes that may occur with laser
 %light itself. 
 
+fileName = '160606TonePairingSecondTester';
+
 %Establishes the folder and subfolders for analysis. Adds all folders to
 %path for easy access to files.
 homeFolder = pwd;
@@ -10,15 +12,16 @@ subFolders = genpath(homeFolder);
 addpath(subFolders)
 subFoldersCell = strsplit(subFolders,';')';
 
-
 %First thing is to import the sound file data.
 
 soundName = strcat(fileName,'.mat');
 soundFile = open(soundName);
+soundFile = soundFile.fullData;
 
 
-
-%Next I need to find the pulses!
+%% This code extracts DIO timepoints and states, and uses that information to
+%%extrapolate which timepoints represent upward changes in the DIO. These
+%%represent true TTL pulses.
 
 %extract DIO filenames
 [D1FileName] = functionFileFinder(subFoldersCell,'DIO','D1');
@@ -43,24 +46,92 @@ DIO1True = intersect(DIO1Diff,DIO1High);
 DIO1True = DIO1Data(DIO1True,1);
 %finds differences between time points
 DIO1TrueDiff = diff(DIO1True);
+%%
+%pull variables from soundfile regarding signal TTLs.
+signalPulseNum = soundFile.DividerTTLNumber;
+signalITI = soundFile.DividerTTLiti; %signal TTL ITI in seconds
+acceptRange = [0.9,1.1]; %range of values above or below ideal ITI that are acceptable
+signalITI = signalITI*30000; %converts to trodes timestamps
+signalRange = acceptRange*signalITI;
 
-%%%VARIABLES HERE%%%
-signalITI = 20; %signal TTL ITI in msecs
+%This next part finds all TTLs that are markers. This finds the ones that
+%correspond with diff. This will correctly label the first three pulses of
+%every sequence
+findSignals = find(DIO1TrueDiff>signalRange(1) & DIO1TrueDiff<signalRange(2));
+%generates array to hold first and last signal pulses, fills based on
+%information about number of signal pulses
+signalHolder = zeros(2,size(findSignals,1)/(signalPulseNum-1));
+for i = 1:size(findSignals,1)/(signalPulseNum-1)
+    signalHolder(1,i) = findSignals(1+(signalPulseNum-1)*(i-1));
+    signalHolder(2,i) = signalHolder(1,i) + signalPulseNum - 1;
+end
 
-%%%Time Periods in Recording%%%
-baselineTimes = 
-tuningFirstTimes = 
-presentationFirstTimes = 
-pairingTimes = 
-presentationSecondTimes = 
-tuningSecondTimes = 
+%This now uses hardcoded values to extract the time periods for each stage
+%of the experiment
+timesBaseline = [DIO1Data(1,1),DIO1True(signalHolder(1,1))];
+timesTuningFirst = [DIO1True(signalHolder(2,1)),DIO1True(signalHolder(1,2))];
+timesPresentationFirst = [DIO1True(signalHolder(2,2)),DIO1True(signalHolder(1,3))];
+timesPairing = [DIO1True(signalHolder(2,3)),DIO1True(signalHolder(1,4))];
+timesPresentationSecond = [DIO1True(signalHolder(2,4)),DIO1True(signalHolder(1,5))];
+timesTuningSecond = [DIO1True(signalHolder(2,5)),DIO1Data(end,1)];
+%also using the same outputs from signalHolder, this determines which TTL
+%pulses belong to which output. 
+TTLsTuningFirst = DIO1True(signalHolder(2,1)+1:signalHolder(1,2)-1);
+TTLsPresentationFirst = DIO1True(signalHolder(2,2)+1:signalHolder(1,3)-1);
+TTLsPairing = DIO1True(signalHolder(2,3)+1:signalHolder(1,4)-1);
+TTLsPresentationSecond = DIO1True(signalHolder(2,4)+1:signalHolder(1,5)-1);
+TTLsTuningSecond = DIO1True(signalHolder(2,5)+1:end);
 
-baselineTTLs = 
-tuningFirstTTLs = 
-presentationFirstTTLs = 
-pairingTTLs = 
-presentationSecondTTLs = 
-tuningSecondTTLs = 
+%% check size!if the wrong size will throw error!
+if size(TTLsPresentationFirst,1) == soundFile.PresentationRepetitions;
+    disp('Correct Number of Early Long Presentations')
+else
+    error('MISMATCHED EARLY LONG PRESENTATIONS') 
+end
+
+if size(TTLsPresentationSecond,1) == soundFile.PresentationRepetitions;
+    disp('Correct Number of Second Long Presentations')
+else
+    error('MISMATCHED SECOND LONG PRESENTATIONS') 
+end
+
+if size(TTLsTuningFirst,1) == soundFile.TuningRepetitions;
+    disp('Correct Number of Early Tuning Presentations')
+else
+    error('MISMATCHED EARLY TUNING PRESENTATIONS') 
+end
+
+if size(TTLsTuningSecond,1) == soundFile.TuningRepetitions*soundFile.SecondTuningRatio;
+    disp('Correct Number of Late Tuning Presentations')
+else
+    error('MISMATCHED LATE TUNING PRESENTATIONS') 
+end
+
+if size(TTLsPairing,1) == soundFile.PairingRepetitions;
+    disp('Correct Number of Pairing Presentations')
+else
+    error('MISMATCHED PAIRING PRESENTATIONS') 
+end
+%% First thing I want to do is calculate average firing rate during the baseline period
+
+
+%% Next thing to do is compare tuning properties of the first and second tuning curves
+
+
+%% Next I analyze the first and second long tone presentations
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
