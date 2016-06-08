@@ -14,9 +14,10 @@ int ttlCount = 0
 int intWindow = 10 %this is the window over which counts are integrated
 
 %These are variables for tone triggered TTLs. names describe function.
+%These variables are for dopamine pulsing
 int pulseNum = 20
 int pulseDur = 10
-int pulseITI = 40
+int pulseITI = 30
 int pulseCounter = 0
 
 %This is code for cell ID purposes. Toggle holds whether the trip switch
