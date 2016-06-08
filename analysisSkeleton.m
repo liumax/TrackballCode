@@ -46,15 +46,14 @@ DIO1True = intersect(DIO1Diff,DIO1High);
 DIO1True = DIO1Data(DIO1True,1);
 %finds differences between time points
 DIO1TrueDiff = diff(DIO1True);
-%%
-%pull variables from soundfile regarding signal TTLs.
+%% pull variables from soundfile regarding signal TTLs to calculate acceptable range of signals for signal TTLs
 signalPulseNum = soundFile.DividerTTLNumber;
 signalITI = soundFile.DividerTTLiti; %signal TTL ITI in seconds
 acceptRange = [0.9,1.1]; %range of values above or below ideal ITI that are acceptable
 signalITI = signalITI*30000; %converts to trodes timestamps
 signalRange = acceptRange*signalITI;
 
-%This next part finds all TTLs that are markers. This finds the ones that
+%% This next part finds all TTLs that are markers. This finds the ones that
 %correspond with diff. This will correctly label the first three pulses of
 %every sequence
 findSignals = find(DIO1TrueDiff>signalRange(1) & DIO1TrueDiff<signalRange(2));
@@ -66,7 +65,7 @@ for i = 1:size(findSignals,1)/(signalPulseNum-1)
     signalHolder(2,i) = signalHolder(1,i) + signalPulseNum - 1;
 end
 
-%This now uses hardcoded values to extract the time periods for each stage
+%% This now uses hardcoded values to extract the TTLs and time periods for each stage
 %of the experiment
 timesBaseline = [DIO1Data(1,1),DIO1True(signalHolder(1,1))];
 timesTuningFirst = [DIO1True(signalHolder(2,1)),DIO1True(signalHolder(1,2))];
@@ -112,6 +111,12 @@ if size(TTLsPairing,1) == soundFile.PairingRepetitions;
 else
     error('MISMATCHED PAIRING PRESENTATIONS') 
 end
+
+%% Now I must extract relevant data from the Matclust files.
+
+
+
+
 %% First thing I want to do is calculate average firing rate during the baseline period
 
 
