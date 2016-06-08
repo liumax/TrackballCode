@@ -79,6 +79,7 @@ histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
 histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes
+baselineBins = [1,find(histBinVector<0,1,'last')];
 
 %store values in structured array.
 matclustStruct.RasterAxis = rasterAxis;
@@ -210,13 +211,13 @@ for i = 1:numTrodes
     %puts clusterIndex into structured array
     matclustStruct.(truncatedNames{i}).SpikeTimes = clusterIndex;
     
-    %calculates average firing rate
+    %calculates overall firing rate
     totalTime = matclustFile.clustdata.datarange(2,1)-matclustFile.clustdata.datarange(1,1);
-    averageFiring = zeros(clusterSizer,1);
+    overallFiring = zeros(clusterSizer,1);
     for j = 1:clusterSizer
-        averageFiring(j) = size(clusterIndex{j},1)/totalTime;
+        overallFiring(j) = size(clusterIndex{j},1)/totalTime;
     end
-    matclustStruct.(truncatedNames{i}).AverageFiringRate = averageFiring;
+    matclustStruct.(truncatedNames{i}).OverallFiringRate = overallFiring;
     
     %pull out average waveform and standard error
     targetWaveName = strcat('waves',truncatedNames{i}(15:end),'.mat');
@@ -239,11 +240,15 @@ for i = 1:numTrodes
     matclustStruct.(truncatedNames{i}).AverageWaveForms = averageWaveHolder;
     matclustStruct.(truncatedNames{i}).AllWaveForms = waveHolder;
     
+    %clears variables so in later loops dont have sizing issues.
     masterToneRaster = [];
     masterToneHist = [];
+    indivToneHist = cell(clusterSizer,size(master,1)); %holder for all full histograms
+    baselineHist = ones(baselineBins(2)*numDBs*numFreqs*matclustStruct.ToneReps,clusterSizer); %holds all values from pre-tone period. Stores as array with columns = number of clusters
     %generate rasters and histograms, ignores frequency information
     for j = 1:clusterSizer
         rasterHolder = 1;
+        baselineCounter = 1;
         for k = 1:size(master,1)
             toneHolder = clusterIndex{j}(clusterIndex{j}>master(k,1)+rasterWindow(1) & clusterIndex{j}<master(k,1)+rasterWindow(2));
             toneHolder = toneHolder - master(k,1);
@@ -260,6 +265,8 @@ for i = 1:numTrodes
                 centers = centers';
             end
             indivToneHist{j,k} = [counts'*(1/histBin),centers'];
+            baselineHist(baselineCounter:baselineCounter+baselineBins(2)-1,j) = counts(baselineBins(1):baselineBins(2));
+            baselineCounter = baselineCounter + baselineBins(2);
             counts = [];
             centers = [];
             %fills in large raster plot. holder updated position.
@@ -290,6 +297,22 @@ for i = 1:numTrodes
     matclustStruct.(truncatedNames{i}).Rasters = masterToneRaster;
     matclustStruct.(truncatedNames{i}).Histogram = masterToneHist;
     
+    %next I will calculate mean firing rate based on collected baseline histogram
+    %information.
+    averageFiringMean = zeros(clusterSizer,1);
+    averageFiringMean = mean(baselineHist)/histBin;
+    averageFiringSTD = std(baselineHist);%no need for hist bin division: std has already factored this
+    matclustStruct.(truncatedNames{i}).AverageFiringRate = averageFiringMean;
+    matclustStruct.(truncatedNames{i}).AverageFiringSTD = averageFiringSTD;
+    
+    %need to adjust histograms to be z scored! Saves as new array to
+    %preserve old data.
+    masterZScore = masterToneHist;
+    for j = 1:clusterSizer
+        masterZScore{j}(:,1) = (masterToneHist{j}(:,1)-averageFiringMean(j))/averageFiringSTD(j);
+    end
+    matclustStruct.(truncatedNames{i}).ZScore = masterZScore;
+    
     %code to make histograms for each set of frequencies and amplitudes.
     %Extracts data from rasters, generates new histograms for each
     %frequency/amplitude pair.
@@ -297,7 +320,7 @@ for i = 1:numTrodes
     
     for k = 1:clusterSizer
         percentResponse = zeros(size(matclustStruct.UniqueFreqs,1),size(matclustStruct.UniqueDBs,1));
-        freqHistHolder = matclustStruct.(truncatedNames{i}).Rasters{k}(:,2:4);
+%         freqHistHolder = matclustStruct.(truncatedNames{i}).Rasters{k}(:,2:4);
         for j=1:size(matclustStruct.UniqueFreqs,1);
             for l = 1:size(matclustStruct.UniqueDBs,1);
                 aveFreqHolder = zeros(histBinNum,1);
@@ -348,11 +371,16 @@ for i = 1:numTrodes
         respReliab{k} = percentResponse;
         aveFreqRespMaster{k} = averageFreqResp;
     end
-    
+    %saves all things to the matclustStructure.
+
     matclustStruct.(truncatedNames{i}).FreqDBSpecificHist = masterFreqDBHist;
     matclustStruct.(truncatedNames{i}).ResponseReliability = respReliab;
     matclustStruct.(truncatedNames{i}).AverageFrequencyHistogram = aveFreqRespMaster;
+
     
+    
+    %the code below is for generating standard error lines for the plot of
+    %the overall histogram.
     stdHolder = zeros(length(histBinVector),length(master(:,1)));
     steHolder = zeros(length(histBinVector),clusterSizer);
 
