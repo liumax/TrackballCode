@@ -4,7 +4,7 @@ toneReps = 20; %number of repetitions of each tone/amplitude pair
 toneDur = 0.1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
-paddingL = L + fs*0.1;
+paddingL = L + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
 
 prePause = 0.1; %pause in seconds before tone
 postPauseMin = 500; %pause in milliseconds after tone
