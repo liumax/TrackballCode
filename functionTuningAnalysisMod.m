@@ -526,7 +526,7 @@ for i = 1:numTrodes
             'Min',num2str(min(min(matclustStruct.(truncatedNames{i}).AverageFrequencyHistogram{j}))/matclustStruct.(truncatedNames{i}).AverageFiringRate(j))))
         hold off
         %save as matlab figure with correct name (fileName+LFP)
-        spikeGraphName = strcat(trodesDesignation{i},' Cluster ',num2str(j),'SpikeAnalysis');
+        spikeGraphName = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'SpikeAnalysis');
         savefig(hFig,spikeGraphName);
 
         %save as PDF with correct name
