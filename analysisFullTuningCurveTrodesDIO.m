@@ -1,3 +1,5 @@
+
+
 %this should be basic code to use cluster data to pick out spike time
 %points and then align them to auditory stimuli. 
 
@@ -159,10 +161,9 @@ end
 
 %%
 %here I need to calculate LFPs!
-% [s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
-% matclustStruct.LFPData = s;
+[s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
+matclustStruct.LFPData = s;
 %%
-
 %extracts times of clustered spikes.
 for i = 1:numTrodes
     %extract all spike times total. this is to calculate ISIs for individual
@@ -394,6 +395,8 @@ for i = 1:numTrodes
     processRaster = [];
 end
 
+
+%%
 %%Graphing!
 
 for i = 1:numTrodes
@@ -474,7 +477,7 @@ for i = 1:numTrodes
         %represents a fairly large increase in response, and there is
         %little room for inhibition
         subplot(4,3,3)
-        imagesc(log10(matclustStruct.(truncatedNames{i}).FrequencyResponse{j}/matclustStruct.(truncatedNames{i}).AverageFiringRate(j)),clims1)
+        imagesc(log10(matclustStruct.(truncatedNames{i}).FrequencyResponse{j}/(matclustStruct.ToneReps*matclustStruct.ToneDur*matclustStruct.(truncatedNames{i}).AverageFiringRate(j))),clims1)
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
         set(gca,'YTick',dbRange(:,2));
@@ -532,9 +535,9 @@ end
 rmpath(subFolders) %removes folders from the path. This is to reduce chances for confusion with multiple runs of code
 
 %saves matclustStruct
-% save(fullfile(pname,fname),'matclustStruct');
-% clear
-% clearvars
+save(fullfile(pname,fname),'matclustStruct');
+clear
+clearvars
 
 
 
