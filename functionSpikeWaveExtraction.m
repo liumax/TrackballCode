@@ -5,9 +5,6 @@
 function [matclustStruct, clusterSizer] = functionSpikeWaveExtraction(rpvTime,...
     i,matclustFiles,matclustStruct,truncatedNames,clusterWindow);
 
-%NEED THE FOLLOWING:
-% NOTE: CLUSTERINDEX NEEDS TO BE CHANGED IN LATER CODE BECAUSE I"M NOT EXPORTING IT
-
 %Opens the matclust file.
 matclustFile = open(matclustFiles{i});
 %Now I need to actually pull components of the clusters:
