@@ -31,7 +31,7 @@ for i = 1:size(truncatedNames,2)
         diffSpikes = [];
     end
     %prepares cluster indices. Finds actual points of index per cluster.
-    %Then replaces with real times (in Trodes time)
+    %Then replaces with real times (in milliseconds)
     spikeTimes = cell(numClusters(i),1);
     for j = 1:numClusters(i)
         spikeTimes{j} = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(j)}.index;
