@@ -12,7 +12,7 @@ function [matclustStruct, clusterSizer] = functionSpikeWaveExtraction(rpvTime,..
 matclustFile = open(matclustFiles{i});
 %Now I need to actually pull components of the clusters:
 clusterSizer= size(matclustFile.clustattrib.clustersOn,1); %pulls number of clusters
-matclustStruct.(truncatedNames{i}).ClusterNumber =  clusterSizer; %stores this number into structured array
+
     
 %preps series of arrays for extracting spikes
 clusterSpikes = cell(clusterSizer,1);
@@ -32,9 +32,6 @@ for j = 1:clusterSizer
     selectedSpikes{j} = diffSpikes(diffSpikes<clusterWindow(2)); %removes long pauses
     diffSpikes = [];
 end
-matclustStruct.(truncatedNames{i}).ISIData = selectedSpikes;
-matclustStruct.(truncatedNames{i}).RPVs = rpvViolationPercent;
-selectedSpikes = [];
 
 %prepares cluster indices. Finds actual points of index per cluster.
 %Then replaces with real times (in Trodes time)
@@ -44,16 +41,12 @@ for j = 1:clusterSizer
     spikeTimes{j} = matclustFile.clustdata.params(spikeTimes{j},1);
 end
 
-%puts clusterIndex into structured array
-matclustStruct.(truncatedNames{i}).SpikeTimes = spikeTimes;
-
 %calculates overall firing rate
 totalTime = matclustFile.clustdata.datarange(2,1)-matclustFile.clustdata.datarange(1,1);
 overallFiring = zeros(clusterSizer,1);
 for j = 1:clusterSizer
     overallFiring(j) = size(spikeTimes{j},1)/totalTime;
 end
-matclustStruct.(truncatedNames{i}).OverallFiringRate = overallFiring;
 
 %pull out average waveform and standard error
 targetWaveName = strcat('waves',truncatedNames{i}(15:end),'.mat');
@@ -73,9 +66,17 @@ for j = 1:clusterSizer
     averageWaveHolder(:,j,1) = mean(waveHolder{j},2)-std(waveHolder{j},0,2);
     averageWaveHolder(:,j,3) = mean(waveHolder{j},2)+std(waveHolder{j},0,2);
 end
+
+matclustStruct.(truncatedNames{i}).ClusterNumber =  clusterSizer; %stores this number into structured array
+matclustStruct.(truncatedNames{i}).ISIData = selectedSpikes;
+matclustStruct.(truncatedNames{i}).RPVs = rpvViolationPercent;
+matclustStruct.(truncatedNames{i}).SpikeTimes = spikeTimes;
+matclustStruct.(truncatedNames{i}).OverallFiringRate = overallFiring;
 matclustStruct.(truncatedNames{i}).AverageWaveForms = averageWaveHolder;
 matclustStruct.(truncatedNames{i}).AllWaveForms = waveHolder;
 
+
+end
 
 
 
