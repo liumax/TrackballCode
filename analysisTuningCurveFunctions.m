@@ -5,7 +5,7 @@
 %spikes, matlab file with audio order
 %and log file from MBED. 
 
-function [] = functionTuningCruveFunctions(fileName);
+function [] = analysisTuningCurveFunctions(fileName);
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
@@ -182,6 +182,7 @@ for i = 1:numTrodes
     %purposes.
     [matclustStruct] = functionFreqAmpRasterHist(i, clusterSizer,...
     matclustStruct,histBinNum,histBinVector,histBin,truncatedNames);
+    disp(i)
 end
 
 %% graphing!
