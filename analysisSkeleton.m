@@ -16,6 +16,9 @@ subFolders = genpath(homeFolder);
 addpath(subFolders)
 subFoldersCell = strsplit(subFolders,';')';
 
+%% generate a master structure for storage of everything.
+masterStruct = struct;
+
 %% Find and ID Matclust Files for Subsequent Analysis.
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
 
@@ -69,6 +72,7 @@ DIO1True = intersect(DIO1Diff,DIO1High);
 DIO1True = DIO1Data(DIO1True,1);
 %finds differences between time points
 DIO1TrueDiff = diff(DIO1True);
+
 %% pull variables from soundfile regarding signal TTLs to calculate acceptable range of signals for signal TTLs
 signalPulseNum = soundFile.DividerTTLNumber;
 signalITI = soundFile.DividerTTLiti; %signal TTL ITI in seconds
@@ -103,6 +107,19 @@ TTLsPresentationFirst = DIO1True(signalHolder(2,2)+1:signalHolder(1,3)-1);
 TTLsPairing = DIO1True(signalHolder(2,3)+1:signalHolder(1,4)-1);
 TTLsPresentationSecond = DIO1True(signalHolder(2,4)+1:signalHolder(1,5)-1);
 TTLsTuningSecond = DIO1True(signalHolder(2,5)+1:end);
+%stores these values into the master structure
+masterStruct.TTLs.TuningFirst = TTLsTuningFirst;
+masterStruct.TTLs.TuningSecond = TTLsTuningSecond;
+masterStruct.TTLs.PresentationFirst = TTLsPresentationFirst;
+masterStruct.TTLs.PresentationSecond = TTLsPresentationSecond;
+masterStruct.TTLs.Pairing = TTLsPairing;
+
+masterStruct.TimePeriods.Baseline = timesBaseline;
+masterStruct.TimePeriods.TuningFirst = timesTuningFirst;
+masterStruct.TimePeriods.TuningSecond = timesTuningSecond;
+masterStruct.TimePeriods.PresentationFirst = timesPresentationFirst;
+masterStruct.TimePeriods.PresentationSecond = timesPresentationSecond;
+masterStruct.TimePeriods.Pairing = timesPairing;
 
 %% check size!if the wrong size will throw error!
 if size(TTLsPresentationFirst,1) == soundFile.PresentationRepetitions;
@@ -136,9 +153,14 @@ else
 end
 
 %% First thing I want to do is calculate average firing rate during the baseline period
-%generate a master structure for storage of everything.
-masterStruct = struct;
-masterStruct.AverageFiringRates = [];
+
+
+%calculates average firing rate for the initial period.
+[masterStruct] = functionPairingAverageRate(masterStruct,truncatedNames,...
+    spikeStruct,timesBaseline);
+
+%% Now I want to parse out the spike times that I originally extracted by the times from the DIO file.
+
 
 
 %% Next thing to do is compare tuning properties of the first and second tuning curves
