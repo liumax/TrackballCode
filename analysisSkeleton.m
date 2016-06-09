@@ -5,14 +5,37 @@
 
 fileName = '160606TonePairingSecondTester';
 
-%Establishes the folder and subfolders for analysis. Adds all folders to
+%% Hardcoded Variables:
+rpvTime = 0.0013; %limit to be considered an RPV.
+clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
+
+%% Establishes the folder and subfolders for analysis. Adds all folders to
 %path for easy access to files.
 homeFolder = pwd;
 subFolders = genpath(homeFolder);
 addpath(subFolders)
 subFoldersCell = strsplit(subFolders,';')';
 
-%First thing is to import the sound file data.
+%% Find and ID Matclust Files for Subsequent Analysis.
+[matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
+
+%extracts matclust file names and removes periods which allow structured array formation.
+truncatedNames = matclustFiles;
+numTrodes = length(truncatedNames);
+for i = 1:length(truncatedNames)
+    truncatedNames{i} = truncatedNames{i}(1:find(truncatedNames{i} == '.')-1);
+end
+
+trodesDesignation = cell(size(truncatedNames));
+for i = 1:length(truncatedNames)
+    trodesDesignation{i} = truncatedNames{i}(17:end);
+end
+
+%% Goes and pulls spike times, overall firing rate, waveforms, rpvs from matclust files
+[spikeStruct] = functionPairingSpikeExtractor(truncatedNames,...
+    matclustFiles,rpvTime,clusterWindow);
+
+%% First thing is to import the sound file data.
 
 soundName = strcat(fileName,'.mat');
 soundFile = open(soundName);
@@ -112,12 +135,10 @@ else
     error('MISMATCHED PAIRING PRESENTATIONS') 
 end
 
-%% Now I must extract relevant data from the Matclust files.
-
-
-
-
 %% First thing I want to do is calculate average firing rate during the baseline period
+%generate a master structure for storage of everything.
+masterStruct = struct;
+masterStruct.AverageFiringRates = [];
 
 
 %% Next thing to do is compare tuning properties of the first and second tuning curves
