@@ -3,8 +3,7 @@
 %generates standard error lines for this.
 
 function [structureTarget] = functionPairingRasterHistExtraction(i,clusters,...
-    master,numDBs,numFreqs,structureTarget,truncatedNames,spikeTimes,...
-    rasterWindow,histBin,histBinVector);
+    master,structureTarget,spikeTimes,rasterWindow,histBin,histBinVector);
 %holder for all full histograms
 indivToneHist = cell(clusters,size(master,1)); 
 
