@@ -45,15 +45,15 @@ dbSteps = 60; %resolution of decible steps
 %auditory pairing parameters:
 targetFreq = 8000; %target frequency in Hz
 controlFreq = 16000;
-targetAmpl = 1; %target amplitude as fraction of 1
-controlAmpl = 1;
+targetDB = 100; %target DBs. 100 is max.
+controlDB = 100;
 baselineToneReps = 20; %tone repetitions for presentations of long tones before pairing
 pairingToneReps = 20; %tone repetitions for pairing experiment
 interRep = 5; %seconds between tones
 
 pairingToneDur = 1; %tone duration in seconds
 optoDelay = 0.6; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
-optoDur = 1; %duration of all opto pulses.
+optoDur = 1; %duration of all opto pulses, in seconds. THIS IS SHITTY HARD CODED VALUE SHOULD EVENTUALLY CHANGE
 optoTTL = 0.002; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
 
@@ -109,7 +109,7 @@ pause(interFunctionPause);
 %This will help determine if there are any differences in teh response
 %properties of cells to longer tones.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
-    fs,targetAmpl,controlAmpl,baselineToneReps,...
+    fs,targetDB,controlDB,baselineToneReps,...
     interRep,pairingToneDur,TTLDur);
 
 fullData.Tones1=s;
@@ -125,7 +125,7 @@ pause(interFunctionPause);
 %This should execute the pairing of auditory stimuli with dopamine
 %terminal/cellbody stimulation
 [s] = functionDATwoTonePairing(targetFreq,controlFreq,...
-    fs,targetAmpl,controlAmpl,pairingToneReps,interRep,...
+    fs,targetDB,controlDB,pairingToneReps,interRep,...
     pairingToneDur,optoDelay,...
     optoDur,optoTTL,optoLag);
 
@@ -141,7 +141,7 @@ pause(interFunctionPause);
 
 %play tones again after pairing.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
-    fs,targetAmpl,controlAmpl,baselineToneReps,...
+    fs,targetDB,controlDB,baselineToneReps,...
     interRep,pairingToneDur,TTLDur);
 
 fullData.Tones2=s;

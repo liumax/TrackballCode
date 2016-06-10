@@ -1,7 +1,15 @@
 %this is meant to be the function version of the
 %soundGeneratorAlternatingToneWithOptoPulsing. 
 function [s] = functionPlayTwoTones(targetFreq,controlFreq,...
-    fs,targetAmpl,controlAmpl,toneReps,interRep,toneDur,TTLDur);
+    fs,targetDB,controlDB,toneReps,interRep,toneDur,TTLDur);
+
+maxAmp = 100; %maximum amplitude in dBs
+
+targetDB = targetDB - maxAmp;
+controlDB = controlDB - maxAmp;
+
+targetAmpl = 1*10^(targetDB/20);
+controlAmpl = 1*10^(targetDB/20);
 
 onRampDur = 0.1*fs; 
 offRampDur = 0.1*fs;
@@ -55,15 +63,22 @@ freqRecord = controller;
 freqRecord(freqRecord == 1) = targetFreq;
 freqRecord(freqRecord == 0) = controlFreq;
 
+dbRecord = controller;
+dbRecord(dbRecord == 1) = targetDB;
+dbRecord(dbRecord == 0) = controlDB;
+
+ampRecord = controller;
+ampRecord(ampRecord == 1) = targetAmpl;
+ampRecord(ampRecord == 0) = controlAmpl;
+
 soundData = struct;
-soundData.PairedTone.Frequency = targetFreq;
-soundData.ControlTone.Frequency= controlFreq;
-soundData.PairedTone.Amplitude = targetAmpl;
-soundData.ControlTone.Amplitude= controlAmpl;
-soundData.Repetitions = toneReps;
+soundData.ToneRepetitions = toneReps;
+soundData.ToneDuration = toneDur;
 soundData.ITI = interRep;
 soundData.ToneDuration = toneDur;
-soundData.ToneOrder = freqRecord;
+soundData.Frequencies = freqRecord;
+soundData.dBs = dbRecord;
+soundData.Amplitudes = ampRecord;
 soundData.OnRamp = onRampDur;
 soundData.OffRamp = offRampDur;
 
