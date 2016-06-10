@@ -44,25 +44,10 @@ end
 soundName = strcat(fileName,'.mat');
 soundFile = open(soundName);
 
-%extracts frequency information.
+%Sets up master array so that we have a size comparison for DIO
+%information. 
 master = zeros(size(soundFile.soundData.Frequencies,1),5);
-master(:,2) = soundFile.soundData.Frequencies;
-uniqueFreqs = unique(master(:,2));
-master(:,3) = soundFile.soundData.dBs;
-uniqueDBs = unique(master(:,3));
 
-numFreqs = size(uniqueFreqs,1);
-numDBs = size(uniqueDBs,1);
-
-%% Store Info into structured array.
-matclustStruct.UniqueFreqs = uniqueFreqs;
-matclustStruct.UniqueDBs = uniqueDBs;
-matclustStruct.SoundTimes = master(:,1);
-matclustStruct.Frequencies = master(:,2);
-matclustStruct.dBs = master(:,3);
-%also stores parameters for rep number and tone duration.
-matclustStruct.ToneReps = soundFile.soundData.ToneRepetitions;
-matclustStruct.ToneDur = soundFile.soundData.ToneDuration;
 
 %% Set and/or Generate Raster and Histogram Parameters, store in Structured Array
 rasterWindow = [-matclustStruct.ToneDur,matclustStruct.ToneDur*3];
@@ -118,6 +103,24 @@ elseif size(inTimes,1) == size(master,1)
 end
 
 inTimes = [];
+%% Now that number of TTL pulses and DIO pulses has been confirmed, lets fill out the rest of master.
+master(:,2) = soundFile.soundData.Frequencies;
+uniqueFreqs = unique(master(:,2));
+master(:,3) = soundFile.soundData.dBs;
+uniqueDBs = unique(master(:,3));
+
+numFreqs = size(uniqueFreqs,1);
+numDBs = size(uniqueDBs,1);
+
+%% Store Info into structured array.
+matclustStruct.UniqueFreqs = uniqueFreqs;
+matclustStruct.UniqueDBs = uniqueDBs;
+matclustStruct.SoundTimes = master(:,1);
+matclustStruct.Frequencies = master(:,2);
+matclustStruct.dBs = master(:,3);
+%also stores parameters for rep number and tone duration.
+matclustStruct.ToneReps = soundFile.soundData.ToneRepetitions;
+matclustStruct.ToneDur = soundFile.soundData.ToneDuration; 
 
 %% Finds the number of octaves, makes array of octave steps. This will be used for imagesc graphing applications
 totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(1)));

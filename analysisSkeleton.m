@@ -3,11 +3,18 @@
 %tones before and after, and the actual changes that may occur with laser
 %light itself. 
 
-fileName = '160606TonePairingSecondTester';
+fileName = '160609TonePairingTester';
 
 %% Hardcoded Variables:
 rpvTime = 0.0013; %limit to be considered an RPV.
 clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
+trodesFS = 30000; %sampling rate of trodes box.
+rasterWindow = [-1,3]; %duration of raster window. These are numbers that will
+%be multiplied by the tone duration. EX: raster window for 0.1sec tone will
+%be -100 to 300 ms.
+histBin = 0.005; %bin size in seconds
+clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
+
 
 %% Establishes the folder and subfolders for analysis. Adds all folders to
 %path for easy access to files.
@@ -22,21 +29,24 @@ masterStruct = struct;
 %% Find and ID Matclust Files for Subsequent Analysis.
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
 
-%extracts matclust file names and removes periods which allow structured array formation.
+%extracts matclust file names and removes periods which allow structured
+%array formation.
 truncatedNames = matclustFiles;
 numTrodes = length(truncatedNames);
 for i = 1:length(truncatedNames)
     truncatedNames{i} = truncatedNames{i}(1:find(truncatedNames{i} == '.')-1);
+    masterStruct.(truncatedNames{i}) = [];
 end
 
+%generates even shorter names for figure presentation. 
 trodesDesignation = cell(size(truncatedNames));
 for i = 1:length(truncatedNames)
     trodesDesignation{i} = truncatedNames{i}(17:end);
 end
 
 %% Goes and pulls spike times, overall firing rate, waveforms, rpvs from matclust files
-[spikeStruct] = functionPairingSpikeExtractor(truncatedNames,...
-    matclustFiles,rpvTime,clusterWindow);
+[masterStruct] = functionPairingSpikeExtractor(truncatedNames,...
+    matclustFiles,rpvTime,clusterWindow,masterStruct);
 
 %% First thing is to import the sound file data.
 
@@ -60,8 +70,8 @@ D2FileName = D2FileName{1};
 [DIO2Data] = readTrodesExtractedDataFile(D2FileName);
 
 %remove just time and state data. convert to double for easier processing
-DIO1Data = double(DIO1Data.fields(1).data,DIO1Data.fields(2).data);
-DIO2Data = double(DIO2Data.fields(1).data,DIO2Data.fields(2).data);
+DIO1Data = double([DIO1Data.fields(1).data,DIO1Data.fields(2).data]);
+DIO2Data = double([DIO2Data.fields(1).data,DIO2Data.fields(2).data]);
 
 %pull all differences in state for DIO data (diff subtracts x(2)-x(1)). +1
 %fudge factor adjusts for indexing. MUST BE DOUBLE!!
@@ -93,7 +103,8 @@ for i = 1:size(findSignals,1)/(signalPulseNum-1)
 end
 
 %% This now uses hardcoded values to extract the TTLs and time periods for each stage
-%of the experiment
+%of the experiment. Currently, times are in Trodes samples, which are at 30
+%kHz.
 timesBaseline = [DIO1Data(1,1),DIO1True(signalHolder(1,1))];
 timesTuningFirst = [DIO1True(signalHolder(2,1)),DIO1True(signalHolder(1,2))];
 timesPresentationFirst = [DIO1True(signalHolder(2,2)),DIO1True(signalHolder(1,3))];
@@ -107,19 +118,19 @@ TTLsPresentationFirst = DIO1True(signalHolder(2,2)+1:signalHolder(1,3)-1);
 TTLsPairing = DIO1True(signalHolder(2,3)+1:signalHolder(1,4)-1);
 TTLsPresentationSecond = DIO1True(signalHolder(2,4)+1:signalHolder(1,5)-1);
 TTLsTuningSecond = DIO1True(signalHolder(2,5)+1:end);
-%stores these values into the master structure
-masterStruct.TTLs.TuningFirst = TTLsTuningFirst;
-masterStruct.TTLs.TuningSecond = TTLsTuningSecond;
-masterStruct.TTLs.PresentationFirst = TTLsPresentationFirst;
-masterStruct.TTLs.PresentationSecond = TTLsPresentationSecond;
-masterStruct.TTLs.Pairing = TTLsPairing;
-
-masterStruct.TimePeriods.Baseline = timesBaseline;
-masterStruct.TimePeriods.TuningFirst = timesTuningFirst;
-masterStruct.TimePeriods.TuningSecond = timesTuningSecond;
-masterStruct.TimePeriods.PresentationFirst = timesPresentationFirst;
-masterStruct.TimePeriods.PresentationSecond = timesPresentationSecond;
-masterStruct.TimePeriods.Pairing = timesPairing;
+%stores these values into the master structure. Converts to seconds.
+masterStruct.TTLs.TuningFirst = TTLsTuningFirst/trodesFS;
+masterStruct.TTLs.TuningSecond = TTLsTuningSecond/trodesFS;
+masterStruct.TTLs.PresentationFirst = TTLsPresentationFirst/trodesFS;
+masterStruct.TTLs.PresentationSecond = TTLsPresentationSecond/trodesFS;
+masterStruct.TTLs.Pairing = TTLsPairing/trodesFS;
+%Remember that this has converted time values to seconds.
+masterStruct.TimePeriods.Baseline = timesBaseline/trodesFS;
+masterStruct.TimePeriods.TuningFirst = timesTuningFirst/trodesFS;
+masterStruct.TimePeriods.TuningSecond = timesTuningSecond/trodesFS;
+masterStruct.TimePeriods.PresentationFirst = timesPresentationFirst/trodesFS;
+masterStruct.TimePeriods.PresentationSecond = timesPresentationSecond/trodesFS;
+masterStruct.TimePeriods.Pairing = timesPairing/trodesFS;
 
 %% check size!if the wrong size will throw error!
 if size(TTLsPresentationFirst,1) == soundFile.PresentationRepetitions;
@@ -146,25 +157,43 @@ else
     error('MISMATCHED LATE TUNING PRESENTATIONS') 
 end
 
-if size(TTLsPairing,1) == soundFile.PairingRepetitions;
-    disp('Correct Number of Pairing Presentations')
-else
-    error('MISMATCHED PAIRING PRESENTATIONS') 
-end
 
-%% First thing I want to do is calculate average firing rate during the baseline period
+%% First thing I want to do is divvy up spikes to different time periods
+[masterStruct] = functionPairingSpikeSeparator(masterStruct,...
+   truncatedNames);
 
+%% calculates average firing rate for the initial period.
+[masterStruct] = functionPairingAverageRate(masterStruct,truncatedNames);
 
-%calculates average firing rate for the initial period.
-[masterStruct] = functionPairingAverageRate(masterStruct,truncatedNames,...
-    spikeStruct,timesBaseline);
+%% Next thing is to analyze tuning curve chunks for differences.
 
-%% Now I want to parse out the spike times that I originally extracted by the times from the DIO file.
+%Analyze first tuning curve. These hardcoded names will pull the right TTL
+%and spike files.
+spikeName = 'TuningFirstSpikes';
+ttlName = 'TuningFirst';
+soundName = 'Tuning1';
 
+%first pull out sound data for the relevant file
+[masterStruct] = functionPairingSoundDataExtraction(masterStruct,...
+    soundName,soundFile); 
+%next, pull tuning information
+[masterStruct] = functionPairingTuning(masterStruct,truncatedNames,...
+    spikeName,ttlName,soundName,rasterWindow,histBin,clusterWindow,...
+    clims1,rpvTime,trodesDesignation,fileName); 
 
+%now I analyze the second tuning curve. again, hardcoded names pull the
+%correct TTL and spike files.
+spikeName = 'TuningSecondSpikes';
+ttlName = 'TuningSecond';
+soundName = 'Tuning2';
 
-%% Next thing to do is compare tuning properties of the first and second tuning curves
-
+%first pull out sound data for the relevant file
+[masterStruct] = functionPairingSoundDataExtraction(masterStruct,...
+    soundName,soundFile); 
+%next, pull tuning information
+[masterStruct] = functionPairingTuning(masterStruct,truncatedNames,...
+    spikeName,ttlName,soundName,rasterWindow,histBin,clusterWindow,...
+    clims1,rpvTime,trodesDesignation,fileName); 
 
 %% Next I analyze the first and second long tone presentations
 
