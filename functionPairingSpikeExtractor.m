@@ -2,12 +2,11 @@
 %all spikes, and calculate RPVs, overall firing rate, and average
 %waveforms. Overall, very similar to the functionSpikeWaveExtraction code,
 %just different in terms of what it outputs.
-function [spikeStruct] = functionPairingSpikeExtractor(truncatedNames,...
-    matclustFiles,rpvTime,clusterWindow);
+function [masterStruct] = functionPairingSpikeExtractor(truncatedNames,...
+    matclustFiles,rpvTime,clusterWindow,masterStruct);
 %determine the number of clusters within each matclust file. Also extracts
 %all spike times, rpvs, and waveforms.
 numClusters = zeros(size(truncatedNames,2),1);
-spikeStruct = struct;
 for i = 1:size(truncatedNames,2)
     %opens matclust file
     matclustFile = open(matclustFiles{i});
@@ -31,7 +30,7 @@ for i = 1:size(truncatedNames,2)
         diffSpikes = [];
     end
     %prepares cluster indices. Finds actual points of index per cluster.
-    %Then replaces with real times (in milliseconds)
+    %Then replaces with real times (in seconds)
     spikeTimes = cell(numClusters(i),1);
     for j = 1:numClusters(i)
         spikeTimes{j} = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(j)}.index;
@@ -61,13 +60,13 @@ for i = 1:size(truncatedNames,2)
         averageWaveHolder(:,j,1) = mean(waveHolder{j},2)-std(waveHolder{j},0,2);
         averageWaveHolder(:,j,3) = mean(waveHolder{j},2)+std(waveHolder{j},0,2);
     end
-    spikeStruct.(truncatedNames{i}).Clusters = numClusters(i);
-    spikeStruct.(truncatedNames{i}).ISIData = selectedSpikes; 
-    spikeStruct.(truncatedNames{i}).RPVs = rpvViolationPercent;
-    spikeStruct.(truncatedNames{i}).SpikeTimes = spikeTimes;
-    spikeStruct.(truncatedNames{i}).OverallFiringRate = overallFiring;
-    spikeStruct.(truncatedNames{i}).AverageWaveForms = averageWaveHolder;
-    spikeStruct.(truncatedNames{i}).AllWaveForms = waveHolder;
+    masterStruct.(truncatedNames{i}).Clusters = numClusters(i);
+    masterStruct.(truncatedNames{i}).ISIData = selectedSpikes; 
+    masterStruct.(truncatedNames{i}).RPVs = rpvViolationPercent;
+    masterStruct.(truncatedNames{i}).SpikeTimes = spikeTimes;
+    masterStruct.(truncatedNames{i}).OverallFiringRate = overallFiring;
+    masterStruct.(truncatedNames{i}).AverageWaveForms = averageWaveHolder;
+    masterStruct.(truncatedNames{i}).AllWaveForms = waveHolder;
 end
 
 end
