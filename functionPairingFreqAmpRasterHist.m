@@ -66,6 +66,9 @@ for k = 1:clusters
     end
     masterFreqDBHist{k} = freqDBHist;
     expectedResponse = masterStruct.(truncatedNames{i}).AverageFiringRates(k)*soundData.ToneDur;
+    if expectedResponse > 1
+        expectedResponse = 1;
+    end
     respReliab{k} = percentResponse/expectedResponse;
     aveFreqRespMaster{k} = averageFreqResp;
 end
