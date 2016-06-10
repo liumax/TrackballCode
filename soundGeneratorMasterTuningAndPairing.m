@@ -147,7 +147,7 @@ pause(interFunctionPause);
 fullData.Tones2=s;
 s = [];
 
-disp('First Tone Presentation Complete')
+disp('Second Tone Presentation Complete')
 
 %pauses and sends out signal TTLs
 pause(interFunctionPause);
