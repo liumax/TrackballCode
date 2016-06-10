@@ -81,6 +81,10 @@ soundData.dBs = dbRecord;
 soundData.Amplitudes = ampRecord;
 soundData.OnRamp = onRampDur;
 soundData.OffRamp = offRampDur;
+soundData.TargetFreq = targetFreq;
+soundData.TargetDB = targetDB;
+soundData.ControlFreq = controlFreq;
+soundData.TargetDB = controlDB;
 
 s = soundData;
 
