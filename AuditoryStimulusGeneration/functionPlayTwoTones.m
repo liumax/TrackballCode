@@ -84,7 +84,7 @@ soundData.OffRamp = offRampDur;
 soundData.TargetFreq = targetFreq;
 soundData.TargetDB = targetDB;
 soundData.ControlFreq = controlFreq;
-soundData.TargetDB = controlDB;
+soundData.ControlDB = controlDB;
 
 s = soundData;
 

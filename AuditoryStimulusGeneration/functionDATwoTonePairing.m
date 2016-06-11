@@ -179,7 +179,7 @@ soundData.OffRampDuration = offRampDur;
 soundData.TargetFreq = targetFreq;
 soundData.TargetDB = targetDB;
 soundData.ControlFreq = controlFreq;
-soundData.TargetDB = controlDB;
+soundData.ControlDB = controlDB;
 soundData.LaserTriggerPulseITI = optoLag;
 
 s = soundData;
