@@ -32,7 +32,7 @@ rampProfile(end-offRampDur:end) = offRampProfile;
 
 %this makes the profile for the TTL signal
 ttlSig = zeros(totalL,1);
-ttlSig(1:fs/1000) = 1;
+ttlSig(1:1*fs/1000) = 1;
 % ttlSig(4*fs/1000:5*fs/1000) = 1;
 
 %actual code for running behavior!
@@ -43,6 +43,8 @@ bufferWave(1:size(finalWave,1)) = finalWave;
 soundVector = [bufferWave,ttlSig];
 
 wavedata =soundVector';
+%load buffer
+PsychPortAudio('FillBuffer', pahandle, wavedata);
 
 %play tone
 t1 = PsychPortAudio('Start', pahandle, 4, 0, 1);
