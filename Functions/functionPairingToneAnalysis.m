@@ -17,16 +17,18 @@ controlFreq = controlSet(1);
 %pulls corresponding trials of each.
 targetTrials = find(soundData.Frequencies == targetFreq);
 controlTrials = find(soundData.Frequencies == controlFreq);
-%set up array of names for naming things!
-toneNames = {'Target','Control'};
 %pullls master array.
 master = masterStruct.SoundData.(soundName).MasterArray;
 %finds all TTL times and feeds them into the master array.
 TTLTimes = masterStruct.TTLs.(ttlName);
 master(:,1) = TTLTimes;
 %divide master array into two arrays: one for control, one for target.
-masterTarget = master(targetTrials,:);
-masterControl = master(controlTrials,:);
+divMaster = cell(2,1);
+divMaster{1}= master(targetTrials,:);
+divMaster{2} = master(controlTrials,:);
+
+%generate names for naming conventions:
+toneNames ={'Target','Control'};
 
 %pulls unique frequency and DB information
 uniqueFreqs = unique(master(:,2));
@@ -47,13 +49,17 @@ for i = 1:numTrodes
     %preps individual spike sets and cluster.
     spikeTimes = masterStruct.(truncatedNames{i}).(spikeName);
     clusters = masterStruct.(truncatedNames{i}).Clusters;
-    for j = 1:size(toneNames,2) %for control vs target
+    structureTarget = struct; %generates target structure for holding info.
+    [structureTarget] = functionPairingRasterHistExtraction(i,clusters,...
+    master,structureTarget,spikeTimes,rasterWindow,histBin,histBinVector);
+    masterStruct.(truncatedNames{i}).(soundName).Overall = structureTarget; %stores overall rasters/hist.
+    structureTarget = []; %clears for next loop.
+    for m = 1:2 %for control vs target
         structureTarget = struct; %generates target structure for holding info.
-        nameHolder = strcat('master',toneNames{j}); %generates name automatically! avoids hardcoding
         [structureTarget] = functionPairingRasterHistExtraction(i,clusters,...
-    (nameHolder),structureTarget,spikeTimes,rasterWindow,histBin,histBinVector);
+    divMaster{m},structureTarget,spikeTimes,rasterWindow,histBin,histBinVector);
         %store the data in the appropriate structured area.
-        masterStruct.(truncatedNames{i}).(soundName).(toneNames{j}) = structureTarget;
+        masterStruct.(truncatedNames{i}).(soundName).(toneNames{m}) = structureTarget;
         structureTarget = [];
     end  
 end

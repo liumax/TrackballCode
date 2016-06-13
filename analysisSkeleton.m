@@ -37,6 +37,9 @@ for i = 1:length(truncatedNames)
     masterStruct.(truncatedNames{i}) = [];
 end
 
+%saves number of electodes that I'm reading from.
+masterStruct.NumberTrodes = numTrodes;
+
 %generates even shorter names for figure presentation. 
 trodesDesignation = cell(size(truncatedNames));
 for i = 1:length(truncatedNames)
@@ -171,83 +174,65 @@ end
 
 %% Next thing is to analyze tuning curve chunks for differences.
 
-%Analyze first tuning curve. These hardcoded names will pull the right TTL
-%and spike files.
-spikeName1 = spikeNames{1};
-ttlName1 = names{1};
-soundName1 = names{1};
+%Analyze first tuning curve. 
 
 %first pull out sound data for the relevant file
 [masterStruct] = functionPairingSoundDataExtraction(masterStruct,...
-    soundName1,soundFile); 
+    names{1},soundFile); 
 %next, pull tuning information. DOES NOT GRAPH
 [masterStruct] = functionPairingTuning(masterStruct,truncatedNames,...
-    spikeName1,ttlName1,soundName1,rasterWindow,histBin,clusterWindow,...
+    spikeNames{1},names{1},names{1},rasterWindow,histBin,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
-%now I analyze the second tuning curve. again, hardcoded names pull the
-%correct TTL and spike files.
-spikeName2 = spikeNames{2};
-ttlName2 = names{2};
-soundName2 = names{2};
-
+%now I analyze the second tuning curve.
 %first pull out sound data for the relevant file
 [masterStruct] = functionPairingSoundDataExtraction(masterStruct,...
-    soundName2,soundFile); 
+    names{2},soundFile); 
 %next, pull tuning information. DOES NOT GRAPH
 [masterStruct] = functionPairingTuning(masterStruct,truncatedNames,...
-    spikeName2,ttlName2,soundName2,rasterWindow,histBin,clusterWindow,...
+    spikeNames{2},names{2},names{2},rasterWindow,histBin,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
 %% Next I analyze the first and second long tone presentations
 
-spikeName3 = spikeNames{3};
-ttlName3 = names{3};
-soundName3 = names{3};
-
 %extract sound data:
 [masterStruct] = functionPairingTonePresentSoundExtraction(masterStruct,...
-    soundName3,soundFile); 
+    names{3},soundFile); 
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
 [masterStruct] = functionPairingToneAnalysis(masterStruct,truncatedNames,...
-    spikeName3,ttlName3,soundName3,rasterWindow,histBin,clusterWindow,...
+    spikeNames{3},names{3},names{3},rasterWindow,histBin,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
 %pull data from the second set.
-spikeName4 = spikeNames{4};
-ttlName4 = names{4};
-soundName4 = names{4};
 
 %extract sound data:
 [masterStruct] = functionPairingTonePresentSoundExtraction(masterStruct,...
-    soundName4,soundFile); 
-%next, pair this data with spiking data. Stores under "soundName3" divided
+    names{4},soundFile); 
+%next, pair this data with spiking data. Stores under "soundName4" divided
 %into two structured arrays, one for target and one for control.
 [masterStruct] = functionPairingToneAnalysis(masterStruct,truncatedNames,...
-    spikeName4,ttlName4,soundName4,rasterWindow,histBin,clusterWindow,...
+    spikeNames{4},names{4},names{4},rasterWindow,histBin,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
 %next pull data from pairing session:
-%pull data from the second set.
-spikeName5 = spikeNames{5};
-ttlName5 = names{5};
-soundName5 = names{5};
 
 %extract sound data:
 [masterStruct] = functionPairingTonePresentSoundExtraction(masterStruct,...
-    soundName5,soundFile); 
+    names{5},soundFile); 
 %process TTLs (since these are not just unitary TTLs signaling tone onset.
-[masterStruct] = functionPairingPairedTTLAdjust(masterStruct,ttlName5,...
-    soundFile,soundName5);
+[masterStruct] = functionPairingPairedTTLAdjust(masterStruct,names{5},...
+    soundFile,names{5});
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
 [masterStruct] = functionPairingToneAnalysis(masterStruct,truncatedNames,...
-    spikeName5,ttlName5,soundName5,rasterWindow,histBin,clusterWindow,...
+    spikeNames{5},names{5},names{5},rasterWindow,histBin,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
-
+[masterStruct] = functionPairingMasterPlot(numTrodes,masterStruct,...
+    truncatedNames,rpvTime,clusterWindow,rasterWindow,histBin,...
+    clims1,fileName,trodesDesignation,names);
 
 
 
