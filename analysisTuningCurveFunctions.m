@@ -39,6 +39,7 @@ matclustStruct = struct;
 for i = 1:length(truncatedNames);
     matclustStruct.(truncatedNames{i}) = [];
 end
+matclustStruct.NumberTrodes = numTrodes;
 
 %% Extracts Sound Data from soundFile, including freq, db, reps.
 soundName = strcat(fileName,'.mat');

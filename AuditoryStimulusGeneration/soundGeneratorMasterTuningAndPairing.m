@@ -77,6 +77,15 @@ signalVector = [zeroSig,ttlSig];
 %generates a structured array for storage of all data
 fullData = struct;
 
+%% Generate names for all time periods!
+names = cell(5,1);
+names{1} = 'Tuning1';
+names{2} = 'Tuning2';
+names{3} = 'Tones1';
+names{4} = 'Tones2';
+names{5} = 'Pairing';
+
+
 %%
 %This part of the code will actually execute the code!!
 %This pauses the program for the set waiting period to get baseline
@@ -95,7 +104,7 @@ pause(interFunctionPause);
     fs,tuningL,tuningpaddingL,prePause,postPauseMin,postPauseMax,startF,...
     endF,octFrac,startdB,enddB,dbSteps,TTLDur);
 
-fullData.Tuning1=s;
+fullData.(names{1})=s;
 s = [];
 
 disp('First Tuning Complete')
@@ -112,7 +121,7 @@ pause(interFunctionPause);
     fs,targetDB,controlDB,baselineToneReps,...
     interRep,pairingToneDur,TTLDur);
 
-fullData.Tones1=s;
+fullData.(names{3})=s;
 s = [];
 
 disp('First Tone Presentation Complete')
@@ -129,7 +138,7 @@ pause(interFunctionPause);
     pairingToneDur,optoDelay,...
     optoDur,optoTTL,optoLag);
 
-fullData.Pairing=s;
+fullData.(names{5})=s;
 s = [];
 
 disp('Pairing Complete')
@@ -144,7 +153,7 @@ pause(interFunctionPause);
     fs,targetDB,controlDB,baselineToneReps,...
     interRep,pairingToneDur,TTLDur);
 
-fullData.Tones2=s;
+fullData.(names{4})=s;
 s = [];
 
 disp('Second Tone Presentation Complete')
@@ -160,7 +169,7 @@ pause(interFunctionPause);
     fs,tuningL,tuningpaddingL,prePause,postPauseMin,postPauseMax,startF,...
     endF,octFrac,startdB,enddB,dbSteps,TTLDur);
 
-fullData.Tuning2=s;
+fullData.(names{2})=s;
 s = [];
 
 disp('Second Tuning Complete')
@@ -183,6 +192,7 @@ fullData.TuningRepetitions = totalToneReps;
 fullData.SecondTuningRatio = secondTuningRatio;
 fullData.PresentationRepetitions = baselineToneReps*2;
 fullData.PairingRepetitions = pairingToneReps*2;
+fullData.Names = names;
 
 
 save(fullfile(pname,fname),'fullData');
