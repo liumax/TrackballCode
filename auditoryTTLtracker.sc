@@ -2,7 +2,7 @@
 %The goal is to detect all TTLs and respond to a subset of them.
 
 int ttlCount = 0
-int intWindow = 200 %this is the window over which counts are integrated
+int intWindow = 50 %this is the window over which counts are integrated
 int pulseNum = 20
 int pulseDur = 10
 int pulseITI = 40
