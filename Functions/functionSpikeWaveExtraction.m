@@ -64,7 +64,7 @@ for j = 1:clusterSizer
     averageWaveHolder(:,j,3) = mean(waveHolder{j},2)+std(waveHolder{j},0,2);
 end
 
-matclustStruct.(truncatedNames{i}).ClusterNumber =  clusterSizer; %stores this number into structured array
+matclustStruct.(truncatedNames{i}).Clusters =  clusterSizer; %stores this number into structured array
 matclustStruct.(truncatedNames{i}).ISIData = selectedSpikes;
 matclustStruct.(truncatedNames{i}).RPVs = rpvViolationPercent;
 matclustStruct.(truncatedNames{i}).SpikeTimes = spikeTimes;
