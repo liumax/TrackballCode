@@ -8,7 +8,7 @@ function [matclustStruct] = functionTuningPlot(numTrodes,matclustStruct,...
     dbRange,fileName,trodesDesignation);
 
 for i = 1:numTrodes
-    for j = 1:matclustStruct.(truncatedNames{i}).ClusterNumber
+    for j = 1:matclustStruct.(truncatedNames{i}).Clusters
         hFig = figure;
         set(hFig, 'Position', [10 10 1280 1000])
         %plots average waveform

@@ -5,11 +5,11 @@ function [s] = functionPlayTwoTones(targetFreq,controlFreq,...
 
 maxAmp = 100; %maximum amplitude in dBs
 
-targetDB = targetDB - maxAmp;
-controlDB = controlDB - maxAmp;
+calcDBtarget = targetDB - maxAmp;
+calcDBcontrol = controlDB - maxAmp;
 
-targetAmpl = 1*10^(targetDB/20);
-controlAmpl = 1*10^(targetDB/20);
+targetAmpl = 1*10^(calcDBtarget/20);
+controlAmpl = 1*10^(calcDBcontrol/20);
 
 onRampDur = 0.1*fs; 
 offRampDur = 0.1*fs;
@@ -81,6 +81,10 @@ soundData.dBs = dbRecord;
 soundData.Amplitudes = ampRecord;
 soundData.OnRamp = onRampDur;
 soundData.OffRamp = offRampDur;
+soundData.TargetFreq = targetFreq;
+soundData.TargetDB = targetDB;
+soundData.ControlFreq = controlFreq;
+soundData.ControlDB = controlDB;
 
 s = soundData;
 
