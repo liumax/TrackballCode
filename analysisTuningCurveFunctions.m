@@ -50,27 +50,7 @@ soundFile = open(soundName);
 master = zeros(size(soundFile.soundData.Frequencies,1),5);
 
 
-%% Set and/or Generate Raster and Histogram Parameters, store in Structured Array
-rasterWindow = [-matclustStruct.ToneDur,matclustStruct.ToneDur*3];
-lfpWindow = [-matclustStruct.ToneDur,matclustStruct.ToneDur*3];
-rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
-%These are for refractory period violations and looking at spike ITIs
-rpvTime = 0.0013; %limit to be considered an RPV.
-clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
-%clims1 is a value that sets the limits for heatmaps for displaying firing.
-clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
-%Use raster parameters to set histogram settings.
-histBin = 0.005; %bin size in seconds
-histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
-histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
-%histBinVector is for the purposes of graphing. This provides a nice axis
-%for graphing purposes
-baselineBins = [1,find(histBinVector<0,1,'last')];
 
-%store values in structured array.
-matclustStruct.RasterAxis = rasterAxis;
-matclustStruct.HistogramAxis = histBinVector;
-matclustStruct.RasterLimits = rasterWindow;
 %%
 
 %find DIO folder and D1 file for analysis
@@ -123,6 +103,28 @@ matclustStruct.dBs = master(:,3);
 matclustStruct.ToneReps = soundFile.soundData.ToneRepetitions;
 matclustStruct.ToneDur = soundFile.soundData.ToneDuration; 
 
+%% Set and/or Generate Raster and Histogram Parameters, store in Structured Array
+rasterWindow = [-matclustStruct.ToneDur,matclustStruct.ToneDur*3];
+lfpWindow = [-matclustStruct.ToneDur,matclustStruct.ToneDur*3];
+rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
+%These are for refractory period violations and looking at spike ITIs
+rpvTime = 0.0013; %limit to be considered an RPV.
+clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
+%clims1 is a value that sets the limits for heatmaps for displaying firing.
+clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
+%Use raster parameters to set histogram settings.
+histBin = 0.005; %bin size in seconds
+histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
+histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
+%histBinVector is for the purposes of graphing. This provides a nice axis
+%for graphing purposes
+baselineBins = [1,find(histBinVector<0,1,'last')];
+
+%store values in structured array.
+matclustStruct.RasterAxis = rasterAxis;
+matclustStruct.HistogramAxis = histBinVector;
+matclustStruct.RasterLimits = rasterWindow;
+
 %% Finds the number of octaves, makes array of octave steps. This will be used for imagesc graphing applications
 totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(1)));
 %This then makes an array of the full octave steps I've made
@@ -167,6 +169,10 @@ freqNameHolder = cell(1,numFreqs);
 for i =1:numFreqs
     freqNameHolder{i} = num2str(uniqueFreqs(i));
 end
+
+%here I need to calculate LFPs!
+[s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
+matclustStruct.LFPData = s;
 
 %% big for loop that goes through every trode available and performs analysis
 for i = 1:numTrodes
