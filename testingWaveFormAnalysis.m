@@ -3,6 +3,7 @@ function [output] = functionWavePropertyExtraction(averageWaveData);
 %hardcoded values. hopefully these shouldnt change.
 trodesFS = 30000;
 microSec = 1000000;
+minPeakWidth = 50; %minimum half-width for any peak, in microseconds.
 
 %want to get finer resolution (microseconds). Therefore, need to pull a
 %linear interpolation.
@@ -13,7 +14,7 @@ microSamples = 1/trodesFS:1/microSec:40/trodesFS;
 interpWaves = zeros(size(microSamples,2),size(averageWaves,2));
 %interpolates to 1 us resolution.
 for waveCount = 1:size(averageWaves,2)
-    interpWaves(:,waveCount) = interp1(trodesSamples,averageWaves(:,1),microSamples);
+    interpWaves(:,waveCount) = interp1(trodesSamples,averageWaves(:,waveCount),microSamples);
 end
 averageWaves = interpWaves;
 
@@ -40,6 +41,15 @@ for waveCount = 1:size(averageWaves,2)
         rightMark = find(averageWaves(peaksPos(2,peakCount):end,waveCount)<halfPeakSize,1,'first')+peaksPos(2,peakCount);
         peaksPos(3,peakCount) = rightMark-leftMark;
     end
+    
+    %now I insert a quality control check. This will remove all peaks that
+    %are too narrow (below variable # of microseconds) and removes them! 
+    findNarrow = find(peaksPos(3,:) < minPeakWidth);
+    peaksPos(:,findNarrow) = [];
+    
+    %store this in cell array.
+    waveData{waveCount,1} = peaksPos;
+    
     %find peaks for the negative image of the average wave. Does the same
     %operations.
     [pksneg locsneg] = findpeaks(averageWavesNeg(:,waveCount));
@@ -56,18 +66,23 @@ for waveCount = 1:size(averageWaves,2)
             rightMark = find(averageWavesNeg(peaksNeg(2,peakCount):end,waveCount)<halfPeakSize,1,'first')+peaksNeg(2,peakCount);
             peaksNeg(3,peakCount) = rightMark-leftMark;
         end
-        waveData{waveCount,1} = peaksPos;
+        %quality control to remove super minor peaks.
+        findNarrow = find(peaksNeg(3,:) < minPeakWidth);
+        peaksNeg(:,findNarrow) = [];
+        
+        %store in cell array
         waveData{waveCount,2} = peaksNeg;
+        %pulls total number of peaks.
         waveData{waveCount,3} = size(peaksPos,2)+size(peaksNeg,2); %pulls total number of peaks
     else
         %pulls total number of peaks
         waveData{waveCount,3} = size(peaksPos,2);
     end
-    
 end
 
 %create structured array for storage
 output = struct;
 output.PeakInfo = waveData;
+output.Labels = ['Peak Magnitude (uV)','Peak Position (us)','Peak Half-Width (us)'];
 
 end
