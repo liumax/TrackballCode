@@ -20,9 +20,10 @@ startF = 4000; %starting frequency in Hz
 endF = 32000; %ending frequency in Hz
 octFrac = 0.5; %fractions of octaves to move
 
+maxdB = 100; %maximum decibel output
 startdB = 100; %starting decibel value
-enddB = 40; %lowest decibel value
-dbSteps = 20; %resolution of decible steps
+enddB = 60; %lowest decibel value
+dbSteps = 10; %resolution of decible steps
 
 %this generates a vector with the frequencies that will be used
 octRange = log2(endF/startF);
@@ -34,10 +35,9 @@ end
 
 %this generates a vector of all decibel steps
 dBs = [startdB:-dbSteps:enddB];
-amps = zeros (length(dBs),1);
-amps(1) = 1;
-for i = 2:length(amps)
-    amps(i) = (amps(i-1)/sqrt(10));
+amps = ones(length(dBs),1);
+for i = 1:length(amps)
+    amps(i) = amps(i)*10^-((maxdB-dBs(i))/20);
 end
 
 %list of all frequency/dB pairs
