@@ -36,11 +36,11 @@ postPauseMax = 1000; %pause in milliseconds after tone
 
 startF = 4000; %starting frequency in Hz
 endF = 32000; %ending frequency in Hz
-octFrac = 0.5; %fractions of octaves to move
+octFrac = 1; %fractions of octaves to move
 
 startdB = 100; %starting decibel value
 enddB = 40; %lowest decibel value
-dbSteps = 10; %resolution of decible steps
+dbSteps = 20; %resolution of decible steps
 %%
 %auditory pairing parameters:
 targetFreq = 8000; %target frequency in Hz
