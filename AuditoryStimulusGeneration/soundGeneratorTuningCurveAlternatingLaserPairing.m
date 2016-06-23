@@ -6,7 +6,7 @@
 
 ttlDur = 0.002; %duration of TTL pulses
 ttlITI = 0.006; %ITI for paired pulses.
-laserTiming = -0.2; %time in seconds that laser comes relative to tone. negative values mean laser precedes.
+laserTiming = -0.1; %time in seconds that laser comes relative to tone. negative values mean laser precedes.
 prePause = 0.1; %pause in seconds before tone
 postPauseMin = 600; %pause in milliseconds after tone
 postPauseMax = 1200; %pause in milliseconds after tone
@@ -159,32 +159,34 @@ ttlSigPairing(1:ttlDur*fs) = 1;
 ttlSigPairing(ttlITI*fs: (ttlITI+ttlDur)*fs) = 1;
 ttlSigPairing(-laserTiming*fs:(-laserTiming+ttlDur)*fs) = 1; %marks tone!
 
-
+counterNormal = 1;
+counterPair = 1;
 %actual code for performing tuning
 for i = 1:length(master)*overallReps;
     pause(prePause)
-    
-    if mod(i,2) = 0 %calculates remainder of division: this is true for evens
-        toneFreq = master(i,1);
-        toneAmpl = master(i,3);
+    if mod(i,2) == 0 %calculates remainder of division: this is true for evens
+        toneFreq = master(counterNormal,1);
+        toneAmpl = master(counterNormal,3);
         toneWave = sin(2*pi*(toneFreq/fs)*(1:L))';
         finalWave = toneWave.*rampProfile;
         finalWave = finalWave*toneAmpl;
         paddedWave = zeros(paddingL,1);
         paddedWave(1:size(finalWave,1)) = finalWave;
         soundVector = [paddedWave,ttlSig];
+        counterNormal = counterNormal + 1;
     else
-        toneFreq = pairMaster(i,1);
-        toneAmpl = pairMaster(i,3);
+        toneFreq = pairMaster(counterPair,1);
+        toneAmpl = pairMaster(counterPair,3);
         toneWave = sin(2*pi*(toneFreq/fs)*(1:L))';
         finalWave = toneWave.*rampProfile;
         finalWave = finalWave*toneAmpl;
-        paddedWave = zeros(paddingLPair,1);
-        paddedWave(fs*-laserTiming:fs*-laserTiming+size(finalWave,1)-1) = finalWave;
-        soundVector = [paddedWave,ttlSigPairing];
+        paddedWavePair = zeros(paddingLPair,1);
+        paddedWavePair(fs*-laserTiming:fs*-laserTiming+size(finalWave,1)-1) = finalWave;
+        soundVector = [paddedWavePair,ttlSigPairing];
+        counterPair = counterPair + 1;
     end
-    soundVector = [paddedWave,ttlSig];
     sound(soundVector,fs);
+    soundVector = [];
     length(master)*overallReps - i
     pause(master(i,4))
 end
