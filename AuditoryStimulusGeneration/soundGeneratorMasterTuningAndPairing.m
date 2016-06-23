@@ -19,10 +19,10 @@ fs = 192000; %sampling frequency in Hz
 firstWait = 120; %first waiting period in seconds. 
 interFunctionPause = 2; %seconds to wait after a function to finish before starting next
 TTLDur = 2; %duration of TTL pulses is ms to be sent via the sound card.
-
+maxDB = 100; %maximum DB that the system is set to. 
 %%
 %tuning curve parameters:
-secondTuningRatio = 2; %ratio of second tuning/first tuning. >1 means more 
+secondTuningRatio = 1; %ratio of second tuning/first tuning. >1 means more 
 %tones in the second tuning period
 tuningReps = 20; %number of repetitions of each tone/amplitude pair
 tuningToneDur = 0.1; %tone duration in seconds
@@ -31,7 +31,7 @@ tuningL = tuningToneDur*fs; %number of samples at correct sampling frequency
 tuningpaddingL = tuningL + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
 
 prePause = 0.1; %pause in seconds before tone
-postPauseMin = 500; %pause in milliseconds after tone
+postPauseMin = 600; %pause in milliseconds after tone
 postPauseMax = 1000; %pause in milliseconds after tone
 
 startF = 4000; %starting frequency in Hz
@@ -40,13 +40,13 @@ octFrac = 0.5; %fractions of octaves to move
 
 startdB = 100; %starting decibel value
 enddB = 40; %lowest decibel value
-dbSteps = 20; %resolution of decible steps
+dbSteps = 10; %resolution of decible steps
 %%
 %auditory pairing parameters:
-targetFreq = 32000; %target frequency in Hz
+targetFreq = 8000; %target frequency in Hz
 controlFreq = 16000;
-targetDB = 100; %target DBs. 100 is max.
-controlDB = 100;
+targetDB = 90; %target DBs. 100 is max.
+controlDB = 90;
 baselineToneReps = 20; %tone repetitions for presentations of long tones before pairing
 pairingToneReps = 100; %tone repetitions for pairing experiment
 interRep = 4; %seconds between tones
@@ -102,7 +102,7 @@ pause(interFunctionPause);
 %curve
 [s] = functionTuningCurveGenerator(tuningReps,tuningToneDur,...
     fs,tuningL,tuningpaddingL,prePause,postPauseMin,postPauseMax,startF,...
-    endF,octFrac,startdB,enddB,dbSteps,TTLDur);
+    endF,octFrac,startdB,enddB,dbSteps,TTLDur,maxDB);
 
 fullData.(names{1})=s;
 s = [];
@@ -119,7 +119,7 @@ pause(interFunctionPause);
 %properties of cells to longer tones.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
     fs,targetDB,controlDB,baselineToneReps,...
-    interRep,pairingToneDur,TTLDur);
+    interRep,pairingToneDur,TTLDur,maxDB);
 
 fullData.(names{3})=s;
 s = [];
@@ -136,7 +136,7 @@ pause(interFunctionPause);
 [s] = functionDATwoTonePairing(targetFreq,controlFreq,...
     fs,targetDB,controlDB,pairingToneReps,interRep,...
     pairingToneDur,optoDelay,...
-    optoDur,optoTTL,optoLag);
+    optoDur,optoTTL,optoLag,maxDB);
 
 fullData.(names{5})=s;
 s = [];
@@ -151,7 +151,7 @@ pause(interFunctionPause);
 %play tones again after pairing.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
     fs,targetDB,controlDB,baselineToneReps,...
-    interRep,pairingToneDur,TTLDur);
+    interRep,pairingToneDur,TTLDur,maxDB);
 
 fullData.(names{4})=s;
 s = [];
@@ -167,7 +167,7 @@ pause(interFunctionPause);
 %curve. Plays double the number of repetitions.
 [s] = functionTuningCurveGenerator(tuningReps*secondTuningRatio,tuningToneDur,...
     fs,tuningL,tuningpaddingL,prePause,postPauseMin,postPauseMax,startF,...
-    endF,octFrac,startdB,enddB,dbSteps,TTLDur);
+    endF,octFrac,startdB,enddB,dbSteps,TTLDur,maxDB);
 
 fullData.(names{2})=s;
 s = [];

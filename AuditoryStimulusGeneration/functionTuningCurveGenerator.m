@@ -1,8 +1,6 @@
 function [s] = functionTuningCurveGenerator(toneReps,toneDur,...
     fs,L,paddingL,prePause,postPauseMin,postPauseMax,startF,...
-    endF,octFrac,startdB,enddB,dbSteps,TTLDur);
-
-maxdB = 100;
+    endF,octFrac,startdB,enddB,dbSteps,TTLDur, maxDB);
 
 warningCheck = (postPauseMin/1000 - toneDur)<0;
 if warningCheck == 1
@@ -21,7 +19,7 @@ end
 dBs = [startdB:-dbSteps:enddB];
 amps = ones(length(dBs),1);
 for i = 1:length(amps)
-    amps(i) = amps(i)*10^-((maxdB-dBs(i))/20);
+    amps(i) = amps(i)*10^-((maxDB-dBs(i))/20);
 end
 
 %list of all frequency/dB pairs

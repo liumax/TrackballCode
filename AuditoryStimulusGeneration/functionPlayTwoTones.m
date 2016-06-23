@@ -1,12 +1,10 @@
 %this is meant to be the function version of the
 %soundGeneratorAlternatingToneWithOptoPulsing. 
 function [s] = functionPlayTwoTones(targetFreq,controlFreq,...
-    fs,targetDB,controlDB,toneReps,interRep,toneDur,TTLDur);
+    fs,targetDB,controlDB,toneReps,interRep,toneDur,TTLDur,maxDB);
 
-maxAmp = 100; %maximum amplitude in dBs
-
-calcDBtarget = targetDB - maxAmp;
-calcDBcontrol = controlDB - maxAmp;
+calcDBtarget = targetDB - maxDB;
+calcDBcontrol = controlDB - maxDB;
 
 targetAmpl = 1*10^(calcDBtarget/20);
 controlAmpl = 1*10^(calcDBcontrol/20);
