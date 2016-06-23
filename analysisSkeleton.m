@@ -3,7 +3,7 @@
 %tones before and after, and the actual changes that may occur with laser
 %light itself. 
 
-fileName = '160610TonePairingTester';
+fileName = '160622_ML160410A_L_3300_pairingProtocol';
 
 %% Hardcoded Variables:
 rpvTime = 0.0013; %limit to be considered an RPV.
@@ -13,6 +13,7 @@ rasterWindow = [-1,3]; %duration of raster window. These are numbers that will
 %be multiplied by the tone duration. EX: raster window for 0.1sec tone will
 %be -100 to 300 ms.
 histBin = 0.005; %bin size in seconds
+histBinLong = 0.05; %bin size for long presentations. 
 clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
 
 %% Establishes the folder and subfolders for analysis. Adds all folders to
@@ -201,7 +202,7 @@ end
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
 [masterStruct] = functionPairingToneAnalysis(masterStruct,truncatedNames,...
-    spikeNames{3},names{3},names{3},rasterWindow,histBin,clusterWindow,...
+    spikeNames{3},names{3},names{3},rasterWindow,histBinLong,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
 %pull data from the second set.
@@ -212,7 +213,7 @@ end
 %next, pair this data with spiking data. Stores under "soundName4" divided
 %into two structured arrays, one for target and one for control.
 [masterStruct] = functionPairingToneAnalysis(masterStruct,truncatedNames,...
-    spikeNames{4},names{4},names{4},rasterWindow,histBin,clusterWindow,...
+    spikeNames{4},names{4},names{4},rasterWindow,histBinLong,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
 %next pull data from pairing session:
@@ -226,7 +227,7 @@ end
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
 [masterStruct] = functionPairingToneAnalysis(masterStruct,truncatedNames,...
-    spikeNames{5},names{5},names{5},rasterWindow,histBin,clusterWindow,...
+    spikeNames{5},names{5},names{5},rasterWindow,histBinLong,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE

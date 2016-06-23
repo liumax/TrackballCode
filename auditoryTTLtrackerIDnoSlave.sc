@@ -29,9 +29,9 @@ int idCounter = 0
 
 function 1
     while pulseCounter < pulseNum do every pulseITI
-        portout[3] = 1
+        portout[5] = 1
         do in pulseDur
-            portout[3] = 0
+            portout[5] = 0
         end
         pulseCounter = pulseCounter + 1
     then do
@@ -41,9 +41,9 @@ end;
 
 function 2
 	while toggle == 1 do every idITI
-		portout[3] = 1
+		portout[5] = 1
 		do in idPulseDur
-			portout[3] = 0
+			portout[5] = 0
 		end
 		idCounter = idCounter + 1
 		disp(idCounter)
