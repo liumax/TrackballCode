@@ -50,7 +50,6 @@ soundFile = open(soundName);
 master = zeros(size(soundFile.soundData.Frequencies,1),5);
 
 
-
 %%
 
 %find DIO folder and D1 file for analysis
@@ -72,12 +71,16 @@ if size(inTimes,1) ~= size(master,1)
     if size(inTimes,1) == size(master,1) + 1
         inTimes(end) = [];
         master(:,1) = inTimes;
-    elseif inTimesSpacing(size(master,1)) > 3*mean(inTimesSpacing)
-        master(:,1) = inTimes(1:size(master,1));
-        disp('HOLY SHIT YOUR TTL PULSES TO DIO 1 ARE FUCKED, BUT ADJUSTED')
     else
-        disp('I DONT KNOW WHATS GOING ON')
-        pause
+        %this is to eliminate double pulses and only count the first.
+        longFinder = find(inTimesSpacing > 0.2);
+        longFinder = [1;longFinder+1];
+        %checks to make sure this is the right number!
+        if size(longFinder,1) ~= size(master,1)
+            error('Crap, edit didnt work')
+        end
+        inTimes = inTimes(longFinder);
+        master(:,1) = inTimes;
     end
 elseif size(inTimes,1) == size(master,1)
     master(:,1) = inTimes;
