@@ -164,155 +164,155 @@ for i = 1:numTrodes
         title(strcat('Difference Heatmap by F and T. Max',...
             num2str(max(max(x))),...
             'Min',num2str(min(min(x)))))
-% %         %% GENERATES SECOND FIGURE. This one will include information about
-% %         %long tone presentations. EDITS TO HERE.
-% %         hFig2 = figure;
-% %         set(hFig2, 'Position', [5 5 1280 1000])
-% %         subplot(2,4,1)
-% %         %% plots histograms for control. for first presentation
-% %         plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,1),'k','LineWidth',2)
-% %         hold on
-% %         plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{3}).Control.StandardErrorPlotting(:,j,1),'g')
-% %         plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{3}).Control.StandardErrorPlotting(:,j,2),'g')
-% %         
-% %         %plots histograms for control. for second presentation
-% %         plot(masterStruct.(truncatedNames{i}).(names{4}).Control.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{4}).Control.Histogram{j}(:,1),'b','LineWidth',2)
-% %         hold on
-% %         plot(masterStruct.(truncatedNames{i}).(names{4}).Control.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{4}).Control.StandardErrorPlotting(:,j,1),'c')
-% %         plot(masterStruct.(truncatedNames{i}).(names{4}).Control.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{4}).Control.StandardErrorPlotting(:,j,2),'c')
-% %         
-% %         %plots histograms for control. for pairing presentation
-% %         plot(masterStruct.(truncatedNames{i}).(names{5}).Control.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{5}).Control.Histogram{j}(:,1),'r','LineWidth',2)
-% %         hold on
-% %         plot(masterStruct.(truncatedNames{i}).(names{5}).Control.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{5}).Control.StandardErrorPlotting(:,j,1),'m')
-% %         plot(masterStruct.(truncatedNames{i}).(names{5}).Control.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{5}).Control.StandardErrorPlotting(:,j,2),'m')
-% %         
-% %         %draws in tone!
-% %         plot([0 0],[ylim],'r');
-% %         plot([masterStruct.SoundData.(names{3}).ToneDur ...
-% %             masterStruct.SoundData.(names{3}).ToneDur],[ylim],'r');
-% %         %sets xlimits to avoid awkward graphs
-% %         xlim([rasterWindow(1)*masterStruct.SoundData.(names{3}).ToneDur...
-% %             rasterWindow(2)*masterStruct.SoundData.(names{3}).ToneDur])
-% %         title('Histogram of Control Responses')
-% %         %% plots histograms for Target. for first presentation
-% %         subplot(2,4,5)
-% %         plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,1),'k','LineWidth',2)
-% %         hold on
-% %         plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{3}).Target.StandardErrorPlotting(:,j,1),'g')
-% %         plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{3}).Target.StandardErrorPlotting(:,j,2),'g')
-% %         
-% %         %plots histograms for Target. for second presentation
-% %         plot(masterStruct.(truncatedNames{i}).(names{4}).Target.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{4}).Target.Histogram{j}(:,1),'b','LineWidth',2)
-% %         hold on
-% %         plot(masterStruct.(truncatedNames{i}).(names{4}).Target.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{4}).Target.StandardErrorPlotting(:,j,1),'c')
-% %         plot(masterStruct.(truncatedNames{i}).(names{4}).Target.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{4}).Target.StandardErrorPlotting(:,j,2),'c')
-% %         
-% %         %plots histograms for Target. for pairing presentation
-% %         plot(masterStruct.(truncatedNames{i}).(names{5}).Target.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{5}).Target.Histogram{j}(:,1),'r','LineWidth',2)
-% %         hold on
-% %         plot(masterStruct.(truncatedNames{i}).(names{5}).Target.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{5}).Target.StandardErrorPlotting(:,j,1),'m')
-% %         plot(masterStruct.(truncatedNames{i}).(names{5}).Target.Histogram{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{5}).Target.StandardErrorPlotting(:,j,2),'m')
-% %         
-% %         %draws in tone!
-% %         plot([0 0],[ylim],'r');
-% %         plot([masterStruct.SoundData.(names{3}).ToneDur ...
-% %             masterStruct.SoundData.(names{3}).ToneDur],[ylim],'r');
-% %         %sets xlimits to avoid awkward graphs
-% %         xlim([rasterWindow(1)*masterStruct.SoundData.(names{3}).ToneDur...
-% %             rasterWindow(2)*masterStruct.SoundData.(names{3}).ToneDur])
-% %         title('Histogram of Target Responses')
-% %         %% Plot the rasters for controls
-% %         %plots simple rasters for first presentation
-% %         subplot(3,3,2)
-% %         plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Rasters{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{3}).Control.Rasters{j}(:,1),'k.','markersize',4)
-% %         hold on
-% %         ylim([0 masterStruct.SoundData.(names{3}).ToneReps])
-% %         xlim([rasterWindow(1)*masterStruct.SoundData.(names{3}).ToneDur...
-% %             rasterWindow(2)*masterStruct.SoundData.(names{3}).ToneDur])
-% %         plot([0 0],[ylim],'r');
-% %         plot([masterStruct.SoundData.(names{3}).ToneDur...
-% %             masterStruct.SoundData.(names{3}).ToneDur],[ylim],'r');
-% %         title('Control Raster Initial')
-% %         %plots pairing
-% %         subplot(3,3,5)
-% %         plot(masterStruct.(truncatedNames{i}).(names{5}).Control.Rasters{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{5}).Control.Rasters{j}(:,1),'r.','markersize',4)
-% %         hold on
-% %         ylim([0 masterStruct.SoundData.(names{5}).ToneReps])
-% %         xlim([rasterWindow(1)*masterStruct.SoundData.(names{5}).ToneDur...
-% %             rasterWindow(2)*masterStruct.SoundData.(names{5}).ToneDur])
-% %         plot([0 0],[ylim],'r');
-% %         plot([masterStruct.SoundData.(names{5}).ToneDur...
-% %             masterStruct.SoundData.(names{5}).ToneDur],[ylim],'r');
-% %         title('Control Raster Pairing')
-% %         %plots second presentation
-% %         subplot(3,3,8)
-% %         plot(masterStruct.(truncatedNames{i}).(names{4}).Control.Rasters{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{4}).Control.Rasters{j}(:,1),'b.','markersize',4)
-% %         hold on
-% %         ylim([0 masterStruct.SoundData.(names{4}).ToneReps])
-% %         xlim([rasterWindow(1)*masterStruct.SoundData.(names{4}).ToneDur...
-% %             rasterWindow(2)*masterStruct.SoundData.(names{4}).ToneDur])
-% %         plot([0 0],[ylim],'r');
-% %         plot([masterStruct.SoundData.(names{4}).ToneDur...
-% %             masterStruct.SoundData.(names{4}).ToneDur],[ylim],'r');
-% %         title('Control Raster Final')
-% %         %% Plots rasters for Targets.
-% %         subplot(3,3,3)
-% %         plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Rasters{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{3}).Target.Rasters{j}(:,1),'k.','markersize',4)
-% %         hold on
-% %         ylim([0 masterStruct.SoundData.(names{3}).ToneReps])
-% %         xlim([rasterWindow(1)*masterStruct.SoundData.(names{3}).ToneDur...
-% %             rasterWindow(2)*masterStruct.SoundData.(names{3}).ToneDur])
-% %         plot([0 0],[ylim],'r');
-% %         plot([masterStruct.SoundData.(names{3}).ToneDur...
-% %             masterStruct.SoundData.(names{3}).ToneDur],[ylim],'r');
-% %         title('Target Raster Initial')
-% %         %plots pairing
-% %         subplot(3,3,6)
-% %         plot(masterStruct.(truncatedNames{i}).(names{5}).Target.Rasters{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{5}).Target.Rasters{j}(:,1),'r.','markersize',4)
-% %         hold on
-% %         ylim([0 masterStruct.SoundData.(names{5}).ToneReps])
-% %         xlim([rasterWindow(1)*masterStruct.SoundData.(names{5}).ToneDur...
-% %             rasterWindow(2)*masterStruct.SoundData.(names{5}).ToneDur])
-% %         plot([0 0],[ylim],'r');
-% %         plot([masterStruct.SoundData.(names{5}).ToneDur...
-% %             masterStruct.SoundData.(names{5}).ToneDur],[ylim],'r');
-% %         title('Target Raster Pairing')
-% %         %plots second presentation
-% %         subplot(3,3,9)
-% %         plot(masterStruct.(truncatedNames{i}).(names{4}).Target.Rasters{j}(:,2),...
-% %             masterStruct.(truncatedNames{i}).(names{4}).Target.Rasters{j}(:,1),'b.','markersize',4)
-% %         hold on
-% %         ylim([0 masterStruct.SoundData.(names{4}).ToneReps])
-% %         xlim([rasterWindow(1)*masterStruct.SoundData.(names{4}).ToneDur...
-% %             rasterWindow(2)*masterStruct.SoundData.(names{4}).ToneDur])
-% %         plot([0 0],[ylim],'r');
-% %         plot([masterStruct.SoundData.(names{4}).ToneDur...
-% %             masterStruct.SoundData.(names{4}).ToneDur],[ylim],'r');
-% %         title('Target Raster Final')
+        %% GENERATES SECOND FIGURE. This one will include information about
+        %long tone presentations. EDITS TO HERE.
+        hFig2 = figure;
+        set(hFig2, 'Position', [5 5 1280 1000])
+        subplot(2,4,1)
+        %% plots histograms for control. for first presentation
+        plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,1),'k','LineWidth',2)
+        hold on
+        plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{3}).Control.StandardErrorPlotting(:,j,1),'g')
+        plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{3}).Control.StandardErrorPlotting(:,j,2),'g')
+        
+        %plots histograms for control. for second presentation
+        plot(masterStruct.(truncatedNames{i}).(names{4}).Control.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{4}).Control.Histogram{j}(:,1),'b','LineWidth',2)
+        hold on
+        plot(masterStruct.(truncatedNames{i}).(names{4}).Control.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{4}).Control.StandardErrorPlotting(:,j,1),'c')
+        plot(masterStruct.(truncatedNames{i}).(names{4}).Control.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{4}).Control.StandardErrorPlotting(:,j,2),'c')
+        
+        %plots histograms for control. for pairing presentation
+        plot(masterStruct.(truncatedNames{i}).(names{5}).Control.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{5}).Control.Histogram{j}(:,1),'r','LineWidth',2)
+        hold on
+        plot(masterStruct.(truncatedNames{i}).(names{5}).Control.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{5}).Control.StandardErrorPlotting(:,j,1),'m')
+        plot(masterStruct.(truncatedNames{i}).(names{5}).Control.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{5}).Control.StandardErrorPlotting(:,j,2),'m')
+        
+        %draws in tone!
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{3}).ToneDur ...
+            masterStruct.SoundData.(names{3}).ToneDur],[ylim],'r');
+        %sets xlimits to avoid awkward graphs
+        xlim([rasterWindow(1)*masterStruct.SoundData.(names{3}).ToneDur...
+            rasterWindow(2)*masterStruct.SoundData.(names{3}).ToneDur])
+        title('Histogram of Control Responses')
+        %% plots histograms for Target. for first presentation
+        subplot(2,4,5)
+        plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,1),'k','LineWidth',2)
+        hold on
+        plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{3}).Target.StandardErrorPlotting(:,j,1),'g')
+        plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{3}).Target.StandardErrorPlotting(:,j,2),'g')
+        
+        %plots histograms for Target. for second presentation
+        plot(masterStruct.(truncatedNames{i}).(names{4}).Target.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{4}).Target.Histogram{j}(:,1),'b','LineWidth',2)
+        hold on
+        plot(masterStruct.(truncatedNames{i}).(names{4}).Target.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{4}).Target.StandardErrorPlotting(:,j,1),'c')
+        plot(masterStruct.(truncatedNames{i}).(names{4}).Target.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{4}).Target.StandardErrorPlotting(:,j,2),'c')
+        
+        %plots histograms for Target. for pairing presentation
+        plot(masterStruct.(truncatedNames{i}).(names{5}).Target.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{5}).Target.Histogram{j}(:,1),'r','LineWidth',2)
+        hold on
+        plot(masterStruct.(truncatedNames{i}).(names{5}).Target.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{5}).Target.StandardErrorPlotting(:,j,1),'m')
+        plot(masterStruct.(truncatedNames{i}).(names{5}).Target.Histogram{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{5}).Target.StandardErrorPlotting(:,j,2),'m')
+        
+        %draws in tone!
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{3}).ToneDur ...
+            masterStruct.SoundData.(names{3}).ToneDur],[ylim],'r');
+        %sets xlimits to avoid awkward graphs
+        xlim([rasterWindow(1)*masterStruct.SoundData.(names{3}).ToneDur...
+            rasterWindow(2)*masterStruct.SoundData.(names{3}).ToneDur])
+        title('Histogram of Target Responses')
+        %% Plot the rasters for controls
+        %plots simple rasters for first presentation
+        subplot(3,3,2)
+        plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{3}).Control.Rasters{j}(:,1),'k.','markersize',4)
+        hold on
+        ylim([0 masterStruct.SoundData.(names{3}).ToneReps])
+        xlim([rasterWindow(1)*masterStruct.SoundData.(names{3}).ToneDur...
+            rasterWindow(2)*masterStruct.SoundData.(names{3}).ToneDur])
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{3}).ToneDur...
+            masterStruct.SoundData.(names{3}).ToneDur],[ylim],'r');
+        title('Control Raster Initial')
+        %plots pairing
+        subplot(3,3,5)
+        plot(masterStruct.(truncatedNames{i}).(names{5}).Control.Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{5}).Control.Rasters{j}(:,1),'r.','markersize',4)
+        hold on
+        ylim([0 masterStruct.SoundData.(names{5}).ToneReps])
+        xlim([rasterWindow(1)*masterStruct.SoundData.(names{5}).ToneDur...
+            rasterWindow(2)*masterStruct.SoundData.(names{5}).ToneDur])
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{5}).ToneDur...
+            masterStruct.SoundData.(names{5}).ToneDur],[ylim],'r');
+        title('Control Raster Pairing')
+        %plots second presentation
+        subplot(3,3,8)
+        plot(masterStruct.(truncatedNames{i}).(names{4}).Control.Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{4}).Control.Rasters{j}(:,1),'b.','markersize',4)
+        hold on
+        ylim([0 masterStruct.SoundData.(names{4}).ToneReps])
+        xlim([rasterWindow(1)*masterStruct.SoundData.(names{4}).ToneDur...
+            rasterWindow(2)*masterStruct.SoundData.(names{4}).ToneDur])
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{4}).ToneDur...
+            masterStruct.SoundData.(names{4}).ToneDur],[ylim],'r');
+        title('Control Raster Final')
+        %% Plots rasters for Targets.
+        subplot(3,3,3)
+        plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{3}).Target.Rasters{j}(:,1),'k.','markersize',4)
+        hold on
+        ylim([0 masterStruct.SoundData.(names{3}).ToneReps])
+        xlim([rasterWindow(1)*masterStruct.SoundData.(names{3}).ToneDur...
+            rasterWindow(2)*masterStruct.SoundData.(names{3}).ToneDur])
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{3}).ToneDur...
+            masterStruct.SoundData.(names{3}).ToneDur],[ylim],'r');
+        title('Target Raster Initial')
+        %plots pairing
+        subplot(3,3,6)
+        plot(masterStruct.(truncatedNames{i}).(names{5}).Target.Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{5}).Target.Rasters{j}(:,1),'r.','markersize',4)
+        hold on
+        ylim([0 masterStruct.SoundData.(names{5}).ToneReps])
+        xlim([rasterWindow(1)*masterStruct.SoundData.(names{5}).ToneDur...
+            rasterWindow(2)*masterStruct.SoundData.(names{5}).ToneDur])
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{5}).ToneDur...
+            masterStruct.SoundData.(names{5}).ToneDur],[ylim],'r');
+        title('Target Raster Pairing')
+        %plots second presentation
+        subplot(3,3,9)
+        plot(masterStruct.(truncatedNames{i}).(names{4}).Target.Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{4}).Target.Rasters{j}(:,1),'b.','markersize',4)
+        hold on
+        ylim([0 masterStruct.SoundData.(names{4}).ToneReps])
+        xlim([rasterWindow(1)*masterStruct.SoundData.(names{4}).ToneDur...
+            rasterWindow(2)*masterStruct.SoundData.(names{4}).ToneDur])
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{4}).ToneDur...
+            masterStruct.SoundData.(names{4}).ToneDur],[ylim],'r');
+        title('Target Raster Final')
         %%
         hold off
                 %save as matlab figure with correct name (fileName+LFP)
