@@ -17,6 +17,10 @@ masterIndex = find(not(cellfun('isempty', masterIndex)));
 masterFolders = masterDir(masterIndex);
 numFolders = size(masterFolders,2);
 
+counterIndex = 1;
+fullWaveInfo = zeros(4,1000);
+allInfoHolder = cell(1000,1);
+
 for folderCount = 1:numFolders
     %generates text that signifies path to the target folder
     targetPath = strcat(masterFolder,'\',masterFolders{folderCount});
@@ -46,13 +50,21 @@ for folderCount = 1:numFolders
     structFields = fieldnames(matclustHolder);
     fieldIndex = strfind(structFields,'matclust');
     fieldIndex = find(not(cellfun('isempty', fieldIndex)));
+    
     for trodesCount = 1:size(fieldIndex,1)
-       averageWaveData = matclustHolder.(structFields{trodesCount}).AverageWaveForms(:,:,2);
+       averageWaves = matclustHolder.(structFields{trodesCount}).AverageWaveForms(:,:,2);
        averageRate = matclustHolder.(structFields{trodesCount}).AverageFiringRate;
+       rpvs = matclustHolder.(structFields{trodesCount}).RPVs;
        waveStruct.(nameHolder).(genvarname(num2str(trodesCount))).AverageFiringRate = averageRate;
-       for clusterCount = 1:matclustHolder.(structFields{trodesCount}).Clusters
-           
-       end
+       [output,allPeaks] = functionWavePropertyExtraction(averageWaves,averageRate);
+       outputSizer = size(output,2);
+       fullWaveInfo(1:3,counterIndex:counterIndex+outputSizer-1) = output;
+       fullWaveInfo(4,counterIndex:counterIndex+outputSizer-1) = rpvs;
+       counterIndex = counterIndex + outputSizer;
     end
     
+    cd(masterFolder)
 end
+
+%clears out zero values!
+fullWaveInfo = fullWaveInfo(:,fullWaveInfo(1,:)>0);
