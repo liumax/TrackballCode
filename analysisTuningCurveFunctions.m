@@ -174,8 +174,8 @@ for i =1:numFreqs
 end
 
 %here I need to calculate LFPs!
-[s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
-matclustStruct.LFPData = s;
+% [s] = functionLFPaverage(master, lfpWindow, matclustStruct,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
+% matclustStruct.LFPData = s;
 
 %% big for loop that goes through every trode available and performs analysis
 for i = 1:numTrodes

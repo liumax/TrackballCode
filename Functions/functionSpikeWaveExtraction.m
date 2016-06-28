@@ -45,6 +45,16 @@ for j = 1:clusterSizer
     overallFiring(j) = size(spikeTimes{j},1)/totalTime;
 end
 
+%calculates overall firing rate over time. 
+rateHist = cell(clusterSizer,1);
+averageFiringMean = zeros(clusterSizer,1);
+averageFiringSTD = zeros(clusterSizer,1);
+for j = 1:clusterSizer
+    rateHist{j} = hist(spikeTimes{j},round(totalTime));
+    averageFiringMean(j) = mean(rateHist{j});
+    averageFiringSTD(j) = std(rateHist{j});
+end
+
 %pull out average waveform and standard error
 targetWaveName = strcat('waves',truncatedNames{i}(15:end),'.mat');
 waveLoader = open(targetWaveName);
@@ -71,7 +81,10 @@ matclustStruct.(truncatedNames{i}).SpikeTimes = spikeTimes;
 matclustStruct.(truncatedNames{i}).OverallFiringRate = overallFiring;
 matclustStruct.(truncatedNames{i}).AverageWaveForms = averageWaveHolder;
 matclustStruct.(truncatedNames{i}).AllWaveForms = waveHolder;
-
+matclustStruct.(truncatedNames{i}).TotalTimeRecording = totalTime;
+matclustStruct.(truncatedNames{i}).OverallFiringRatesWithTime = rateHist;
+matclustStruct.(truncatedNames{i}).AverageFiringRate = averageFiringMean;
+matclustStruct.(truncatedNames{i}).AverageFiringSTD = averageFiringSTD;
 
 end
 

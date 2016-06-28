@@ -76,16 +76,27 @@ end
 
 %next I will calculate mean firing rate based on collected baseline histogram
 %information.
-averageFiringMean = zeros(clusterSizer,1);
-averageFiringMean = mean(baselineHist)/histBin;
-averageFiringSTD = std(baselineHist/histBin);%no need for hist bin division: std has already factored this
+
+
+preToneMean = zeros(clusterSizer,1);
+preToneMean = mean(baselineHist)/histBin;
+preToneSTD = std(baselineHist)/histBin;%need hist bin division: std has NOT factored this in
+
 
 %need to adjust histograms to be z scored! Saves as new array to
 %preserve old data.
+
 masterZScore = masterToneHist;
 for j = 1:clusterSizer
-    masterZScore{j}(:,1) = (masterToneHist{j}(:,1)-averageFiringMean(j))/averageFiringSTD(j);
+    masterZScore{j}(:,1) = (masterToneHist{j}(:,1)-...
+        matclustStruct.(truncatedNames{i}).AverageFiringRate(j))...
+        /matclustStruct.(truncatedNames{i}).AverageFiringSTD(j);
 end
+
+% masterZScore = masterToneHist;
+% for j = 1:clusterSizer
+%     masterZScore{j}(:,1) = zscore(masterToneHist{j}(:,1));
+% end
 
 %the code below is for generating standard error lines for the plot of
 %the overall histogram.
@@ -108,8 +119,8 @@ end
 
 matclustStruct.(truncatedNames{i}).Rasters = masterToneRaster;
 matclustStruct.(truncatedNames{i}).Histogram = masterToneHist;
-matclustStruct.(truncatedNames{i}).AverageFiringRate = averageFiringMean;
-matclustStruct.(truncatedNames{i}).AverageFiringSTD = averageFiringSTD;
+matclustStruct.(truncatedNames{i}).PreToneFiringRate = preToneMean;
+matclustStruct.(truncatedNames{i}).PreToneFiringSTD = preToneSTD;
 matclustStruct.(truncatedNames{i}).ZScore = masterZScore;
 matclustStruct.(truncatedNames{i}).StandardError = steHolder;
 matclustStruct.(truncatedNames{i}).StandardErrorPlotting = stePlotter;
