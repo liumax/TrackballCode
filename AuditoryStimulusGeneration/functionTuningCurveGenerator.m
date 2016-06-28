@@ -1,6 +1,6 @@
 function [s] = functionTuningCurveGenerator(toneReps,toneDur,...
     fs,L,paddingL,prePause,postPauseMin,postPauseMax,startF,...
-    endF,octFrac,startdB,enddB,dbSteps,TTLDur, maxDB);
+    endF,octFrac,startdB,enddB,dbSteps,TTLDur, maxDB, rampDur);
 
 warningCheck = (postPauseMin/1000 - toneDur)<0;
 if warningCheck == 1
@@ -65,8 +65,8 @@ x = round(postPauseMin + (-log(1-p))*tau);
 master(:,4) = x/1000;
 
 %ramp times for onset and offset in seconds
-onRampDur = 0.005*fs; 
-offRampDur = 0.005*fs;
+onRampDur = rampDur*fs; 
+offRampDur = rampDur*fs;
 remainingPoints = L-onRampDur-offRampDur;
 onRampProfile = (cos((0:1:onRampDur)/onRampDur*pi-pi)+1)/2;
 offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;

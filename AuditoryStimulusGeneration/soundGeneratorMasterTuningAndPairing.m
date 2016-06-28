@@ -20,6 +20,7 @@ firstWait = 120; %first waiting period in seconds.
 interFunctionPause = 2; %seconds to wait after a function to finish before starting next
 TTLDur = 2; %duration of TTL pulses is ms to be sent via the sound card.
 maxDB = 100; %maximum DB that the system is set to. 
+rampDur = 0.005; %duration of ramp for tone, in seconds!!!
 %%
 %tuning curve parameters:
 secondTuningRatio = 1; %ratio of second tuning/first tuning. >1 means more 
@@ -102,7 +103,7 @@ pause(interFunctionPause);
 %curve
 [s] = functionTuningCurveGenerator(tuningReps,tuningToneDur,...
     fs,tuningL,tuningpaddingL,prePause,postPauseMin,postPauseMax,startF,...
-    endF,octFrac,startdB,enddB,dbSteps,TTLDur,maxDB);
+    endF,octFrac,startdB,enddB,dbSteps,TTLDur,maxDB,rampDur);
 
 fullData.(names{1})=s;
 s = [];
@@ -119,7 +120,7 @@ pause(interFunctionPause);
 %properties of cells to longer tones.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
     fs,targetDB,controlDB,baselineToneReps,...
-    interRep,pairingToneDur,TTLDur,maxDB);
+    interRep,pairingToneDur,TTLDur,maxDB,rampDur);
 
 fullData.(names{3})=s;
 s = [];
@@ -136,7 +137,7 @@ pause(interFunctionPause);
 [s] = functionDATwoTonePairing(targetFreq,controlFreq,...
     fs,targetDB,controlDB,pairingToneReps,interRep,...
     pairingToneDur,optoDelay,...
-    optoDur,optoTTL,optoLag,maxDB);
+    optoDur,optoTTL,optoLag,maxDB,rampDur);
 
 fullData.(names{5})=s;
 s = [];
@@ -151,7 +152,7 @@ pause(interFunctionPause);
 %play tones again after pairing.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
     fs,targetDB,controlDB,baselineToneReps,...
-    interRep,pairingToneDur,TTLDur,maxDB);
+    interRep,pairingToneDur,TTLDur,maxDB,rampDur);
 
 fullData.(names{4})=s;
 s = [];
@@ -167,7 +168,7 @@ pause(interFunctionPause);
 %curve. Plays double the number of repetitions.
 [s] = functionTuningCurveGenerator(tuningReps*secondTuningRatio,tuningToneDur,...
     fs,tuningL,tuningpaddingL,prePause,postPauseMin,postPauseMax,startF,...
-    endF,octFrac,startdB,enddB,dbSteps,TTLDur,maxDB);
+    endF,octFrac,startdB,enddB,dbSteps,TTLDur,maxDB,rampDur);
 
 fullData.(names{2})=s;
 s = [];
@@ -193,6 +194,7 @@ fullData.SecondTuningRatio = secondTuningRatio;
 fullData.PresentationRepetitions = baselineToneReps*2;
 fullData.PairingRepetitions = pairingToneReps*2;
 fullData.Names = names;
+fullData.RampDuration = rampDur;
 
 
 save(fullfile(pname,fname),'fullData');

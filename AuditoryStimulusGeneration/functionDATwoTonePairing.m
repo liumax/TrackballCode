@@ -2,7 +2,7 @@
 %soundGeneratorAlternatingToneWithOptoPulsing. 
 function [s] = functionDATwoTonePairing(targetFreq,controlFreq,...
     fs,targetDB,controlDB,toneReps,interRep,toneDur,optoDelay,...
-    optoDur,optoTTL,optoLag,maxDB);
+    optoDur,optoTTL,optoLag,maxDB, rampDur);
 
 calcDBtarget = targetDB - maxDB;
 calcDBcontrol = controlDB - maxDB;
@@ -10,8 +10,8 @@ calcDBcontrol = controlDB - maxDB;
 targetAmpl = 1*10^(calcDBtarget/20);
 controlAmpl = 1*10^(calcDBcontrol/20);
 
-onRampDur = 0.1*fs; 
-offRampDur = 0.1*fs;
+onRampDur = rampDur*fs; 
+offRampDur = rampDur*fs;
 onRampProfile = (cos((0:1:onRampDur)/onRampDur*pi-pi)+1)/2;
 offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;
 %if statements to calculate times based on different conditions
