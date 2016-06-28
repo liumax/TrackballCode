@@ -11,6 +11,7 @@ soundData = masterStruct.SoundData.(soundName);
 master = masterStruct.SoundData.(soundName).MasterArray;
 TTLTimes = masterStruct.TTLs.(ttlName);
 master(:,1) = TTLTimes;
+masterStruct.SoundData.(soundName).MasterArray(:,1) = TTLTimes;
 uniqueFreqs = unique(master(:,2));
 uniqueDBs = unique(master(:,3));
 numDBs = size(unique(master(:,3)),1);
