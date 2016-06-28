@@ -19,6 +19,6 @@ fileName = what;
 fileName = fileName.mat{1};
 periodFinder = strfind(fileName,'.');
 fileName = fileName(1:periodFinder-1);
-functionTuningAnalysis(fileName);
+analysisTuningCurveFunctions(fileName);
 cd(masterFolder)
 end
