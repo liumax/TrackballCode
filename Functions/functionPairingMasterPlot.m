@@ -4,7 +4,8 @@ function [masterStruct] = functionPairingMasterPlot(numTrodes,masterStruct,...
     truncatedNames,rpvTime,clusterWindow,rasterWindow,histBin,...
     clims1,fileName,trodesDesignation,names);
 
-histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2];
+histBinVector = [(rasterWindow(1)*masterStruct.SoundData.Tuning1.ToneDur)...
+    +histBin/2:histBin:(rasterWindow(2)*masterStruct.SoundData.Tuning1.ToneDur)-histBin/2];
 
 master = masterStruct.SoundData.(names{1}).MasterArray;
 numFreqs = size(unique(master(:,2)),1);
@@ -63,10 +64,7 @@ for i = 1:numTrodes
         %little room for inhibition
         subplot(3,3,2)
         %plots heatmap for first tuning curve.
-        imagesc(log10(masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j}...
-            /(masterStruct.SoundData.(names{1}).ToneReps*...
-            masterStruct.SoundData.(names{1}).ToneDur*...
-            masterStruct.(truncatedNames{i}).AverageFiringRates(j))),clims1)
+        imagesc(masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j})
         colormap hot
         set(gca,'XTick',masterStruct.SoundData.(names{1}).OctaveRange(:,2));
         set(gca,'XTickLabel',masterStruct.SoundData.(names{1}).OctaveRange(:,1));
@@ -79,10 +77,7 @@ for i = 1:numTrodes
             masterStruct.(truncatedNames{i}).AverageFiringRates(j))))
         %plots heatmap for second tuning curve.
         subplot(3,3,5)
-        imagesc(log10(masterStruct.(truncatedNames{i}).(names{2}).FrequencyResponse{j}...
-            /(masterStruct.SoundData.(names{2}).ToneReps*...
-            masterStruct.SoundData.(names{2}).ToneDur*...
-            masterStruct.(truncatedNames{i}).AverageFiringRates(j))),clims1)
+        imagesc(masterStruct.(truncatedNames{i}).(names{2}).FrequencyResponse{j})
         colormap hot
         set(gca,'XTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'XTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
@@ -111,8 +106,8 @@ for i = 1:numTrodes
         
         %plots heatmap by frequencies. Plots the first tuning.
         subplot(3,3,3)
-        x = masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j}/masterStruct.(truncatedNames{i}).AverageFiringRates(j);
-        imagesc(log10(x'),clims1)
+        x = masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j};
+        imagesc(x')
         colormap hot
         set(gca,'YTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'YTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
@@ -130,8 +125,8 @@ for i = 1:numTrodes
             'Min',num2str(min(min(masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j}))/masterStruct.(truncatedNames{i}).AverageFiringRates(j))))
         %plots second tuning
         subplot(3,3,6)
-        x = masterStruct.(truncatedNames{i}).(names{2}).AverageFrequencyHistogram{j}/masterStruct.(truncatedNames{i}).AverageFiringRates(j);
-        imagesc(log10(x'),clims1)
+        x = masterStruct.(truncatedNames{i}).(names{2}).AverageFrequencyHistogram{j};
+        imagesc(x')
         colormap hot
         set(gca,'YTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'YTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
@@ -318,12 +313,18 @@ for i = 1:numTrodes
                 %save as matlab figure with correct name (fileName+LFP)
                 spikeGraphName = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'SpikeAnalysis');
                 savefig(hFig,spikeGraphName);
+                spikeGraphName2 = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'SpikeAnalysis2');
+                savefig(hFig2,spikeGraphName2);
         
                 %save as PDF with correct name
                 set(hFig,'Units','Inches');
                 pos = get(hFig,'Position');
                 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
                 print(hFig,spikeGraphName,'-dpdf','-r0')
+                set(hFig2,'Units','Inches');
+                pos = get(hFig2,'Position');
+                set(hFig2,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+                print(hFig2,spikeGraphName2,'-dpdf','-r0')
     end
 end
 end
