@@ -64,7 +64,7 @@ end
 %LFP data, and then average it for the given metric (frequency or db)
 
 %first i figure out how many samples are in the LFP analysis window:
-lfp = readTrodesExtractedDataFile(lfpFiles{i});
+lfp = readTrodesExtractedDataFile(lfpFiles{1});
 viewSamples = round((lfpWindow(2)-lfpWindow(1))*lfp.clockrate/lfp.decimation);
 
 lfpAverageFreqs = zeros(numLFPs,numFreqs,viewSamples);
