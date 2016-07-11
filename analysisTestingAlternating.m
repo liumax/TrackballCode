@@ -5,7 +5,7 @@ function [] = analysisAltLaserFunctions(fileName);
 %tones before and after, and the actual changes that may occur with laser
 %light itself. 
 
-% fileName = '160622_ML160410A_L_2504_reversePairingProtocol';
+fileName = '160711TestingAltPairing';
 
 %% Hardcoded Variables:
 rpvTime = 0.0013; %limit to be considered an RPV.
@@ -53,6 +53,11 @@ end
 [masterStruct] = functionPairingSpikeExtractor(truncatedNames,...
     matclustFiles,rpvTime,clusterWindow,masterStruct);
 
+%saves overall firing rate as average firing rate
+for i = 1:size(truncatedNames,2)
+    masterStruct.(truncatedNames{i}).AverageFiringRates = masterStruct.(truncatedNames{i}).OverallFiringRate;
+end
+
 %% First thing is to import the sound file data.
 soundName = strcat(fileName,'.mat');
 soundFile = open(soundName);
@@ -98,20 +103,13 @@ signalRange = acceptRange*signalITI;
 %every sequence
 findSignals = find(DIO1TrueDiff>signalRange(1) & DIO1TrueDiff<signalRange(2));
 %Separates laser and non laser trials.
-trialsLaser = DIO1True(findSignals+1);
-trialsNoLaser = DIO1True(findSignals+2); %this is a cheating method: just assumes that pulse following paired pulse is unpaired. Will not work if not alternating.
+trialsLaser = DIO1True(findSignals+1)/trodesFS;
+trialsNoLaser = DIO1True(findSignals+2)/trodesFS; %this is a cheating method: just assumes that pulse following paired pulse is unpaired. Will not work if not alternating.
 
-%generates array to indicate which trials have laser pairing and which do
-%not.
-signalHolder = zeros(2,size(findSignals,1)/(signalPulseNum-1));
-for i = 1:size(findSignals,1)/(signalPulseNum-1)
-    signalHolder(1,i) = findSignals(1+(signalPulseNum-1)*(i-1));
-    signalHolder(2,i) = signalHolder(1,i) + signalPulseNum - 1;
-end
 
 %% This now saves these TTLs into the structured array.
-masterStruct.TTLs.NoLaser = trialsNoLaser;
-masterStruct.TTLs.Laser = trialsLaser;
+masterStruct.TTLs.UnpairedStimuli = trialsNoLaser;
+masterStruct.TTLs.PairedStimuli = trialsLaser;
 
 %% check size!if the wrong size will throw error!
 if size(trialsLaser,1) == size(soundFile.PairedStimuli.Frequencies,1);
@@ -129,7 +127,7 @@ end
 %% Next thing is to analyze tuning curve chunks for differences.
 
 %generate a names array for calling different trial types
-names = cell;
+names = cell(2,1);
 names{1} = 'PairedStimuli';
 names{2} = 'UnpairedStimuli';
 
@@ -140,7 +138,7 @@ names{2} = 'UnpairedStimuli';
     names{1},soundFile); 
 %next, pull tuning information. DOES NOT GRAPH
 [masterStruct] = functionPairingTuning(masterStruct,truncatedNames,...
-    SpikeTimes,names{1},names{1},rasterWindow,histBin,clusterWindow,...
+    'SpikeTimes',names{1},names{1},rasterWindow,histBin,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
 %now I analyze the unpaired tuning curve.
@@ -149,13 +147,17 @@ names{2} = 'UnpairedStimuli';
     names{2},soundFile); 
 %next, pull tuning information. DOES NOT GRAPH
 [masterStruct] = functionPairingTuning(masterStruct,truncatedNames,...
-    SpikeTimes,names{2},names{2},rasterWindow,histBin,clusterWindow,...
+    'SpikeTimes',names{2},names{2},rasterWindow,histBin,clusterWindow,...
     clims1,rpvTime,trodesDesignation,fileName); 
 
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
-[masterStruct] = functionPairingMasterPlot(numTrodes,masterStruct,...
+[masterStruct] = functionAltMasterPlot(numTrodes,masterStruct,...
     truncatedNames,rpvTime,clusterWindow,rasterWindow,histBin,...
     clims1,fileName,trodesDesignation,names);
+
+pname = pwd;
+fname = strcat(fileName,'Analysis');
+save(fullfile(pname,fname),'masterStruct');
 
 end
 
