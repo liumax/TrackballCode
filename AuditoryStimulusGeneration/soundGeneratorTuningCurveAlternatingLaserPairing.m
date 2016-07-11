@@ -12,7 +12,7 @@ postPauseMin = 600; %pause in milliseconds after tone
 postPauseMax = 1200; %pause in milliseconds after tone
 
 overallReps = 2; %times the whole tuning curve is to be repeated.
-toneReps = 20; %number of repetitions of each tone/amplitude pair
+toneReps = 5; %number of repetitions of each tone/amplitude pair
 toneDur = 0.1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
@@ -31,7 +31,7 @@ end
 
 startF = 4000; %starting frequency in Hz
 endF = 32000; %ending frequency in Hz
-octFrac = 0.5; %fractions of octaves to move
+octFrac = 1; %fractions of octaves to move
 
 maxdB = 100; %maximum decibel output
 startdB = 100; %starting decibel value
@@ -173,6 +173,11 @@ for i = 1:length(master)*overallReps;
         paddedWave = zeros(paddingL,1);
         paddedWave(1:size(finalWave,1)) = finalWave;
         soundVector = [paddedWave,ttlSig];
+        
+        sound(soundVector,fs);
+        soundVector = [];
+        length(master)*overallReps - i
+        pause(master(counterNormal,4))
         counterNormal = counterNormal + 1;
     else
         toneFreq = pairMaster(counterPair,1);
@@ -183,12 +188,14 @@ for i = 1:length(master)*overallReps;
         paddedWavePair = zeros(paddingLPair,1);
         paddedWavePair(fs*-laserTiming:fs*-laserTiming+size(finalWave,1)-1) = finalWave;
         soundVector = [paddedWavePair,ttlSigPairing];
+        
+        sound(soundVector,fs);
+        soundVector = [];
+        length(master)*overallReps - i
+        pause(pairMaster(counterPair,4))
         counterPair = counterPair + 1;
     end
-    sound(soundVector,fs);
-    soundVector = [];
-    length(master)*overallReps - i
-    pause(master(i,4))
+    
 end
 
 soundData = struct;
@@ -202,6 +209,7 @@ soundData.PairedStimuli.Amplitudes = pairMaster(:,3);
 soundData.PairedStimuli.Delays = pairMaster(:,4);
 soundData.ToneRepetitions = toneReps;
 soundData.ToneDuration = toneDur;
+soundData.LaserTiming = laserTiming;
 
 
 
