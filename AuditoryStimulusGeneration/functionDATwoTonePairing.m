@@ -17,7 +17,7 @@ offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;
 %if statements to calculate times based on different conditions
 if optoDelay < 0 %if opto leads tone
     if optoDur > toneDur-optoDelay %if opto stim exceeds duration of tone and lag period
-        L = fs*(optoDur);
+        L = round(fs*(optoDur));
         %GENERATES RAMP AT CORRECT TIME
         rampProfile = ones(L,1);
         rampProfile(1:fs*(optoDelay*-1+optoLag)) = 0;
@@ -33,7 +33,7 @@ if optoDelay < 0 %if opto leads tone
         ttlSig((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-optoTTL)*-1*fs) = 1;
         controlTTL((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-optoTTL)*-1*fs) = 1;
     elseif optoDur <= toneDur - optoDelay %if opto stim is shorter than duration of tone and lag period
-        L = fs*(toneDur-optoDelay);
+        L = round(fs*(toneDur-optoDelay));
         %GENERATES RAMP AT CORRECT TIME
         rampProfile = ones(L,1);
         rampProfile(1:fs*(optoDelay*-1)) = 0;
@@ -51,7 +51,7 @@ if optoDelay < 0 %if opto leads tone
     end
 elseif optoDelay > 0 %in cases where opto follows the tone
     if toneDur > optoDelay + optoDur %if the tone is longer than the opto stim and delay period
-        L = fs*toneDur;
+        L = round(fs*toneDur);
         %GENERATES RAMP AT CORRECT TIME
         rampProfile = ones(L,1);
         rampProfile(1:onRampDur+1) = onRampProfile;
@@ -67,7 +67,7 @@ elseif optoDelay > 0 %in cases where opto follows the tone
         ttlSig((optoDelay-optoLag)*fs:(optoDelay-optoLag+optoTTL)*fs) = 1;
         ttlSig((optoDelay)*fs:(optoDelay+optoTTL)*fs) = 1;
     elseif toneDur <= optoDelay + optoDur %if the tone is shorter than the opto stim and delay period
-        L = fs*(optoDelay + optoDur);
+        L = round(fs*(optoDelay + optoDur));
         %GENERATES RAMP AT CORRECT TIME
         rampProfile = ones(L,1);
         rampProfile(1:onRampDur+1) = onRampProfile;
@@ -85,7 +85,7 @@ elseif optoDelay > 0 %in cases where opto follows the tone
     end
 elseif optoDelay == 0 %if opto stim is coincident with tone
     if optoDur + optoLag >= toneDur %if opto stim and lag is longer than duration of tone
-        L = fs*(optoDur + optoLag);
+        L = round(fs*(optoDur + optoLag));
         %GENERATES RAMP AT CORRECT TIME
         rampProfile = ones(L,1);
         rampProfile(1:fs*(optoLag)) = 0;
@@ -100,7 +100,7 @@ elseif optoDelay == 0 %if opto stim is coincident with tone
         %double pulse to trigger laser
         ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
     elseif optoDur + optoLag < toneDur %if tone duration exceeds opto stim
-        L = fs*(toneDur);
+        L = round(fs*(toneDur));
         rampProfile = ones(L,1);
         rampProfile(1:onRampDur+1) = onRampProfile;
         rampProfile(end-offRampDur:end) = offRampProfile;
@@ -115,7 +115,7 @@ elseif optoDelay == 0 %if opto stim is coincident with tone
     end
 end
 
-paddingL = L + fs*0.4;
+paddingL = round(L + fs*0.4);
 
 interRep = paddingL/fs+interRep;
 
