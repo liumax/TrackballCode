@@ -237,6 +237,10 @@ end
     truncatedNames,rpvTime,clusterWindow,rasterWindow,histBin,...
     clims1,fileName,trodesDesignation,names);
 
+pname = pwd;
+fname = strcat(fileName,'Analysis');
+save(fullfile(pname,fname),'masterStruct');
+
 end
 
 
