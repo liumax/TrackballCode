@@ -128,8 +128,9 @@ end
 
 %generate a names array for calling different trial types
 names = cell(2,1);
-names{1} = 'PairedStimuli';
-names{2} = 'UnpairedStimuli';
+names{1} = 'UnpairedStimuli';
+names{2} = 'PairedStimuli';
+
 
 %Analyze paired stimuli tuning curve. 
 
