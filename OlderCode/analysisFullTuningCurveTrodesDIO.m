@@ -8,7 +8,7 @@
 %and log file from MBED. 
 
 
-fileName = '160405_ML160218B_R17_2372_fullTune3';
+fileName = '160616_ML160410G_R_3000_fastTuning';
 %sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 fname = saveName;

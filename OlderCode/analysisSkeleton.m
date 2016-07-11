@@ -3,7 +3,7 @@
 %tones before and after, and the actual changes that may occur with laser
 %light itself. 
 
-fileName = '160622_ML160410A_L_3300_pairingProtocol';
+fileName = '160630_ML160410C_R_2800_32Chan8kHzPairing';
 
 %% Hardcoded Variables:
 rpvTime = 0.0013; %limit to be considered an RPV.
