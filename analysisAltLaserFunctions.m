@@ -5,7 +5,7 @@ function [] = analysisAltLaserFunctions(fileName);
 %tones before and after, and the actual changes that may occur with laser
 %light itself. 
 
-fileName = '160711TestingAltPairing';
+% fileName = '160711TestingAltPairing';
 
 %% Hardcoded Variables:
 rpvTime = 0.0013; %limit to be considered an RPV.
@@ -157,7 +157,7 @@ names{2} = 'PairedStimuli';
     clims1,fileName,trodesDesignation,names);
 
 pname = pwd;
-fname = strcat(fileName,'Analysis');
+fname = strcat(fileName,'AltLaserAnalysis');
 save(fullfile(pname,fname),'masterStruct');
 
 end
