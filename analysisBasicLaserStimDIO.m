@@ -1,3 +1,5 @@
+
+function [] = analysisBasicLaserStimDIO(fileName);
 %this should be basic code to use cluster data to pick out spike time
 %points and then align them to auditory stimuli. 
 
@@ -5,13 +7,10 @@
 %spikes, matlab file with audio order
 %and log file from MBED. 
 
-clear
+% clear
 
 % dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
-fileName = '160511_ML160410D_R17_2402_fullTuningFineGrain';
-
-saveName = strcat(fileName,'OptoTagging','.mat');
-[fname pname] = uiputfile(saveName);
+% fileName = '160511_ML160410D_R17_2402_fullTuningFineGrain';
 
 inputPort = 2;
 rasterWindow = [-0.5,0.5];
@@ -257,8 +256,11 @@ end
 
 % clearvars -except matclustStruct fname pname
 %saves matclustStruct
+pname = pwd;
+fname = strcat(fileName,'LaserIDAnalysis');
 save(fullfile(pname,fname),'matclustStruct');
 
+end
 
 
 
