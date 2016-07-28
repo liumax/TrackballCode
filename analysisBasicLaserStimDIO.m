@@ -1,24 +1,18 @@
 
 function [] = analysisBasicLaserStimDIO(fileName);
-%this should be basic code to use cluster data to pick out spike time
-%points and then align them to auditory stimuli. 
+%This function is meant to perform the basic analysis of spike responses in
+%response to laser stimulation for ID purposes. This will produce an
+%average waveform, a graph of ISIs, and a raster and histogram of IDed
+%responses. fileName should be just the name of the file without
+%extensions.
 
-%This needs the following in the same folder: matclust file of picked
-%spikes, matlab file with audio order
-%and log file from MBED. 
 
-% clear
-
-% dirName = 'C:\TrodesRecordings\160203_ML150108A_R12_2600\160203_ML150108A_R12_2600_toneFinder.matclust';
-% fileName = '160511_ML160410D_R17_2402_fullTuningFineGrain';
-
-inputPort = 2;
-rasterWindow = [-0.5,0.5];
+rasterWindow = [-0.1,0.1];
 clusterWindow = [0,0.05];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
-tuningWindow = [0,0.1]; %window over which responses are integrated for calculation of tuning!
 
-histBin = 0.025; %bin size in seconds
+
+histBin = 0.001; %bin size in seconds
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
 histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
@@ -50,21 +44,21 @@ end
 %finds DIO folder, extracts D2 specifically
 [D2FileName] = functionFileFinder(subFoldersCell,'DIO','D2');
 D2FileName = D2FileName{1};
-%extracts DIO stuffs!
 
+%extracts DIO stuffs!
 [DIOData] = readTrodesExtractedDataFile(D2FileName);
 %extracts port states and times of changes
 dioState = double(DIOData.fields(2).data);
 dioTime = double(DIOData.fields(1).data);
 
+%pulls the times when state goes up!
 inTimes = dioTime(dioState == 1)/30000;
 master(:,1) = inTimes;
 
-histBin = 0.001; %bin size in seconds
-histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
-histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
-%histBinVector is for the purposes of graphing. This provides a nice axis
-%for graphing purposes.
+%pulls the duration of the pulse (this should give laser pulse duration
+dioDiff = diff(dioTime);
+dioDiff = dioDiff(dioDiff<5000);
+meanDiff = mean(dioDiff)/30;
 %%
 
 
@@ -120,7 +114,7 @@ for i = 1:numTrodes
     matclustStruct.(truncatedNames{i}).SpikeTimes = clusterIndex;
     
     %calculates average firing rate
-    totalTime = matclustFile.clustdata.datarange(2,1);
+    totalTime = matclustFile.clustdata.datarange(2,1)-matclustFile.clustdata.datarange(1,1);
     averageFiring = zeros(clusterSizer,1);
     for j = 1:clusterSizer
         averageFiring(j) = size(clusterIndex{j},1)/totalTime;
@@ -150,6 +144,7 @@ for i = 1:numTrodes
     
     masterToneRaster = [];
     masterToneHist = [];
+    indivToneHist = cell(clusterSizer,length(inTimes));
     %generate rasters and histograms, ignores frequency information
     for j = 1:clusterSizer
         rasterHolder = 1;
@@ -227,7 +222,7 @@ end
 
 for i = 1:numTrodes
     for j = 1:matclustStruct.(truncatedNames{i}).ClusterNumber
-        figure
+        hFig = figure;
         %plots average waveform
         subplot(3,2,1)
         hold on
@@ -245,14 +240,29 @@ for i = 1:numTrodes
         subplot(3,1,2)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.')
-        title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
+        line([0 0],[0 size(inTimes,1)],'LineWidth',1,'Color','blue')
+        line([meanDiff/1000 meanDiff/1000],[0 size(inTimes,1)],'LineWidth',1,'Color','blue')
+        ylim([0 size(inTimes,1)]);
+        h = title(strcat(fileName,truncatedNames{i},' Cluster ',num2str(j)));
+        set(h,'interpreter','none') 
         %plots histogram
         subplot(3,1,3)
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
-            matclustStruct.(truncatedNames{i}).Histogram{j}(:,1))
-        title('Histogram')
+            matclustStruct.(truncatedNames{i}).Histogram{j}(:,1),'k')
+        line([0 0],[0 max(matclustStruct.(truncatedNames{i}).Histogram{j}(:,1))],'LineWidth',1,'Color','blue')
+        line([meanDiff/1000 meanDiff/1000],[0 max(matclustStruct.(truncatedNames{i}).Histogram{j}(:,1))],'LineWidth',1,'Color','blue')
+        title(strcat('Mean Laser Dur:',num2str(meanDiff),'ms'))
+        %save as figure and PDF
+        spikeGraphName = strcat(fileName,truncatedNames{i},' Cluster ',num2str(j),'LaserResponse');
+        savefig(hFig,spikeGraphName);
+        set(hFig,'Units','Inches');
+        pos = get(hFig,'Position');
+        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+        print(hFig,spikeGraphName,'-dpdf','-r0')
     end
 end
+
+
 
 % clearvars -except matclustStruct fname pname
 %saves matclustStruct
