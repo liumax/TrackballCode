@@ -98,6 +98,15 @@ for i = 1:numTrodes
         set(gca,'XTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
         set(gca,'YTick',masterStruct.SoundData.(names{2}).dBRange(:,2));
         set(gca,'YTickLabel',masterStruct.SoundData.(names{2}).dBRange(:,1));
+        %this will plot a colored box around the target and control
+        %frequencies
+        %control
+        hold on
+        rectangle('Position',[find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5...
+            find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == masterStruct.SoundData.(names{5}).ControlSet(2))-0.5 1 1],'EdgeColor','b','LineWidth',5)
+        %target
+        rectangle('Position',[find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5...
+            find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == masterStruct.SoundData.(names{5}).TargetSet(2))-0.5 1 1],'EdgeColor','g','LineWidth',5)
         title(strcat('Difference in Frequency Response.Max',...
             num2str(max(max(max(masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j}...
             -masterStruct.(truncatedNames{i}).(names{2}).FrequencyResponse{j})))),...
@@ -311,10 +320,10 @@ for i = 1:numTrodes
         %%
         hold off
                 %save as matlab figure with correct name (fileName+LFP)
-                spikeGraphName = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'SpikeAnalysis');
-                savefig(hFig,spikeGraphName);
-                spikeGraphName2 = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'SpikeAnalysis2');
-                savefig(hFig2,spikeGraphName2);
+                spikeGraphName = strcat(fileName,trodesDesignation{i},'Cluster',num2str(j),'SpikeAnalysis');
+%                 savefig(hFig,spikeGraphName);
+                spikeGraphName2 = strcat(fileName,trodesDesignation{i},'Cluster',num2str(j),'SpikeAnalysis2');
+%                 savefig(hFig2,spikeGraphName2);
         
                 %save as PDF with correct name
                 set(hFig,'Units','Inches');
