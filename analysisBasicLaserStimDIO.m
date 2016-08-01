@@ -8,8 +8,10 @@ function [] = analysisBasicLaserStimDIO(fileName);
 
 
 rasterWindow = [-0.1,0.1];
-clusterWindow = [0,0.05];
+clusterWindow = [-0.01,0.05];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
+pairingCutoff = 15; %ms cutoff beyond which cell is not considered to be IDed 
+zScoreCutoff = 4; %zscore above which cell is considered IDed
 
 
 histBin = 0.001; %bin size in seconds
@@ -29,9 +31,11 @@ subFoldersCell = strsplit(subFolders,';')';
 
 %removes periods which allow structured array formation.
 truncatedNames = matclustFiles;
+trodesDesignation = cell(size(truncatedNames)); %generates even shorter names for figure presentation. 
 numTrodes = length(truncatedNames);
 for i = 1:length(truncatedNames)
     truncatedNames{i} = truncatedNames{i}(1:find(truncatedNames{i} == '.')-1);
+    trodesDesignation{i} = truncatedNames{i}(17:end);
 end
 
 %generates structured array for storage of data
@@ -144,6 +148,8 @@ for i = 1:numTrodes
     
     masterToneRaster = [];
     masterToneHist = [];
+    zScoreFiring = cell(clusterSizer,1);
+    firstZCrossing = cell(clusterSizer,1);
     indivToneHist = cell(clusterSizer,length(inTimes));
     %generate rasters and histograms, ignores frequency information
     for j = 1:clusterSizer
@@ -187,9 +193,17 @@ for i = 1:numTrodes
         masterToneHist{j} = [counts'*(1/histBin)/length(master(:,1)),centers'];
         counts = [];
         centers = [];
+        zScoreFiring{j} = zscore(masterToneHist{j}(:,1)); %calculates the z score. This is technically dirty since it includes the laser period.
+        acceptablePeriod = [find(histBinVector>0,1,'first') find(histBinVector>pairingCutoff/1000,1,'first')]; %figures out the bins from laser onset to end of acceptable laser period (ex. 15 ms)
+        firstZCrossing{j} = masterToneHist{j}(find(zScoreFiring{j}(acceptablePeriod(1):acceptablePeriod(2))>zScoreCutoff,1,'first')+acceptablePeriod(1)-1,2); %calculates the first time bin at which the firing rate crosses threshold.
+        %note the -1 fudge factor is because I am adding the index of
+        %acceptablePeriod(1), which produces an indexing error
     end
+    
     matclustStruct.(truncatedNames{i}).Rasters = masterToneRaster;
     matclustStruct.(truncatedNames{i}).Histogram = masterToneHist;
+    matclustStruct.(truncatedNames{i}).zScore = zScoreFiring;
+    matclustStruct.(truncatedNames{i}).zScoreCrossing = firstZCrossing;
 
     
     stdHolder = zeros(length(histBinVector),length(master(:,1)));
@@ -223,37 +237,54 @@ end
 for i = 1:numTrodes
     for j = 1:matclustStruct.(truncatedNames{i}).ClusterNumber
         hFig = figure;
+        set(hFig,'Position',[40 80 600 1000])
         %plots average waveform
-        subplot(3,2,1)
+        subplot(4,2,1)
         hold on
-        j
         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,2),'LineWidth',2)
         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,1),'r','LineWidth',1)
         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,3),'r','LineWidth',1)
         title(strcat('AverageFiringRate:',num2str(matclustStruct.(truncatedNames{i}).AverageFiringRate(j))))
         %plots ISI
-        subplot(3,2,2)
+        subplot(4,2,2)
         hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
-        xlim([0 0.05])
+        xlim([clusterWindow(1) clusterWindow(2)])
         title('ISI')
         %plots rasters
-        subplot(3,1,2)
+        subplot(4,1,2)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Rasters{j}(:,1),'k.')
         line([0 0],[0 size(inTimes,1)],'LineWidth',1,'Color','blue')
         line([meanDiff/1000 meanDiff/1000],[0 size(inTimes,1)],'LineWidth',1,'Color','blue')
+        line([pairingCutoff/1000 pairingCutoff/1000],[0 size(inTimes,1)],'LineWidth',2,'Color','red')
         ylim([0 size(inTimes,1)]);
-        h = title(strcat(fileName,truncatedNames{i},' Cluster ',num2str(j)));
+        xlim([rasterWindow(1) rasterWindow(2)]);
+        h = title(strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j)));
         set(h,'interpreter','none') 
         %plots histogram
-        subplot(3,1,3)
+        subplot(4,1,3)
         plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
             matclustStruct.(truncatedNames{i}).Histogram{j}(:,1),'k')
         line([0 0],[0 max(matclustStruct.(truncatedNames{i}).Histogram{j}(:,1))],'LineWidth',1,'Color','blue')
         line([meanDiff/1000 meanDiff/1000],[0 max(matclustStruct.(truncatedNames{i}).Histogram{j}(:,1))],'LineWidth',1,'Color','blue')
+        line([pairingCutoff/1000 pairingCutoff/1000],[0 max(matclustStruct.(truncatedNames{i}).Histogram{j}(:,1))],'LineWidth',2,'Color','red')
         title(strcat('Mean Laser Dur:',num2str(meanDiff),'ms'))
+        %plots zScore
+        subplot(4,1,4)
+        plot(matclustStruct.(truncatedNames{i}).Histogram{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).zScore{j},'k')
+        line([0 0],[min(matclustStruct.(truncatedNames{i}).zScore{j}) max(matclustStruct.(truncatedNames{i}).zScore{j})],'LineWidth',1,'Color','blue')
+        line([meanDiff/1000 meanDiff/1000],[min(matclustStruct.(truncatedNames{i}).zScore{j}) max(matclustStruct.(truncatedNames{i}).zScore{j})],'LineWidth',1,'Color','blue')
+        line([pairingCutoff/1000 pairingCutoff/1000],[min(matclustStruct.(truncatedNames{i}).zScore{j}) max(matclustStruct.(truncatedNames{i}).zScore{j})],'LineWidth',2,'Color','red')
+        %if there is a threshold crossing, plots it
+        if ~isempty(matclustStruct.(truncatedNames{i}).zScoreCrossing{j})
+            line([matclustStruct.(truncatedNames{i}).zScoreCrossing{j} matclustStruct.(truncatedNames{i}).zScoreCrossing{j}]...
+                ,[0 max(matclustStruct.(truncatedNames{i}).zScore{j})],'LineWidth',1,'Color','green')
+            title(strcat('CELL IS LASER RESPONSIVE WITH ',num2str(matclustStruct.(truncatedNames{i}).zScoreCrossing{j}*1000),' ms DELAY'))
+        end
+        ylim([min(matclustStruct.(truncatedNames{i}).zScore{j}) max(matclustStruct.(truncatedNames{i}).zScore{j})])
         %save as figure and PDF
-        spikeGraphName = strcat(fileName,truncatedNames{i},' Cluster ',num2str(j),'LaserResponse');
+        spikeGraphName = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'LaserResponse');
         savefig(hFig,spikeGraphName);
         set(hFig,'Units','Inches');
         pos = get(hFig,'Position');
