@@ -102,11 +102,26 @@ for i = 1:numTrodes
         %frequencies
         %control
         hold on
-        rectangle('Position',[find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5...
-            find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == masterStruct.SoundData.(names{5}).ControlSet(2))-0.5 1 1],'EdgeColor','b','LineWidth',5)
-        %target
-        rectangle('Position',[find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5...
-            find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == masterStruct.SoundData.(names{5}).TargetSet(2))-0.5 1 1],'EdgeColor','g','LineWidth',5)
+        if ~isempty(find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5)
+            rectangle('Position',[find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5...
+                find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == masterStruct.SoundData.(names{5}).ControlSet(2))-0.5 1 1],'EdgeColor','b','LineWidth',5)
+        else
+            findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - masterStruct.SoundData.(names{5}).ControlSet(1);
+            smallestDiff = min(abs(findClosest));
+            findClosest = find(abs(findClosest) == smallestDiff);
+            rectangle('Position',[findClosest-0.5 find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == masterStruct.SoundData.(names{5}).ControlSet(2))-0.5 1 1],'EdgeColor','b','LineWidth',5)
+        end
+        %target!
+        if ~isempty(find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5)
+            rectangle('Position',[find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5...
+                find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == masterStruct.SoundData.(names{5}).TargetSet(2))-0.5 1 1],'EdgeColor','g','LineWidth',5)
+        else
+            findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - masterStruct.SoundData.(names{5}).TargetSet(1);
+            smallestDiff = min(abs(findClosest));
+            findClosest = find(abs(findClosest) == smallestDiff);
+            rectangle('Position',[findClosest-0.5 find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == masterStruct.SoundData.(names{5}).TargetSet(2))-0.5 1 1],'EdgeColor','g','LineWidth',5)
+        end
+        
         title(strcat('Difference in Frequency Response.Max',...
             num2str(max(max(max(masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j}...
             -masterStruct.(truncatedNames{i}).(names{2}).FrequencyResponse{j})))),...
