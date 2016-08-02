@@ -11,6 +11,7 @@ rasterWindow = [-0.1,0.1];
 clusterWindow = [-0.01,0.05];
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
 pairingCutoff = 15; %ms cutoff beyond which cell is not considered to be IDed 
+pairingEarlyCutoff = 2; %minimum number of ms after a laser before a spike is considered laser related
 zScoreCutoff = 4; %zscore above which cell is considered IDed
 
 
@@ -137,14 +138,49 @@ for i = 1:numTrodes
         averageWaveHolder(:,j,1) = mean(waveHolder{j},2)-std(waveHolder{j},0,2)/sqrt(size(waveHolder{j},2));
         averageWaveHolder(:,j,3) = mean(waveHolder{j},2)+std(waveHolder{j},0,2)/sqrt(size(waveHolder{j},2));
     end
-    for j = 1:clusterSizer
-        waveHolder{j} = waveLoader(:,clusterSpikes{j});
-        averageWaveHolder(:,j,2) = mean(waveHolder{j},2);
-        averageWaveHolder(:,j,1) = mean(waveHolder{j},2)-std(waveHolder{j},0,2);
-        averageWaveHolder(:,j,3) = mean(waveHolder{j},2)+std(waveHolder{j},0,2);
-    end
     matclustStruct.(truncatedNames{i}).AverageWaveForms = averageWaveHolder;
     matclustStruct.(truncatedNames{i}).AllWaveForms = waveHolder;
+    
+   
+    %find laser evoked and not laser evoked spikes
+    laserWaveIndices = cell(clusterSizer,2); %will hold indices for laser vs non-laser waveforms
+    averageWaveHolderLaser = zeros(size(waveLoader,1),clusterSizer,3);
+    averageWaveHolderNonLaser = zeros(size(waveLoader,1),clusterSizer,3);
+    laserResponseCounter = zeros(clusterSizer,1);
+    for j = 1:clusterSizer
+        %first, have to find the indices of all spikes that come within the
+        %acceptable period. We will consider all of these to be light
+        %evoked.
+        laserSpikeHolder = zeros(size(waveHolder{j},2),1);
+        laserSpikeCounter = 1;
+        for k = 1:size(inTimes,1)
+            laserSpikeSubtractor = clusterIndex{j} - inTimes(k);
+            laserSpikeSubtractor = find(laserSpikeSubtractor > (pairingEarlyCutoff/1000) & laserSpikeSubtractor < pairingCutoff/1000);
+            if ~isempty(laserSpikeSubtractor) %safeguard against trials with no response
+                laserResponseCounter(j) = laserResponseCounter(j) + 1/size(inTimes,1);
+                laserSpikeHolder(laserSpikeCounter:size(laserSpikeSubtractor,1)+laserSpikeCounter-1) = laserSpikeSubtractor; %populates vector with correct values from subtraction
+                laserSpikeCounter = laserSpikeCounter + size(laserSpikeSubtractor,1); %advances counter.
+            end
+        end
+        laserSpikeHolder(laserSpikeHolder == 0) = []; %eliminates extra zeros
+        laserWaveIndices{j,1} = laserSpikeHolder; %stores laser waveform indices in the first column
+        nonLaserSpikeHolder = 1:1:size(clusterIndex{j},1);
+        nonLaserSpikeHolder(laserSpikeHolder) = []; %stores all other waveforms
+        laserWaveIndices{j,2} = nonLaserSpikeHolder;
+        %computes average laser waveforms.
+        averageWaveHolderLaser(:,j,2) = mean(waveHolder{j}(:,laserSpikeHolder),2);
+        averageWaveHolderLaser(:,j,1) = mean(waveHolder{j}(:,laserSpikeHolder),2)-std(waveHolder{j}(:,laserSpikeHolder),0,2)/sqrt(size(waveHolder{j}(:,laserSpikeHolder),2));
+        averageWaveHolderLaser(:,j,3) = mean(waveHolder{j}(:,laserSpikeHolder),2)+std(waveHolder{j}(:,laserSpikeHolder),0,2)/sqrt(size(waveHolder{j}(:,laserSpikeHolder),2));
+        %computers average non-laser waveform.
+        averageWaveHolderNonLaser(:,j,2) = mean(waveHolder{j}(:,nonLaserSpikeHolder),2);
+        averageWaveHolderNonLaser(:,j,1) = mean(waveHolder{j}(:,nonLaserSpikeHolder),2)-std(waveHolder{j}(:,nonLaserSpikeHolder),0,2)/sqrt(size(waveHolder{j}(:,nonLaserSpikeHolder),2));
+        averageWaveHolderNonLaser(:,j,3) = mean(waveHolder{j}(:,nonLaserSpikeHolder),2)+std(waveHolder{j}(:,nonLaserSpikeHolder),0,2)/sqrt(size(waveHolder{j}(:,nonLaserSpikeHolder),2));
+    end
+    
+    matclustStruct.(truncatedNames{i}).LaserSpikeIndices = laserWaveIndices;
+    matclustStruct.(truncatedNames{i}).AverageWaveFormLaser = averageWaveHolderLaser;
+    matclustStruct.(truncatedNames{i}).AverageWaveFormNonLaser = averageWaveHolderNonLaser;
+    matclustStruct.(truncatedNames{i}).LaserResponseProbability = laserResponseCounter;
     
     masterToneRaster = [];
     masterToneHist = [];
@@ -241,10 +277,16 @@ for i = 1:numTrodes
         %plots average waveform
         subplot(4,2,1)
         hold on
-        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,2),'LineWidth',2)
-        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,1),'r','LineWidth',1)
-        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,3),'r','LineWidth',1)
-        title(strcat('AverageFiringRate:',num2str(matclustStruct.(truncatedNames{i}).AverageFiringRate(j))))
+        plot(matclustStruct.(truncatedNames{i}).AverageWaveFormNonLaser(:,j,2),'k','LineWidth',2)
+        plot(matclustStruct.(truncatedNames{i}).AverageWaveFormNonLaser(:,j,1),'r','LineWidth',1)
+        plot(matclustStruct.(truncatedNames{i}).AverageWaveFormNonLaser(:,j,3),'r','LineWidth',1)
+        plot(matclustStruct.(truncatedNames{i}).AverageWaveFormLaser(:,j,2),'b','LineWidth',2)
+        plot(matclustStruct.(truncatedNames{i}).AverageWaveFormLaser(:,j,1),'c','LineWidth',1)
+        plot(matclustStruct.(truncatedNames{i}).AverageWaveFormLaser(:,j,3),'c','LineWidth',1)
+        waveCorrelation = corrcoef(matclustStruct.(truncatedNames{i}).AverageWaveFormLaser(:,1,2),matclustStruct.(truncatedNames{i}).AverageWaveFormNonLaser(:,1,2));
+
+        title({strcat('AverageFiringRate:',num2str(matclustStruct.(truncatedNames{i}).AverageFiringRate(j))),strcat('WaveCorrelation:',num2str(waveCorrelation(2))),...
+            strcat('LaserResponsePercentage:',num2str(matclustStruct.(truncatedNames{i}).LaserResponseProbability(j)))})
         %plots ISI
         subplot(4,2,2)
         hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
