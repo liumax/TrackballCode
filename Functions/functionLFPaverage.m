@@ -117,7 +117,7 @@ for i = 1:numLFPs
             tempHolder(k,:) = lfpSignals(finder:finder + viewSamples - 1);
         end
         lfpAverageDBs(i,j,:) = mean(tempHolder);
-        disp('Frequency')
+        disp('Decibel')
         disp(j)
     end
     disp('electrode')
