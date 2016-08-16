@@ -77,11 +77,10 @@ end
 %next I will calculate mean firing rate based on collected baseline histogram
 %information.
 
-
-preToneMean = zeros(clusterSizer,1);
 preToneMean = mean(baselineHist)/histBin;
 preToneSTD = std(baselineHist)/histBin;%need hist bin division: std has NOT factored this in
-
+matclustStruct.(truncatedNames{i}).AverageFiringRate = preToneMean;
+matclustStruct.(truncatedNames{i}).AverageFiringSTD = preToneSTD;
 
 %need to adjust histograms to be z scored! Saves as new array to
 %preserve old data.

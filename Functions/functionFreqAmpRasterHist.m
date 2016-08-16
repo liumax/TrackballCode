@@ -58,7 +58,8 @@ for k = 1:clusterSizer
     end
     masterFreqDBHist{k} = freqDBHist;
     expectedResponse = matclustStruct.(truncatedNames{i}).AverageFiringRate(k)*matclustStruct.ToneDur;
-    respReliab{k} = percentResponse/expectedResponse;
+%     respReliab{k} = percentResponse/expectedResponse;%removed this expected response division because it generates uninterpretable outputs.
+    respReliab{k} = percentResponse;
     aveFreqRespMaster{k} = averageFreqResp;
 end
 
