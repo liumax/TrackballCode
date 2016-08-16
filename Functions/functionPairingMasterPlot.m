@@ -21,7 +21,8 @@ for i = 1:numTrodes
         plot(masterStruct.(truncatedNames{i}).AverageWaveForms(:,j,2),'LineWidth',2)
         plot(masterStruct.(truncatedNames{i}).AverageWaveForms(:,j,1),'r','LineWidth',1)
         plot(masterStruct.(truncatedNames{i}).AverageWaveForms(:,j,3),'r','LineWidth',1)
-        title(strcat(spikeGraphName,'AverageFiringRate:',num2str(masterStruct.(truncatedNames{i}).AverageFiringRates(j))))
+        title({spikeGraphName;strcat('AverageFiringRate:',num2str(masterStruct.(truncatedNames{i}).AverageFiringRates(j)))});
+        set(0, 'DefaulttextInterpreter', 'none')
         %plots ISI
         subplot(4,3,4)
         hist(masterStruct.(truncatedNames{i}).ISIData{j},1000)
@@ -66,6 +67,11 @@ for i = 1:numTrodes
         %plots heatmap for first tuning curve.
         imagesc(masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j})
         colormap hot
+        cMinMax = [0 0];
+        %sets limits so that next graph is displayed with the same color
+        %settings. 
+        cMinMax(1) = min(min(masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j}));
+        cMinMax(2) = max(max(masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j}));
         set(gca,'XTick',masterStruct.SoundData.(names{1}).OctaveRange(:,2));
         set(gca,'XTickLabel',masterStruct.SoundData.(names{1}).OctaveRange(:,1));
         set(gca,'YTick',masterStruct.SoundData.(names{1}).dBRange(:,2));
@@ -77,7 +83,11 @@ for i = 1:numTrodes
             masterStruct.(truncatedNames{i}).AverageFiringRates(j))))
         %plots heatmap for second tuning curve.
         subplot(3,3,5)
-        imagesc(masterStruct.(truncatedNames{i}).(names{2}).FrequencyResponse{j})
+        if cMinMax(1) == cMinMax(2)
+            imagesc(masterStruct.(truncatedNames{i}).(names{2}).FrequencyResponse{j})
+        else
+            imagesc(masterStruct.(truncatedNames{i}).(names{2}).FrequencyResponse{j}, cMinMax)
+        end
         colormap hot
         set(gca,'XTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'XTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
@@ -132,6 +142,11 @@ for i = 1:numTrodes
         subplot(3,3,3)
         x = masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j};
         imagesc(x')
+        cMinMax = [0 0];
+        %sets limits so that next graph is displayed with the same color
+        %settings. 
+        cMinMax(1) = min(min(masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j}));
+        cMinMax(2) = max(max(masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j}));
         colormap hot
         set(gca,'YTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'YTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
@@ -144,13 +159,38 @@ for i = 1:numTrodes
         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
         %         title('Heatmap by Frequency and Time Max')
+         %this will plot a colored box around the target and control
+        %frequencies
+        %control
+        hold on
+        if ~isempty(find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5)
+            rectangle('Position',[0.5 find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5 size(x',2) 1],'EdgeColor','b','LineWidth',2)
+        else
+            findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - masterStruct.SoundData.(names{5}).ControlSet(1);
+            smallestDiff = min(abs(findClosest));
+            findClosest = find(abs(findClosest) == smallestDiff);
+            rectangle('Position',[0.5 findClosest-0.5 size(x',2) 1],'EdgeColor','b','LineWidth',2)
+        end
+        %target!
+        if ~isempty(find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5)
+            rectangle('Position',[0.5 find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5 size(x',2) 1],'EdgeColor','g','LineWidth',2)
+        else
+            findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - masterStruct.SoundData.(names{5}).TargetSet(1);
+            smallestDiff = min(abs(findClosest));
+            findClosest = find(abs(findClosest) == smallestDiff);
+            rectangle('Position',[0.5 findClosest-0.5 size(x',2) 1],'EdgeColor','g','LineWidth',2)
+        end
         title(strcat('Normalized Heatmap by F and T.Max',...
             num2str(max(max(masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j}))/masterStruct.(truncatedNames{i}).AverageFiringRates(j)),...
             'Min',num2str(min(min(masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j}))/masterStruct.(truncatedNames{i}).AverageFiringRates(j))))
         %plots second tuning
         subplot(3,3,6)
         x = masterStruct.(truncatedNames{i}).(names{2}).AverageFrequencyHistogram{j};
-        imagesc(x')
+        if cMinMax(1) == cMinMax(2)
+            imagesc(x')
+        else
+            imagesc(x', cMinMax)
+        end
         colormap hot
         set(gca,'YTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'YTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
@@ -163,6 +203,27 @@ for i = 1:numTrodes
         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
         %         title('Heatmap by Frequency and Time Max')
+         %this will plot a colored box around the target and control
+        %frequencies
+        %control
+        hold on
+        if ~isempty(find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5)
+            rectangle('Position',[0.5 find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5 size(x',2) 1],'EdgeColor','b','LineWidth',2)
+        else
+            findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - masterStruct.SoundData.(names{5}).ControlSet(1);
+            smallestDiff = min(abs(findClosest));
+            findClosest = find(abs(findClosest) == smallestDiff);
+            rectangle('Position',[0.5 findClosest-0.5 size(x',2) 1],'EdgeColor','b','LineWidth',2)
+        end
+        %target!
+        if ~isempty(find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5)
+            rectangle('Position',[0.5 find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5 size(x',2) 1],'EdgeColor','g','LineWidth',2)
+        else
+            findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - masterStruct.SoundData.(names{5}).TargetSet(1);
+            smallestDiff = min(abs(findClosest));
+            findClosest = find(abs(findClosest) == smallestDiff);
+            rectangle('Position',[0.5 findClosest-0.5 size(x',2) 1],'EdgeColor','g','LineWidth',2)
+        end
         title(strcat('Normalized Heatmap by F and T.Max',...
             num2str(max(max(masterStruct.(truncatedNames{i}).(names{2}).AverageFrequencyHistogram{j}))/masterStruct.(truncatedNames{i}).AverageFiringRates(j)),...
             'Min',num2str(min(min(masterStruct.(truncatedNames{i}).(names{2}).AverageFrequencyHistogram{j}))/masterStruct.(truncatedNames{i}).AverageFiringRates(j))))
@@ -180,6 +241,27 @@ for i = 1:numTrodes
         line([histBinZero histBinZero],[0 numFreqs],'LineWidth',2,'Color','black')
         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
+        %this will plot a colored box around the target and control
+        %frequencies
+        %control
+        hold on
+        if ~isempty(find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5)
+            rectangle('Position',[0.5 find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).ControlSet(1))-0.5 size(x',2) 1],'EdgeColor','b','LineWidth',2)
+        else
+            findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - masterStruct.SoundData.(names{5}).ControlSet(1);
+            smallestDiff = min(abs(findClosest));
+            findClosest = find(abs(findClosest) == smallestDiff);
+            rectangle('Position',[0.5 findClosest-0.5 size(x',2) 1],'EdgeColor','b','LineWidth',2)
+        end
+        %target!
+        if ~isempty(find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5)
+            rectangle('Position',[0.5 find(round(masterStruct.SoundData.(names{2}).UniqueFreqs) == masterStruct.SoundData.(names{5}).TargetSet(1))-0.5 size(x',2) 1],'EdgeColor','g','LineWidth',2)
+        else
+            findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - masterStruct.SoundData.(names{5}).TargetSet(1);
+            smallestDiff = min(abs(findClosest));
+            findClosest = find(abs(findClosest) == smallestDiff);
+            rectangle('Position',[0.5 findClosest-0.5 size(x',2) 1],'EdgeColor','g','LineWidth',2)
+        end
         title(strcat('Difference Heatmap by F and T. Max',...
             num2str(max(max(x))),...
             'Min',num2str(min(min(x)))))
@@ -187,7 +269,7 @@ for i = 1:numTrodes
         %long tone presentations. EDITS TO HERE.
         hFig2 = figure;
         set(hFig2, 'Position', [5 5 1280 1000])
-        subplot(2,2,1)
+        subplot(4,3,1)
         %% plots histograms for control. for first presentation
         plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,2),...
             masterStruct.(truncatedNames{i}).(names{3}).Control.Histogram{j}(:,1),'k','LineWidth',2)
@@ -224,7 +306,7 @@ for i = 1:numTrodes
             rasterWindow(2)*masterStruct.SoundData.(names{3}).ToneDur])
         title('Histogram of Control Responses')
         %% plots histograms for Target. for first presentation
-        subplot(2,2,3)
+        subplot(4,3,7)
         plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,2),...
             masterStruct.(truncatedNames{i}).(names{3}).Target.Histogram{j}(:,1),'k','LineWidth',2)
         hold on
@@ -264,7 +346,7 @@ for i = 1:numTrodes
         %in different colors
         
         %plots simple rasters for first presentation
-        subplot(2,2,2)
+        subplot(4,3,4)
         plot(masterStruct.(truncatedNames{i}).(names{3}).Control.Rasters{j}(:,2),...%plots the initial presentations
             masterStruct.(truncatedNames{i}).(names{3}).Control.Rasters{j}(:,1),'k.','markersize',4)
         hold on
@@ -281,7 +363,7 @@ for i = 1:numTrodes
         title('Control Rasters')
         
         %% Plots rasters for Targets.
-        subplot(2,2,4)
+        subplot(4,3,10)
         plot(masterStruct.(truncatedNames{i}).(names{3}).Target.Rasters{j}(:,2),...%plots the initial presentations
             masterStruct.(truncatedNames{i}).(names{3}).Target.Rasters{j}(:,1),'k.','markersize',4)
         hold on
@@ -296,6 +378,149 @@ for i = 1:numTrodes
         plot([masterStruct.SoundData.(names{3}).ToneDur...
             masterStruct.SoundData.(names{3}).ToneDur],[ylim],'r');
         title('Target Rasters')
+        
+        %% plots rasters organized by time, before and after pairing protocol
+        %plots pre-pairing rasters by time
+        subplot(2,3,2)
+        plot(masterStruct.(truncatedNames{i}).(names{1}).Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{1}).Rasters{j}(:,1),'k.','markersize',4)
+        hold on
+        ylim([0 size(masterStruct.SoundData.(names{1}).Frequencies,1)])
+        rasterLimits = [rasterWindow(1)*masterStruct.SoundData.(names{1}).ToneDur...
+             rasterWindow(2)*masterStruct.SoundData.(names{1}).ToneDur];
+        xlim([rasterLimits(1) rasterLimits(2)])
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{1}).ToneDur masterStruct.SoundData.(names{1}).ToneDur],[ylim],'r');
+        title('Prepairing Sorted by Time')
+        %plots post pairing rasters by time
+        subplot(2,3,3)
+        plot(masterStruct.(truncatedNames{i}).(names{2}).Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{2}).Rasters{j}(:,1),'k.','markersize',4)
+        hold on
+        ylim([0 size(masterStruct.SoundData.(names{2}).Frequencies,1)])
+        xlim([rasterWindow(1)*masterStruct.SoundData.(names{2}).ToneDur...
+             rasterWindow(2)*masterStruct.SoundData.(names{2}).ToneDur])
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{2}).ToneDur masterStruct.SoundData.(names{2}).ToneDur],[ylim],'r');
+        title('Postpairing Sorted by Time')
+        %% plots rasters by frequency
+        %first, I want to identify the tone/frequency pair that was used
+        %for pairing and control
+        %pull data of paired tones
+        targetData = masterStruct.SoundData.(names{5}).TargetSet;
+        controlData = masterStruct.SoundData.(names{5}).ControlSet;
+        %find indices based on tuning curve setup. This means multiplying
+        %the position of the frequency by the total number of reps
+        %(including dBs)
+        %finds what frequency corresponds to  control frequency.
+        findClosest = round(masterStruct.SoundData.(names{1}).UniqueFreqs) - controlData(1);
+        smallestDiff = min(abs(findClosest));
+        findClosest = find(abs(findClosest) == smallestDiff);
+        %finds which dB corresponds to in index.
+        findDB = find(round(masterStruct.SoundData.(names{1}).UniqueDBs) == controlData(2));
+        %this find the first index that corresponds to the targeted frequency
+        rasterPositionControl = (findClosest-1)*masterStruct.SoundData.(names{1}).ToneReps*size(masterStruct.SoundData.(names{1}).UniqueDBs,1);
+        rasterPositionControl = rasterPositionControl + (findDB-1)*masterStruct.SoundData.(names{1}).ToneReps;
+        
+        %finds what frequency corresponds to  target frequency.
+        findClosest = round(masterStruct.SoundData.(names{1}).UniqueFreqs) - targetData(1);
+        smallestDiff = min(abs(findClosest));
+        findClosest = find(abs(findClosest) == smallestDiff);
+        %finds which dB corresponds to in index.
+        findDB = find(round(masterStruct.SoundData.(names{1}).UniqueDBs) == targetData(2));
+        %this find the first index that corresponds to the targeted frequency
+        rasterPositionTarget = (findClosest-1)*masterStruct.SoundData.(names{1}).ToneReps*size(masterStruct.SoundData.(names{1}).UniqueDBs,1);
+        rasterPositionTarget = rasterPositionTarget + (findDB-1)*masterStruct.SoundData.(names{1}).ToneReps;
+        
+        %now finds width of graph for ease
+        rectangleWidth = (rasterWindow(2)*masterStruct.SoundData.(names{2}).ToneDur)-(rasterWindow(1)*masterStruct.SoundData.(names{2}).ToneDur);
+        rectangleStart = (rasterWindow(1)*masterStruct.SoundData.(names{2}).ToneDur);
+        %plots pre-pairing
+        %plots rasters organized by frequency and amp
+        subplot(2,3,5)
+        plot(masterStruct.(truncatedNames{i}).(names{1}).Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{1}).Rasters{j}(:,5),'k.','markersize',4)
+        hold on
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{1}).ToneDur masterStruct.SoundData.(names{1}).ToneDur],[ylim],'r');
+        %removed blue lines to be able to see rasters better
+%         for k = 1:size(matclustStruct.UniqueFreqs,1)*size(matclustStruct.UniqueDBs,1)
+%             plot(matclustStruct.RasterLimits,...
+%                 [soundFile.soundData.ToneRepetitions*k soundFile.soundData.ToneRepetitions*k])
+%         end
+        rasterFreqLines = zeros(numFreqs,2);
+        rasterFreqLines(:,1) = masterStruct.SoundData.(names{1}).ToneReps*size(masterStruct.SoundData.(names{1}).UniqueDBs,1)/2:masterStruct.SoundData.(names{1}).ToneReps*size(masterStruct.SoundData.(names{1}).UniqueDBs,1):size(masterStruct.SoundData.(names{1}).Frequencies,1);
+%         rasterFreqLines(:,1) = soundFile.soundData.ToneRepetitions*size(uniqueDBs,1)/2:soundFile.soundData.ToneRepetitions*size(uniqueDBs,1):size(matclustStruct.SoundTimes,1);
+        rasterFreqLines(:,2) = masterStruct.SoundData.(names{1}).UniqueFreqs;
+        %this generates green lines separating by Frequency
+        for k = 1:size(masterStruct.SoundData.(names{1}).UniqueFreqs,1)
+            plot(rasterLimits,...
+                [masterStruct.SoundData.(names{1}).ToneReps*size(masterStruct.SoundData.(names{1}).UniqueDBs,1)*k...
+                masterStruct.SoundData.(names{1}).ToneReps*size(masterStruct.SoundData.(names{1}).UniqueDBs,1)*k],...
+                'g','LineWidth',1)
+        end
+        rectangle('Position',[rectangleStart rasterPositionTarget rectangleWidth masterStruct.SoundData.(names{1}).ToneReps],'EdgeColor','g','LineWidth',2)
+        rectangle('Position',[rectangleStart rasterPositionControl rectangleWidth masterStruct.SoundData.(names{1}).ToneReps],'EdgeColor','b','LineWidth',2)
+        set(gca,'YTick',rasterFreqLines(:,1));
+        set(gca,'YTickLabel',rasterFreqLines(:,2));
+        set(gca,'Ydir','reverse')
+        ylim([0 size(masterStruct.SoundData.(names{1}).Frequencies,1)])
+        xlim([rasterLimits(1) rasterLimits(2)])
+        title('PrePairing Sorted Descending')
+        %plots post-pairing
+        %plots rasters organized by frequency and amp
+        
+        %finds what frequency corresponds to  control frequency.
+        findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - controlData(1);
+        smallestDiff = min(abs(findClosest));
+        findClosest = find(abs(findClosest) == smallestDiff);
+        %finds which dB corresponds to in index.
+        findDB = find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == controlData(2));
+        %this find the first index that corresponds to the targeted frequency
+        rasterPositionControl = (findClosest-1)*masterStruct.SoundData.(names{2}).ToneReps*size(masterStruct.SoundData.(names{2}).UniqueDBs,1);
+        rasterPositionControl = rasterPositionControl + (findDB-1)*masterStruct.SoundData.(names{2}).ToneReps;
+        
+        %finds what frequency corresponds to  target frequency.
+        findClosest = round(masterStruct.SoundData.(names{2}).UniqueFreqs) - targetData(1);
+        smallestDiff = min(abs(findClosest));
+        findClosest = find(abs(findClosest) == smallestDiff);
+        %finds which dB corresponds to in index.
+        findDB = find(round(masterStruct.SoundData.(names{2}).UniqueDBs) == targetData(2));
+        %this find the first index that corresponds to the targeted frequency
+        rasterPositionTarget = (findClosest-1)*masterStruct.SoundData.(names{2}).ToneReps*size(masterStruct.SoundData.(names{2}).UniqueDBs,1);
+        rasterPositionTarget = rasterPositionTarget + (findDB-1)*masterStruct.SoundData.(names{2}).ToneReps;
+        
+        subplot(2,3,6)
+        plot(masterStruct.(truncatedNames{i}).(names{2}).Rasters{j}(:,2),...
+            masterStruct.(truncatedNames{i}).(names{2}).Rasters{j}(:,5),'k.','markersize',4)
+        hold on
+        plot([0 0],[ylim],'r');
+        plot([masterStruct.SoundData.(names{2}).ToneDur masterStruct.SoundData.(names{2}).ToneDur],[ylim],'r');
+        %removed blue lines to be able to see rasters better
+%         for k = 1:size(matclustStruct.UniqueFreqs,1)*size(matclustStruct.UniqueDBs,1)
+%             plot(matclustStruct.RasterLimits,...
+%                 [soundFile.soundData.ToneRepetitions*k soundFile.soundData.ToneRepetitions*k])
+%         end
+        rasterFreqLines = zeros(numFreqs,2);
+        rasterFreqLines(:,1) = masterStruct.SoundData.(names{2}).ToneReps*size(masterStruct.SoundData.(names{2}).UniqueDBs,1)/2:masterStruct.SoundData.(names{2}).ToneReps*size(masterStruct.SoundData.(names{2}).UniqueDBs,1):size(masterStruct.SoundData.(names{2}).Frequencies,1);
+%         rasterFreqLines(:,1) = soundFile.soundData.ToneRepetitions*size(uniqueDBs,1)/2:soundFile.soundData.ToneRepetitions*size(uniqueDBs,1):size(matclustStruct.SoundTimes,1);
+        rasterFreqLines(:,2) = masterStruct.SoundData.(names{2}).UniqueFreqs;
+        %this generates green lines separating by Frequency
+        for k = 1:size(masterStruct.SoundData.(names{2}).UniqueFreqs,1)
+            plot(rasterLimits,...
+                [masterStruct.SoundData.(names{2}).ToneReps*size(masterStruct.SoundData.(names{2}).UniqueDBs,1)*k...
+                masterStruct.SoundData.(names{2}).ToneReps*size(masterStruct.SoundData.(names{2}).UniqueDBs,1)*k],...
+                'g','LineWidth',1)
+        end
+        rectangle('Position',[rectangleStart rasterPositionTarget rectangleWidth masterStruct.SoundData.(names{1}).ToneReps],'EdgeColor','g','LineWidth',2)
+        rectangle('Position',[rectangleStart rasterPositionControl rectangleWidth masterStruct.SoundData.(names{1}).ToneReps],'EdgeColor','b','LineWidth',2)
+        set(gca,'YTick',rasterFreqLines(:,1));
+        set(gca,'YTickLabel',rasterFreqLines(:,2));
+        set(gca,'Ydir','reverse')
+        ylim([0 size(masterStruct.SoundData.(names{2}).Frequencies,1)])
+        xlim([rasterLimits(1) rasterLimits(2)])
+        title('PostPairing Sorted Descending')
+
         
         %%
         hold off
