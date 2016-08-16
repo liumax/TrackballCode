@@ -324,7 +324,9 @@ for i = 1:numTrodes
                 ,[0 max(matclustStruct.(truncatedNames{i}).zScore{j})],'LineWidth',1,'Color','green')
             title(strcat('CELL IS LASER RESPONSIVE WITH ',num2str(matclustStruct.(truncatedNames{i}).zScoreCrossing{j}*1000),' ms DELAY'))
         end
-        ylim([min(matclustStruct.(truncatedNames{i}).zScore{j}) max(matclustStruct.(truncatedNames{i}).zScore{j})])
+        if min(matclustStruct.(truncatedNames{i}).zScore{j}) ~= max(matclustStruct.(truncatedNames{i}).zScore{j})
+            ylim([min(matclustStruct.(truncatedNames{i}).zScore{j}) max(matclustStruct.(truncatedNames{i}).zScore{j})])
+        end
         %save as figure and PDF
         spikeGraphName = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'LaserResponse');
         savefig(hFig,spikeGraphName);
