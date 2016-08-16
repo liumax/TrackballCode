@@ -60,8 +60,8 @@ for i = 1:numTrodes
         plot([0 0],[ylim],'r');
         plot([matclustStruct.ToneDur matclustStruct.ToneDur],[ylim],'r');
         
-        title(strcat(truncatedNames{i},' Cluster ',num2str(j)))
-        
+        title({fileName;strcat(truncatedNames{i},' Cluster ',num2str(j))})
+        set(0, 'DefaulttextInterpreter', 'none')
         %plots rasters organized by frequency and amp
         subplot(2,3,5)
         plot(matclustStruct.(truncatedNames{i}).Rasters{j}(:,2),...
@@ -85,9 +85,10 @@ for i = 1:numTrodes
         end
         set(gca,'YTick',rasterFreqLines(:,1));
         set(gca,'YTickLabel',rasterFreqLines(:,2));
+        set(gca,'Ydir','reverse')
         ylim([0 size(matclustStruct.SoundTimes,1)])
         xlim([matclustStruct.RasterLimits(1) matclustStruct.RasterLimits(2)])
-        title('Sorted Ascending')
+        title('Sorted Descending')
         
         %plots heatmap. This uses a log10 scaling for change in firing
         %rates. This way, no change is essentially zero on the imagesc
@@ -124,7 +125,9 @@ for i = 1:numTrodes
         %plots heatmap by frequencies
         subplot(2,3,6)
         x = matclustStruct.(truncatedNames{i}).AverageFrequencyHistogram{j}/matclustStruct.(truncatedNames{i}).AverageFiringRate(j);
-        imagesc(log10(x'),clims1)
+        imagesc((log10(x')),clims1)
+%         imagesc(flipud(log10(x')),clims1) this is to flip the image
+%         upside down. the problem is that the axes labels are terrible. 
         set(gca,'YTick',octaveRange(:,2));
         set(gca,'YTickLabel',octaveRange(:,1));
         set(gca,'XTick',[1:10:size(histBinVector,2)]);
