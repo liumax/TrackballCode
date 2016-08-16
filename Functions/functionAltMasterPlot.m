@@ -15,6 +15,7 @@ for i = 1:numTrodes
     for j = 1:masterStruct.(truncatedNames{i}).Clusters
         hFig = figure;
         spikeGraphName = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'SpikeAnalysis');
+        set(0, 'DefaulttextInterpreter', 'none')
         set(hFig, 'Position', [5 5 1280 1000])
         %plots average waveform
         subplot(4,3,1)
@@ -22,7 +23,7 @@ for i = 1:numTrodes
         plot(masterStruct.(truncatedNames{i}).AverageWaveForms(:,j,2),'LineWidth',2)
         plot(masterStruct.(truncatedNames{i}).AverageWaveForms(:,j,1),'r','LineWidth',1)
         plot(masterStruct.(truncatedNames{i}).AverageWaveForms(:,j,3),'r','LineWidth',1)
-        title(strcat(spikeGraphName,'AverageFiringRate:',num2str(masterStruct.(truncatedNames{i}).AverageFiringRates(j))))
+        title({spikeGraphName,strcat('AverageFiringRate:',num2str(masterStruct.(truncatedNames{i}).AverageFiringRates(j)))})
         %plots ISI
         subplot(4,3,4)
         hist(masterStruct.(truncatedNames{i}).ISIData{j},1000)
