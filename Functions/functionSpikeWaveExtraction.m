@@ -15,6 +15,8 @@ clusterSizer= size(matclustFile.clustattrib.clustersOn,1); %pulls number of clus
 clusterSpikes = cell(clusterSizer,1);
 selectedSpikes = cell(clusterSizer,1);
 rpvViolationPercent = zeros(clusterSizer,1);
+rpvNumber = zeros(clusterSizer,1);
+totalNumber = zeros(clusterSizer,1);
 
 %calculates inter-spike interval, saves this information
 for j = 1:clusterSizer
@@ -24,6 +26,8 @@ for j = 1:clusterSizer
     diffSpikes = diff(matclustFile.clustdata.params(clusterSpikes{j},1));
     %this calculates all spikes within the refractory period violation
     %period
+    rpvNumber(j) = size(diffSpikes(diffSpikes<rpvTime),1);
+    totalNumber(j) = size(clusterSpikes{j},1);
     rpvViolationPercent(j) = size(diffSpikes(diffSpikes<rpvTime),1)/size(clusterSpikes{j},1)*100;
     %this then windows out spikes, to only plot the small ISIs
     selectedSpikes{j} = diffSpikes(diffSpikes<clusterWindow(2)); %removes long pauses
@@ -78,6 +82,8 @@ end
 matclustStruct.(truncatedNames{i}).Clusters =  clusterSizer; %stores this number into structured array
 matclustStruct.(truncatedNames{i}).ISIData = selectedSpikes;
 matclustStruct.(truncatedNames{i}).RPVs = rpvViolationPercent;
+matclustStruct.(truncatedNames{i}).RPVNumber = rpvNumber;
+matclustStruct.(truncatedNames{i}).TotalSpikeNumber = totalNumber;
 matclustStruct.(truncatedNames{i}).SpikeTimes = spikeTimes;
 matclustStruct.(truncatedNames{i}).OverallFiringRate = overallFiring;
 matclustStruct.(truncatedNames{i}).AverageWaveForms = averageWaveHolder;

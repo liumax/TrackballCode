@@ -24,7 +24,8 @@ for i = 1:numTrodes
         histMax = max(hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000));
         line([rpvTime rpvTime],[0 histMax],'LineWidth',1,'Color','red')
         xlim(clusterWindow)
-        title(strcat('ISI RPV %: ',num2str(matclustStruct.(truncatedNames{i}).RPVs(j))))
+        title({strcat('ISI RPV %: ',num2str(matclustStruct.(truncatedNames{i}).RPVs(j)));...
+            strcat(num2str(matclustStruct.(truncatedNames{i}).RPVNumber(j)),'/',num2str(matclustStruct.(truncatedNames{i}).TotalSpikeNumber(j)))})
         
          %plots histogram
         subplot(4,3,7)
