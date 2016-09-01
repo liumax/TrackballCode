@@ -37,23 +37,23 @@ postPauseMax = 1000; %pause in milliseconds after tone
 
 startF = 4000; %starting frequency in Hz
 endF = 32000; %ending frequency in Hz
-octFrac = 1; %fractions of octaves to move
+octFrac = 0.25; %fractions of octaves to move
 
 startdB = 100; %starting decibel value
-enddB = 40; %lowest decibel value
+enddB = 60; %lowest decibel value
 dbSteps = 20; %resolution of decible steps
 %%
 %auditory pairing parameters:
-targetFreq = 8000; %target frequency in Hz
-controlFreq = 16000;
-targetDB = 90; %target DBs. 100 is max.
-controlDB = 90;
-baselineToneReps = 20; %tone repetitions for presentations of long tones before pairing
-pairingToneReps = 100; %tone repetitions for pairing experiment
-interRep = 4; %seconds between tones
+targetFreq = 22627; %target frequency in Hz
+controlFreq = 8000;
+targetDB = 100; %target DBs. 100 is max.
+controlDB = 80;
+baselineToneReps = 10; %tone repetitions for presentations of long tones before pairing
+pairingToneReps = 50; %tone repetitions for pairing experiment
+interRep = 10; %seconds between tones
 
 pairingToneDur = 1; %tone duration in seconds
-optoDelay = 0.6; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
+optoDelay = 0.5; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
 optoDur = 1; %duration of all opto pulses, in seconds. THIS IS SHITTY HARD CODED VALUE SHOULD EVENTUALLY CHANGE
 optoTTL = 0.002; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
