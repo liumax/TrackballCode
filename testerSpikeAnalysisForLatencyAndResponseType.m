@@ -2,7 +2,7 @@ histBin = 0.005; %hist bin in seconds
 preToneDuration = [-0.1 0];
 preToneBinCenters = [preToneDuration(1)+histBin/2:histBin:preToneDuration(2)-histBin/2];
 
-toneHistBins = [0.01 0.005 0.003 0.0025 0.001];
+toneHistBins = [0.01 0.005 0.003 0.001];
 postToneDuration = [0 0.200];
 
 zLimit = 3; %z score for response to count as significant
@@ -85,9 +85,9 @@ for i = 1:size(uniqueFreqs,1)
         %generate histogram using 1ms bins. this is hardcoded.
         postToneBinCenters = [postToneDuration(1)+0.001/2:0.001:postToneDuration(2)-0.001/2];
         [counts centers] = hist(rasterHolder{i,j}(:,2),postToneBinCenters);
-        counts = counts/0.001/totalTrialNum;
+        counts = counts/0.001/toneReps;
         for k = 1:size(toneHistBins,2)
-            smoothSpan = toneHistBins(k)/0.001
+            smoothSpan = toneHistBins(k)/0.001;
             if smoothSpan == 1;
                 smoothedCounts = counts;
             else
