@@ -70,19 +70,19 @@ viewSamples = round((lfpWindow(2)-lfpWindow(1))*lfp.clockrate/lfp.decimation);
 lfpAverageFreqs = zeros(numLFPs,numFreqs,viewSamples);
 
 for i = 1:numLFPs
-    for j = 1:numFreqs
         %opens LFP file
-        lfp = readTrodesExtractedDataFile(lfpFiles{i});
-        %counts number of LFP samples
-        lfpSamples = size(lfp.fields.data,1);
-        %makes LFP time points based on # of samples and decimation
-        %adjust time to actual time (to match master)
-        lfpTimes = (((0:1:lfpSamples-1)*lfp.decimation)+lfp.first_timestamp)'/30000;
-        lfpSignals = lfp.fields.data;
-        %generates a temporary holder for LFP traces
-        tempHolder = zeros(numTrials/numFreqs,viewSamples);
-        %goes through all trials of a given frequency, extracts LFP signals
-        %and places into tempHolder
+    lfp = readTrodesExtractedDataFile(lfpFiles{i});
+    %counts number of LFP samples
+    lfpSamples = size(lfp.fields.data,1);
+    %makes LFP time points based on # of samples and decimation
+    %adjust time to actual time (to match master)
+    lfpTimes = (((0:1:lfpSamples-1)*lfp.decimation)+lfp.first_timestamp)'/30000;
+    lfpSignals = lfp.fields.data;
+    %generates a temporary holder for LFP traces
+    tempHolder = zeros(numTrials/numFreqs,viewSamples);
+    %goes through all trials of a given frequency, extracts LFP signals
+    %and places into tempHolder
+    for j = 1:numFreqs
         for k = 1:numTrials/numFreqs
             finder = find(lfpTimes > targetTimesFreqs(k,j)+lfpWindow(1),1);
             tempHolder(k,:) = lfpSignals(finder:finder + viewSamples - 1);
@@ -99,19 +99,19 @@ disp('Done with LFPs by Freq')
 lfpAverageDBs = zeros(numLFPs,numDBs,viewSamples);
 
 for i = 1:numLFPs
+    %opens LFP file
+    lfp = readTrodesExtractedDataFile(lfpFiles{i});
+    %counts number of LFP samples
+    lfpSamples = size(lfp.fields.data,1);
+    %makes LFP time points based on # of samples and decimation
+    %adjust time to actual time (to match master)
+    lfpTimes = (((0:1:lfpSamples-1)*lfp.decimation)+lfp.first_timestamp)'/30000;
+    lfpSignals = lfp.fields.data;
+    %generates a temporary holder for LFP traces
+    tempHolder = zeros(numTrials/numDBs,viewSamples);
+    %goes through all trials of a given frequency, extracts LFP signals
+    %and places into tempHolder
     for j = 1:numDBs
-        %opens LFP file
-        lfp = readTrodesExtractedDataFile(lfpFiles{i});
-        %counts number of LFP samples
-        lfpSamples = size(lfp.fields.data,1);
-        %makes LFP time points based on # of samples and decimation
-        %adjust time to actual time (to match master)
-        lfpTimes = (((0:1:lfpSamples-1)*lfp.decimation)+lfp.first_timestamp)'/30000;
-        lfpSignals = lfp.fields.data;
-        %generates a temporary holder for LFP traces
-        tempHolder = zeros(numTrials/numDBs,viewSamples);
-        %goes through all trials of a given frequency, extracts LFP signals
-        %and places into tempHolder
         for k = 1:numTrials/numDBs
             finder = find(lfpTimes > targetTimesDBs(k,j)+lfpWindow(1),1);
             tempHolder(k,:) = lfpSignals(finder:finder + viewSamples - 1);
