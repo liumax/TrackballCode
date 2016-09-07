@@ -59,11 +59,13 @@ for i = 1:numTrodes
             rasterWindow(2)*masterStruct.SoundData.(names{1}).ToneDur])
         title('Histogram K before B after')
         
-        %plots heatmap. This uses a log10 scaling for change in firing
+        %plots heatmap. This used to use a log10 scaling for change in firing
         %rates. This way, no change is essentially zero on the imagesc
         %scale, rather than having a linear scale where green actually
         %represents a fairly large increase in response, and there is
-        %little room for inhibition
+        %little room for inhibition. However, I have revised this to simply
+        %show the number of spikes during the tone presentation period
+        %instead.
         subplot(3,3,2)
         %plots heatmap for first tuning curve.
         imagesc(masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j})
