@@ -16,12 +16,12 @@
 %is computed off of these means. 
 
 function [matclustStruct] = functionRasterHistExtraction(i,clusterSizer,...
-    master,baselineBins,numDBs,numFreqs,matclustStruct,truncatedNames,...
+    master,baselineBins,matclustStruct,truncatedNames,...
     rasterWindow,histBin,histBinVector);
 %holder for all full histograms
 indivToneHist = cell(clusterSizer,size(master,1)); 
 %holds means of values from pre-tone period. Stores as array with columns = number of clusters
-baselineHist = zeros(numDBs*numFreqs*matclustStruct.ToneReps,clusterSizer);
+baselineHist = zeros(size(master,1),clusterSizer);
 %generate rasters and histograms
 for j = 1:clusterSizer
     rasterCounter = 1;
