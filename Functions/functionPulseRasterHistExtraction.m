@@ -15,7 +15,7 @@
 %tabulate every single trial. The mean firing rate and standard deviation
 %is computed off of these means. 
 
-function [matclustStruct] = functionRasterHistExtraction(i,clusterSizer,...
+function [matclustStruct] = functionPulseBigRasterHistExtraction(i,clusterSizer,...
     master,baselineBins,matclustStruct,truncatedNames,...
     rasterWindow,histBin,histBinVector);
 %holder for all full histograms
@@ -52,8 +52,6 @@ for j = 1:clusterSizer
         toneRaster(rasterCounter:rasterCounter + length(spikeHolder)-1,1) = k;
         toneRaster(rasterCounter:rasterCounter + length(spikeHolder)-1,2) = spikeHolder;
         toneRaster(rasterCounter:rasterCounter + length(spikeHolder)-1,3) = master(k,2); %stores frequency
-        toneRaster(rasterCounter:rasterCounter + length(spikeHolder)-1,4) = master(k,3); %stores amplitude
-        toneRaster(rasterCounter:rasterCounter + length(spikeHolder)-1,5) = master(k,5); %stores freq/amp index
         rasterCounter = rasterCounter + length(spikeHolder);
         toneRaster(toneRaster(:,1) == 0,:) = [];
         spikeHolder = [];
@@ -116,15 +114,13 @@ for j = 1:clusterSizer
     stePlotter(:,j,2) = masterToneHist{j}(:,1)+steHolder(:,j);
 end
 
-matclustStruct.(truncatedNames{i}).Rasters = masterToneRaster;
-matclustStruct.(truncatedNames{i}).Histogram = masterToneHist;
+matclustStruct.(truncatedNames{i}).BigRasters = masterToneRaster;
+matclustStruct.(truncatedNames{i}).BigHistogram = masterToneHist;
 matclustStruct.(truncatedNames{i}).PreToneFiringRate = preToneMean;
 matclustStruct.(truncatedNames{i}).PreToneFiringSTD = preToneSTD;
 matclustStruct.(truncatedNames{i}).ZScore = masterZScore;
 matclustStruct.(truncatedNames{i}).StandardError = steHolder;
 matclustStruct.(truncatedNames{i}).StandardErrorPlotting = stePlotter;
-
-
 
 end
 
