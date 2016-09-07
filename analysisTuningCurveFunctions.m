@@ -105,6 +105,9 @@ matclustStruct.dBs = master(:,3);
 %also stores parameters for rep number and tone duration.
 matclustStruct.ToneReps = soundFile.soundData.ToneRepetitions;
 matclustStruct.ToneDur = soundFile.soundData.ToneDuration; 
+toneDur = matclustStruct.ToneDur;
+toneReps = matclustStruct.ToneReps;
+totalTrialNum = length(master(:,1));
 
 %% Set and/or Generate Raster and Histogram Parameters, store in Structured Array
 rasterWindow = [-matclustStruct.ToneDur,matclustStruct.ToneDur*3];
@@ -195,6 +198,12 @@ for i = 1:numTrodes
     %purposes.
     [matclustStruct] = functionFreqAmpRasterHist(i, clusterSizer,...
     matclustStruct,histBinNum,histBinVector,histBin,truncatedNames);
+    %this is for calculations of first spike timing
+    for j=1:clusterSizer
+        rasterData = matclustStruct.(truncatedNames{i}).Rasters{1,j};
+        [s] = functionFirstSpikeTiming(totalTrialNum,rasterData,uniqueFreqs,uniqueDBs,toneDur,toneReps);
+        matclustStruct.(truncatedNames{i}).Stats{j} = s;
+    end
     disp(i)
 end
 
