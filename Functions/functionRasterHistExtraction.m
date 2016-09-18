@@ -54,6 +54,7 @@ for j = 1:clusterSizer
         toneRaster(rasterCounter:rasterCounter + length(spikeHolder)-1,3) = master(k,2); %stores frequency
         toneRaster(rasterCounter:rasterCounter + length(spikeHolder)-1,4) = master(k,3); %stores amplitude
         toneRaster(rasterCounter:rasterCounter + length(spikeHolder)-1,5) = master(k,5); %stores freq/amp index
+        toneRaster(rasterCounter:rasterCounter + length(spikeHolder)-1,6) = master(k,4);
         rasterCounter = rasterCounter + length(spikeHolder);
         toneRaster(toneRaster(:,1) == 0,:) = [];
         spikeHolder = [];
