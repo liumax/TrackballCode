@@ -295,7 +295,7 @@ for i = 1:numTrodes
         set(gca,'XTickLabel',octaveRange(:,1));
         set(gca,'YTick',dbRange(:,2));
         set(gca,'YTickLabel',dbRange(:,1));
-        title('Frequency Response')
+        title('Binned Response')
         %plots heatmaps of response reliability in chosen bin 
         subplot(4,3,10)
         imagesc(squeeze(matclustStruct.(truncatedNames{i}).FirstSpikeStats(:,:,j,3,chosenSpikeBin))')
@@ -313,8 +313,8 @@ for i = 1:numTrodes
         hold on
         ylim([0 totalTrialNum])
         xlim([rasterWindow(1) rasterWindow(2)])
-        plot([0 0],[ylim],'r');
-        plot([toneDur toneDur],[ylim],'r');
+        plot([0 0],[ylim],'b');
+        plot([toneDur toneDur],[ylim],'b');
         title({fileName;strcat(truncatedNames{i},' Cluster ',num2str(j))})
         set(0, 'DefaulttextInterpreter', 'none')
         %plots rasters (frequency and amplitude organized)
@@ -322,8 +322,8 @@ for i = 1:numTrodes
         plot(matclustStruct.(truncatedNames{i}).AllRasters{j}(:,1),...
             matclustStruct.(truncatedNames{i}).AllRasters{j}(:,3),'k.','markersize',4)
         hold on
-        plot([0 0],[ylim],'r');
-        plot([toneDur toneDur],[ylim],'r');
+        plot([0 0],[ylim],'b');
+        plot([toneDur toneDur],[ylim],'b');
         rasterFreqLines = zeros(numFreqs,2);
         rasterFreqLines(:,1) = toneReps*size(uniqueDBs,1)/2:toneReps*size(uniqueDBs,1):totalTrialNum;
         rasterFreqLines(:,2) = uniqueFreqs;
@@ -354,16 +354,53 @@ for i = 1:numTrodes
 %         title('Heatmap by Frequency and Time Max')
         title('Frequency Arranged Heatmap')
         % plot histogram.
-        subplot(2,3,3)
+        subplot(4,3,3)
         plot(histBinVector,matclustStruct.(truncatedNames{i}).AllHistograms(:,j),'k','LineWidth',2)
         hold on
-        plot([0 0],[ylim],'r');
-        plot([toneDur toneDur],[ylim],'r');
+        plot([0 0],[ylim],'b');
+        plot([toneDur toneDur],[ylim],'b');
+        if matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) ~= 0
+            plot([matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1)/1000 ...
+                matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1)/1000],[ylim],'r');
+            plot([(matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) + ...
+                matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,2))/1000 
+                (matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) + ...
+                matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,2))/1000],[ylim],'r');
+        end
         xlim([rasterWindow(1) rasterWindow(2)])
         title('Histogram')
-        %plot information about responses?
+        %plot information on onset time (significance calculation)
+        subplot(4,3,6)
+        imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,1))')
+        colormap hot
+        colorbar
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
+        title('Response Latency (Zlimit)')
+        %plot information about response duration
+        subplot(4,3,9)
+        imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,2))')
+        colormap hot
+        colorbar
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
+        title('Response Duration (Zlimit)')
         hold off
-        
+        %plot information about response peak magnitude
+        subplot(4,3,12)
+        imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,3))')
+        colormap hot
+        colorbar
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
+        title('Response Peak (Zlimit)')
+        hold off
         spikeGraphName = strcat(fileName,truncatedNames{i},' Cluster ',num2str(j),'SpikeAnalysis');
         savefig(hFig,spikeGraphName);
 

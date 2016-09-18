@@ -20,16 +20,16 @@
 
 function [respStore] = ...
     functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
-    averageSpikes,averageSTD,inputRaster,zLimit,trialNum);
+    averageRate,averageSTD,inputRaster,zLimit,trialNum);
 
 %calculates histogram centers based on calc window (2 element vector) and
 %defaultBins (which should be 0.001)
 defaultBinCenters = [calcWindow(1)+defaultBins/2:defaultBins:calcWindow(2)-defaultBins/2];
 %calculates histogram based on inputRasters and defaultBinCenters
-rawHist = hist(inputRaster,defaultBinCenters);
+rawHist = hist(inputRaster,defaultBinCenters)
 %normalizes based on bin size and number of repetitions
-zHist = (rawHist/defaultBins/trialNum - averageSpikes) / averageSTD;
-singleStandard = ((1/defaultBins/trialNum) - averageSpikes) / averageSTD; %calculates the zscore of a single spike
+zHist = (rawHist/defaultBins/trialNum - averageRate) / averageSTD;
+singleStandard = ((1/defaultBins/trialNum) - averageRate) / averageSTD; %calculates the zscore of a single spike
 if singleStandard > zLimit
     zLimit = singleStandard;
 end
