@@ -6,11 +6,15 @@ rasterWindow = [-1 3]; %ratio for raster window. will be multiplied by toneDur
 rpvTime = 0.001; %time limit in seconds for consideration as an RPV
 clusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 histBin = 0.005; %histogram bin size in seconds
-sampleRate = 30000;
+sampleRate = 30000;%trodes sampling rate
+defaultBins = 0.001;% bin size for calculating significant responses
+smoothingBins = [0.01 0.001];%bins for smoothing
+calcWindow = [0 2]; %window for calculating significant responses
+zLimit = 3; %zlimit for calculating significant responses
 % firstSpikeWindow = [0 0.5 1 1.5]; %ratios! need to be multiplied by tone duration.
 firstSpikeWindow = [0 1];
 chosenSpikeBin = 1; %delineates which spike window I will graph.
-baselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
+baselineBin = [-2 0]; %ratio for bin from which baseline firing rate will be calculated
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 fname = saveName;
@@ -65,6 +69,7 @@ histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
 histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes
+calcWindow = calcWindow * toneDur;
 
 % Generates cell array of frequency names for use in legend
 freqNameHolder = cell(1,numFreqs);
@@ -168,6 +173,11 @@ for i = 1:numTrodes
     averageSTD = zeros(clusterSizer,1);
     averageSpikeHolder = zeros(totalTrialNum,1);
     
+    sigResp = cell(clusterSizer,1);
+    sigRespGraph = zeros(clusterSizer,numFreqs,numDBs,3);
+    fullResp = cell(clusterSizer,1);
+    fullRespGraph = zeros(clusterSizer,3);
+    
     for j = 1:clusterSizer
         spikeTimes = matclustStruct.(truncatedNames{i}).SpikeTimes{j};
         alignTimes = master(:,1);
@@ -184,6 +194,21 @@ for i = 1:numTrodes
         
         [histCounts histCenters] = hist(rasters(:,1),histBinVector);
         fullHistData(:,j) = histCounts'/totalTrialNum/histBin;
+        
+        %calculate significant response for whole thing.
+        inputRaster = rasters(rasters(:,1) > calcWindow(1) & rasters(:,1) < calcWindow(2),1);
+        [respStore] = ...
+        functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
+        averageRate(j),averageSTD(j),inputRaster,zLimit,totalTrialNum);
+        fullResp{j} = respStore;
+        if ~isempty(respStore{1})
+            fullRespGraph(j,1) = respStore{1}(1,1);
+            fullRespGraph(j,2) = respStore{1}(1,2)-respStore{1}(1,1);
+            fullRespGraph(j,3) = respStore{1}(1,5);
+        end
+        
+        sigResp{j} = cell(numFreqs,numDBs);
+        
         for k = 1:numFreqs
             for l = 1:numDBs
                 targetTrials = master(master(:,2) == uniqueFreqs(k) & master(:,3) == uniqueDBs(l),4); %identifies files with the correct trial numbers
@@ -198,6 +223,16 @@ for i = 1:numTrodes
                 firstSpikeStatsHolder(k,l,j,:,:) = firstSpikeStats;
                 binSpikeHolder{k,l,j} = binSpikeTimes;
                 binSpikeStatsHolder(k,l,j,:,:) = binSpikeStats;
+                inputRaster = targetRasters(targetRasters(:,1) > calcWindow(1) & targetRasters(:,1) < calcWindow(2),1);
+                [respStore] = ...
+                functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
+                averageRate(j),averageSTD(j),inputRaster,zLimit,toneReps);
+                sigResp{j}{k,l} = respStore;
+                if ~isempty(respStore{1})
+                    sigRespGraph(j,k,l,1) = respStore{1}(1,1);
+                    sigRespGraph(j,k,l,2) = respStore{1}(1,2)-respStore{1}(1,1);
+                    sigRespGraph(j,k,l,3) = respStore{1}(1,5);
+                end
             end
             freqSpecHist(k,:,j) = mean(squeeze(organizedHist(k,:,:,j)));
         end
@@ -214,6 +249,10 @@ for i = 1:numTrodes
     matclustStruct.(truncatedNames{i}).FrequencyHistograms = freqSpecHist;
     matclustStruct.(truncatedNames{i}).AverageRate = averageRate;
     matclustStruct.(truncatedNames{i}).AverageSTD = averageSTD;
+    matclustStruct.(truncatedNames{i}).ResponseStats = sigResp;
+    matclustStruct.(truncatedNames{i}).ResponseStatsGraph = sigRespGraph;
+    matclustStruct.(truncatedNames{i}).FullResponseStats = fullResp;
+    matclustStruct.(truncatedNames{i}).FullResponseGraphs = fullRespGraph;
 end
 
 %% Plotting
@@ -268,7 +307,7 @@ for i = 1:numTrodes
         set(gca,'YTickLabel',dbRange(:,1));
         title('Probability of Response')
         %plots rasters (chronological)
-        subplot(2,3,2)
+        subplot(3,3,2)
         plot(matclustStruct.(truncatedNames{i}).AllRasters{j}(:,1),...
             matclustStruct.(truncatedNames{i}).AllRasters{j}(:,2),'k.','markersize',4)
         hold on
@@ -279,7 +318,7 @@ for i = 1:numTrodes
         title({fileName;strcat(truncatedNames{i},' Cluster ',num2str(j))})
         set(0, 'DefaulttextInterpreter', 'none')
         %plots rasters (frequency and amplitude organized)
-        subplot(2,3,5)
+        subplot(3,3,5)
         plot(matclustStruct.(truncatedNames{i}).AllRasters{j}(:,1),...
             matclustStruct.(truncatedNames{i}).AllRasters{j}(:,3),'k.','markersize',4)
         hold on
@@ -298,16 +337,8 @@ for i = 1:numTrodes
         ylim([0 totalTrialNum])
         xlim([rasterWindow(1) rasterWindow(2)])
         title('Descending = increase in amplitude and freq')
-        % plot histogram.
-        subplot(2,3,3)
-        plot(histBinVector,matclustStruct.(truncatedNames{i}).AllHistograms(:,j),'k','LineWidth',2)
-        hold on
-        plot([0 0],[ylim],'r');
-        plot([toneDur toneDur],[ylim],'r');
-        xlim([rasterWindow(1) rasterWindow(2)])
-        title('Histogram')
         %plot heatmap organized by frequency
-        subplot(2,3,6)
+        subplot(3,3,8)
         imagesc(matclustStruct.(truncatedNames{i}).FrequencyHistograms(:,:,j))
         colorbar
         set(gca,'YTick',octaveRange(:,2));
@@ -322,16 +353,28 @@ for i = 1:numTrodes
         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
 %         title('Heatmap by Frequency and Time Max')
         title('Frequency Arranged Heatmap')
+        % plot histogram.
+        subplot(2,3,3)
+        plot(histBinVector,matclustStruct.(truncatedNames{i}).AllHistograms(:,j),'k','LineWidth',2)
+        hold on
+        plot([0 0],[ylim],'r');
+        plot([toneDur toneDur],[ylim],'r');
+        xlim([rasterWindow(1) rasterWindow(2)])
+        title('Histogram')
+        %plot information about responses?
         hold off
+        
+        spikeGraphName = strcat(fileName,truncatedNames{i},' Cluster ',num2str(j),'SpikeAnalysis');
+        savefig(hFig,spikeGraphName);
+
+        %save as PDF with correct name
+        set(hFig,'Units','Inches');
+        pos = get(hFig,'Position');
+        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+        print(hFig,spikeGraphName,'-dpdf','-r0')
     end
 end
 
-
-
-
-
-
-
-
+save(fullfile(pname,fname),'matclustStruct');
 
 end
