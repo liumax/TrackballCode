@@ -49,11 +49,13 @@ soundData = soundFile.soundData;
 %extract the data for the sounds
 pipITI = soundData.PipITI;
 pipReps = soundData.PipRepetitions;
+pipPos = 1:1:pipReps;
 blockITI = soundData.BlockITI;
 blockNum = soundData.BlockRepetitions;
 laserITI = soundData.LaserTTLITI;
-laserSwitch = soundData.LaserOn;
 toneDur = soundData.ToneDuration;
+laserSwitch = soundData.LaserOn;
+totalTrialNum = pipReps*blockNum;
 
 blockDur = pipITI*pipReps;
 
@@ -100,23 +102,6 @@ DIO1True = dio1Data(DIO1True,1);
 %finds differences between time points
 DIO1TrueDiff = diff(DIO1True);
 
-if laserSwitch == 1; %only activates if laser is used.
-    %find DIO folder and D2 file for analysis
-    [D2FileName] = functionFileFinder(subFoldersCell,'DIO','D2');
-    D2FileName = D2FileName{1};
-    [DIO2Data] = readTrodesExtractedDataFile(D2FileName);
-    dio2Data(:,1) = double(DIO2Data.fields(1).data)/sampleRate;
-    dio2Data(:,2) = double(DIO2Data.fields(2).data);
-    %pull all differences in state for DIO data (diff subtracts x(2)-x(1)). +1
-    %fudge factor adjusts for indexing. MUST BE DOUBLE!!
-    DIO2Diff = find(diff(dio2Data(:,2))==1)+1;
-    DIO2High = find(dio2Data(:,2) == 1);
-    %finds all points which are down to up states, extracts these times.
-    DIO2True = intersect(DIO2Diff,DIO2High);
-    DIO2True = dio2Data(DIO2True,1);
-    %finds differences between time points
-    DIO2TrueDiff = diff(DIO2True);
-end
 %% analyze the differences in the DIO data. 
 %DIO 1 should be direct inputs from the audio card. DIO 2 is laser.
 
@@ -135,42 +120,14 @@ firstTTLDIO1 = [1;firstTTLDIO1];
 
 
 %check to make sure things line up with what was supposed to be delivered
-if laserSwitch == 1
-    if length(firstTTLDIO1) == 2* blockNum
-        disp('Correct Number of Blocks');
-        disp(num2str(length(firstTTLDIO1)));
-        laserBlockFinder = find(diff(firstTTLDIO1)>pipReps);
-        laserBlockFinder = [laserBlockFinder;laserBlockFinder(end)+2];
-        controlBlockFinder = find(diff(firstTTLDIO1)==pipReps);
-        if length(laserBlockFinder) ~= blockNum
-            error('INCORRECT IDENTIFICATION OF LASER BLOCKS')
-        elseif length(laserBlockFinder) ~= length(controlBlockFinder)
-            error('Mismatch between laser and control blocks')
-        end
-    else
-        error('INCORRECT BLOCK NUMBER')
-    end
+
+if length(firstTTLDIO1) == blockNum
+    disp('Correct Number of Blocks');
+    disp(num2str(length(firstTTLDIO1)));
 else
-    if length(firstTTLDIO1) == blockNum
-        disp('Correct Number of Blocks');
-        disp(num2str(length(firstTTLDIO1)));
-    else
-        error('INCORRECT BLOCK NUMBER')
-    end
+    error('INCORRECT BLOCK NUMBER NO LASER')
 end
 
-%check to make sure things line up with what was supposed to be delivered
-if laserSwitch == 1
-    %finds the first TTLs of laser stim
-    firstTTLDIO2 = find(DIO2TrueDiff > blockLimit)+1;
-    firstTTLDIO2 = [1;firstTTLDIO2];
-    if length(firstTTLDIO2) == blockNum
-        disp('Correct Number of Laser Blocks');
-        disp(num2str(length(firstTTLDIO2)));
-    else
-        error('INCORRECT BLOCK NUMBER')
-    end
-end
 %convert indices to time
 toneTTLFinder = DIO1True(toneTTLFinder);
 firstTTLDIO1 = DIO1True(firstTTLDIO1);
@@ -186,8 +143,16 @@ for i = 1:size(allPulseMatrix,1)*size(allPulseMatrix,2)
     allPulseDesig(i) = i;
 end
 
+master = zeros(size(toneTTLFinder,1),5);
 master(:,1) = toneTTLFinder;
-master(:,2:5) = 0;
+if ~ischar(soundData.TargetFrequency)
+    master(:,2) = soundData.ControlFrequency;
+end
+master(:,3) = 1:1:size(toneTTLFinder,1);
+master(:,4) = fix(master(:,3)/pipReps)+1;
+master(:,5) = rem(master(:,3),pipReps);
+master(master(:,5) == 0,5) = 15; %fixed zeros from remainder calculation
+
 
 bigMaster(:,1) = firstTTLDIO1;
 bigMaster(:,2) = 0;
@@ -204,7 +169,7 @@ for i = 1:numTrodes
     %% extract spikes
     [matclustStruct, clusterSizer] = functionSpikeWaveExtraction(rpvTime,...
         i,matclustFiles,matclustStruct,truncatedNames,clusterWindow);
-    %% make rasters/histograms of all tone presentations (small rasters)
+    %% make rasters/histograms based on all tone presentations (small rasters)
     [matclustStruct] = functionRasterHistExtraction(i,clusterSizer,...
     master,baselineBins,matclustStruct,truncatedNames,...
     rasterWindow,histBin,histBinVector);
@@ -213,6 +178,21 @@ for i = 1:numTrodes
     [matclustStruct] = functionPulseBigRasterHistExtraction(i,clusterSizer,...
     bigMaster,bigBaselineBins,matclustStruct,truncatedNames,...
     bigRasterWindow,bigHistBin,bigHistBinVector,laserSwitch);
+
+    %% make calculations for each set of tone pulses
+    for j =1:clusterSizer
+        rasterData = matclustStruct.(truncatedNames{i}).Rasters{j};
+        [s] = functionPulseFirstSpikeTiming(totalTrialNum,rasterData,pipPos,pipReps,toneDur,blockNum);
+        matclustStruct.(truncatedNames{i}).FirstSpikeStats{j} = s;
+    end
+%     
+    
+    %% calculate first spike timing stuffs
+%     for j = 1:clusterSizer
+%         rasterData = matclustStruct.(truncatedNames{i}).Rasters{1,j};
+%         [s] = functionFirstSpikeTiming(totalTrialNum,rasterData,uniqueFreqs,uniqueDBs,toneDur,toneReps);
+%         matclustStruct.(truncatedNames{i}).Stats{j} = s;
+%     end
 % by design, the big raster function will detect average firing rate and
 % should overwrite that of the functionRasterHistExtraction. 
     %% do simple binning procedure to look at changes to responses
@@ -251,115 +231,58 @@ for i = 1:numTrodes
             strcat(num2str(matclustStruct.(truncatedNames{i}).RPVNumber(j)),'/',num2str(matclustStruct.(truncatedNames{i}).TotalSpikeNumber(j)))})
         
         %plots histograms
-        if laserSwitch == 1
-            subplot(4,3,7)
-            plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}{1}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigHistogram{j}{1}(:,1),'k','LineWidth',2)
-            hold on
-            plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}{1}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigStandardErrorPlotting(:,j,1,1),'r')
-            plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}{1}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigStandardErrorPlotting(:,j,2,1),'r')
-            
-            plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}{2}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigHistogram{j}{2}(:,1),'b','LineWidth',2)
-            hold on
-            plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}{2}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigStandardErrorPlotting(:,j,1,2),'c')
-            plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}{2}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigStandardErrorPlotting(:,j,2,2),'c')
+        
+        subplot(4,3,7)
+        plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).BigHistogram{j}(:,1),'k','LineWidth',2)
+        hold on
+        plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).BigStandardErrorPlotting(:,j,1),'b')
+        plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).BigStandardErrorPlotting(:,j,2),'b')
 
-            plot([0 0],[ylim],'r');
-            plot([blockDur blockDur],[ylim],'r');
-            for k = 1:pipReps
-                plot([pipITI*k pipITI*k],[ylim],'r','LineWidth',1)
-            end
-            xlim([bigRasterWindow(1) bigRasterWindow(2)])
-            title('Overall Histogram')
-        else
-            subplot(4,3,7)
-            plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigHistogram{j}(:,1),'k','LineWidth',2)
-            hold on
-            plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigStandardErrorPlotting(:,j,1),'b')
-            plot(matclustStruct.(truncatedNames{i}).BigHistogram{j}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigStandardErrorPlotting(:,j,2),'b')
-
-            plot([0 0],[ylim],'r');
-            plot([blockDur blockDur],[ylim],'r');
-            for k = 1:pipReps
-                plot([pipITI*k pipITI*k],[ylim],'r','LineWidth',1)
-            end
-            xlim([bigRasterWindow(1) bigRasterWindow(2)])
-            title('Overall Histogram')
+        plot([0 0],[ylim],'r');
+        plot([blockDur blockDur],[ylim],'r');
+        for k = 1:pipReps
+            plot([pipITI*k pipITI*k],[ylim],'r','LineWidth',1)
         end
+        xlim([bigRasterWindow(1) bigRasterWindow(2)])
+        title('Overall Histogram')
         
         
         %plots z-scored histogram
         subplot(4,3,10)
-        if laserSwitch == 1
-            plot(matclustStruct.(truncatedNames{i}).BigZScore{j}{1}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigZScore{j}{1}(:,1),'k','LineWidth',2)
-            hold on
-            plot(matclustStruct.(truncatedNames{i}).BigZScore{j}{2}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigZScore{j}{2}(:,1),'b','LineWidth',2)
-            
-            plot([0 0],[ylim],'r');
-            plot([blockDur blockDur],[ylim],'r');
-            for k = 1:pipReps
-                plot([pipITI*k pipITI*k],[ylim],'r','LineWidth',1)
-            end
-            xlim([bigRasterWindow(1) bigRasterWindow(2)])
-            title('Z Scored Histogram')
-        else
-            plot(matclustStruct.(truncatedNames{i}).BigZScore{j}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigZScore{j}(:,1),'k','LineWidth',2)
-            hold on
-            plot([0 0],[ylim],'r');
-            plot([blockDur blockDur],[ylim],'r');
-            for k = 1:pipReps
-                plot([pipITI*k pipITI*k],[ylim],'r','LineWidth',1)
-            end
-            xlim([bigRasterWindow(1) bigRasterWindow(2)])
-            title('Z Scored Histogram')
+
+        plot(matclustStruct.(truncatedNames{i}).BigZScore{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).BigZScore{j}(:,1),'k','LineWidth',2)
+        hold on
+        plot([0 0],[ylim],'r');
+        plot([blockDur blockDur],[ylim],'r');
+        for k = 1:pipReps
+            plot([pipITI*k pipITI*k],[ylim],'r','LineWidth',1)
         end
+        xlim([bigRasterWindow(1) bigRasterWindow(2)])
+        title('Z Scored Histogram')
+
         
         %plots simple rasters
         subplot(2,3,2)
-        if laserSwitch == 1
-            plot(matclustStruct.(truncatedNames{i}).BigRasters{j}(matclustStruct.(truncatedNames{i}).BigRasters{j}(:,4) == 0,2),...
-                matclustStruct.(truncatedNames{i}).BigRasters{j}(matclustStruct.(truncatedNames{i}).BigRasters{j}(:,4) == 0,1),'k.','markersize',5)
-            hold on
-            plot(matclustStruct.(truncatedNames{i}).BigRasters{j}(matclustStruct.(truncatedNames{i}).BigRasters{j}(:,4) == 1,2),...
-                matclustStruct.(truncatedNames{i}).BigRasters{j}(matclustStruct.(truncatedNames{i}).BigRasters{j}(:,4) == 1,1),'b.','markersize',5)
-            ylim([0 length(firstTTLDIO1)])
-            xlim([bigRasterWindow(1) bigRasterWindow(2)])
-            set(gca,'YDir','Reverse')
-            plot([0 0],[ylim],'r','LineWidth',2);
-            plot([blockDur blockDur],[ylim],'r','LineWidth',2);
-            for k = 1:pipReps
-                plot([pipITI*k pipITI*k],[ylim],'r','LineWidth',1)
-            end
-
-            title({fileName;strcat(truncatedNames{i},' Cluster ',num2str(j))})
-            set(0, 'DefaulttextInterpreter', 'none')
-        else
-            plot(matclustStruct.(truncatedNames{i}).BigRasters{j}(:,2),...
-                matclustStruct.(truncatedNames{i}).BigRasters{j}(:,1),'k.','markersize',5)
-            hold on
-            ylim([0 length(firstTTLDIO1)])
-            xlim([bigRasterWindow(1) bigRasterWindow(2)])
-            set(gca,'YDir','Reverse')
-            plot([0 0],[ylim],'r','LineWidth',2);
-            plot([blockDur blockDur],[ylim],'r','LineWidth',2);
-            for k = 1:pipReps
-                plot([pipITI*k pipITI*k],[ylim],'r','LineWidth',1)
-            end
-
-            title({fileName;strcat(truncatedNames{i},' Cluster ',num2str(j))})
-            set(0, 'DefaulttextInterpreter', 'none')
+        
+        plot(matclustStruct.(truncatedNames{i}).BigRasters{j}(:,2),...
+            matclustStruct.(truncatedNames{i}).BigRasters{j}(:,1),'k.','markersize',5)
+        hold on
+        ylim([0 length(firstTTLDIO1)])
+        xlim([bigRasterWindow(1) bigRasterWindow(2)])
+        set(gca,'YDir','Reverse')
+        plot([0 0],[ylim],'r','LineWidth',2);
+        plot([blockDur blockDur],[ylim],'r','LineWidth',2);
+        for k = 1:pipReps
+            plot([pipITI*k pipITI*k],[ylim],'r','LineWidth',1)
         end
+
+        title({fileName;strcat(truncatedNames{i},' Cluster ',num2str(j))})
+        set(0, 'DefaulttextInterpreter', 'none')
+
         spikeGraphName = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'PulseAnalysis');
         savefig(hFig,spikeGraphName);
         
@@ -385,7 +308,7 @@ for i = 1:numTrodes
 end
 
 
-
+save(fullfile(pname,fname),'matclustStruct');
 
 
 
