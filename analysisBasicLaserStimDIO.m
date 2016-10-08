@@ -1,5 +1,5 @@
 
-function [] = analysisBasicLaserStimDIO(fileName);
+function [matclustStruct] = analysisBasicLaserStimDIO(fileName);
 %This function is meant to perform the basic analysis of spike responses in
 %response to laser stimulation for ID purposes. This will produce an
 %average waveform, a graph of ISIs, and a raster and histogram of IDed
@@ -32,11 +32,9 @@ subFoldersCell = strsplit(subFolders,';')';
 
 %removes periods which allow structured array formation.
 truncatedNames = matclustFiles;
-trodesDesignation = cell(size(truncatedNames)); %generates even shorter names for figure presentation. 
 numTrodes = length(truncatedNames);
 for i = 1:length(truncatedNames)
-    truncatedNames{i} = truncatedNames{i}(1:find(truncatedNames{i} == '.')-1);
-    trodesDesignation{i} = truncatedNames{i}(17:end);
+    truncatedNames{i} = truncatedNames{i}(16:find(truncatedNames{i} == '.')-1);
 end
 
 %generates structured array for storage of data
@@ -127,7 +125,7 @@ for i = 1:numTrodes
     matclustStruct.(truncatedNames{i}).AverageFiringRate = averageFiring;
     
     
-    targetWaveName = strcat('waves',truncatedNames{i}(15:end),'.mat');
+    targetWaveName = strcat('waves_',truncatedNames{i},'.mat');
     waveLoader = open(targetWaveName);
     waveLoader =squeeze(waveLoader.waves);
     waveHolder = cell(clusterSizer,1);
@@ -283,7 +281,7 @@ for i = 1:numTrodes
         plot(matclustStruct.(truncatedNames{i}).AverageWaveFormLaser(:,j,2),'b','LineWidth',2)
         plot(matclustStruct.(truncatedNames{i}).AverageWaveFormLaser(:,j,1),'c','LineWidth',1)
         plot(matclustStruct.(truncatedNames{i}).AverageWaveFormLaser(:,j,3),'c','LineWidth',1)
-        waveCorrelation = corrcoef(matclustStruct.(truncatedNames{i}).AverageWaveFormLaser(:,1,2),matclustStruct.(truncatedNames{i}).AverageWaveFormNonLaser(:,1,2));
+        waveCorrelation = corrcoef(matclustStruct.(truncatedNames{i}).AverageWaveFormLaser(:,j,2),matclustStruct.(truncatedNames{i}).AverageWaveFormNonLaser(:,j,2));
 
         title({strcat('AverageFiringRate:',num2str(matclustStruct.(truncatedNames{i}).AverageFiringRate(j))),strcat('WaveCorrelation:',num2str(waveCorrelation(2))),...
             strcat('LaserResponsePercentage:',num2str(matclustStruct.(truncatedNames{i}).LaserResponseProbability(j)))})
@@ -301,7 +299,7 @@ for i = 1:numTrodes
         line([pairingCutoff/1000 pairingCutoff/1000],[0 size(inTimes,1)],'LineWidth',2,'Color','red')
         ylim([0 size(inTimes,1)]);
         xlim([rasterWindow(1) rasterWindow(2)]);
-        h = title(strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j)));
+        h = title(strcat(fileName,truncatedNames{i},' Cluster ',num2str(j)));
         set(h,'interpreter','none') 
         %plots histogram
         subplot(4,1,3)
@@ -328,7 +326,7 @@ for i = 1:numTrodes
             ylim([min(matclustStruct.(truncatedNames{i}).zScore{j}) max(matclustStruct.(truncatedNames{i}).zScore{j})])
         end
         %save as figure and PDF
-        spikeGraphName = strcat(fileName,trodesDesignation{i},' Cluster ',num2str(j),'LaserResponse');
+        spikeGraphName = strcat(fileName,truncatedNames{i},' Cluster ',num2str(j),'LaserResponse');
         savefig(hFig,spikeGraphName);
         set(hFig,'Units','Inches');
         pos = get(hFig,'Position');
