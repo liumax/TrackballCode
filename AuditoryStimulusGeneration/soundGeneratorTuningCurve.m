@@ -53,8 +53,7 @@ for i = 1:length(freqs)
     end
 end
 
-% proxyList = fullList;
-
+% generates a randomized set of indices for calling things from fullList.
 fillIndex = zeros(toneReps*length(freqs)*length(dBs),1);
 counter = 1;
 for i = 1:toneReps*length(dBs)
@@ -62,19 +61,21 @@ for i = 1:toneReps*length(dBs)
     counter = counter + length(freqs);
 end
 
+%creates array for storing everything. Also fills index with information
+%from above.
 master = zeros(length(freqs)*length(dBs)*toneReps,3);
 
 for i = 1:length(fillIndex)
-    master(i,1) = freqs(fillIndex(i));
-    holder = find(fullList(:,1) == master(i,1));
-    listSize=size(fullList,1);
-    holderSize = size(holder,1);
+    master(i,1) = freqs(fillIndex(i)); %fills in frequency based on fill index
+    holder = find(fullList(:,1) == master(i,1)); %finds where frequency matches with fullIndex
+    holderSize = size(holder,1); %finds how many match, generates random integer within that range.
     randIndex = randi(holderSize);
-    master(i,2) = fullList(holder(randIndex),2);
-    master(i,3) = fullList(holder(randIndex),3);
-    fullList(holder(randIndex),:) = [];
+    master(i,2) = fullList(holder(randIndex),2); %fills in dB and amplitude
+    master(i,3) = fullList(holder(randIndex),3); %amplitude value
+    fullList(holder(randIndex),:) = []; %removes from fullList so that you sample without replacement.
 end
 
+%generates pauses with exponential function
 k = 2.5;
 p = (1-exp(-k))*rand(length(master),1);
 tau = (postPauseMax-postPauseMin)/k;
@@ -114,13 +115,25 @@ for i = 1:length(master)
     pause(master(i,4))
 end
 
+
+%generate matrix with trial data.
+
+trialMatrix = zeros(length(master),4);
+trialMatrix(:,1) = [1:1:length(master)];
+trialMatrix(:,2:4) = master(:,1:3);
+
+trialHeaders = ['Trial','Frequency','dB','Amplitude'];
+
 soundData = struct;
-soundData.Frequencies = master(:,1);
-soundData.dBs = master(:,2);
-soundData.Amplitudes = master(:,3);
 soundData.Delays = master(:,4);
 soundData.ToneRepetitions = toneReps;
 soundData.ToneDuration = toneDur;
+soundData.TrialMatrix = trialMatrix;
+soundData.UniqueFreqs = freqs;
+soundData.UniqueDBs = dBs;
+soundData.Frequencies = master(:,1);
+soundData.dBs = master(:,2);
+soundData.Amplitudes = master(:,3);
 
 
 
