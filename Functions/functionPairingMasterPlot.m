@@ -67,6 +67,7 @@ for i = 1:numTrodes
         %plots heatmap for first tuning curve.
         imagesc(masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j})
         colormap hot
+        colorbar
         cMinMax = [0 0];
         %sets limits so that next graph is displayed with the same color
         %settings. 
@@ -89,6 +90,7 @@ for i = 1:numTrodes
             imagesc(masterStruct.(truncatedNames{i}).(names{2}).FrequencyResponse{j}, cMinMax)
         end
         colormap hot
+        colorbar
         set(gca,'XTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'XTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
         set(gca,'YTick',masterStruct.SoundData.(names{2}).dBRange(:,2));
@@ -104,6 +106,7 @@ for i = 1:numTrodes
         imagesc(masterStruct.(truncatedNames{i}).(names{2}).FrequencyResponse{j} -...
             masterStruct.(truncatedNames{i}).(names{1}).FrequencyResponse{j})
         colormap hot
+        colorbar
         set(gca,'XTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'XTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
         set(gca,'YTick',masterStruct.SoundData.(names{2}).dBRange(:,2));
@@ -142,6 +145,7 @@ for i = 1:numTrodes
         subplot(3,3,3)
         x = masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j};
         imagesc(x')
+        colorbar
         cMinMax = [0 0];
         %sets limits so that next graph is displayed with the same color
         %settings. 
@@ -192,6 +196,7 @@ for i = 1:numTrodes
             imagesc(x', cMinMax)
         end
         colormap hot
+        colorbar
         set(gca,'YTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'YTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
         set(gca,'XTick',[1:10:size(histBinVector,2)]);
@@ -231,6 +236,7 @@ for i = 1:numTrodes
         subplot(3,3,9)
         x = masterStruct.(truncatedNames{i}).(names{2}).AverageFrequencyHistogram{j}-masterStruct.(truncatedNames{i}).(names{1}).AverageFrequencyHistogram{j};
         imagesc((x'))
+        colorbar
         set(gca,'YTick',masterStruct.SoundData.(names{2}).OctaveRange(:,2));
         set(gca,'YTickLabel',masterStruct.SoundData.(names{2}).OctaveRange(:,1));
         set(gca,'XTick',[1:10:size(histBinVector,2)]);
