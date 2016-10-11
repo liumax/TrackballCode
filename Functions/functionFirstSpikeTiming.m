@@ -22,6 +22,9 @@ end
 firstSpikeTimes(firstSpikeTimes(:,3) == 0,:) = [];
 
 firstSpikeStats = zeros(length(uniqueFreqs),length(uniqueDBs),5);
+%here, output dimension 1 is average first spike, 2 is std of that first
+%spike, and 3:5 are probability of first spike in three time bins.
+
 %finds timing of the first spike in three time bins
 for counter1 = 1:size(uniqueFreqs,1)
     for counter2 = 1:size(uniqueDBs,1)
