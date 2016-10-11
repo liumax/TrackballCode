@@ -1,6 +1,26 @@
+%This code is meant for the basic analysis of tuning curve data, examining
+%and plotting basic properties of the tuning curve and displaying them as a
+%figure. 
 
+%%Inputs
+%fileName: name of the target file, without file extension. 
 
-function [matclustStruct] = analysisBasicTuning(fileName);
+%%Outputs
+%s: structured array that has all the data from the analysis. s will
+%contain the following: 
+%
+%n number of units, which are independent of clusters/trodes. This is to
+%say that each unit will have its own named field. For example, 2 clusters
+%on channel 10 will have two separate fields.
+
+%DesignationArray/DesignationName: The array indicates which probe sites
+%and clusters were used, designation names should be the names of all
+%units.
+
+%SoundData: all the sound data from the tuning curve, with addition of
+%unique frequencies/dbs and number of frequencies/dbs.
+
+function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 rasterWindow = [-1 3]; %ratio for raster window. will be multiplied by toneDur
 rpvTime = 0.001; %time limit in seconds for consideration as an RPV
@@ -27,33 +47,32 @@ addpath(subFolders)
 subFoldersCell = strsplit(subFolders,';')';
 
 %% Find and ID Matclust Files for Subsequent Analysis. Generates Structured Array for Data Storage
+%pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
+%generate placeholder structure
+s = struct;
+%fill structure with correct substructures (units, not clusters/trodes) and
+%then extract waveform and spike data.
+[s, truncatedNames] = functionMatclustExtraction(rpvTime,...
+    matclustFiles,s,clusterWindow);
 
-%extracts matclust file names and removes periods which allow structured array formation.
-truncatedNames = matclustFiles;
-numTrodes = length(truncatedNames);
-for i = 1:length(truncatedNames)
-    truncatedNames{i} = truncatedNames{i}(16:find(truncatedNames{i} == '.')-1);
-end
-
-%generates structured array for storage of data
-matclustStruct = struct;
-for i = 1:length(truncatedNames);
-    matclustStruct.(truncatedNames{i}) = [];
-end
-matclustStruct.NumberTrodes = numTrodes;
 
 %% Extracts Sound Data from soundFile, including freq, db, reps.
 soundName = strcat(fileName,'.mat');
 soundFile = open(soundName);
 soundData = soundFile.soundData; %pulls sound data info
-matclustStruct.SoundData = soundData;
+s.SoundData = soundData;
 
 %pull important sound and trial information
 uniqueFreqs = unique(soundData.Frequencies);
 uniqueDBs = unique(soundData.dBs);
 numFreqs = length(uniqueFreqs);
 numDBs = length(uniqueDBs);
+%store these in structured array
+s.SoundData.UniqueFrequencies = uniqueFreqs;
+s.SoundData.UniqueDBs = uniqueDBs;
+s.SoundData.NumFreqs = numFreqs;
+s.SoundData.NumDBs = numDBs;
 
 toneDur = soundData.ToneDuration;
 toneReps = soundData.ToneRepetitions;
@@ -142,278 +161,271 @@ elseif length(dioTimes) == length(master)
     master(:,1) = dioTimes;
 end
 
-%% Extract data from matclust files
-for i = 1:numTrodes
-    %this should extract spikes, put them into matcluststruct. Will also
-    %calculate RPVs and overall firing rate, as well as average waveform.
-    [matclustStruct, clusterSizer] = functionSpikeWaveExtraction(rpvTime,...
-        i,matclustFiles,matclustStruct,truncatedNames,clusterWindow);
-    disp(strcat('Spike Extraction Complete: nTrode ',num2str(i)))
-end
+numUnits = size(s.DesignationName,2);
+desigNames = s.DesignationName;
+desigArray = s.DesignationArray;
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
-for i = 1:numTrodes
-    clusterSizer = matclustStruct.(truncatedNames{i}).Clusters; %pulls number of clusters
+for i = 1:numUnits
+    %allocate a bunch of empty arrays.
+    fullHistData = zeros(histBinNum,1);
     
-    fullRasterData = cell(clusterSizer,1); %allocates matrix space for storage of raster data
-    fullHistData = zeros(histBinNum,clusterSizer);
+    organizedRasters = cell(numFreqs,numDBs,1); %allocates cell array for rasters
+    organizedHist = zeros(numFreqs,numDBs,histBinNum,1);
     
-    organizedRasters = cell(numFreqs,numDBs,clusterSizer); %allocates cell array for rasters
-    organizedHist = zeros(numFreqs,numDBs,histBinNum,clusterSizer);
+    freqSpecHist = zeros(numFreqs,histBinNum,1);
     
-    freqSpecHist = zeros(numFreqs,histBinNum,clusterSizer);
+    firstSpikeTimeHolder = cell(numFreqs,numDBs,1);
+    firstSpikeStatsHolder = zeros(numFreqs,numDBs,4,size(firstSpikeWindow,2)-1);
     
-    firstSpikeTimeHolder = cell(numFreqs,numDBs,clusterSizer);
-    firstSpikeStatsHolder = zeros(numFreqs,numDBs,clusterSizer,4,size(firstSpikeWindow,2)-1);
+    binSpikeHolder = cell(numFreqs,numDBs,1);
+    binSpikeStatsHolder = zeros(numFreqs,numDBs,2,size(firstSpikeWindow,2)-1);
     
-    binSpikeHolder = cell(numFreqs,numDBs,clusterSizer);
-    binSpikeStatsHolder = zeros(numFreqs,numDBs,clusterSizer,2,size(firstSpikeWindow,2)-1);
-    
-    averageRate = zeros(clusterSizer,1);
-    averageSTD = zeros(clusterSizer,1);
     averageSpikeHolder = zeros(totalTrialNum,1);
     
-    sigResp = cell(clusterSizer,1);
-    sigRespGraph = zeros(clusterSizer,numFreqs,numDBs,3);
-    fullResp = cell(clusterSizer,1);
-    fullRespGraph = zeros(clusterSizer,3);
+    sigResp = cell(1,1);
+    sigRespGraph = zeros(numFreqs,numDBs,3);
+    fullRespGraph = zeros(1,3);
     
-    for j = 1:clusterSizer
-        %pulls spike times and times for alignment
-        spikeTimes = matclustStruct.(truncatedNames{i}).SpikeTimes{j};
-        alignTimes = master(:,1);
-        
-        %calculates rasters based on spike information. 
-        [rasters] = functionBasicRaster(spikeTimes,alignTimes,rasterWindow);
-        rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
-        fullRasterData{j} = rasters;
-        
-        for k = 1:totalTrialNum
-            averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > baselineBin(1) & rasters(:,1) < baselineBin(2)),1);
-        end
-        averageRate(j) = mean(averageSpikeHolder/(baselineBin(2)-baselineBin(1)));
-        averageSTD(j) = std(averageSpikeHolder/(baselineBin(2)-baselineBin(1)));
-        
-        [histCounts histCenters] = hist(rasters(:,1),histBinVector);
-        fullHistData(:,j) = histCounts'/totalTrialNum/histBin;
-        
-        %calculate significant response for whole thing.
-        inputRaster = rasters(rasters(:,1) > calcWindow(1) & rasters(:,1) < calcWindow(2),1);
-        [respStore] = ...
-        functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
-        averageRate(j),averageSTD(j),inputRaster,zLimit,totalTrialNum);
-        fullResp{j} = respStore;
-        if ~isempty(respStore{1})
-            fullRespGraph(j,1) = respStore{1}(1,1);
-            fullRespGraph(j,2) = respStore{1}(1,2)-respStore{1}(1,1);
-            fullRespGraph(j,3) = respStore{1}(1,5);
-        end
-        
-        sigResp{j} = cell(numFreqs,numDBs);
-        
-        for k = 1:numFreqs
-            for l = 1:numDBs
-                targetTrials = master(master(:,2) == uniqueFreqs(k) & master(:,3) == uniqueDBs(l),4); %identifies files with the correct trial numbers
-                findMatches = find(ismember(fullRasterData{j}(:,2),targetTrials));
-                targetRasters = fullRasterData{j}(findMatches,:);
-                organizedRasters{k,l,j} = targetRasters; %saves to organized rasters
-                [histCounts,histCenters] = hist(targetRasters(:,1),histBinVector);
-                organizedHist(k,l,:,j) = histCounts/toneReps/histBin;
-                [firstSpikeTimes,firstSpikeStats,binSpikeTimes,binSpikeStats] = ...
-                    functionBasicFirstSpikeTiming(firstSpikeWindow,targetRasters,toneReps,2,targetTrials);
-                firstSpikeTimeHolder{k,l,j} = firstSpikeTimes;
-                firstSpikeStatsHolder(k,l,j,:,:) = firstSpikeStats;
-                binSpikeHolder{k,l,j} = binSpikeTimes;
-                binSpikeStatsHolder(k,l,j,:,:) = binSpikeStats;
-                inputRaster = targetRasters(targetRasters(:,1) > calcWindow(1) & targetRasters(:,1) < calcWindow(2),1);
-                [respStore] = ...
-                functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
-                averageRate(j),averageSTD(j),inputRaster,zLimit,toneReps);
-                sigResp{j}{k,l} = respStore;
-                if ~isempty(respStore{1})
-                    sigRespGraph(j,k,l,1) = respStore{1}(1,1);
-                    sigRespGraph(j,k,l,2) = respStore{1}(1,2)-respStore{1}(1,1);
-                    sigRespGraph(j,k,l,3) = respStore{1}(1,5);
-                end
-            end
-            freqSpecHist(k,:,j) = mean(squeeze(organizedHist(k,:,:,j)));
-        end
-        disp(strcat('Raster and Histogram Extraction Complete: nTrode ',num2str(i),' Cluster ',num2str(j)))
+    %pulls spike times and times for alignment
+    spikeTimes = s.(desigNames{i}).SpikeTimes;
+    alignTimes = master(:,1);
+    
+    %calculates rasters based on spike information. 
+    [rasters] = functionBasicRaster(spikeTimes,alignTimes,rasterWindow);
+    rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
+    fullRasterData = rasters;
+    %pulls all spikes from a specific trial in the baseline period, holds
+    %the number of these spikes for calculation of average rate and std.
+    for k = 1:totalTrialNum
+        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > baselineBin(1) & rasters(:,1) < baselineBin(2)),1);
     end
-    matclustStruct.(truncatedNames{i}).AllRasters = fullRasterData;
-    matclustStruct.(truncatedNames{i}).AllHistograms = fullHistData;
-    matclustStruct.(truncatedNames{i}).FreqDBRasters = organizedRasters;
-    matclustStruct.(truncatedNames{i}).FreqDBHistograms = organizedHist;
-    matclustStruct.(truncatedNames{i}).FirstSpikeTimes = firstSpikeTimeHolder;
-    matclustStruct.(truncatedNames{i}).FirstSpikeStats = firstSpikeStatsHolder;
-    matclustStruct.(truncatedNames{i}).BinSpikes = binSpikeHolder;
-    matclustStruct.(truncatedNames{i}).BinSpikeStats = binSpikeStatsHolder;
-    matclustStruct.(truncatedNames{i}).FrequencyHistograms = freqSpecHist;
-    matclustStruct.(truncatedNames{i}).AverageRate = averageRate;
-    matclustStruct.(truncatedNames{i}).AverageSTD = averageSTD;
-    matclustStruct.(truncatedNames{i}).ResponseStats = sigResp;
-    matclustStruct.(truncatedNames{i}).ResponseStatsGraph = sigRespGraph;
-    matclustStruct.(truncatedNames{i}).FullResponseStats = fullResp;
-    matclustStruct.(truncatedNames{i}).FullResponseGraphs = fullRespGraph;
+    
+    averageRate = mean(averageSpikeHolder/(baselineBin(2)-baselineBin(1)));
+    averageSTD = std(averageSpikeHolder/(baselineBin(2)-baselineBin(1)));
+    
+    [histCounts histCenters] = hist(rasters(:,1),histBinVector);
+    fullHistData = histCounts'/totalTrialNum/histBin;
+    
+    %calculate significant response for combined histogram of all responses
+    %to all sounds.
+    inputRaster = rasters(rasters(:,1) > calcWindow(1) & rasters(:,1) < calcWindow(2),1);
+    [respStore] = ...
+    functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
+    averageRate,averageSTD,inputRaster,zLimit,totalTrialNum);
+    fullResp = respStore;
+    %if there is a significant response, stores important values: start,
+    %duration, and peak size.
+    if ~isempty(respStore{1})
+        fullRespGraph(1) = respStore{1}(1,1);
+        fullRespGraph(2) = respStore{1}(1,2)-respStore{1}(1,1);
+        fullRespGraph(3) = respStore{1}(1,5);
+    end
+    
+    %allocates empty array.
+    sigResp = cell(numFreqs,numDBs);
+    
+    for k = 1:numFreqs
+        for l = 1:numDBs
+            targetTrials = master(master(:,2) == uniqueFreqs(k) & master(:,3) == uniqueDBs(l),4); %finds the trial number for all trials of given frequency and amplitude
+            findMatches = find(ismember(fullRasterData(:,2),targetTrials)); %uses these trial numbers to pull raster index
+            targetRasters = fullRasterData(findMatches,:); %extracts target rasters from all rasters using the above index.
+            organizedRasters{k,l} = targetRasters; %saves to organized rasters
+            [histCounts,histCenters] = hist(targetRasters(:,1),histBinVector); %calculates histogram with defined bin size
+            organizedHist(k,l,:) = histCounts/toneReps/histBin; %saves histogram
+            [firstSpikeTimes,firstSpikeStats,binSpikeTimes,binSpikeStats] = ...
+                functionBasicFirstSpikeTiming(firstSpikeWindow,targetRasters,toneReps,2,targetTrials); %calculates information about first spike timing
+            firstSpikeTimeHolder{k,l} = firstSpikeTimes; %saves first spike times
+            firstSpikeStatsHolder(k,l,:,:) = firstSpikeStats; %saves statistics about first spikes
+            binSpikeHolder{k,l} = binSpikeTimes; %binned spikes from the defined window.
+            binSpikeStatsHolder(k,l,:,:) = binSpikeStats; %stats about those spikes
+            inputRaster = targetRasters(targetRasters(:,1) > calcWindow(1) & targetRasters(:,1) < calcWindow(2),1);
+            [respStore] = ...
+            functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
+            averageRate,averageSTD,inputRaster,zLimit,toneReps); %calculates significance of responses to specific frequencies and dBs
+            sigResp{k,l} = respStore;
+            if ~isempty(respStore{1}) %if there is significant response, stores this for later display.
+                sigRespGraph(k,l,1) = respStore{1}(1,1);
+                sigRespGraph(k,l,2) = respStore{1}(1,2)-respStore{1}(1,1);
+                sigRespGraph(k,l,3) = respStore{1}(1,5);
+            end
+        end
+        freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
+    end
+        disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
+    s.(desigNames{i}).AllRasters = fullRasterData;
+    s.(desigNames{i}).AllHistograms = fullHistData;
+    s.(desigNames{i}).FreqDBRasters = organizedRasters;
+    s.(desigNames{i}).FreqDBHistograms = organizedHist;
+    s.(desigNames{i}).FirstSpikeTimes = firstSpikeTimeHolder;
+    s.(desigNames{i}).FirstSpikeStats = firstSpikeStatsHolder;
+    s.(desigNames{i}).BinSpikes = binSpikeHolder;
+    s.(desigNames{i}).BinSpikeStats = binSpikeStatsHolder;
+    s.(desigNames{i}).FrequencyHistograms = freqSpecHist;
+    s.(desigNames{i}).AverageRate = averageRate;
+    s.(desigNames{i}).AverageSTD = averageSTD;
+    s.(desigNames{i}).ResponseStats = sigResp;
+    s.(desigNames{i}).ResponseStatsGraph = sigRespGraph;
+    s.(desigNames{i}).FullResponseStats = fullResp;
+    s.(desigNames{i}).FullResponseGraphs = fullRespGraph;
 end
 
-%% Plotting
 
-% for i = 1:numTrodes
-%     for j = 1:matclustStruct.(truncatedNames{i}).Clusters
-%         hFig = figure;
-%         set(hFig, 'Position', [10 10 1280 1000])
-%         %plots average waveform
-%         subplot(4,6,1)
-%         hold on
-%         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,2),'LineWidth',2)
-%         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,1),'r','LineWidth',1)
-%         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,3),'r','LineWidth',1)
-%         title(strcat('AverageFiringRate:',num2str(matclustStruct.(truncatedNames{i}).AverageRate(j))))
-%         %plots ISI
-%         subplot(4,6,2)
-%         hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
-%         histMax = max(hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000));
-%         line([rpvTime rpvTime],[0 histMax],'LineWidth',1,'Color','red')
-%         xlim(clusterWindow)
-%         title({strcat('ISI RPV %: ',num2str(matclustStruct.(truncatedNames{i}).RPVs(j)));...
-%             strcat(num2str(matclustStruct.(truncatedNames{i}).RPVNumber(j)),'/',num2str(matclustStruct.(truncatedNames{i}).TotalSpikeNumber(j)))})
-%         %plots first spike latency
-%         subplot(4,3,4)
-%         imagesc(matclustStruct.(truncatedNames{i}).FirstSpikeStats(:,:,j,1,chosenSpikeBin)')
-%         colormap hot
-%         colorbar
-%         set(gca,'XTick',octaveRange(:,2));
-%         set(gca,'XTickLabel',octaveRange(:,1));
-%         set(gca,'YTick',dbRange(:,2));
-%         set(gca,'YTickLabel',dbRange(:,1));
-%         title('Mean First Spike Latency')
-%         %plots heatmap of binned spikes to the chosen spike timing window.
-%         subplot(4,3,7)
-%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).BinSpikeStats(:,:,j,1,chosenSpikeBin))')
-%         colormap hot
-%         colorbar
-%         set(gca,'XTick',octaveRange(:,2));
-%         set(gca,'XTickLabel',octaveRange(:,1));
-%         set(gca,'YTick',dbRange(:,2));
-%         set(gca,'YTickLabel',dbRange(:,1));
-%         title('Binned Response')
-%         %plots heatmaps of response reliability in chosen bin 
-%         subplot(4,3,10)
-%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).FirstSpikeStats(:,:,j,3,chosenSpikeBin))')
-%         colormap hot
-%         colorbar
-%         set(gca,'XTick',octaveRange(:,2));
-%         set(gca,'XTickLabel',octaveRange(:,1));
-%         set(gca,'YTick',dbRange(:,2));
-%         set(gca,'YTickLabel',dbRange(:,1));
-%         title('Probability of Response')
-%         %plots rasters (chronological)
-%         subplot(3,3,2)
-%         plot(matclustStruct.(truncatedNames{i}).AllRasters{j}(:,1),...
-%             matclustStruct.(truncatedNames{i}).AllRasters{j}(:,2),'k.','markersize',4)
-%         hold on
-%         ylim([0 totalTrialNum])
-%         xlim([rasterWindow(1) rasterWindow(2)])
-%         plot([0 0],[ylim],'b');
-%         plot([toneDur toneDur],[ylim],'b');
-%         title({fileName;strcat(truncatedNames{i},' Cluster ',num2str(j))})
-%         set(0, 'DefaulttextInterpreter', 'none')
-%         %plots rasters (frequency and amplitude organized)
-%         subplot(3,3,5)
-%         plot(matclustStruct.(truncatedNames{i}).AllRasters{j}(:,1),...
-%             matclustStruct.(truncatedNames{i}).AllRasters{j}(:,3),'k.','markersize',4)
-%         hold on
-%         plot([0 0],[ylim],'b');
-%         plot([toneDur toneDur],[ylim],'b');
-%         rasterFreqLines = zeros(numFreqs,2);
-%         rasterFreqLines(:,1) = toneReps*size(uniqueDBs,1)/2:toneReps*size(uniqueDBs,1):totalTrialNum;
-%         rasterFreqLines(:,2) = uniqueFreqs;
-%         %this generates green lines separating by Frequency
-%         for k = 1:size(uniqueFreqs,1)
-%             plot(rasterWindow,[toneReps*numDBs*k toneReps*numDBs*k],'g','LineWidth',1)
-%         end
-%         set(gca,'YTick',rasterFreqLines(:,1));
-%         set(gca,'YTickLabel',rasterFreqLines(:,2));
-%         set(gca,'Ydir','reverse')
-%         ylim([0 totalTrialNum])
-%         xlim([rasterWindow(1) rasterWindow(2)])
-%         title('Descending = increase in amplitude and freq')
-%         %plot heatmap organized by frequency
-%         subplot(3,3,8)
-%         imagesc(matclustStruct.(truncatedNames{i}).FrequencyHistograms(:,:,j))
-%         colorbar
-%         set(gca,'YTick',octaveRange(:,2));
-%         set(gca,'YTickLabel',octaveRange(:,1));
-%         set(gca,'XTick',[1:10:size(histBinVector,2)]);
-%         set(gca,'XTickLabel',histBinVector(1:20:end));
-%         histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
-%         histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
-%         line([histBinZero histBinZero],[0 numFreqs],'LineWidth',3,'Color','green')
-%         line([histBinZero histBinZero],[0 numFreqs],'LineWidth',2,'Color','black')
-%         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
-%         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
-% %         title('Heatmap by Frequency and Time Max')
-%         title('Frequency Arranged Heatmap')
-%         % plot histogram.
-%         subplot(4,3,3)
-%         plot(histBinVector,matclustStruct.(truncatedNames{i}).AllHistograms(:,j),'k','LineWidth',2)
-%         hold on
-%         plot([0 0],[ylim],'b');
-%         plot([toneDur toneDur],[ylim],'b');
-%         if matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) ~= 0
-%             plot([matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1)/1000 ...
-%                 matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1)/1000],[ylim],'r');
-%             plot([(matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) + ...
-%                 matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,2))/1000 
-%                 (matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) + ...
-%                 matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,2))/1000],[ylim],'r');
-%         end
-%         xlim([rasterWindow(1) rasterWindow(2)])
-%         title('Histogram')
-%         %plot information on onset time (significance calculation)
-%         subplot(4,3,6)
-%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,1))')
-%         colormap hot
-%         colorbar
-%         set(gca,'XTick',octaveRange(:,2));
-%         set(gca,'XTickLabel',octaveRange(:,1));
-%         set(gca,'YTick',dbRange(:,2));
-%         set(gca,'YTickLabel',dbRange(:,1));
-%         title('Response Latency (Zlimit)')
-%         %plot information about response duration
-%         subplot(4,3,9)
-%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,2))')
-%         colormap hot
-%         colorbar
-%         set(gca,'XTick',octaveRange(:,2));
-%         set(gca,'XTickLabel',octaveRange(:,1));
-%         set(gca,'YTick',dbRange(:,2));
-%         set(gca,'YTickLabel',dbRange(:,1));
-%         title('Response Duration (Zlimit)')
-%         hold off
-%         %plot information about response peak magnitude
-%         subplot(4,3,12)
-%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,3))')
-%         colormap hot
-%         colorbar
-%         set(gca,'XTick',octaveRange(:,2));
-%         set(gca,'XTickLabel',octaveRange(:,1));
-%         set(gca,'YTick',dbRange(:,2));
-%         set(gca,'YTickLabel',dbRange(:,1));
-%         title('Response Peak (Zlimit)')
-%         hold off
-%         spikeGraphName = strcat(fileName,truncatedNames{i},' Cluster ',num2str(j),'SpikeAnalysis');
-%         savefig(hFig,spikeGraphName);
-% 
-%         %save as PDF with correct name
-%         set(hFig,'Units','Inches');
-%         pos = get(hFig,'Position');
-%         set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-%         print(hFig,spikeGraphName,'-dpdf','-r0')
-%     end
-% end
+% Plotting
 
-save(fullfile(pname,fname),'matclustStruct');
+for i = 1:numUnits
+    hFig = figure;
+    set(hFig, 'Position', [10 10 1280 1000])
+    %plots average waveform
+    subplot(4,6,1)
+    hold on
+    plot(s.(desigNames{i}).AverageWaveForms(:,2),'LineWidth',2)
+    plot(s.(desigNames{i}).AverageWaveForms(:,1),'r','LineWidth',1)
+    plot(s.(desigNames{i}).AverageWaveForms(:,3),'r','LineWidth',1)
+    title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
+    %plots ISI
+    subplot(4,6,2)
+    hist(s.(desigNames{i}).ISIGraph,1000)
+    histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
+    line([rpvTime rpvTime],[0 histMax],'LineWidth',1,'Color','red')
+    xlim(clusterWindow)
+    title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+        strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
+    %plots first spike latency
+    subplot(4,3,4)
+    imagesc(s.(desigNames{i}).FirstSpikeStats(:,:,1,chosenSpikeBin)')
+    colormap hot
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Mean First Spike Latency')
+    %plots heatmap of binned spikes to the chosen spike timing window.
+    subplot(4,3,7)
+    imagesc(squeeze(s.(desigNames{i}).BinSpikeStats(:,:,1,chosenSpikeBin))')
+    colormap hot
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Binned Response')
+    %plots heatmaps of response reliability in chosen bin 
+    subplot(4,3,10)
+    imagesc(squeeze(s.(desigNames{i}).FirstSpikeStats(:,:,3,chosenSpikeBin))')
+    colormap hot
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Probability of Response')
+    %plots rasters (chronological)
+    subplot(3,3,2)
+    plot(s.(desigNames{i}).AllRasters(:,1),...
+        s.(desigNames{i}).AllRasters(:,2),'k.','markersize',4)
+    hold on
+    ylim([0 totalTrialNum])
+    xlim([rasterWindow(1) rasterWindow(2)])
+    plot([0 0],[ylim],'b');
+    plot([toneDur toneDur],[ylim],'b');
+    title({fileName;desigNames{i}})
+    set(0, 'DefaulttextInterpreter', 'none')
+    %plots rasters (frequency and amplitude organized)
+    subplot(3,3,5)
+    plot(s.(desigNames{i}).AllRasters(:,1),...
+        s.(desigNames{i}).AllRasters(:,3),'k.','markersize',4)
+    hold on
+    plot([0 0],[ylim],'b');
+    plot([toneDur toneDur],[ylim],'b');
+    rasterFreqLines = zeros(numFreqs,2);
+    rasterFreqLines(:,1) = toneReps*size(uniqueDBs,1)/2:toneReps*size(uniqueDBs,1):totalTrialNum;
+    rasterFreqLines(:,2) = uniqueFreqs;
+    %this generates green lines separating by Frequency
+    for k = 1:size(uniqueFreqs,1)
+        plot(rasterWindow,[toneReps*numDBs*k toneReps*numDBs*k],'g','LineWidth',1)
+    end
+    set(gca,'YTick',rasterFreqLines(:,1));
+    set(gca,'YTickLabel',rasterFreqLines(:,2));
+    set(gca,'Ydir','reverse')
+    ylim([0 totalTrialNum])
+    xlim([rasterWindow(1) rasterWindow(2)])
+    title('Descending = increase in amplitude and freq')
+    %plot heatmap organized by frequency
+    subplot(3,3,8)
+    imagesc(s.(desigNames{i}).FrequencyHistograms(:,:))
+    colorbar
+    set(gca,'YTick',octaveRange(:,2));
+    set(gca,'YTickLabel',octaveRange(:,1));
+    set(gca,'XTick',[1:10:size(histBinVector,2)]);
+    set(gca,'XTickLabel',histBinVector(1:20:end));
+    histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
+    histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
+    line([histBinZero histBinZero],[0 numFreqs],'LineWidth',3,'Color','green')
+    line([histBinZero histBinZero],[0 numFreqs],'LineWidth',2,'Color','black')
+    line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
+    line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
+%         title('Heatmap by Frequency and Time Max')
+    title('Frequency Arranged Heatmap')
+    % plot histogram.
+    subplot(4,3,3)
+    plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
+    hold on
+    plot([0 0],[ylim],'b');
+    plot([toneDur toneDur],[ylim],'b');
+    if s.(desigNames{i}).FullResponseGraphs(1) ~= 0
+        plot([s.(desigNames{i}).FullResponseGraphs(1)/1000 ...
+            s.(desigNames{i}).FullResponseGraphs(1)/1000],[ylim],'r');
+        plot([(s.(desigNames{i}).FullResponseGraphs(1) + ...
+            s.(desigNames{i}).FullResponseGraphs(2))/1000 
+            (s.(desigNames{i}).FullResponseGraphs(1) + ...
+            s.(desigNames{i}).FullResponseGraphs(2))/1000],[ylim],'r');
+    end
+    xlim([rasterWindow(1) rasterWindow(2)])
+    title('Histogram')
+    %plot information on onset time (significance calculation)
+    subplot(4,3,6)
+    imagesc(squeeze(s.(desigNames{i}).ResponseStatsGraph(:,:,1))')
+    colormap hot
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Response Latency (Zlimit)')
+    %plot information about response duration
+    subplot(4,3,9)
+    imagesc(squeeze(s.(desigNames{i}).ResponseStatsGraph(:,:,2))')
+    colormap hot
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Response Duration (Zlimit)')
+    hold off
+    %plot information about response peak magnitude
+    subplot(4,3,12)
+    imagesc(squeeze(s.(desigNames{i}).ResponseStatsGraph(:,:,3))')
+    colormap hot
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Response Peak (Zlimit)')
+    hold off
+    spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
+    savefig(hFig,spikeGraphName);
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
+end
+
+save(fullfile(pname,fname),'s');
 
 end
