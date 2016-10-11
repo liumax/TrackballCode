@@ -1,6 +1,6 @@
 
 
-function [] = analysisBasicTuning(fileName);
+function [matclustStruct] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 rasterWindow = [-1 3]; %ratio for raster window. will be multiplied by toneDur
 rpvTime = 0.001; %time limit in seconds for consideration as an RPV
@@ -14,7 +14,7 @@ zLimit = 3; %zlimit for calculating significant responses
 % firstSpikeWindow = [0 0.5 1 1.5]; %ratios! need to be multiplied by tone duration.
 firstSpikeWindow = [0 1];
 chosenSpikeBin = 1; %delineates which spike window I will graph.
-baselineBin = [-2 0]; %ratio for bin from which baseline firing rate will be calculated
+baselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 fname = saveName;
@@ -179,9 +179,11 @@ for i = 1:numTrodes
     fullRespGraph = zeros(clusterSizer,3);
     
     for j = 1:clusterSizer
+        %pulls spike times and times for alignment
         spikeTimes = matclustStruct.(truncatedNames{i}).SpikeTimes{j};
         alignTimes = master(:,1);
         
+        %calculates rasters based on spike information. 
         [rasters] = functionBasicRaster(spikeTimes,alignTimes,rasterWindow);
         rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
         fullRasterData{j} = rasters;
@@ -257,160 +259,160 @@ end
 
 %% Plotting
 
-for i = 1:numTrodes
-    for j = 1:matclustStruct.(truncatedNames{i}).Clusters
-        hFig = figure;
-        set(hFig, 'Position', [10 10 1280 1000])
-        %plots average waveform
-        subplot(4,6,1)
-        hold on
-        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,2),'LineWidth',2)
-        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,1),'r','LineWidth',1)
-        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,3),'r','LineWidth',1)
-        title(strcat('AverageFiringRate:',num2str(matclustStruct.(truncatedNames{i}).AverageRate(j))))
-        %plots ISI
-        subplot(4,6,2)
-        hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
-        histMax = max(hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000));
-        line([rpvTime rpvTime],[0 histMax],'LineWidth',1,'Color','red')
-        xlim(clusterWindow)
-        title({strcat('ISI RPV %: ',num2str(matclustStruct.(truncatedNames{i}).RPVs(j)));...
-            strcat(num2str(matclustStruct.(truncatedNames{i}).RPVNumber(j)),'/',num2str(matclustStruct.(truncatedNames{i}).TotalSpikeNumber(j)))})
-        %plots first spike latency
-        subplot(4,3,4)
-        imagesc(matclustStruct.(truncatedNames{i}).FirstSpikeStats(:,:,j,1,chosenSpikeBin)')
-        colormap hot
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Mean First Spike Latency')
-        %plots heatmap of binned spikes to the chosen spike timing window.
-        subplot(4,3,7)
-        imagesc(squeeze(matclustStruct.(truncatedNames{i}).BinSpikeStats(:,:,j,1,chosenSpikeBin))')
-        colormap hot
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Binned Response')
-        %plots heatmaps of response reliability in chosen bin 
-        subplot(4,3,10)
-        imagesc(squeeze(matclustStruct.(truncatedNames{i}).FirstSpikeStats(:,:,j,3,chosenSpikeBin))')
-        colormap hot
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Probability of Response')
-        %plots rasters (chronological)
-        subplot(3,3,2)
-        plot(matclustStruct.(truncatedNames{i}).AllRasters{j}(:,1),...
-            matclustStruct.(truncatedNames{i}).AllRasters{j}(:,2),'k.','markersize',4)
-        hold on
-        ylim([0 totalTrialNum])
-        xlim([rasterWindow(1) rasterWindow(2)])
-        plot([0 0],[ylim],'b');
-        plot([toneDur toneDur],[ylim],'b');
-        title({fileName;strcat(truncatedNames{i},' Cluster ',num2str(j))})
-        set(0, 'DefaulttextInterpreter', 'none')
-        %plots rasters (frequency and amplitude organized)
-        subplot(3,3,5)
-        plot(matclustStruct.(truncatedNames{i}).AllRasters{j}(:,1),...
-            matclustStruct.(truncatedNames{i}).AllRasters{j}(:,3),'k.','markersize',4)
-        hold on
-        plot([0 0],[ylim],'b');
-        plot([toneDur toneDur],[ylim],'b');
-        rasterFreqLines = zeros(numFreqs,2);
-        rasterFreqLines(:,1) = toneReps*size(uniqueDBs,1)/2:toneReps*size(uniqueDBs,1):totalTrialNum;
-        rasterFreqLines(:,2) = uniqueFreqs;
-        %this generates green lines separating by Frequency
-        for k = 1:size(uniqueFreqs,1)
-            plot(rasterWindow,[toneReps*numDBs*k toneReps*numDBs*k],'g','LineWidth',1)
-        end
-        set(gca,'YTick',rasterFreqLines(:,1));
-        set(gca,'YTickLabel',rasterFreqLines(:,2));
-        set(gca,'Ydir','reverse')
-        ylim([0 totalTrialNum])
-        xlim([rasterWindow(1) rasterWindow(2)])
-        title('Descending = increase in amplitude and freq')
-        %plot heatmap organized by frequency
-        subplot(3,3,8)
-        imagesc(matclustStruct.(truncatedNames{i}).FrequencyHistograms(:,:,j))
-        colorbar
-        set(gca,'YTick',octaveRange(:,2));
-        set(gca,'YTickLabel',octaveRange(:,1));
-        set(gca,'XTick',[1:10:size(histBinVector,2)]);
-        set(gca,'XTickLabel',histBinVector(1:20:end));
-        histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
-        histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
-        line([histBinZero histBinZero],[0 numFreqs],'LineWidth',3,'Color','green')
-        line([histBinZero histBinZero],[0 numFreqs],'LineWidth',2,'Color','black')
-        line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
-        line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
-%         title('Heatmap by Frequency and Time Max')
-        title('Frequency Arranged Heatmap')
-        % plot histogram.
-        subplot(4,3,3)
-        plot(histBinVector,matclustStruct.(truncatedNames{i}).AllHistograms(:,j),'k','LineWidth',2)
-        hold on
-        plot([0 0],[ylim],'b');
-        plot([toneDur toneDur],[ylim],'b');
-        if matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) ~= 0
-            plot([matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1)/1000 ...
-                matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1)/1000],[ylim],'r');
-            plot([(matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) + ...
-                matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,2))/1000 
-                (matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) + ...
-                matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,2))/1000],[ylim],'r');
-        end
-        xlim([rasterWindow(1) rasterWindow(2)])
-        title('Histogram')
-        %plot information on onset time (significance calculation)
-        subplot(4,3,6)
-        imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,1))')
-        colormap hot
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Response Latency (Zlimit)')
-        %plot information about response duration
-        subplot(4,3,9)
-        imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,2))')
-        colormap hot
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Response Duration (Zlimit)')
-        hold off
-        %plot information about response peak magnitude
-        subplot(4,3,12)
-        imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,3))')
-        colormap hot
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Response Peak (Zlimit)')
-        hold off
-        spikeGraphName = strcat(fileName,truncatedNames{i},' Cluster ',num2str(j),'SpikeAnalysis');
-        savefig(hFig,spikeGraphName);
-
-        %save as PDF with correct name
-        set(hFig,'Units','Inches');
-        pos = get(hFig,'Position');
-        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-        print(hFig,spikeGraphName,'-dpdf','-r0')
-    end
-end
+% for i = 1:numTrodes
+%     for j = 1:matclustStruct.(truncatedNames{i}).Clusters
+%         hFig = figure;
+%         set(hFig, 'Position', [10 10 1280 1000])
+%         %plots average waveform
+%         subplot(4,6,1)
+%         hold on
+%         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,2),'LineWidth',2)
+%         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,1),'r','LineWidth',1)
+%         plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,j,3),'r','LineWidth',1)
+%         title(strcat('AverageFiringRate:',num2str(matclustStruct.(truncatedNames{i}).AverageRate(j))))
+%         %plots ISI
+%         subplot(4,6,2)
+%         hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000)
+%         histMax = max(hist(matclustStruct.(truncatedNames{i}).ISIData{j},1000));
+%         line([rpvTime rpvTime],[0 histMax],'LineWidth',1,'Color','red')
+%         xlim(clusterWindow)
+%         title({strcat('ISI RPV %: ',num2str(matclustStruct.(truncatedNames{i}).RPVs(j)));...
+%             strcat(num2str(matclustStruct.(truncatedNames{i}).RPVNumber(j)),'/',num2str(matclustStruct.(truncatedNames{i}).TotalSpikeNumber(j)))})
+%         %plots first spike latency
+%         subplot(4,3,4)
+%         imagesc(matclustStruct.(truncatedNames{i}).FirstSpikeStats(:,:,j,1,chosenSpikeBin)')
+%         colormap hot
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Mean First Spike Latency')
+%         %plots heatmap of binned spikes to the chosen spike timing window.
+%         subplot(4,3,7)
+%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).BinSpikeStats(:,:,j,1,chosenSpikeBin))')
+%         colormap hot
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Binned Response')
+%         %plots heatmaps of response reliability in chosen bin 
+%         subplot(4,3,10)
+%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).FirstSpikeStats(:,:,j,3,chosenSpikeBin))')
+%         colormap hot
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Probability of Response')
+%         %plots rasters (chronological)
+%         subplot(3,3,2)
+%         plot(matclustStruct.(truncatedNames{i}).AllRasters{j}(:,1),...
+%             matclustStruct.(truncatedNames{i}).AllRasters{j}(:,2),'k.','markersize',4)
+%         hold on
+%         ylim([0 totalTrialNum])
+%         xlim([rasterWindow(1) rasterWindow(2)])
+%         plot([0 0],[ylim],'b');
+%         plot([toneDur toneDur],[ylim],'b');
+%         title({fileName;strcat(truncatedNames{i},' Cluster ',num2str(j))})
+%         set(0, 'DefaulttextInterpreter', 'none')
+%         %plots rasters (frequency and amplitude organized)
+%         subplot(3,3,5)
+%         plot(matclustStruct.(truncatedNames{i}).AllRasters{j}(:,1),...
+%             matclustStruct.(truncatedNames{i}).AllRasters{j}(:,3),'k.','markersize',4)
+%         hold on
+%         plot([0 0],[ylim],'b');
+%         plot([toneDur toneDur],[ylim],'b');
+%         rasterFreqLines = zeros(numFreqs,2);
+%         rasterFreqLines(:,1) = toneReps*size(uniqueDBs,1)/2:toneReps*size(uniqueDBs,1):totalTrialNum;
+%         rasterFreqLines(:,2) = uniqueFreqs;
+%         %this generates green lines separating by Frequency
+%         for k = 1:size(uniqueFreqs,1)
+%             plot(rasterWindow,[toneReps*numDBs*k toneReps*numDBs*k],'g','LineWidth',1)
+%         end
+%         set(gca,'YTick',rasterFreqLines(:,1));
+%         set(gca,'YTickLabel',rasterFreqLines(:,2));
+%         set(gca,'Ydir','reverse')
+%         ylim([0 totalTrialNum])
+%         xlim([rasterWindow(1) rasterWindow(2)])
+%         title('Descending = increase in amplitude and freq')
+%         %plot heatmap organized by frequency
+%         subplot(3,3,8)
+%         imagesc(matclustStruct.(truncatedNames{i}).FrequencyHistograms(:,:,j))
+%         colorbar
+%         set(gca,'YTick',octaveRange(:,2));
+%         set(gca,'YTickLabel',octaveRange(:,1));
+%         set(gca,'XTick',[1:10:size(histBinVector,2)]);
+%         set(gca,'XTickLabel',histBinVector(1:20:end));
+%         histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
+%         histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
+%         line([histBinZero histBinZero],[0 numFreqs],'LineWidth',3,'Color','green')
+%         line([histBinZero histBinZero],[0 numFreqs],'LineWidth',2,'Color','black')
+%         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
+%         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
+% %         title('Heatmap by Frequency and Time Max')
+%         title('Frequency Arranged Heatmap')
+%         % plot histogram.
+%         subplot(4,3,3)
+%         plot(histBinVector,matclustStruct.(truncatedNames{i}).AllHistograms(:,j),'k','LineWidth',2)
+%         hold on
+%         plot([0 0],[ylim],'b');
+%         plot([toneDur toneDur],[ylim],'b');
+%         if matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) ~= 0
+%             plot([matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1)/1000 ...
+%                 matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1)/1000],[ylim],'r');
+%             plot([(matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) + ...
+%                 matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,2))/1000 
+%                 (matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,1) + ...
+%                 matclustStruct.(truncatedNames{i}).FullResponseGraphs(j,2))/1000],[ylim],'r');
+%         end
+%         xlim([rasterWindow(1) rasterWindow(2)])
+%         title('Histogram')
+%         %plot information on onset time (significance calculation)
+%         subplot(4,3,6)
+%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,1))')
+%         colormap hot
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Response Latency (Zlimit)')
+%         %plot information about response duration
+%         subplot(4,3,9)
+%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,2))')
+%         colormap hot
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Response Duration (Zlimit)')
+%         hold off
+%         %plot information about response peak magnitude
+%         subplot(4,3,12)
+%         imagesc(squeeze(matclustStruct.(truncatedNames{i}).ResponseStatsGraph(j,:,:,3))')
+%         colormap hot
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Response Peak (Zlimit)')
+%         hold off
+%         spikeGraphName = strcat(fileName,truncatedNames{i},' Cluster ',num2str(j),'SpikeAnalysis');
+%         savefig(hFig,spikeGraphName);
+% 
+%         %save as PDF with correct name
+%         set(hFig,'Units','Inches');
+%         pos = get(hFig,'Position');
+%         set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+%         print(hFig,spikeGraphName,'-dpdf','-r0')
+%     end
+% end
 
 save(fullfile(pname,fname),'matclustStruct');
 
