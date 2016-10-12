@@ -19,6 +19,8 @@
 %firstSpikeStats: a 4 x n maxtrix, with n tuning windows. First row is
 %mean, second row is standard deviation, third row is probability of
 %response, fourth row is number of trials with spiking responses.
+%binSpike is spikes binned over the entire period, rather than the first
+%spike itself.
 
 function [firstSpikeTimes,firstSpikeStats,binSpikeTimes,binSpikeStats] = functionBasicFirstSpikeTiming(timingWindows,alignedSpikes,numTrials,trialColumn,trialNumbers);
 %computes the actual number of windows
