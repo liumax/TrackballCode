@@ -89,7 +89,7 @@ for lfpInd1 = 1:numLFPs
         end
         lfpAverageFreqs(lfpInd1,lfpInd2,:) = mean(tempHolder);
     end
-    disp(strcat('Averaged Electrode ',lfpInd1,' By Frequency'))
+    disp(strcat('Averaged Electrode ',num2str(lfpInd1),' By Frequency'))
 end
 disp('Done with LFPs by Freq')
 
@@ -115,7 +115,7 @@ for lfpInd1 = 1:numLFPs
         end
         lfpAverageDBs(lfpInd1,lfpInd2,:) = mean(tempHolder);
     end
-    disp(strcat('Averaged Electrode ',lfpInd1,' By DB'))
+    disp(strcat('Averaged Electrode ',num2str(lfpInd1),' By DB'))
 end
 
 disp('Done with LFPs by DB')
