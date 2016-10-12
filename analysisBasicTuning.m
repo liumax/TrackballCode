@@ -35,6 +35,7 @@ zLimit = 3; %zlimit for calculating significant responses
 firstSpikeWindow = [0 1];
 chosenSpikeBin = 1; %delineates which spike window I will graph.
 baselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
+lfpWindow = [-1 3];
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 fname = saveName;
@@ -56,6 +57,10 @@ s = struct;
 [s, truncatedNames] = functionMatclustExtraction(rpvTime,...
     matclustFiles,s,clusterWindow);
 
+%pull number of units, as well as names and designation array.
+numUnits = size(s.DesignationName,2);
+desigNames = s.DesignationName;
+desigArray = s.DesignationArray;
 
 %% Extracts Sound Data from soundFile, including freq, db, reps.
 soundName = strcat(fileName,'.mat');
@@ -82,13 +87,13 @@ totalTrialNum = length(soundData.Frequencies);
 rasterWindow = rasterWindow * toneDur;
 firstSpikeWindow = firstSpikeWindow * toneDur;
 baselineBin = baselineBin * toneDur;
-lfpWindow = rasterWindow;
 rasterAxis=[rasterWindow(1):0.001:rasterWindow(2)-0.001];
 histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
 histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes
 calcWindow = calcWindow * toneDur;
+lfpWindow = lfpWindow * toneDur;
 
 % Generates cell array of frequency names for use in legend
 freqNameHolder = cell(1,numFreqs);
@@ -161,9 +166,7 @@ elseif length(dioTimes) == length(master)
     master(:,1) = dioTimes;
 end
 
-numUnits = size(s.DesignationName,2);
-desigNames = s.DesignationName;
-desigArray = s.DesignationArray;
+
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
 for i = 1:numUnits
@@ -270,6 +273,9 @@ for i = 1:numUnits
     s.(desigNames{i}).FullResponseGraphs = fullRespGraph;
 end
 
+%calculate and plot LFP information
+[lfpStruct] = functionLFPaverage(master, lfpWindow, s,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
+s.LFP = lfpStruct;
 
 % Plotting
 
