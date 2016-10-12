@@ -10,9 +10,17 @@
 
 %% Outputs
 
+%s: this is a structured array organized as follows: 
 
+%n units as fields, with the name ntXclusterY
 
-function [s] = analysisBasicLaserStimDIO(fileName);
+%DesignationArray and DesignationName: designation array provides an array
+%that decodes which probe index (column 1) and which cluster index (column
+%2). The designation name is a cell array with the names of all units.
+
+%LaserData: contains laser times and laser duration.
+
+function [s] = analysisBasicLaserResponse(fileName);
 
 %set parameters.
 sampleRate = 30000;
@@ -71,8 +79,8 @@ dioDiff = diff(dioTime);
 dioDiff = dioDiff(dioDiff<5000);
 meanDiff = mean(dioDiff)/30;
 
-s.LaserTimes = inTimes;
-s.LaserDuration = meanDiff;
+s.LaserData.LaserTimes = inTimes;
+s.LaserData.LaserDuration = meanDiff;
 %% do actual extraction of data!
 for i = 1:numUnits
     %first thing I want to do is separate out spikes that are within the
@@ -179,8 +187,11 @@ for i = 1:numUnits
     %plots ISI
     subplot(4,2,2)
     hist(s.(desigNames{i}).ISIGraph,1000)
+    histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
+    line([rpvTime rpvTime],[0 histMax],'LineWidth',1,'Color','red')
     xlim([clusterWindow(1) clusterWindow(2)])
-    title('ISI')
+    title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+        strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
     %plots rasters
     subplot(4,1,2)
     plot(s.(desigNames{i}).LaserRelated.LaserRaster(:,1),...
@@ -225,7 +236,7 @@ for i = 1:numUnits
     print(hFig,spikeGraphName,'-dpdf','-r0')
 end
 
-clearvars -except s fname pname
+% clearvars -except s fname pname
 %saves s
 pname = pwd;
 fname = strcat(fileName,'LaserIDAnalysis');
