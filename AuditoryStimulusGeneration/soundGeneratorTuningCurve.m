@@ -111,7 +111,7 @@ for i = 1:length(master)
     paddedWave(1:size(finalWave,1)) = finalWave;
     soundVector = [paddedWave,ttlSig];
     sound(soundVector,fs);
-    length(master) - i
+    disp(strcat('Trial:',num2str(i),' Frequency:',num2str(master(1,i)),' DB:',num2str(master(2,i))))
     pause(master(i,4))
 end
 

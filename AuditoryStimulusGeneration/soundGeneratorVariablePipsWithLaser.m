@@ -235,7 +235,7 @@ if laserSwitch == 1;
             soundVector = controlBlock{laserMatrix(i,5)};
             sound(soundVector,fs)
         end
-        disp(strcat('Trials Remaining:',num2str(i),'/',num2str(length(laserMatrix))));
+        disp(strcat('Trials Performed:',num2str(i),'/',num2str(length(laserMatrix))));
         pause(pauseDur(laserMatrix(i,5)));
     end
 else
@@ -243,7 +243,7 @@ else
         pause(prePause)
         soundVector = controlBlock{controlMatrix(i,5)};
         sound(soundVector,fs)
-        disp(strcat('Trials Remaining:',num2str(i),'/',num2str(length(controlMatrix))));
+        disp(strcat('Trials Performed:',num2str(i),'/',num2str(length(controlMatrix))));
         pause(pauseDur(laserMatrix(i,5)))
     end
 end
