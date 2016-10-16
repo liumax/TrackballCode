@@ -16,9 +16,9 @@ function [s] = functionNewPairingSpikeSeparator(s,...
    desigNames,spikeNames,soundNames);
 %First, I want to pull all the time periods.
 timesBaseline = s.TimePeriods.Baseline;
-timesTuningFirst = s.TimePeriods.(names{1});
-timesTuningSecond = s.TimePeriods.(names{2});
-timesPairing = s.TimePeriods.(names{3});
+timesTuningFirst = s.TimePeriods.(soundNames{1});
+timesTuningSecond = s.TimePeriods.(soundNames{2});
+timesPairing = s.TimePeriods.(soundNames{3});
 
 %stores spikes as separated spike times. 
 for i = 1:size(desigNames,2);
