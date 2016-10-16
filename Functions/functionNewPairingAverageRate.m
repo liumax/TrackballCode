@@ -20,12 +20,13 @@ for i = 1:size(desigNames,2)
     numSpikes = size(spikeTimes,1);
     timePeriod = (s.TimePeriods.Baseline(2) - s.TimePeriods.Baseline(1));
     s.(desigNames{i}).BaselineFiringRate = numSpikes/timePeriod;
+    %calculates overall firing rate from all other periods.
     overallFireHolder = zeros(length(spikeNames),1);
-    for j = 1:spikeNames
+    for j = 1:length(spikeNames)
         spikeTimes = s.(desigNames{i}).(spikeNames{j});
         numSpikes = size(spikeTimes,1);
         timePeriod = (s.TimePeriods.(soundNames{j})(2) - s.TimePeriods.(soundNames{j})(1));
-        overallFireHolder(j) = numSpikes/timePeriod
+        overallFireHolder(j) = numSpikes/timePeriod;
     end
     s.(desigNames{i}).OverallFiringRates = overallFireHolder;
 end
