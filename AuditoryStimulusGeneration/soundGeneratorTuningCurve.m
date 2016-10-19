@@ -1,6 +1,6 @@
 [fname pname] = uiputfile('test1.mat');
 
-toneReps = 20; %number of repetitions of each tone/amplitude pair
+toneReps = 30; %number of repetitions of each tone/amplitude pair
 toneDur = 0.1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
@@ -23,7 +23,7 @@ octFrac = 0.5; %fractions of octaves to move
 maxdB = 100; %maximum decibel output
 startdB = 100; %starting decibel value
 enddB = 60; %lowest decibel value
-dbSteps = 10; %resolution of decible steps
+dbSteps = 20; %resolution of decible steps
 
 %this generates a vector with the frequencies that will be used
 octRange = log2(endF/startF);
@@ -111,7 +111,7 @@ for i = 1:length(master)
     paddedWave(1:size(finalWave,1)) = finalWave;
     soundVector = [paddedWave,ttlSig];
     sound(soundVector,fs);
-    disp(strcat('Trial:',num2str(i),' Frequency:',num2str(master(1,i)),' DB:',num2str(master(2,i))))
+    disp(strcat('Trial:',num2str(i),'/',num2str(length(master)),' Frequency:',num2str(master(i,1)),' DB:',num2str(master(i,2))))
     pause(master(i,4))
 end
 
