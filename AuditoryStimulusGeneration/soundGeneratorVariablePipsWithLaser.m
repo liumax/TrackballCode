@@ -10,8 +10,8 @@ fs = 192000; %sampling frequency in Hz
 prePause = 0.1; %pause in seconds before tone delivery
 
 %control over timing of blocks of tone pips
-pipReps = 20; %number of repetitions of each frequency of presentation
-interPipITI = 2; %ITI of tone blocks in seconds. DOES NOT INCLUDE TONE DUR
+pipReps = 30; %number of repetitions of each frequency of presentation
+interPipITI = 4; %ITI of tone blocks in seconds. DOES NOT INCLUDE TONE DUR
 
 %control variability of tone pips here
 indivITI = [1 0.5 0.25]; %ITI in seconds.
@@ -255,6 +255,7 @@ soundData.TargetAmplitude = targetAmp;
 soundData.ControlFrequency = controlFreq;
 soundData.ControlDB = controlDB;
 soundData.ControlAmplitude = controlAmp;
+soundData.ToneDuration =toneDur;
 
 soundData.BlockRepetitions = pipReps;
 soundData.BlockITIs = interPipITI;
@@ -268,9 +269,9 @@ soundData.LaserTTL = laserTTL;
 soundData.LaserTTLITI = laserTTLiti;
 
 if laserSwitch == 1;
-    soundData.ControlMatrix = LaserMatrix;
+    soundData.ControlMatrix = laserMatrix;
 else
-    soundData.ControlMatrix = ControlMatrix;
+    soundData.ControlMatrix = controlMatrix;
 end
 
 save(fullfile(pname,fname),'soundData');
