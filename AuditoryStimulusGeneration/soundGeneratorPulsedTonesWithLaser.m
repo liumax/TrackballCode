@@ -10,29 +10,29 @@ fs = 192000; %sampling frequency in Hz
 prePause = 0.1; %pause in seconds before tone delivery
 
 %control over timing of blocks of tone pips
-totalReps = 10; %number of repetitions of tone blocks
+totalReps = 30; %number of repetitions of tone blocks
 totalITI = 10; %ITI of tone blocks in seconds. DOES NOT INCLUDE TONE DUR
 
 %control over parameters of individual tone pips
-% toneFreq = 8000; %either frequency in Hz or 'white'
-toneFreq = 'white';
-toneDB = 60;%amplitude in dB with 100 set as max with driver at no attenuation, speakers set to max
+toneFreq = 8000; %either frequency in Hz or 'white'
+% toneFreq = 'white';
+toneDB = 80;%amplitude in dB with 100 set as max with driver at no attenuation, speakers set to max
 maxDB = 100;%DONT ADJUST
 toneAmp= 10^-((maxDB-toneDB)/20);
 
 %control for tone pips 
 controlFreq = 8000;
 % controlFreq = 'white';
-controlDB = 100;
+controlDB = 80;
 controlAmp = 10^-((maxDB-controlDB)/20);
 
-indivReps = 15; %number of tone pips per presentation
-indivITI = 0.2; %ITI of tone pips in seconds. This includes the tone duration.
+indivReps = 10; %number of tone pips per presentation
+indivITI = 1; %ITI of tone pips in seconds. This includes the tone duration.
 toneDur = 0.1; %tone pip duration in seconds
 onRampDur = 0.005; %duration in seconds of on-ramp. This will be a cosine ramp
 offRampDur = 0.005;%duration in seconds of off-ramp. This will be a cosine ramp
 
-blockDur = (indivReps)*indivITI*fs*1.1; %time of block in samples, additional 10% fudge factor to avoid cutoff.
+blockDur = round((indivReps)*indivITI*fs*1.1); %time of block in samples, additional 10% fudge factor to avoid cutoff.
 tonePipDur = toneDur*fs; %duration of tone pip in samples. Will be useful in generating template for sound to insert into larger tone file.
 indivITIdur = indivITI*fs; %iti in samples
 
@@ -40,7 +40,7 @@ toneTTL = 0.002; %duration in seconds of ttl that marks the tone onset
 
 %laser controls
 laserSwitch = 1; %1 for laser, 0 for no laser
-laserTiming = 5; %pick the tone pip that the laser is going to be paired with
+laserTiming = 3; %pick the tone pip that the laser is going to be paired with
 laserTTL = 0.002; %duration of laser TTL
 laserTTLiti = 0.006; %ITI for laser TTLs. recall this is from start of TTL to start of TTL
 laserTTLnum = 2; %number of laser TTLs
@@ -194,7 +194,7 @@ soundData.TargetAmplitude = toneAmp;
 soundData.ControlFrequency = controlFreq;
 soundData.ControlDB = controlDB;
 soundData.ControlAmplitude = controlAmp;
-
+soundData.ToneDuration = toneDur;
 soundData.BlockRepetitions = totalReps;
 soundData.BlockITI = totalITI;
 soundData.PipRepetitions = indivReps;
