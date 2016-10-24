@@ -206,6 +206,19 @@ for i = 1:numUnits
     
     averageRate = mean(averageSpikeHolder/(baselineBin(2)-baselineBin(1)));
     averageSTD = std(averageSpikeHolder/(baselineBin(2)-baselineBin(1)));
+    averageSTE = averageSTD/(sqrt(totalTrialNum-1));
+    
+    %calculates histograms of every single trial. 
+    fullHistHolder = zeros(length(histBinVector),totalTrialNum);
+    for k =1:totalTrialNum
+        if size(rasters(rasters(:,2) == k,:),1) > 0
+            [counts centers] = hist(rasters(rasters(:,2) == k,1),histBinVector);
+            fullHistHolder(:,k) = counts;
+        end
+    end
+    
+    %calculate standard deviation for each bin
+    histSTE = (std(fullHistHolder'))';
     
     [histCounts histCenters] = hist(rasters(:,1),histBinVector);
     fullHistData = histCounts'/totalTrialNum/histBin;
@@ -258,6 +271,8 @@ for i = 1:numUnits
         disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
     s.(desigNames{i}).AllRasters = fullRasterData;
     s.(desigNames{i}).AllHistograms = fullHistData;
+    s.(desigNames{i}).IndividualHistograms = fullHistHolder; 
+    s.(desigNames{i}).HistogramStandardDeviation = histSTE;
     s.(desigNames{i}).FreqDBRasters = organizedRasters;
     s.(desigNames{i}).FreqDBHistograms = organizedHist;
     s.(desigNames{i}).FirstSpikeTimes = firstSpikeTimeHolder;
@@ -267,6 +282,7 @@ for i = 1:numUnits
     s.(desigNames{i}).FrequencyHistograms = freqSpecHist;
     s.(desigNames{i}).AverageRate = averageRate;
     s.(desigNames{i}).AverageSTD = averageSTD;
+    s.(desigNames{i}).AverageSTE = averageSTE;
     s.(desigNames{i}).ResponseStats = sigResp;
     s.(desigNames{i}).ResponseStatsGraph = sigRespGraph;
     s.(desigNames{i}).FullResponseStats = fullResp;
@@ -274,10 +290,10 @@ for i = 1:numUnits
 end
 
 %calculate and plot LFP information
-[lfpStruct] = functionLFPaverage(master, lfpWindow, s,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
-s.LFP = lfpStruct;
+% [lfpStruct] = functionLFPaverage(master, lfpWindow, s,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
+% s.LFP = lfpStruct;
 
-% Plotting
+%% Plotting
 
 for i = 1:numUnits
     hFig = figure;
@@ -378,6 +394,8 @@ for i = 1:numUnits
     subplot(4,3,3)
     plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
     hold on
+    plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+    plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
     plot([0 0],[ylim],'b');
     plot([toneDur toneDur],[ylim],'b');
     if s.(desigNames{i}).FullResponseGraphs(1) ~= 0
@@ -431,7 +449,7 @@ for i = 1:numUnits
     set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
     print(hFig,spikeGraphName,'-dpdf','-r0')
 end
-
+%% Saving
 save(fullfile(pname,fname),'s');
 
 end
