@@ -233,7 +233,7 @@ for i = 1:numUnits
     %plot out big rasters (for control)
     for j = 1:length(pipITI)
         subplot(length(pipITI)*2,3,(2+(j-1)*3))
-        plot(s.(desigName{i}).ControlRasters{j}(:,1),s.(desigName{i}).ControlRasters{j}(:,2),'k.')
+        plot(s.(desigName{i}).ControlRasters{j}(:,1),s.(desigName{i}).ControlRasters{j}(:,2),'k.','markersize',4)
         xlabel('Time (seconds)')
         ylabel('Trial Number')
         xlim(bigRasterWindow(:,j))
@@ -252,7 +252,7 @@ for i = 1:numUnits
     newStart2 =  3 +(length(pipITI))*3;
     for j = 1:length(pipITI)
         subplot(length(pipITI)*2,3,(newStart1+(j-1)*3))
-        plot(s.(desigName{i}).LaserRasters{j}(:,1),s.(desigName{i}).LaserRasters{j}(:,2),'k.')
+        plot(s.(desigName{i}).LaserRasters{j}(:,1),s.(desigName{i}).LaserRasters{j}(:,2),'k.','markersize',4)
         xlabel('Time (seconds)')
         ylabel('Trial Number')
         xlim(bigRasterWindow(:,j))
