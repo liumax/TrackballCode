@@ -1,4 +1,14 @@
-function [] = analysisPairingFunctions(fileName);
+%This code is meant to analyze trials in which I perform pairing of one
+%tone with dopamine stimulation. 
+
+%Inputs:
+% fileName: name of the sound file, without the .mat extension.
+% 
+% Outputs:
+% s: structured array storing data from analysis. 
+
+
+function [s] = analysisPairingFunctions(fileName);
 
 %This is meant to be the analysis code for pairing experiments. This code
 %should analyze the tuning curves before and after, the playing of long
