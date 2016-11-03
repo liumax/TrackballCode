@@ -17,8 +17,8 @@ if warningCheck == 1
 end
 
 startF = 4000; %starting frequency in Hz
-endF = 32000; %ending frequency in Hz
-octFrac = 0.5; %fractions of octaves to move
+endF = 64000; %ending frequency in Hz
+octFrac = 1; %fractions of octaves to move
 
 maxdB = 100; %maximum decibel output
 startdB = 100; %starting decibel value
@@ -44,36 +44,34 @@ end
 fullList = zeros(length(freqs)*length(dBs),3);
 counter = 1;
 
+%simply list every combination
 for i = 1:length(freqs)
     for j = 1:length(dBs)
-        fullList(counter:counter+toneReps-1,1) = freqs(i);
-        fullList(counter:counter+toneReps-1,2) = dBs(j);
-        fullList(counter:counter+toneReps-1,3) = amps(j);
-        counter = counter+toneReps;
+        fullList(counter,1) = freqs(i);
+        fullList(counter,2) = dBs(j);
+        fullList(counter,3) = amps(j);
+        counter = counter+1;
     end
 end
+%computes length of list
+listLength = length(fullList);
+%check this is correct
+if listLength ~= length(freqs)*length(dBs)
+    error('ListLength Incorrect')
+end
 
-% generates a randomized set of indices for calling things from fullList.
-fillIndex = zeros(toneReps*length(freqs)*length(dBs),1);
+%generate a n x 1 vector that indicates all indices for every tuning trial.
+listDesig = zeros(listLength*toneReps,1);
 counter = 1;
-for i = 1:toneReps*length(dBs)
-    fillIndex(counter:counter+length(freqs)-1) = randperm(length(freqs));
-    counter = counter + length(freqs);
+for i = 1:toneReps
+    listDesig(counter:counter + listLength - 1) = randperm(listLength);
+    counter = counter + listLength;
 end
 
 %creates array for storing everything. Also fills index with information
 %from above.
-master = zeros(length(freqs)*length(dBs)*toneReps,3);
-
-for i = 1:length(fillIndex)
-    master(i,1) = freqs(fillIndex(i)); %fills in frequency based on fill index
-    holder = find(fullList(:,1) == master(i,1)); %finds where frequency matches with fullIndex
-    holderSize = size(holder,1); %finds how many match, generates random integer within that range.
-    randIndex = randi(holderSize);
-    master(i,2) = fullList(holder(randIndex),2); %fills in dB and amplitude
-    master(i,3) = fullList(holder(randIndex),3); %amplitude value
-    fullList(holder(randIndex),:) = []; %removes from fullList so that you sample without replacement.
-end
+master = zeros(length(freqs)*length(dBs)*toneReps,4);
+master(:,1:3) = fullList(listDesig,1:3);
 
 %generates pauses with exponential function
 k = 2.5;
