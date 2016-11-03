@@ -8,7 +8,7 @@
 % s: structured array storing data from analysis. 
 
 
-function [s] = analysisPairingFunctions(fileName);
+function [s] = analysisPairingOneTone(fileName);
 
 %This is meant to be the analysis code for pairing experiments. This code
 %should analyze the tuning curves before and after, the playing of long
