@@ -114,6 +114,8 @@ for i = 1:numUnits
                 sigRespGraph(k,l,1) = respStore{1}(1,1);
                 sigRespGraph(k,l,2) = respStore{1}(1,2)-respStore{1}(1,1);
                 sigRespGraph(k,l,3) = respStore{1}(1,5);
+            else
+                sigRespGraph(k,1,:) = 0;
             end
         end
         freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
