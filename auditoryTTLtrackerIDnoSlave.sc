@@ -23,7 +23,7 @@ int pulseCounter = 0
 %This is code for cell ID purposes. Toggle holds whether the trip switch
 %has been changed, also has TTL pulse information.
 int toggle = 0
-int idITI = 500
+int idITI = 200
 int idPulseDur = 3
 int idCounter = 0
 

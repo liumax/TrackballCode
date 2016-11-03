@@ -265,8 +265,11 @@ for i=1:numUnits
     subplot(4,3,12)
     plot(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).BinSpikeTimes)
     xlim([1 size(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).BinSpikeTimes,1)])
-    ylim([min(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).BinSpikeTimes)...
+    try
+        ylim([min(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).BinSpikeTimes)...
         max(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).BinSpikeTimes)])
+    catch
+    end
     ylabel('Binned Spikes')
     xlabel('Pairing Trial Number')
     title('Binned Responses During Pairing')

@@ -52,7 +52,7 @@ end
 prePause = 100; %pre-pause in ms.
 fs = 192000;
 L = toneDur * fs; %duration of signal.
-paddingL = L * 1.1; %duration with safety padding
+paddingL = L + fs*0.2; %duration with safety padding
 maxdB = 100; %maximum dB output. 
 onRampDur = 0.005*fs;
 offRampDur = 0.005*fs;
