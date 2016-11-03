@@ -51,7 +51,7 @@ subFoldersCell = strsplit(subFolders,';')';
 %pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
 %generate placeholder structure
-s = struct;
+% s = struct;
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(s.Params.RPVTime,...
