@@ -298,10 +298,11 @@ end
 % s.LFP = lfpStruct;
 
 %% Plotting
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.01 0.01]);
 
 for i = 1:numUnits
     hFig = figure;
-    set(hFig, 'Position', [10 10 1280 1000])
+    set(hFig, 'Position', [10 80 1240 850])
     %plots average waveform
     subplot(4,6,1)
     hold on
@@ -356,7 +357,7 @@ for i = 1:numUnits
     xlim([s.Params.RasterWindow(1) s.Params.RasterWindow(2)])
     plot([0 0],[ylim],'b');
     plot([toneDur toneDur],[ylim],'b');
-    title({fileName;desigNames{i}})
+    title({fileName;desigNames{i}},'fontweight','bold')
     set(0, 'DefaulttextInterpreter', 'none')
     %plots rasters (frequency and amplitude organized)
     subplot(3,3,5)
