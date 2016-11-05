@@ -123,47 +123,98 @@ end
 %% This now uses hardcoded values to extract the TTLs and time periods for each stage
 %of the experiment. Currently, times are in Trodes samples, which are at 30
 %kHz.
-timesBaseline = [DIO1Data(1,1),DIO1True(signalHolder(1,1))];
-timesTuningFirst = [DIO1True(signalHolder(2,1)),DIO1True(signalHolder(1,2))];
-timesPairing = [DIO1True(signalHolder(2,2)),DIO1True(signalHolder(1,3))];
-timesTuningSecond = [DIO1True(signalHolder(2,3)),DIO1True(end)];
+timesBaseline1 = [DIO1Data(1,1),DIO1True(signalHolder(1,1))];
+timesTuningFirst1 = [DIO1True(signalHolder(2,1)),DIO1True(signalHolder(1,2))];
+timesPairing1 = [DIO1True(signalHolder(2,2)),DIO1True(signalHolder(1,3))];
+timesTuningSecond1 = [DIO1True(signalHolder(2,3)),DIO1True(signalHolder(1,4))];
+
+timesTuningFirst2 = [DIO1True(signalHolder(2,4)),DIO1True(signalHolder(1,5))];
+timesPairing2 = [DIO1True(signalHolder(2,5)),DIO1True(signalHolder(1,6))];
+timesTuningSecond2 = [DIO1True(signalHolder(2,6)),DIO1True(signalHolder(1,7))];
+
+timesTuningFirst3 = [DIO1True(signalHolder(2,7)),DIO1True(signalHolder(1,8))];
+timesPairing3 = [DIO1True(signalHolder(2,8)),DIO1True(signalHolder(1,9))];
+timesTuningSecond3 = [DIO1True(signalHolder(2,9)),DIO1True(signalHolder(end))];
+
 %also using the same outputs from signalHolder, this determines which TTL
 %pulses belong to which output. 
-TTLsTuningFirst = DIO1True(signalHolder(2,1)+1:signalHolder(1,2)-1);
-TTLsPairing = DIO1True(signalHolder(2,2)+1:signalHolder(1,3)-1);
-TTLsTuningSecond = DIO1True(signalHolder(2,3)+1:end);
-%stores these values into the master structure. Converts to seconds.
-s.TTLs.(soundNames{1}) = TTLsTuningFirst/params.trodesFS;
-s.TTLs.(soundNames{2}) = TTLsTuningSecond/params.trodesFS;
-s.TTLs.(soundNames{3}) = TTLsPairing/params.trodesFS;
-%Remember that this has converted time values to seconds.
-s.TimePeriods.Baseline = timesBaseline/params.trodesFS;
-s.TimePeriods.(soundNames{1}) = timesTuningFirst/params.trodesFS;
-s.TimePeriods.(soundNames{2}) = timesTuningSecond/params.trodesFS;
-s.TimePeriods.(soundNames{3}) = timesPairing/params.trodesFS;
+TTLsTuningFirst1 = DIO1True(signalHolder(2,1)+1:signalHolder(1,2)-1);
+TTLsPairing1 = DIO1True(signalHolder(2,2)+1:signalHolder(1,3)-1);
+TTLsTuningSecond1 = DIO1True(signalHolder(2,3)+1:signalHolder(1,4)-1);
 
-if size(TTLsTuningFirst,1) == soundFile.TuningRepetitions;
+TTLsTuningFirst2 = DIO1True(signalHolder(2,4)+1:signalHolder(1,5)-1);
+TTLsPairing2 = DIO1True(signalHolder(2,5)+1:signalHolder(1,3)-6);
+TTLsTuningSecond2 = DIO1True(signalHolder(2,6)+1:signalHolder(1,7)-1);
+
+TTLsTuningFirst3 = DIO1True(signalHolder(2,7)+1:signalHolder(1,8)-1);
+TTLsPairing3 = DIO1True(signalHolder(2,8)+1:signalHolder(1,3)-9);
+TTLsTuningSecond3 = DIO1True(signalHolder(2,9)+1:end);
+%stores these values into the master structure. Converts to seconds.
+s.TTLs.(soundNames{1}) = TTLsTuningFirst1/params.trodesFS;
+s.TTLs.(soundNames{2}) = TTLsTuningSecond1/params.trodesFS;
+s.TTLs.(soundNames{3}) = TTLsPairing1/params.trodesFS;
+s.TTLs.(soundNames{4}) = TTLsTuningFirst2/params.trodesFS;
+s.TTLs.(soundNames{5}) = TTLsTuningSecond2/params.trodesFS;
+s.TTLs.(soundNames{6}) = TTLsPairing2/params.trodesFS;
+s.TTLs.(soundNames{7}) = TTLsTuningFirst3/params.trodesFS;
+s.TTLs.(soundNames{8}) = TTLsTuningSecond3/params.trodesFS;
+s.TTLs.(soundNames{9}) = TTLsPairing3/params.trodesFS;
+%Remember that this has converted time values to seconds.
+s.TimePeriods.Baseline = timesBaseline1/params.trodesFS;
+s.TimePeriods.(soundNames{1}) = timesTuningFirst1/params.trodesFS;
+s.TimePeriods.(soundNames{2}) = timesTuningSecond1/params.trodesFS;
+s.TimePeriods.(soundNames{3}) = timesPairing1/params.trodesFS;
+s.TimePeriods.(soundNames{4}) = timesTuningFirst2/params.trodesFS;
+s.TimePeriods.(soundNames{5}) = timesTuningSecond2/params.trodesFS;
+s.TimePeriods.(soundNames{6}) = timesPairing2/params.trodesFS;
+s.TimePeriods.(soundNames{7}) = timesTuningFirst3/params.trodesFS;
+s.TimePeriods.(soundNames{8}) = timesTuningSecond3/params.trodesFS;
+s.TimePeriods.(soundNames{9}) = timesPairing3/params.trodesFS;
+
+if size(TTLsTuningFirst1,1) == soundFile.TuningRepetitions;
     disp('Correct Number of Early Tuning Presentations')
 else
-    error('MISMATCHED EARLY TUNING PRESENTATIONS') 
+    error('MISMATCHED EARLY TUNING PRESENTATIONS 1') 
 end
 
-if size(TTLsTuningSecond,1) == soundFile.TuningRepetitions;
+if size(TTLsTuningSecond1,1) == soundFile.TuningRepetitions;
     disp('Correct Number of Late Tuning Presentations')
 else
-    error('MISMATCHED LATE TUNING PRESENTATIONS') 
+    error('MISMATCHED LATE TUNING PRESENTATIONS 1') 
 end
 
+if size(TTLsTuningFirst2,1) == soundFile.TuningRepetitions;
+    disp('Correct Number of Early Tuning Presentations')
+else
+    error('MISMATCHED EARLY TUNING PRESENTATIONS 2') 
+end
 
+if size(TTLsTuningSecond2,1) == soundFile.TuningRepetitions;
+    disp('Correct Number of Late Tuning Presentations')
+else
+    error('MISMATCHED LATE TUNING PRESENTATIONS 2') 
+end
+
+if size(TTLsTuningFirst3,1) == soundFile.TuningRepetitions;
+    disp('Correct Number of Early Tuning Presentations')
+else
+    error('MISMATCHED EARLY TUNING PRESENTATIONS 3') 
+end
+
+if size(TTLsTuningSecond3,1) == soundFile.TuningRepetitions;
+    disp('Correct Number of Late Tuning Presentations')
+else
+    error('MISMATCHED LATE TUNING PRESENTATIONS 3') 
+end
 %% First thing I want to do is divvy up spikes to different time periods
-[s] = functionNewPairingSpikeSeparator(s,...
+[s] = functionPairingUDUSpikeSeparator(s,...
    desigNames,spikeNames,soundNames);
 
 %% calculates average firing rate for the initial period and overall firing rates across all periods
 [s] = functionNewPairingAverageRate(s,desigNames,...
     spikeNames,soundNames);
 
-%% Next thing is to analyze tuning curve chunks for differences.
+%% SET 1 
 
 %Analyze first tuning curve. 
 
@@ -182,8 +233,7 @@ end
 [s] = functionNewPairingTuning(s,desigNames,...
     spikeNames{2},soundNames{2},params); 
 
-%% next pull data from pairing session:
-%% EDITS TO HERE!!!
+%pull pairing data.
 %extract sound data:
 s.SoundData.(soundNames{3}) = soundFile.(soundNames{3});
 %process TTLs (since these are not just unitary TTLs signaling tone onset).
@@ -195,8 +245,70 @@ s.SoundData.(soundNames{3}) = soundFile.(soundNames{3});
 [s] = functionNewPairingPairedToneHist(s,desigNames,...
     spikeNames{3},soundNames{3},params); 
 
+%% SET 2
+
+%Analyze first tuning curve. 
+
+%first pull out sound data for the relevant file
+[s] = functionPairingSoundDataExtraction(s,...
+    soundNames{4},soundFile); 
+%next, pull tuning information. DOES NOT GRAPH
+[s] = functionNewPairingTuning(s,desigNames,...
+    spikeNames{4},soundNames{4},params); 
+
+%now I analyze the second tuning curve.
+%first pull out sound data for the relevant file
+[s] = functionPairingSoundDataExtraction(s,...
+    soundNames{5},soundFile); 
+%next, pull tuning information. DOES NOT GRAPH
+[s] = functionNewPairingTuning(s,desigNames,...
+    spikeNames{5},soundNames{5},params); 
+
+%pull pairing data.
+%extract sound data:
+s.SoundData.(soundNames{6}) = soundFile.(soundNames{6});
+%process TTLs (since these are not just unitary TTLs signaling tone onset).
+%generates new TTL file under s.SoundData.soundNames{3}Original, which
+%preserves the original information. 
+[s] = functionNewPairingTTLAdjust(s,soundNames{6});
+
+%now align spikes to tone presentations and store data as histogram.
+[s] = functionNewPairingPairedToneHist(s,desigNames,...
+    spikeNames{6},soundNames{6},params); 
+
+%% SET 3
+
+%Analyze first tuning curve. 
+
+%first pull out sound data for the relevant file
+[s] = functionPairingSoundDataExtraction(s,...
+    soundNames{7},soundFile); 
+%next, pull tuning information. DOES NOT GRAPH
+[s] = functionNewPairingTuning(s,desigNames,...
+    spikeNames{7},soundNames{7},params); 
+
+%now I analyze the second tuning curve.
+%first pull out sound data for the relevant file
+[s] = functionPairingSoundDataExtraction(s,...
+    soundNames{8},soundFile); 
+%next, pull tuning information. DOES NOT GRAPH
+[s] = functionNewPairingTuning(s,desigNames,...
+    spikeNames{8},soundNames{8},params); 
+
+%pull pairing data.
+%extract sound data:
+s.SoundData.(soundNames{3}) = soundFile.(soundNames{9});
+%process TTLs (since these are not just unitary TTLs signaling tone onset).
+%generates new TTL file under s.SoundData.soundNames{3}Original, which
+%preserves the original information. 
+[s] = functionNewPairingTTLAdjust(s,soundNames{9});
+
+%now align spikes to tone presentations and store data as histogram.
+[s] = functionNewPairingPairedToneHist(s,desigNames,...
+    spikeNames{9},soundNames{9},params); 
+
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
-[s] = functionNewPairingMasterPlot(numUnits,s,...
+[s] = functionPairingUDUMasterPlot(numUnits,s,...
     desigNames,params,fileName,soundNames);
 
 pname = pwd;
