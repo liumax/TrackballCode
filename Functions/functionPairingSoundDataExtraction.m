@@ -32,13 +32,20 @@ for i = 1:size(octaveRange,1);
 end
 
 %% Does the same for dBs. 
-dbSteps = uniqueDBs(2) - uniqueDBs(1);
-totalDBs = (uniqueDBs(end) - uniqueDBs(1))/dbSteps;
-dbRange = zeros(totalDBs + 1,2);
-dbRange(:,1) = uniqueDBs(1):dbSteps:uniqueDBs(end);
-for i = 1:size(dbRange,1)
-    dbRange(i,2) = find(uniqueDBs == dbRange(i,1));
+if length(uniqueDBs) > 1;
+    dbSteps = uniqueDBs(2) - uniqueDBs(1);
+    totalDBs = (uniqueDBs(end) - uniqueDBs(1))/dbSteps;
+    dbRange = zeros(totalDBs + 1,2);
+    dbRange(:,1) = uniqueDBs(1):dbSteps:uniqueDBs(end);
+    for i = 1:size(dbRange,1)
+        dbRange(i,2) = find(uniqueDBs == dbRange(i,1));
+    end
+elseif length(uniqueDBs) ==1
+    dbSteps = 0;
+    totalDBs = 1;
+    dbRange = [uniqueDBs,1];
 end
+
 
 %% Generates index that goes from low freq to high freq, and within each freq, goes from low to high amplitude
 master(:,4) = 1:1:size(master,1);
