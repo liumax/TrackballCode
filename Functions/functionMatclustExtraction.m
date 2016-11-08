@@ -50,7 +50,14 @@ for clusterCount = 1:numTrodes
         %pull waves and squeeze to a 40 x X array
         targetWaveName = strcat('waves_',truncatedNames{clusterCount},'.mat');
         waveLoader = open(targetWaveName);
-        waveForms = squeeze(waveLoader.waves);
+        %need to check for the number of waves. This is the compensate for
+        %tetrodes. currently is a kludgy solution. 
+        waveSizeCheck = size(waveLoader.waves);
+        if waveSizeCheck(2) == 1
+            waveForms = squeeze(waveLoader.waves);
+        elseif waveSizeCheck(2) > 1
+            waveForms = squeeze(mean(waveLoader.waves,2));
+        end
         %extract relevant waves
         waveHolder = waveForms(:,clusterSpikes);
         %pull out average and standard error
