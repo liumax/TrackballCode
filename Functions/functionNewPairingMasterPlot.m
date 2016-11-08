@@ -16,7 +16,7 @@ for i=1:numUnits
     plot(s.(desigNames{i}).AverageWaveForms(:,2),'LineWidth',2)
     plot(s.(desigNames{i}).AverageWaveForms(:,1),'r','LineWidth',1)
     plot(s.(desigNames{i}).AverageWaveForms(:,3),'r','LineWidth',1)
-    title({spikeGraphName;strcat('AverageFiringRate:',num2str(s.(desigNames{i}).BaselineFiringRate))});
+    title({fileName;desigNames{i};strcat('AverageFiringRate:',num2str(s.(desigNames{i}).BaselineFiringRate))});
     set(0, 'DefaulttextInterpreter', 'none')
     %plots ISI
     subplot(4,6,2)
@@ -30,9 +30,9 @@ for i=1:numUnits
     %plots histogram
     subplot(4,3,2)
     %plots histogram from first tuning.
-    plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistograms,'k','LineWidth',2)
+    plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistograms,'k','LineWidth',1)
     hold on
-    plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistograms,'b','LineWidth',2)
+    plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistograms,'b','LineWidth',1)
     %draws in tone!
     plot([0 0],[ylim],'r');
     plot([s.SoundData.(soundNames{1}).ToneDur ...
