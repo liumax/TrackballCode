@@ -134,7 +134,7 @@ timesTuningSecond2 = [DIO1True(signalHolder(2,6)),DIO1True(signalHolder(1,7))];
 
 timesTuningFirst3 = [DIO1True(signalHolder(2,7)),DIO1True(signalHolder(1,8))];
 timesPairing3 = [DIO1True(signalHolder(2,8)),DIO1True(signalHolder(1,9))];
-timesTuningSecond3 = [DIO1True(signalHolder(2,9)),DIO1True(signalHolder(end))];
+timesTuningSecond3 = [DIO1True(signalHolder(2,9)),DIO1True(end)];
 
 %also using the same outputs from signalHolder, this determines which TTL
 %pulses belong to which output. 
@@ -143,11 +143,11 @@ TTLsPairing1 = DIO1True(signalHolder(2,2)+1:signalHolder(1,3)-1);
 TTLsTuningSecond1 = DIO1True(signalHolder(2,3)+1:signalHolder(1,4)-1);
 
 TTLsTuningFirst2 = DIO1True(signalHolder(2,4)+1:signalHolder(1,5)-1);
-TTLsPairing2 = DIO1True(signalHolder(2,5)+1:signalHolder(1,3)-6);
+TTLsPairing2 = DIO1True(signalHolder(2,5)+1:signalHolder(1,6)-1);
 TTLsTuningSecond2 = DIO1True(signalHolder(2,6)+1:signalHolder(1,7)-1);
 
 TTLsTuningFirst3 = DIO1True(signalHolder(2,7)+1:signalHolder(1,8)-1);
-TTLsPairing3 = DIO1True(signalHolder(2,8)+1:signalHolder(1,3)-9);
+TTLsPairing3 = DIO1True(signalHolder(2,8)+1:signalHolder(1,9)-1);
 TTLsTuningSecond3 = DIO1True(signalHolder(2,9)+1:end);
 %stores these values into the master structure. Converts to seconds.
 s.TTLs.(soundNames{1}) = TTLsTuningFirst1/params.trodesFS;
@@ -297,7 +297,7 @@ s.SoundData.(soundNames{6}) = soundFile.(soundNames{6});
 
 %pull pairing data.
 %extract sound data:
-s.SoundData.(soundNames{3}) = soundFile.(soundNames{9});
+s.SoundData.(soundNames{9}) = soundFile.(soundNames{9});
 %process TTLs (since these are not just unitary TTLs signaling tone onset).
 %generates new TTL file under s.SoundData.soundNames{3}Original, which
 %preserves the original information. 
