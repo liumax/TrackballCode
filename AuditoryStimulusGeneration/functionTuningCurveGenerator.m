@@ -26,36 +26,37 @@ end
 fullList = zeros(length(freqs)*length(dBs),3);
 counter = 1;
 
+%simply list every combination
 for i = 1:length(freqs)
     for j = 1:length(dBs)
-        fullList(counter:counter+toneReps-1,1) = freqs(i);
-        fullList(counter:counter+toneReps-1,2) = dBs(j);
-        fullList(counter:counter+toneReps-1,3) = amps(j);
-        counter = counter+toneReps;
+        fullList(counter,1) = freqs(i);
+        fullList(counter,2) = dBs(j);
+        fullList(counter,3) = amps(j);
+        counter = counter+1;
     end
 end
+%computes length of list
+listLength = length(fullList);
+%check this is correct
+if listLength ~= length(freqs)*length(dBs)
+    error('ListLength Incorrect')
+end
 
-% proxyList = fullList;
-
-fillIndex = zeros(toneReps*length(freqs)*length(dBs),1);
+%generate a n x 1 vector that indicates all indices for every tuning trial.
+listDesig = zeros(listLength*toneReps,1);
 counter = 1;
-for i = 1:toneReps*length(dBs)
-    fillIndex(counter:counter+length(freqs)-1) = randperm(length(freqs));
-    counter = counter + length(freqs);
+for i = 1:toneReps
+    listDesig(counter:counter + listLength - 1) = randperm(listLength);
+    counter = counter + listLength;
 end
 
-master = zeros(length(freqs)*length(dBs)*toneReps,3);
+%creates array for storing everything. Also fills index with information
+%from above.
+master = zeros(length(freqs)*length(dBs)*toneReps,4);
+master(:,1:3) = fullList(listDesig,1:3);
 
-for i = 1:length(fillIndex)
-    master(i,1) = freqs(fillIndex(i));
-    holder = find(fullList(:,1) == master(i,1));
-    listSize=size(fullList,1);
-    holderSize = size(holder,1);
-    randIndex = randi(holderSize);
-    master(i,2) = fullList(holder(randIndex),2);
-    master(i,3) = fullList(holder(randIndex),3);
-    fullList(holder(randIndex),:) = [];
-end
+
+%generates pauses with exponential function
 
 k = 2.5;
 p = (1-exp(-k))*rand(length(master),1);
