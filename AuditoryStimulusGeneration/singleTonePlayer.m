@@ -1,9 +1,12 @@
-toneFreq = 8000;
-toneDur = 2;
+toneReps = 200;
+toneFreq = 4000;
+toneDur = 0.1;
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
-paddingL = L + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
+paddingL = L + fs*1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
+% paddingL = L;
 
+pauseTime = 1 + toneDur;
 
 onRampDur = 0.005*fs; 
 offRampDur = 0.005*fs;
@@ -23,4 +26,9 @@ finalWave = toneWave.*rampProfile;
 paddedWave = zeros(paddingL,1);
 paddedWave(1:size(finalWave,1)) = finalWave;
 soundVector = [paddedWave,ttlSig];
-sound(soundVector,fs);
+
+for i = 1:toneReps
+    sound(soundVector,fs);
+    pause(pauseTime)
+    i
+end
