@@ -20,7 +20,8 @@ if optoDelay < 0 %if opto leads tone
         rampProfile = ones(L,1);
         rampProfile(1:fs*(optoDelay*-1+optoLag)) = 0;
         rampProfile(fs*(optoDelay*-1+optoLag):fs*(optoDelay*-1+optoLag)+onRampDur) = onRampProfile;
-        rampProfile(end-offRampDur:end) = offRampProfile;
+        rampProfile(fs*(optoDelay*-1+optoLag)+fs*toneDur-offRampDur:fs*(optoDelay*-1+optoLag)+fs*toneDur) = offRampProfile;
+        rampProfile(fs*(optoDelay*-1+optoLag)+fs*toneDur:end) = 0;
         %generates TTL signature. 
         ttlSig = zeros(L,1);
         %want double pulse at beginning to trigger laser.
@@ -80,7 +81,8 @@ elseif optoDelay == 0 %if opto stim is coincident with tone
         rampProfile = ones(L,1);
         rampProfile(1:fs*(optoLag)) = 0;
         rampProfile(fs*(optoLag):fs*(optoLag)+onRampDur) = onRampProfile;
-        rampProfile(end-offRampDur:end) = offRampProfile;
+        rampProfile(fs*(optoLag)+fs*toneDur-offRampDur:fs*(optoLag)+fs*toneDur) = offRampProfile;
+        rampProfile(fs*(optoLag)+fs*toneDur:end) = 0;
         %generates TTL signature. 
         ttlSig = zeros(L,1);
         %want single pulse at beginning to mark tone
@@ -88,10 +90,11 @@ elseif optoDelay == 0 %if opto stim is coincident with tone
         %double pulse to trigger laser
         ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
     elseif optoDur + optoLag < toneDur %if tone duration exceeds opto stim
-        L = round(fs*(toneDur));
+        L = round(fs*(toneDur+optoLag));
         rampProfile = ones(L,1);
-        rampProfile(1:onRampDur+1) = onRampProfile;
-        rampProfile(end-offRampDur:end) = offRampProfile;
+        rampProfile(1:fs*(optoLag)) = 0;
+        rampProfile(fs*(optoLag):fs*(optoLag)+onRampDur) = onRampProfile;
+        rampProfile(fs*(optoLag)+fs*toneDur-offRampDur:fs*(optoLag)+fs*toneDur) = offRampProfile;
         %generates TTL signature. 
         ttlSig = zeros(L,1);
         %want single pulse at beginning to mark tone
