@@ -10,45 +10,45 @@
 %because of what Schreiner was saying about the mouse needing re-exposure 
 %to trigger the changes in response properties.
 %% This is to enter the filename for the recordings that will be produced.
-[fname pname] = uiputfile('TuningAndPairing.mat');
+[fname pname] = uiputfile('OneTonePairing.mat');
 periodFinder = strfind(fname,'.');
 fileName = fname(1:periodFinder-1);
 %%
 % general parameters:
 fs = 192000; %sampling frequency in Hz
-firstWait = 1; %first waiting period in seconds. 
+firstWait = 120; %first waiting period in seconds. 
 interFunctionPause = 2; %seconds to wait after a function to finish before starting next
-postPairPause = 300; %wait after pairing.
+postPairPause = 120; %wait after pairing.
 TTLDur = 2; %duration of TTL pulses is ms to be sent via the sound card.
 maxDB = 100; %maximum DB that the system is set to. 
 rampDur = 0.005; %duration of ramp for tone, in seconds!!!
 %%
 %tuning curve parameters:
-tuningReps = 20; %number of repetitions of each tone/amplitude pair
+tuningReps = 100; %number of repetitions of each tone/amplitude pair
 toneDur = 0.1; %tone duration in seconds
 
 tuningL = toneDur*fs; %number of samples at correct sampling frequency
 tuningpaddingL = tuningL + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
 
 prePause = 0.1; %pause in seconds before tone
-postPauseMin = 600; %pause in milliseconds after tone
-postPauseMax = 1000; %pause in milliseconds after tone
+postPauseMin = 800; %pause in milliseconds after tone
+postPauseMax = 1400; %pause in milliseconds after tone
 
 startF = 4000; %starting frequency in Hz
 endF = 32000; %ending frequency in Hz
 octFrac = 1; %fractions of octaves to move
 
 startdB = 100; %starting decibel value
-enddB = 60; %lowest decibel value
+enddB = 100; %lowest decibel value
 dbSteps = 20; %resolution of decible steps
 %%
 %auditory pairing parameters:
-targetFreq = 22627; %target frequency in Hz
+targetFreq = 16000; %target frequency in Hz
 targetDB = 100; %target DBs. 100 is max.
-pairingToneReps = 50; %tone repetitions for pairing experiment
-interRep = 2; %seconds between tones
+pairingToneReps = 200; %tone repetitions for pairing experiment
+interRep = 3; %seconds between tones
 
-optoDelay = 0.5; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
+optoDelay = -1; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
 optoDur = 1; %duration of all opto pulses, in seconds. THIS IS SHITTY HARD CODED VALUE SHOULD EVENTUALLY CHANGE
 optoTTL = 0.002; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
