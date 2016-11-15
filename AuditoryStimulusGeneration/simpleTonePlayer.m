@@ -1,17 +1,16 @@
 
-toneReps = 1; %number of repetitions of each tone/amplitude pair
-toneDur = 2; %tone duration in seconds
+toneDur = 0.1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
-paddingL = L + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
-
+% paddingL = L + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
+paddingL = L; 
 prePause = 0.1; %pause in seconds before tone
 
-pauseTime = 10; %pause in seconds after tone
+pauseTime = 1; %pause in seconds after tone
 
 startF = 4000; %starting frequency in Hz
-endF = 64000; %ending frequency in Hz
-octFrac = 0.1; %fractions of octaves to move
+endF = 8; %ending frequency in Hz
+octFrac = 1; %fractions of octaves to move
 
 %this generates a vector with the frequencies that will be used
 octRange = log2(endF/startF);
@@ -50,5 +49,5 @@ for i = 1:length(freqs)
     paddedWave(1:size(finalWave,1)) = finalWave;
     soundVector = [paddedWave,ttlSig];
     sound(soundVector,fs);
-    pause(pauseTime)
+    pause(pauseTime + toneDur)
 end
