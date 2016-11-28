@@ -22,7 +22,8 @@ params = struct;
 params.rpvTime = 0.0013; %limit to be considered an RPV.
 params.clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
 params.trodesFS = 30000; %sampling rate of trodes box.
-params.rasterWindow = [-10,5]; %duration of raster window. These are numbers that will
+params.rasterWindow = [-2,3]; %duration of raster window. These are numbers that will
+params.pairingWindow = [-10,20]; %window for looking at pairing.
 %be multiplied by the tone duration. EX: raster window for 0.1sec tone will
 %be -100 to 300 ms.
 params.histBin = 0.005; %bin size in seconds
@@ -37,6 +38,7 @@ params.zLimit = 3;
 params.firstSpikeWindow = [0 1];
 params.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
 
+disp('Parameters Set')
 %% Establishes the folder and subfolders for analysis. Adds all folders to
 %path for easy access to files.
 homeFolder = pwd;
@@ -53,6 +55,7 @@ s = struct;
 %then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(params.rpvTime,...
     matclustFiles,s,params.clusterWindow);
+disp('Structured Array Generated, Names Extracted')
 
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);
@@ -72,6 +75,7 @@ spikeNames = soundNames;
 for i = 1:size(soundNames,1)
     spikeNames{i} = strcat('spikes',spikeNames{i});
 end
+disp('Sound Data Imported')
 
 %% This code extracts DIO timepoints and states, and uses that information to
 %%extrapolate which timepoints represent upward changes in the DIO. These
@@ -100,6 +104,8 @@ DIO1True = intersect(DIO1Diff,DIO1High);
 DIO1True = DIO1Data(DIO1True,1);
 %finds differences between time points
 DIO1TrueDiff = diff(DIO1True);
+
+disp('DIO Signals Processed')
 
 %% pull variables from soundfile regarding signal TTLs to calculate acceptable range of signals for signal TTLs
 signalPulseNum = soundFile.DividerTTLNumber;
@@ -209,11 +215,11 @@ end
 %% First thing I want to do is divvy up spikes to different time periods
 [s] = functionPairingUDUSpikeSeparator(s,...
    desigNames,spikeNames,soundNames);
-
+disp('Spikes Separated')
 %% calculates average firing rate for the initial period and overall firing rates across all periods
 [s] = functionNewPairingAverageRate(s,desigNames,...
     spikeNames,soundNames);
-
+disp('Average Speeds Calculated')
 %% SET 1 
 
 %Analyze first tuning curve. 
@@ -310,6 +316,9 @@ s.SoundData.(soundNames{9}) = soundFile.(soundNames{9});
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
 [s] = functionPairingUDUMasterPlot(numUnits,s,...
     desigNames,params,fileName,soundNames);
+
+%save params!
+s.Parameters = params;
 
 pname = pwd;
 fname = strcat(fileName,'PairingAnalysis');
