@@ -24,6 +24,6 @@ for alignCounter = 1:size(alignTimes,1)
         rasterCounter = rasterCounter + holderSize(1); %updates counter
     end
 end
-rasters(rasters(:,1) == 0,:) = [];
+rasters(rasters(:,2) == 0,:) = [];
 
 end
