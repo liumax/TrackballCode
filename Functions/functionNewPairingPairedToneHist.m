@@ -20,7 +20,7 @@ function [s] = functionNewPairingPairedToneHist(s,desigNames,...
 fieldName = strcat(soundName,'Analysis');
 
 %pulls out things into variables to make them easier to call.
-rasterWindow = params.rasterWindow;
+rasterWindow = params.pairingWindow;
 histBin = params.histBin;
 baselineBin = params.baselineBin;
 smoothingBins = params.smoothingBins;
