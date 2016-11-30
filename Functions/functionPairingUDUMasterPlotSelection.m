@@ -240,7 +240,7 @@ for i=1:numUnits
     elseif strfind(str,'n')
         s.decisionTuning(i) = 0;
     elseif strfind(str,'l')
-        s.decisionTuning(i) = =1;
+        s.decisionTuning(i) = -1;
     end
 
     
