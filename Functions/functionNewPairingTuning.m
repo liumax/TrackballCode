@@ -56,12 +56,16 @@ numUnits = size(s.DesignationName,2);
 for i = 1:numUnits
     %prep individual sets of spikes:
     spikeTimes = s.(desigNames{i}).(spikeName);
+    %rasterize spike data!
     [rasters] = functionBasicRaster(spikeTimes,alignTimes,rasterWindow);
     rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
     fullRasterData = rasters;
     %pulls all spikes from a specific trial in the baseline period, holds
     %the number of these spikes for calculation of average rate and std.
+    %Also perform histogram on each trial.
+    indivHist = zeros(length(histBinVector),length(master));
     for k = 1:length(master)
+        indivHist(:,k) = hist(rasters(rasters(:,2) == k,1),histBinVector)/histBin;
         averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > baselineBin(1) & rasters(:,1) < baselineBin(2)),1);
     end
     
@@ -90,6 +94,9 @@ for i = 1:numUnits
     
     %allocates empty array.
     sigResp = cell(numFreqs,numDBs);
+    organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
+    organizedRasters = cell(numFreqs,numDBs);
+    histErr = zeros(numFreqs,numDBs,length(histBinVector));
     
     for k = 1:numFreqs
         for l = 1:numDBs
@@ -99,6 +106,9 @@ for i = 1:numUnits
             organizedRasters{k,l} = targetRasters; %saves to organized rasters
             [histCounts,histCenters] = hist(targetRasters(:,1),histBinVector); %calculates histogram with defined bin size
             organizedHist(k,l,:) = histCounts/toneReps/histBin; %saves histogram
+            %Calculate standard error based on individual histograms
+            specHist = indivHist(:,targetTrials);
+            histErr(k,l,:) = std(specHist,0,2)/sqrt(length(targetTrials));
             [firstSpikeTimes,firstSpikeStats,binSpikeTimes,binSpikeStats] = ...
                 functionBasicFirstSpikeTiming(firstSpikeWindow,targetRasters,toneReps,2,targetTrials); %calculates information about first spike timing
             firstSpikeTimeHolder{k,l} = firstSpikeTimes; %saves first spike times
@@ -122,8 +132,10 @@ for i = 1:numUnits
     end
     s.(desigNames{i}).(fieldName).AllRasters = fullRasterData;
     s.(desigNames{i}).(fieldName).AllHistograms = fullHistData;
+    s.(desigNames{i}).(fieldName).IndivHistograms = indivHist;
     s.(desigNames{i}).(fieldName).FreqDBRasters = organizedRasters;
     s.(desigNames{i}).(fieldName).FreqDBHistograms = organizedHist;
+    s.(desigNames{i}).(fieldName).FreqDBHistogramErrors = histErr;
     s.(desigNames{i}).(fieldName).FirstSpikeTimes = firstSpikeTimeHolder;
     s.(desigNames{i}).(fieldName).FirstSpikeStats = firstSpikeStatsHolder;
     s.(desigNames{i}).(fieldName).BinSpikes = binSpikeHolder;
@@ -135,6 +147,7 @@ for i = 1:numUnits
     s.(desigNames{i}).(fieldName).ResponseStatsGraph = sigRespGraph;
     s.(desigNames{i}).(fieldName).FullResponseStats = fullResp;
     s.(desigNames{i}).(fieldName).FullResponseGraphs = fullRespGraph;
+    s.(desigNames{i}).(fieldName).HistBinVector = histBinVector;
 end
 
 
