@@ -22,7 +22,7 @@ params = struct;
 params.rpvTime = 0.0013; %limit to be considered an RPV.
 params.clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
 params.trodesFS = 30000; %sampling rate of trodes box.
-params.rasterWindow = [-1,3]; %duration of raster window. These are numbers that will
+params.rasterWindow = [-2,3]; %duration of raster window. These are numbers that will
 %be multiplied by the tone duration. EX: raster window for 0.1sec tone will
 %be -100 to 300 ms.
 params.pairingWindow = [-10,20];
@@ -30,13 +30,15 @@ params.histBin = 0.005; %bin size in seconds
 params.clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
 
 %variables for tuning analysis
-params.baselineBin = [-1,0]; %defines duration of baseline period based on toneDur. 
-params.smoothingBins  = [0.01 0.001];
-params.defaultBins = 0.001;
-params.calcWindow = [0 2];
-params.zLimit = 3;
-params.firstSpikeWindow = [0 1];
+params.baselineBin = [-2,0]; %defines duration of baseline period based on toneDur. 
+params.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
+params.zLimit = [0.05 0.01 0.001];
+params.numShuffle = 1000;
+params.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
 params.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
+params.minSpikes = 10; %minimum number of spikes to do spike shuffling
+params.minSigSpikes = 2; %minimum number of significant points to record a significant response.
+params.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
 
 disp('Parameters Set')
 
@@ -52,6 +54,7 @@ subFoldersCell = strsplit(subFolders,';')';
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
 %generate placeholder structure
 s = struct;
+
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(params.rpvTime,...
@@ -63,6 +66,9 @@ numUnits = size(s.DesignationName,2);
 desigNames = s.DesignationName;
 desigArray = s.DesignationArray;
 
+
+%put in parameters!
+s.Parameters = params;
 
 %% Import Sound Data
 soundName = strcat(fileName,'.mat');
@@ -193,7 +199,7 @@ disp('Average Rates Calculated')
     spikeNames{2},soundNames{2},params); 
 
 %% next pull data from pairing session:
-%% EDITS TO HERE!!!
+
 %extract sound data:
 s.SoundData.(soundNames{3}) = soundFile.(soundNames{3});
 %process TTLs (since these are not just unitary TTLs signaling tone onset).
@@ -205,11 +211,11 @@ s.SoundData.(soundNames{3}) = soundFile.(soundNames{3});
 [s] = functionNewPairingPairedToneHist(s,desigNames,...
     spikeNames{3},soundNames{3},params); 
 
-%NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
+%% NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
 [s] = functionNewPairingMasterPlot(numUnits,s,...
     desigNames,params,fileName,soundNames);
 
-s.Parameters = params;
+
 
 pname = pwd;
 fname = strcat(fileName,'PairingAnalysis');

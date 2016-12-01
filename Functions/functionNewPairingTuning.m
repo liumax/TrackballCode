@@ -23,10 +23,7 @@ fieldName = strcat(soundName,'Analysis');
 rasterWindow = params.rasterWindow;
 histBin = params.histBin;
 baselineBin = params.baselineBin;
-smoothingBins = params.smoothingBins;
-defaultBins = params.defaultBins;
 calcWindow = params.calcWindow;
-zLimit = params.zLimit;
 firstSpikeWindow = params.firstSpikeWindow;
 
 soundData = s.SoundData.(soundName);
@@ -51,6 +48,9 @@ histBinNum = (rasterWindow(2)-rasterWindow(1))/histBin;
 histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2];
 
 numUnits = size(s.DesignationName,2);
+
+s.BaselineSpikes.(spikeName) = zeros(numUnits,1);
+s.SignificantSpikes.(spikeName) = zeros(numUnits,1);
 
 %for loop to go through each individual unit
 for i = 1:numUnits
@@ -77,23 +77,17 @@ for i = 1:numUnits
     
     %calculate significant response for combined histogram of all responses
     %to all sounds.
-    inputRaster = rasters(rasters(:,1) > calcWindow(1) & rasters(:,1) < calcWindow(2),1);
-    [respStore] = ...
-    functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
-    averageRate,averageSTD,inputRaster,zLimit,length(master));
-    fullResp = respStore;
-    %if there is a significant response, stores important values: start,
-    %duration, and peak size.
-    if ~isempty(respStore{1})
-        fullRespGraph(1) = respStore{1}(1,1);
-        fullRespGraph(2) = respStore{1}(1,2)-respStore{1}(1,1);
-        fullRespGraph(3) = respStore{1}(1,5);
-    else
-        fullRespGraph = zeros(3,1);
-    end
+    inputRaster = rasters(:,1);
+    baselineSpikes = sort(inputRaster(inputRaster<0));
+    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,baselineSpikes,inputRaster,length(master),rasterWindow);
     
+    disp(strcat('Baseline Spikes:',num2str(generalResponseHist.SpikeNumber),' Unit:',(desigNames{i})))
+    s.BaselineSpikes.(spikeName)(i) = generalResponseHist.SpikeNumber;
+    if generalResponseHist.Warning == 0 & generalResponseHist.SigSpike == 1
+        s.SignificantSpikes.(spikeName)(i) = 1;
+    end
     %allocates empty array.
-    sigResp = cell(numFreqs,numDBs);
+    responseHistHolder = cell(numFreqs,numDBs);
     organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
     organizedRasters = cell(numFreqs,numDBs);
     histErr = zeros(numFreqs,numDBs,length(histBinVector));
@@ -115,18 +109,11 @@ for i = 1:numUnits
             firstSpikeStatsHolder(k,l,:,:) = firstSpikeStats; %saves statistics about first spikes
             binSpikeHolder{k,l} = binSpikeTimes; %binned spikes from the defined window.
             binSpikeStatsHolder(k,l,:,:) = binSpikeStats; %stats about those spikes
-            inputRaster = targetRasters(targetRasters(:,1) > calcWindow(1) & targetRasters(:,1) < calcWindow(2),1);
-            [respStore] = ...
-            functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
-            averageRate,averageSTD,inputRaster,zLimit,toneReps); %calculates significance of responses to specific frequencies and dBs
-            sigResp{k,l} = respStore;
-            if ~isempty(respStore{1}) %if there is significant response, stores this for later display.
-                sigRespGraph(k,l,1) = respStore{1}(1,1);
-                sigRespGraph(k,l,2) = respStore{1}(1,2)-respStore{1}(1,1);
-                sigRespGraph(k,l,3) = respStore{1}(1,5);
-            else
-                sigRespGraph(k,1,:) = 0;
-            end
+            inputRaster = targetRasters(:,1);
+            [responseHist] = functionBasicResponseSignificance(s,calcWindow,...
+            baselineSpikes,inputRaster,length(master),rasterWindow);
+            responseHistHolder{k,l} = responseHist;
+            responseHist = [];
         end
         freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
     end
@@ -143,10 +130,8 @@ for i = 1:numUnits
     s.(desigNames{i}).(fieldName).FrequencyHistograms = freqSpecHist;
     s.(desigNames{i}).(fieldName).AverageRate = averageRate;
     s.(desigNames{i}).(fieldName).AverageSTD = averageSTD;
-    s.(desigNames{i}).(fieldName).ResponseStats = sigResp;
-    s.(desigNames{i}).(fieldName).ResponseStatsGraph = sigRespGraph;
-    s.(desigNames{i}).(fieldName).FullResponseStats = fullResp;
-    s.(desigNames{i}).(fieldName).FullResponseGraphs = fullRespGraph;
+    s.(desigNames{i}).(fieldName).AllHistogramSig = generalResponseHist;
+    s.(desigNames{i}).(fieldName).SpecHistogramSig = responseHistHolder;
     s.(desigNames{i}).(fieldName).HistBinVector = histBinVector;
 end
 

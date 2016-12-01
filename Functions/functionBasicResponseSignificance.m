@@ -1,113 +1,140 @@
 
 %This is a function to calculate statistically significant responses
-%following a tone. 
+%following a tone. This utilizes spike shuffling of the baseline period,
+%which generates a series of histogram values. These histogram values
+%provide a distribution against which any future bins can be compared. 
+
 %Inputs:
-%smoothingBins: an nx1 vector, with the size of intended bins for analysis
-%defaultBins: single scalar, should be 0.001 seconds
-%calcWindow: window over which you look for responses to the tone. Should
-%be two element vector
-%averageSpikes: mean firing rate based on baseline period
-%averageSTD: standard deviation of firing rate
-%inputRaster: selected raster. Should be nx1, with only timestamps
-%zLimit: limit above which things are considered significant. should be
-%scalar = 3
-%trialNum = number of trials in the selected inputRaster
+%s: main structured array %baselineWindow: window that is being used, in time (seconds).
+%calcWindow: window in real time (seconds), that you want to read out
+%inputRaster: raster input, should be a vector of spike times
+%trialNum: number of trials being processed. This helps to normalize things
+%properly.
+ 
 
 %Outputs
-%respStore: output with response information. 
+%sigResp: output with response information. 
+
+%sigResp.Histogram: n x m, where n is number of bins, m is 1 +
+%length(zLimit). First column is actual histogram data. Columns 2 to m are
+%zeros for non significant values, 1s for significant values. Different
+%columns represent different levels of significance
+
+%sigResp.Centers: n x 1 vector, should indicate the time periods for the
+%bins above
+
+%sigResp.Warning: if there are insufficient spikes in the baseline period,
+%this warning will be triggered (producing a 1). 
+
+% sigResp.SpikeNumber: this will be the number of spikes detected in the
+% baseline period. 
 
 
+function [sigResp] = functionBasicResponseSignificance(s,calcWindow,baselineSpikes,inputRaster,trialNum,rasterWindow);
 
-function [respStore] = ...
-    functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
-    averageRate,averageSTD,inputRaster,zLimit,trialNum);
+if length(baselineSpikes) > s.Parameters.minSpikes
+    %% First step is to calculate a bootstrapped baseline distribution
+    %Calculate spike ISIs
+    negDiff = diff(baselineSpikes);
+    %pull number of times to shuffle spikes
+    numShuffle = s.Parameters.numShuffle;
+    %pull number of spikes
+    numSpikes = length(baselineSpikes);
+%     baselineWindow = s.Parameters.BaselineWindow;
 
-%calculates histogram centers based on calc window (2 element vector) and
-%defaultBins (which should be 0.001)
-defaultBinCenters = [calcWindow(1)+defaultBins/2:defaultBins:calcWindow(2)-defaultBins/2];
-%calculates histogram based on inputRasters and defaultBinCenters
-rawHist = hist(inputRaster,defaultBinCenters);
-%normalizes based on bin size and number of repetitions
-zHist = (rawHist/defaultBins/trialNum - averageRate) / averageSTD;
-singleStandard = ((1/defaultBins/trialNum) - averageRate) / averageSTD; %calculates the zscore of a single spike
-if singleStandard > zLimit
-    zLimit = zeros(length(smoothingBins),1);
-    exampleSmooth = zeros(50,1);
-    exampleSmooth(25) = 1;
-    for zCount = 1:length(smoothingBins)
-        zLimit(zCount) = max(smooth(exampleSmooth,smoothingBins(zCount)/defaultBins,'lowess'))*singleStandard*1.2;
+    %allocate array for storage of data
+    simDataHolder = zeros(numShuffle,numSpikes);
+    simDataHolder(:,1) = baselineSpikes(1); %seed with first spike time
+
+    for respInd = 1:numShuffle
+        %generate random permutation of ISIs
+        randInd = randperm(numSpikes-1);
+        %add these to the data!
+        simDataHolder(respInd,2:end) = negDiff(randInd);
     end
-else
-    oneHolder = ones(length(smoothingBins),1);
-    zLimit = zLimit*oneHolder;
-end
-smoothedHistHolder = zeros(length(defaultBinCenters),length(smoothingBins));
+    %sum to generate appropriate values (adding ISIs to times)
+    simDataHolder = cumsum(simDataHolder,2);
+
+    %process so that produce histogram with appropriate bin size
+    histBin = s.Parameters.histBin;
+    baseHistVector = [rasterWindow(1)+histBin/2:histBin:0];
+    simHist = hist(simDataHolder',baseHistVector);
+
+    %reshape and normalize data so that reporting firing rate in Hz. 
+    baselineSim = reshape(simHist,[],1)/histBin/trialNum;
 
 
-respStore = cell(length(smoothingBins),1);
+    %% Based on bootstrapped distribution, generate positive percentile values
+    %generate a percentile range from the bootstrapped data. 
+    percentileRange = 100.-(s.Parameters.zLimit*100);
 
-for respCounter = 1:size(smoothingBins,2)
-    %first smooth. if statement is for unsmoothed curve
-    smoothSpan = smoothingBins(respCounter) / defaultBins;
-    if smoothSpan == 1;
-        smoothedHist = zHist';
+    %find the values from the distribution that are associated with the given
+    %percentiles
+    valueRange = zeros(length(percentileRange),1);
+
+    for respInd = 1:length(percentileRange)
+        valueRange(respInd) = prctile(baselineSim,percentileRange(respInd));
+    end
+
+    %% Now we use the bootstrapped distribution and percentiles to calculate positive significant responses
+    %eliminate data points outside of desired calculation window
+    targetData = inputRaster(inputRaster>calcWindow(1) & inputRaster<calcWindow(2));
+    %generate vector for bin centers for histogram
+    targetHistVector = [calcWindow(1) + histBin/2: histBin:calcWindow(2)];
+    %calculate histogram
+    targetHist = hist(targetData,targetHistVector);
+    targetHist = reshape(targetHist,[],1)/histBin/trialNum;
+    %allocate space for information about significance
+    targetHist(:,2:length(percentileRange)+1) = zeros;
+    %find all values above specific thresholds
+    for respInd = 1:length(percentileRange)
+        sigFinder = find(targetHist(:,1)> valueRange(respInd));
+        targetHist(sigFinder,respInd+1) = 1;
+    end
+    
+    %% Now look for negative responses
+    negRange = s.Parameters.zLimit*100;
+    negValues = zeros(length(negRange),1);
+    for respInd = 1:length(percentileRange)
+        negValues(respInd) = prctile(baselineSim,negRange(respInd));
+    end
+    %allocate space
+    targetHist(:,end+1:end+length(percentileRange)) = zeros;
+    %find all values below specific thresholds
+    for respInd = 1:length(percentileRange)
+        sigFinder = find(targetHist(:,1)< negValues(respInd));
+        targetHist(sigFinder,length(percentileRange)+respInd+1) = 1;
+    end
+    
+    if length(find(targetHist(:,2:end)>0))>s.Parameters.minSigSpikes;
+        sigSpike = 1;
     else
-        smoothedHist = smooth(zHist,smoothSpan,'lowess');
+        sigSpike = 0;
     end
-    smoothedHistHolder(:,respCounter) = smoothedHist;
-    %next, find if any threshold crossings
-    if ~isempty(find(smoothedHist > zLimit(respCounter),1))
-        %pull all values above zLimit
-        zSignalIndex = find(smoothedHist > zLimit(respCounter));
-        zSigDiff = diff(zSignalIndex);
-        pointEnd = [zSignalIndex(zSigDiff>1);zSignalIndex(end)];
-        pointStart = [zSignalIndex(1);zSignalIndex(find(zSigDiff>1)+1)];
-        pointsCheck = length(pointEnd) - length(pointStart);
-        if pointsCheck ~= 0
-            pointsCheck
-            error('Incorrect number of starts and stops for response significance')
-        end
-        pointDiff = pointEnd - pointStart;
-        pointEnd(pointDiff <= 1) = [];
-        pointStart(pointDiff <= 1) = [];
-        respNum = length(pointEnd);
-        
-        respStore{respCounter} = zeros(respNum,7);
-        for storeCounter = 1:respNum
-            respStore{respCounter}(storeCounter,1) = pointStart(storeCounter);
-            respStore{respCounter}(storeCounter,2) = pointEnd(storeCounter);
-            [M I] = max(smoothedHist(pointStart(storeCounter):pointEnd(storeCounter)));
-            respStore{respCounter}(storeCounter,3) = M;
-            respStore{respCounter}(storeCounter,4) = I + pointStart(storeCounter);
-            [M I] = max(rawHist(pointStart(storeCounter):pointEnd(storeCounter)));
-            respStore{respCounter}(storeCounter,5) = M;
-            respStore{respCounter}(storeCounter,6) = I + pointStart(storeCounter);
-            respStore{respCounter}(storeCounter,7) = zLimit(respCounter);
-        end
-%         bigDiffFinder = [0;find(zSigDiff > 1);length(zSignalIndex)];
-% %         bigDiffCheck = find(diff(bigDiffFinder)==1)+1;
-% %         bigDiffFinder((bigDiffCheck == 1)+1) = [];
-%         respNum = length(bigDiffFinder)-1;
-% %PROBELM: DOES NOT DETECT OFFSETS FROM THRESHOLD CROSSINGS< SO THIS WILL
-% %MISREPRESENT DURATION OF RESPONSES. ALSO DOES NOT ELIMINATE SINGLE POINT
-% %RESPONSES< WHICH SHOULD BE GOTTEN RID OF
-%         respStore{respCounter} = zeros(respNum,7);
-%         %stores information about responses. 1 and 2 are onset and offset
-%         %of responses, 3 is peak of response in z score, 4 is location of
-%         %said peak, 5 and 6 are the same, but for the raw histogram,
-%         for storeCounter = 1:respNum
-%             respStore{respCounter}(storeCounter,1) = zSignalIndex(bigDiffFinder(storeCounter)+1);
-%             respStore{respCounter}(storeCounter,2) = zSignalIndex(bigDiffFinder(storeCounter+1));
-%             [M I] = max(smoothedHist(zSignalIndex(bigDiffFinder(storeCounter)+1):zSignalIndex(bigDiffFinder(storeCounter+1))));
-%             respStore{respCounter}(storeCounter,3) = M;
-%             respStore{respCounter}(storeCounter,4) = I + zSignalIndex(bigDiffFinder(storeCounter)+1);
-%             [M I] = max(rawHist(zSignalIndex(bigDiffFinder(storeCounter)+1):zSignalIndex(bigDiffFinder(storeCounter+1))));
-%             respStore{respCounter}(storeCounter,5) = M;
-%             respStore{respCounter}(storeCounter,6) = I + zSignalIndex(bigDiffFinder(storeCounter)+1);
-%             respStore{respCounter}(storeCounter,7) = zLimit(respCounter);
-%         end
-    end
+    
+    %% save data!
+    sigResp.Histogram = targetHist;
+    sigResp.Centers = targetHistVector;
+    sigResp.Warning = 0; %warning indicates baseline was too low for shuffling.
+    sigResp.SpikeNumber = length(baselineSpikes);
+    sigResp.SigSpike = sigSpike;
+else
+    %% If too few spikes, generate histogram with no significant values.
+    histBin = s.Parameters.histBin;
+    %eliminate data points outside of desired calculation window
+    targetData = inputRaster(inputRaster>calcWindow(1) & inputRaster<calcWindow(2));
+    %generate vector for bin centers for histogram
+    targetHistVector = [calcWindow(1) + histBin/2:histBin:calcWindow(2)];
+    %calculate histogram
+    targetHist = hist(targetData,targetHistVector);
+    %allocate space for information about significance
+    targetHist(:,2:length(s.Parameters.zLimit)+1) = zeros;
+    
+    %save data!
+    sigResp.Histogram = targetHist;
+    sigResp.Centers = targetHistVector;
+    sigResp.Warning = 1; %warning indicates baseline was too low for shuffling.
+    sigResp.SpikeNumber = length(baselineSpikes);
+%     disp('Insufficient Spikes for Shuffling. Not performing analysis')
 end
-
-
 end

@@ -23,10 +23,7 @@ fieldName = strcat(soundName,'Analysis');
 rasterWindow = params.pairingWindow;
 histBin = params.histBin;
 baselineBin = params.baselineBin;
-smoothingBins = params.smoothingBins;
-defaultBins = params.defaultBins;
 calcWindow = params.calcWindow;
-zLimit = params.zLimit;
 firstSpikeWindow = params.firstSpikeWindow;
 
 soundData = s.SoundData.(soundName);
@@ -68,27 +65,15 @@ for i = 1:numUnits
     
     %calculate significant response for combined histogram of all responses
     %to all sounds.
-    inputRaster = rasters(rasters(:,1) > calcWindow(1) & rasters(:,1) < calcWindow(2),1);
-    [respStore] = ...
-    functionBasicResponseSignificance(smoothingBins,defaultBins,calcWindow,...
-    averageRate,averageSTD,inputRaster,zLimit,length(alignTimes));
-    fullResp = respStore;
-    %if there is a significant response, stores important values: start,
-    %duration, and peak size.
-    if ~isempty(respStore{1})
-        fullRespGraph(1) = respStore{1}(1,1);
-        fullRespGraph(2) = respStore{1}(1,2)-respStore{1}(1,1);
-        fullRespGraph(3) = respStore{1}(1,5);
-    else
-        fullRespGraph = zeros(3,1);
-    end
+    inputRaster = rasters(:,1);
+    baselineSpikes = sort(inputRaster(inputRaster<0));
+    [generaResponseHist] = functionBasicResponseSignificance(s,calcWindow,baselineSpikes,inputRaster,length(alignTimes),rasterWindow);
 
     s.(desigNames{i}).(fieldName).AllRasters = fullRasterData;
     s.(desigNames{i}).(fieldName).AllHistograms = fullHistData;
     s.(desigNames{i}).(fieldName).AverageRate = averageRate;
     s.(desigNames{i}).(fieldName).AverageSTD = averageSTD;
-    s.(desigNames{i}).(fieldName).FullResponseStats = fullResp;
-    s.(desigNames{i}).(fieldName).FullResponseGraphs = fullRespGraph;
+    s.(desigNames{i}).(fieldName).AllHistogramSig = generaResponseHist;
     s.(desigNames{i}).(fieldName).FirstSpikeTimes = firstSpikeTimes;
     s.(desigNames{i}).(fieldName).FirstSpikeStats = firstSpikeStats;
     s.(desigNames{i}).(fieldName).BinSpikeTimes = binSpikeTimes;
