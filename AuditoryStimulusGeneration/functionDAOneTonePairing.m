@@ -102,11 +102,21 @@ elseif optoDelay == 0 %if opto stim is coincident with tone
         %double pulse to trigger laser
         ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
     end
+elseif ~isnumeric(optoDelay)
+    trialLength = max(optoDur,toneDur); %pick the bigger value.
+    L = round(fs*(trialLength));
+    %GENERATES RAMP AT CORRECT TIME
+    rampProfile = ones(L,1);
+    rampProfile(1:onRampDur+1) = onRampProfile;
+    rampProfile(fs*toneDur-offRampDur:fs*toneDur) = offRampProfile;
+    rampProfile(fs*toneDur:end) = 0;
+    %generate TTL signature
+    ttlSig = zeros(L,1);
+    ttlSig(1:fs*optoTTL) = 1;
+    %only make one, since there is NO laser.
 end
 
 paddingL = round(L + fs*0.4);
-
-interRep = paddingL/fs+interRep;
 
 %actual code for running behavior!
 toneWave = sin(2*pi*(targetFreq/fs)*(1:L))';
