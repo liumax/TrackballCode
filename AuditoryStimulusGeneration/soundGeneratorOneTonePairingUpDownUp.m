@@ -47,9 +47,9 @@ dbSteps = 20; %resolution of decible steps
 targetFreq = 8000; %target frequency in Hz
 targetDB = 100; %target DBs. 100 is max.
 pairingToneReps = 200; %tone repetitions for pairing experiment
-interRep = 3; %seconds between tones
+interRep = 5; %seconds between tones
 
-optoDelay1 = 0.5; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
+optoDelay1 = 0; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
 optoDelay2 = -1; %opto delay for the down period.
 optoDur = 1; %duration of all opto pulses, in seconds. THIS IS SHITTY HARD CODED VALUE SHOULD EVENTUALLY CHANGE
 optoTTL = 0.002; %duration of opto TTL pulse send through audio card.
