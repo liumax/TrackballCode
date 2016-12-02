@@ -129,10 +129,11 @@ if length(baselineSpikes) > s.Parameters.minSpikes
     %% save data!
     sigResp.Histogram = targetHist;
     sigResp.Centers = targetHistVector;
-    sigResp.Warning = 0; %warning indicates baseline was too low for shuffling.
+    sigResp.Shuffling = 0; %warning about shuffling
+    sigResp.Warning = 0; %warning indicates baseline was too low for anything.
     sigResp.SpikeNumber = length(baselineSpikes);
     sigResp.SigSpike = sigSpike;
-else
+elseif length(baselineSpikes) <= s.Parameters.minSpikes & length(spikeTimes) > s.Parameters.minSpikes
     %% If too few spikes, generate baseline firing based on entire spike train
     allISI = diff(spikeTimes);
     totalTime = spikeTimes(end) - spikeTimes(1);
@@ -199,8 +200,25 @@ else
     %% save data!
     sigResp.Histogram = targetHist;
     sigResp.Centers = targetHistVector;
-    sigResp.Warning = 1; %warning indicates baseline was too low for shuffling.
+    sigResp.Shuffling = 1; %warning about shuffling
+    sigResp.Warning = 0; %warning indicates baseline was too low for anything.
     sigResp.SpikeNumber = length(spikeTimes);
     sigResp.SigSpike = sigSpike;
+    
+else
+    %this is the case where there are either no baseline spikes, or the
+    %number of total spikes is extremely low. Here. We will make an empty
+    %histogram, a nd trigger the warning
+    targetHistVector = [calcWindow(1) + histBin/2: histBin:calcWindow(2)];
+    targetHist = zeros(length(targetHistVector),1+length(s.Parameters.zLimit)*2);
+    sigSpike = 0;
+    
+    sigResp.Histogram = targetHist;
+    sigResp.Centers = targetHistVector;
+    sigResp.Shuffling = 0; %warning about shuffling
+    sigResp.Warning = 1; %warning indicates baseline was too low for anything.
+    sigResp.SpikeNumber = length(spikeTimes);
+    sigResp.SigSpike = sigSpike;
+    
 end
 end
