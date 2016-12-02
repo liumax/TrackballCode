@@ -254,16 +254,16 @@ for i=1:numUnits
     hold on
     plot([0 0],[ylim],'b');
     plot([s.SoundData.(soundNames{1}).ToneDur s.SoundData.(soundNames{1}).ToneDur],[ylim],'b');
-    rasterFreqLines = zeros(size(s.SoundData.(soundNames{1}).UniqueFreqs,1),2);
-    rasterFreqLines(:,1) = s.SoundData.(soundNames{1}).ToneReps*...
+    rasterFreqLines1 = zeros(size(s.SoundData.(soundNames{1}).UniqueFreqs,1),2);
+    rasterFreqLines1(:,1) = s.SoundData.(soundNames{1}).ToneReps*...
         size(s.SoundData.(soundNames{1}).UniqueDBs,1):s.SoundData.(soundNames{1}).ToneReps*...
         size(s.SoundData.(soundNames{1}).UniqueDBs,1):length(s.SoundData.(soundNames{1}).Frequencies);
-    rasterFreqLines(:,2) = s.SoundData.(soundNames{1}).UniqueFreqs;
+    rasterFreqLines1(:,2) = s.SoundData.(soundNames{1}).UniqueFreqs;
     for k = 1:size(s.SoundData.(soundNames{1}).UniqueFreqs,1)
-        plot(params.rasterWindow*s.SoundData.(soundNames{1}).ToneDur,[rasterFreqLines(k,1) rasterFreqLines(k,1)],'g','LineWidth',1)
+        plot(params.rasterWindow*s.SoundData.(soundNames{1}).ToneDur,[rasterFreqLines1(k,1) rasterFreqLines1(k,1)],'g','LineWidth',1)
     end
-    set(gca,'YTick',rasterFreqLines(:,1));
-    set(gca,'YTickLabel',rasterFreqLines(:,2));
+    set(gca,'YTick',rasterFreqLines1(:,1));
+    set(gca,'YTickLabel',rasterFreqLines1(:,2));
     set(gca,'Ydir','reverse')
     ylim([0 length(s.SoundData.(soundNames{1}).Frequencies)])
     xlim([params.rasterWindow(1)*s.SoundData.(soundNames{1}).ToneDur params.rasterWindow(2)*s.SoundData.(soundNames{1}).ToneDur])
@@ -275,11 +275,17 @@ for i=1:numUnits
     hold on
     plot([0 0],[ylim],'b');
     plot([s.SoundData.(soundNames{2}).ToneDur s.SoundData.(soundNames{2}).ToneDur],[ylim],'b');
+    rasterFreqLines2 = zeros(size(s.SoundData.(soundNames{2}).UniqueFreqs,1),2);
+    rasterFreqLines2(:,1) = s.SoundData.(soundNames{2}).ToneReps*...
+        size(s.SoundData.(soundNames{2}).UniqueDBs,1):s.SoundData.(soundNames{2}).ToneReps*...
+        size(s.SoundData.(soundNames{2}).UniqueDBs,1):length(s.SoundData.(soundNames{2}).Frequencies);
+    rasterFreqLines2(:,2) = s.SoundData.(soundNames{2}).UniqueFreqs;
+    
     for k = 1:size(s.SoundData.(soundNames{2}).UniqueFreqs,1)
-        plot(params.rasterWindow*s.SoundData.(soundNames{2}).ToneDur,[rasterFreqLines(k,1) rasterFreqLines(k,1)],'g','LineWidth',1)
+        plot(params.rasterWindow*s.SoundData.(soundNames{2}).ToneDur,[rasterFreqLines2(k,1) rasterFreqLines2(k,1)],'g','LineWidth',1)
     end
-    set(gca,'YTick',rasterFreqLines(:,1));
-    set(gca,'YTickLabel',rasterFreqLines(:,2));
+    set(gca,'YTick',rasterFreqLines2(:,1));
+    set(gca,'YTickLabel',rasterFreqLines2(:,2));
     set(gca,'Ydir','reverse')
     ylim([0 length(s.SoundData.(soundNames{2}).Frequencies)])
     xlim([params.rasterWindow(1)*s.SoundData.(soundNames{2}).ToneDur params.rasterWindow(2)*s.SoundData.(soundNames{2}).ToneDur])
