@@ -22,20 +22,33 @@
 
 function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
-s.Params.RasterWindow = [-1 3]; %ratio for raster window. will be multiplied by toneDur
-s.Params.RPVTime = 0.001; %time limit in seconds for consideration as an RPV
-s.Params.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
-s.Params.HistogramBin = 0.005; %histogram bin size in seconds
-s.Params.SampleRate = 30000;%trodes sampling rate
-s.Params.DefaultBins = 0.001;% bin size for calculating significant responses
-s.Params.SmoothingBins = [0.01 0.001];%bins for smoothing
-s.Params.CalcWindow = [0 2]; %window for calculating significant responses
-s.Params.zLimit = 3; %zlimit for calculating significant responses
-% s.Params.FirstSpikeWindow = [0 0.5 1 1.5]; %ratios! need to be multiplied by tone duration.
-s.Params.FirstSpikeWindow = [0 1];
-s.Params.ChosenSpikeBin = 1; %delineates which spike window I will graph.
-s.Params.BaselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
-s.Params.LFPWindow = [-1 3];
+s.Parameters.RasterWindow = [-1 3]; %ratio for raster window. will be multiplied by toneDur
+s.Parameters.RPVTime = 0.001; %time limit in seconds for consideration as an RPV
+s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
+s.Parameters.histBin = 0.005; %histogram bin size in seconds
+s.Parameters.SampleRate = 30000;%trodes sampling rate
+s.Parameters.DefaultBins = 0.001;% bin size for calculating significant responses
+s.Parameters.SmoothingBins = [0.01 0.001];%bins for smoothing
+s.Parameters.CalcWindow = [0 2]; %window for calculating significant responses
+s.Parameters.zLimit = 3; %zlimit for calculating significant responses
+% s.Parameters.FirstSpikeWindow = [0 0.5 1 1.5]; %ratios! need to be multiplied by tone duration.
+s.Parameters.FirstSpikeWindow = [0 1];
+s.Parameters.ChosenSpikeBin = 1; %delineates which spike window I will graph.
+s.Parameters.BaselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
+s.Parameters.LFPWindow = [-1 3];
+
+%stuff for significance
+s.Parameters.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
+s.Parameters.zLimit = [0.05 0.01 0.001];
+s.Parameters.numShuffle = 1000;
+s.Parameters.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
+s.Parameters.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
+s.Parameters.minSpikes = 100; %minimum number of spikes to do spike shuffling
+s.Parameters.minSigSpikes = 2; %minimum number of significant points to record a significant response.
+s.Parameters.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
+s.Parameters.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
+
+
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 fname = saveName;
@@ -54,8 +67,8 @@ subFoldersCell = strsplit(subFolders,';')';
 % s = struct;
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
-[s, truncatedNames] = functionMatclustExtraction(s.Params.RPVTime,...
-    matclustFiles,s,s.Params.ClusterWindow);
+[s, truncatedNames] = functionMatclustExtraction(s.Parameters.RPVTime,...
+    matclustFiles,s,s.Parameters.ClusterWindow);
 
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);
@@ -84,16 +97,17 @@ toneReps = soundData.ToneRepetitions;
 totalTrialNum = length(soundData.Frequencies);
 
 %Recalculate raster window and such
-s.Params.RasterWindow = s.Params.RasterWindow * toneDur;
-s.Params.FirstSpikeWindow = s.Params.FirstSpikeWindow * toneDur;
-s.Params.BaselineBin = s.Params.BaselineBin * toneDur;
-rasterAxis=[s.Params.RasterWindow(1):0.001:s.Params.RasterWindow(2)-0.001];
-histBinNum = (s.Params.RasterWindow(2)-s.Params.RasterWindow(1))/s.Params.HistogramBin;
-histBinVector = [s.Params.RasterWindow(1)+s.Params.HistogramBin/2:s.Params.HistogramBin:s.Params.RasterWindow(2)-s.Params.HistogramBin/2]; %this is vector with midpoints of all histogram bins
+s.Parameters.RasterWindow = s.Parameters.RasterWindow * toneDur;
+s.Parameters.FirstSpikeWindow = s.Parameters.FirstSpikeWindow * toneDur;
+s.Parameters.BaselineBin = s.Parameters.BaselineBin * toneDur;
+calcWindow = s.Parameters.calcWindow*toneDur;
+rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
+histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin;
+histBinVector = [s.Parameters.RasterWindow(1)+s.Parameters.histBin/2:s.Parameters.histBin:s.Parameters.RasterWindow(2)-s.Parameters.histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes
-s.Params.CalcWindow = s.Params.CalcWindow * toneDur;
-s.Params.LFPWindow = s.Params.LFPWindow * toneDur;
+s.Parameters.CalcWindow = s.Parameters.CalcWindow * toneDur;
+s.Parameters.LFPWindow = s.Parameters.LFPWindow * toneDur;
 
 % Generates cell array of frequency names for use in legend
 freqNameHolder = cell(1,numFreqs);
@@ -124,8 +138,8 @@ for i = 1:size(dbRange,1)
 end
 
 %stores into s.
-s.Params.OctaveRange = octaveRange;
-s.Params.DBRange = dbRange;
+s.Parameters.OctaveRange = octaveRange;
+s.Parameters.DBRange = dbRange;
 
 %Sets up master array so that we have a size comparison for DIO
 %information. 
@@ -159,7 +173,7 @@ D1FileName = D1FileName{1};
 [DIOData] = readTrodesExtractedDataFile(D1FileName);
 
 %pulls out DIO up state onsets.
-[dioTimes,dioTimeDiff] = functionBasicDIOCheck(DIOData,s.Params.SampleRate);
+[dioTimes,dioTimeDiff] = functionBasicDIOCheck(DIOData,s.Parameters.SampleRate);
 
 %insert to master. check for errors
 if length(dioTimes) ~= length(master)
@@ -183,33 +197,29 @@ for i = 1:numUnits
     freqSpecHist = zeros(numFreqs,histBinNum,1);
     
     firstSpikeTimeHolder = cell(numFreqs,numDBs,1);
-    firstSpikeStatsHolder = zeros(numFreqs,numDBs,4,size(s.Params.FirstSpikeWindow,2)-1);
+    firstSpikeStatsHolder = zeros(numFreqs,numDBs,4,size(s.Parameters.FirstSpikeWindow,2)-1);
     
     binSpikeHolder = cell(numFreqs,numDBs,1);
-    binSpikeStatsHolder = zeros(numFreqs,numDBs,2,size(s.Params.FirstSpikeWindow,2)-1);
+    binSpikeStatsHolder = zeros(numFreqs,numDBs,2,size(s.Parameters.FirstSpikeWindow,2)-1);
     
     averageSpikeHolder = zeros(totalTrialNum,1);
-    
-    sigResp = cell(1,1);
-    sigRespGraph = zeros(numFreqs,numDBs,3);
-    fullRespGraph = zeros(1,3);
     
     %pulls spike times and times for alignment
     spikeTimes = s.(desigNames{i}).SpikeTimes;
     alignTimes = master(:,1);
     
     %calculates rasters based on spike information. 
-    [rasters] = functionBasicRaster(spikeTimes,alignTimes,s.Params.RasterWindow);
+    [rasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.RasterWindow);
     rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
     fullRasterData = rasters;
     %pulls all spikes from a specific trial in the baseline period, holds
     %the number of these spikes for calculation of average rate and std.
     for k = 1:totalTrialNum
-        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > s.Params.BaselineBin(1) & rasters(:,1) < s.Params.BaselineBin(2)),1);
+        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > s.Parameters.BaselineBin(1) & rasters(:,1) < s.Parameters.BaselineBin(2)),1);
     end
     
-    averageRate = mean(averageSpikeHolder/(s.Params.BaselineBin(2)-s.Params.BaselineBin(1)));
-    averageSTD = std(averageSpikeHolder/(s.Params.BaselineBin(2)-s.Params.BaselineBin(1)));
+    averageRate = mean(averageSpikeHolder/(s.Parameters.BaselineBin(2)-s.Parameters.BaselineBin(1)));
+    averageSTD = std(averageSpikeHolder/(s.Parameters.BaselineBin(2)-s.Parameters.BaselineBin(1)));
     averageSTE = averageSTD/(sqrt(totalTrialNum-1));
     
     %calculates histograms of every single trial. 
@@ -225,25 +235,23 @@ for i = 1:numUnits
     histSTE = (std(fullHistHolder'))';
     
     [histCounts histCenters] = hist(rasters(:,1),histBinVector);
-    fullHistData = histCounts'/totalTrialNum/s.Params.HistogramBin;
+    fullHistData = histCounts'/totalTrialNum/s.Parameters.histBin;
     
     %calculate significant response for combined histogram of all responses
-    %to all sounds.
-    inputRaster = rasters(rasters(:,1) > s.Params.CalcWindow(1) & rasters(:,1) < s.Params.CalcWindow(2),1);
-    [respStore] = ...
-    functionBasicResponseSignificance(s.Params.SmoothingBins,s.Params.DefaultBins,s.Params.CalcWindow,...
-    averageRate,averageSTD,inputRaster,s.Params.zLimit,totalTrialNum);
-    fullResp = respStore;
-    %if there is a significant response, stores important values: start,
-    %duration, and peak size.
-    if ~isempty(respStore{1})
-        fullRespGraph(1) = respStore{1}(1,1);
-        fullRespGraph(2) = respStore{1}(1,2)-respStore{1}(1,1);
-        fullRespGraph(3) = respStore{1}(1,5);
+    %to all sounds.    
+    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master));
+
+    disp(strcat('Baseline Spikes:',num2str(generalResponseHist.SpikeNumber),' Unit:',(desigNames{i})))
+    s.BaselineSpikes = generalResponseHist.SpikeNumber;
+    if generalResponseHist.Warning == 0 & generalResponseHist.SigSpike == 1
+        s.SignificantSpikes(i) = 1;
     end
     
     %allocates empty array.
-    sigResp = cell(numFreqs,numDBs);
+    organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
+    organizedRasters = cell(numFreqs,numDBs);
+    responseHistHolder = cell(numFreqs,numDBs);
+    histErr = zeros(numFreqs,numDBs,length(histBinVector));
     
     for k = 1:numFreqs
         for l = 1:numDBs
@@ -252,23 +260,17 @@ for i = 1:numUnits
             targetRasters = fullRasterData(findMatches,:); %extracts target rasters from all rasters using the above index.
             organizedRasters{k,l} = targetRasters; %saves to organized rasters
             [histCounts,histCenters] = hist(targetRasters(:,1),histBinVector); %calculates histogram with defined bin size
-            organizedHist(k,l,:) = histCounts/toneReps/s.Params.HistogramBin; %saves histogram
+            organizedHist(k,l,:) = histCounts/toneReps/s.Parameters.histBin; %saves histogram
+            specHist = fullHistHolder(:,targetTrials);
+            histErr(k,l,:) = std(specHist,0,2)/sqrt(length(targetTrials));
             [firstSpikeTimes,firstSpikeStats,binSpikeTimes,binSpikeStats] = ...
-                functionBasicFirstSpikeTiming(s.Params.FirstSpikeWindow,targetRasters,toneReps,2,targetTrials); %calculates information about first spike timing
+                functionBasicFirstSpikeTiming(s.Parameters.FirstSpikeWindow,targetRasters,toneReps,2,targetTrials); %calculates information about first spike timing
             firstSpikeTimeHolder{k,l} = firstSpikeTimes; %saves first spike times
             firstSpikeStatsHolder(k,l,:,:) = firstSpikeStats; %saves statistics about first spikes
             binSpikeHolder{k,l} = binSpikeTimes; %binned spikes from the defined window.
             binSpikeStatsHolder(k,l,:,:) = binSpikeStats; %stats about those spikes
-            inputRaster = targetRasters(targetRasters(:,1) > s.Params.CalcWindow(1) & targetRasters(:,1) < s.Params.CalcWindow(2),1);
-            [respStore] = ...
-            functionBasicResponseSignificance(s.Params.SmoothingBins,s.Params.DefaultBins,s.Params.CalcWindow,...
-            averageRate,averageSTD,inputRaster,s.Params.zLimit,toneReps); %calculates significance of responses to specific frequencies and dBs
-            sigResp{k,l} = respStore;
-            if ~isempty(respStore{1}) %if there is significant response, stores this for later display.
-                sigRespGraph(k,l,1) = respStore{1}(1,1);
-                sigRespGraph(k,l,2) = respStore{1}(1,2)-respStore{1}(1,1);
-                sigRespGraph(k,l,3) = respStore{1}(1,5);
-            end
+            [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
+            responseHistHolder{k,l} = responseHist;
         end
         freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
     end
@@ -279,6 +281,7 @@ for i = 1:numUnits
     s.(desigNames{i}).HistogramStandardDeviation = histSTE;
     s.(desigNames{i}).FreqDBRasters = organizedRasters;
     s.(desigNames{i}).FreqDBHistograms = organizedHist;
+    s.(desigNames{i}).FreqDBHistogramErrors = histErr;
     s.(desigNames{i}).FirstSpikeTimes = firstSpikeTimeHolder;
     s.(desigNames{i}).FirstSpikeStats = firstSpikeStatsHolder;
     s.(desigNames{i}).BinSpikes = binSpikeHolder;
@@ -287,14 +290,13 @@ for i = 1:numUnits
     s.(desigNames{i}).AverageRate = averageRate;
     s.(desigNames{i}).AverageSTD = averageSTD;
     s.(desigNames{i}).AverageSTE = averageSTE;
-    s.(desigNames{i}).ResponseStats = sigResp;
-    s.(desigNames{i}).ResponseStatsGraph = sigRespGraph;
-    s.(desigNames{i}).FullResponseStats = fullResp;
-    s.(desigNames{i}).FullResponseGraphs = fullRespGraph;
+    s.(desigNames{i}).HistBinVector = histBinVector;
+    s.(desigNames{i}).AllHistogramSig = generalResponseHist;
+    s.(desigNames{i}).SpecHistogramSig = responseHistHolder;
 end
 
 %calculate and plot LFP information
-% [lfpStruct] = functionLFPaverage(master, s.Params.LFPWindow, s,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
+% [lfpStruct] = functionLFPaverage(master, s.Parameters.LFPWindow, s,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
 % s.LFP = lfpStruct;
 
 %% Plotting
@@ -314,13 +316,13 @@ for i = 1:numUnits
     subplot(4,6,2)
     hist(s.(desigNames{i}).ISIGraph,1000)
     histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
-    line([s.Params.RPVTime s.Params.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-    xlim(s.Params.ClusterWindow)
+    line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+    xlim(s.Parameters.ClusterWindow)
     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
     %plots first spike latency
     subplot(4,3,4)
-    imagesc(s.(desigNames{i}).FirstSpikeStats(:,:,1,s.Params.ChosenSpikeBin)')
+    imagesc(s.(desigNames{i}).FirstSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin)')
     colormap hot
     colorbar
     set(gca,'XTick',octaveRange(:,2));
@@ -330,7 +332,7 @@ for i = 1:numUnits
     title('Mean First Spike Latency')
     %plots heatmap of binned spikes to the chosen spike timing window.
     subplot(4,3,7)
-    imagesc(squeeze(s.(desigNames{i}).BinSpikeStats(:,:,1,s.Params.ChosenSpikeBin))')
+    imagesc(squeeze(s.(desigNames{i}).BinSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin))')
     colormap hot
     colorbar
     set(gca,'XTick',octaveRange(:,2));
@@ -340,7 +342,7 @@ for i = 1:numUnits
     title('Binned Response')
     %plots heatmaps of response reliability in chosen bin 
     subplot(4,3,10)
-    imagesc(squeeze(s.(desigNames{i}).FirstSpikeStats(:,:,3,s.Params.ChosenSpikeBin))')
+    imagesc(squeeze(s.(desigNames{i}).FirstSpikeStats(:,:,3,s.Parameters.ChosenSpikeBin))')
     colormap hot
     colorbar
     set(gca,'XTick',octaveRange(:,2));
@@ -354,7 +356,7 @@ for i = 1:numUnits
         s.(desigNames{i}).AllRasters(:,2),'k.','markersize',4)
     hold on
     ylim([0 totalTrialNum])
-    xlim([s.Params.RasterWindow(1) s.Params.RasterWindow(2)])
+    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     plot([0 0],[ylim],'b');
     plot([toneDur toneDur],[ylim],'b');
     title({fileName;desigNames{i}},'fontweight','bold')
@@ -371,13 +373,13 @@ for i = 1:numUnits
     rasterFreqLines(:,2) = uniqueFreqs;
     %this generates green lines separating by Frequency
     for k = 1:size(uniqueFreqs,1)
-        plot(s.Params.RasterWindow,[toneReps*numDBs*k toneReps*numDBs*k],'g','LineWidth',1)
+        plot(s.Parameters.RasterWindow,[toneReps*numDBs*k toneReps*numDBs*k],'g','LineWidth',1)
     end
     set(gca,'YTick',rasterFreqLines(:,1));
     set(gca,'YTickLabel',rasterFreqLines(:,2));
     set(gca,'Ydir','reverse')
     ylim([0 totalTrialNum])
-    xlim([s.Params.RasterWindow(1) s.Params.RasterWindow(2)])
+    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Descending = increase in amplitude and freq')
     %plot heatmap organized by frequency
     subplot(3,3,8)
@@ -401,49 +403,28 @@ for i = 1:numUnits
     hold on
     plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
     plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+    %plot significant values
+    plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+        s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1),...
+        s.(desigNames{i}).AllHistogramSig.Histogram(...
+        s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1,1),...
+        'b*')
+    plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+        s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1),...
+        s.(desigNames{i}).AllHistogramSig.Histogram(...
+        s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1,1),...
+        'c*')
+    %plot negative values for first tuning
+    plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+        s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1),...
+        s.(desigNames{i}).AllHistogramSig.Histogram(...
+        s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1,1),...
+        'k*')
     plot([0 0],[ylim],'b');
     plot([toneDur toneDur],[ylim],'b');
-    if s.(desigNames{i}).FullResponseGraphs(1) ~= 0
-        plot([s.(desigNames{i}).FullResponseGraphs(1)/1000 ...
-            s.(desigNames{i}).FullResponseGraphs(1)/1000],[ylim],'r');
-        plot([(s.(desigNames{i}).FullResponseGraphs(1) + ...
-            s.(desigNames{i}).FullResponseGraphs(2))/1000 
-            (s.(desigNames{i}).FullResponseGraphs(1) + ...
-            s.(desigNames{i}).FullResponseGraphs(2))/1000],[ylim],'r');
-    end
-    xlim([s.Params.RasterWindow(1) s.Params.RasterWindow(2)])
+    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Histogram')
-    %plot information on onset time (significance calculation)
-    subplot(4,3,6)
-    imagesc(squeeze(s.(desigNames{i}).ResponseStatsGraph(:,:,1))')
-    colormap hot
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Response Latency (Zlimit)')
-    %plot information about response duration
-    subplot(4,3,9)
-    imagesc(squeeze(s.(desigNames{i}).ResponseStatsGraph(:,:,2))')
-    colormap hot
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Response Duration (Zlimit)')
-    hold off
-    %plot information about response peak magnitude
-    subplot(4,3,12)
-    imagesc(squeeze(s.(desigNames{i}).ResponseStatsGraph(:,:,3))')
-    colormap hot
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Response Peak (Zlimit)')
+    
     hold off
     spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
     savefig(hFig,spikeGraphName);

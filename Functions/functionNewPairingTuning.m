@@ -38,6 +38,7 @@ numFreqs = size(unique(master(:,2)),1);
 toneReps = soundData.ToneReps;
 %converts raster window from ratio to actual time in seconds.
 rasterWindow = rasterWindow*soundData.ToneDur;
+calcWindow = calcWindow*soundData.ToneDur;
 baselineBin = baselineBin*soundData.ToneDur;
 firstSpikeWindow = firstSpikeWindow*soundData.ToneDur;
 %generates an axis for raster at ms resolution
@@ -77,9 +78,8 @@ for i = 1:numUnits
     
     %calculate significant response for combined histogram of all responses
     %to all sounds.
-    inputRaster = rasters(:,1);
-    baselineSpikes = sort(inputRaster(inputRaster<0));
-    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,baselineSpikes,inputRaster,length(master),rasterWindow);
+    
+    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master));
     
     disp(strcat('Baseline Spikes:',num2str(generalResponseHist.SpikeNumber),' Unit:',(desigNames{i})))
     s.BaselineSpikes.(spikeName)(i) = generalResponseHist.SpikeNumber;
@@ -111,7 +111,7 @@ for i = 1:numUnits
             binSpikeStatsHolder(k,l,:,:) = binSpikeStats; %stats about those spikes
             inputRaster = targetRasters(:,1);
             [responseHist] = functionBasicResponseSignificance(s,calcWindow,...
-            baselineSpikes,inputRaster,length(master),rasterWindow);
+            spikeTimes,alignTimes,length(master));
             responseHistHolder{k,l} = responseHist;
             responseHist = [];
         end

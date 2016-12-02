@@ -31,6 +31,7 @@ alignTimes = s.TTLs.(soundName); %times for aligning rasters and histograms.
 toneReps = soundData.ToneRepetitions;
 %converts raster window from ratio to actual time in seconds.
 rasterWindow = rasterWindow*soundData.ToneDuration;
+calcWindow = calcWindow * soundData.ToneDuration;
 baselineBin = baselineBin*soundData.ToneDuration;
 firstSpikeWindow = firstSpikeWindow*soundData.ToneDuration;
 %generates an axis for raster at ms resolution
@@ -67,13 +68,13 @@ for i = 1:numUnits
     %to all sounds.
     inputRaster = rasters(:,1);
     baselineSpikes = sort(inputRaster(inputRaster<0));
-    [generaResponseHist] = functionBasicResponseSignificance(s,calcWindow,baselineSpikes,inputRaster,length(alignTimes),rasterWindow);
+    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
 
     s.(desigNames{i}).(fieldName).AllRasters = fullRasterData;
     s.(desigNames{i}).(fieldName).AllHistograms = fullHistData;
     s.(desigNames{i}).(fieldName).AverageRate = averageRate;
     s.(desigNames{i}).(fieldName).AverageSTD = averageSTD;
-    s.(desigNames{i}).(fieldName).AllHistogramSig = generaResponseHist;
+    s.(desigNames{i}).(fieldName).AllHistogramSig = generalResponseHist;
     s.(desigNames{i}).(fieldName).FirstSpikeTimes = firstSpikeTimes;
     s.(desigNames{i}).(fieldName).FirstSpikeStats = firstSpikeStats;
     s.(desigNames{i}).(fieldName).BinSpikeTimes = binSpikeTimes;

@@ -36,9 +36,10 @@ params.zLimit = [0.05 0.01 0.001];
 params.numShuffle = 1000;
 params.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
 params.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
-params.minSpikes = 10; %minimum number of spikes to do spike shuffling
+params.minSpikes = 100; %minimum number of spikes to do spike shuffling
 params.minSigSpikes = 2; %minimum number of significant points to record a significant response.
 params.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
+params.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
 
 disp('Parameters Set')
 
@@ -189,7 +190,7 @@ disp('Average Rates Calculated')
 %next, pull tuning information. DOES NOT GRAPH
 [s] = functionNewPairingTuning(s,desigNames,...
     spikeNames{1},soundNames{1},params); 
-
+disp('First Tuning Curve Analyzed')
 %now I analyze the second tuning curve.
 %first pull out sound data for the relevant file
 [s] = functionPairingSoundDataExtraction(s,...
@@ -197,7 +198,7 @@ disp('Average Rates Calculated')
 %next, pull tuning information. DOES NOT GRAPH
 [s] = functionNewPairingTuning(s,desigNames,...
     spikeNames{2},soundNames{2},params); 
-
+disp('Second Tuning Curve Analyzed')
 %% next pull data from pairing session:
 
 %extract sound data:
@@ -210,7 +211,7 @@ s.SoundData.(soundNames{3}) = soundFile.(soundNames{3});
 %now align spikes to tone presentations and store data as histogram.
 [s] = functionNewPairingPairedToneHist(s,desigNames,...
     spikeNames{3},soundNames{3},params); 
-
+disp('Pairing Analyzed')
 %% NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
 [s] = functionNewPairingMasterPlot(numUnits,s,...
     desigNames,params,fileName,soundNames);
