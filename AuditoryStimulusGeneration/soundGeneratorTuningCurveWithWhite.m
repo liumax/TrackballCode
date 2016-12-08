@@ -18,9 +18,10 @@ postPauseMax = 1000; %pause in milliseconds after tone
 startF = 4000; %starting frequency in Hz
 endF = 64000; %ending frequency in Hz
 octFrac = 1; %fractions of octaves to move
+%White noise?
+whiteNoise = 1; %1 for white noise inclusion.
 
 %dB
-maxdB = 100; %maximum decibel output
 startdB = 100; %starting decibel value
 enddB = 60; %lowest decibel value
 dbSteps = 20; %resolution of decible steps
@@ -33,6 +34,7 @@ end
 
 %% FIXED PARAMETERS
 fs = 192000; %sampling frequency in Hz
+maxdB = 100; %maximum decibel output
 
 %% Calculations for Tuning Curve
 %determine length of file based on sound card sampling rate
@@ -45,6 +47,9 @@ freqs = zeros(octRange/octFrac+1,1);
 freqs(1) = startF;
 for i = 2:octRange/octFrac+1
     freqs (i) = freqs(i-1)*(2^octFrac);
+end
+if whiteNoise == 1
+    freqs(end+1) = 0;
 end
 
 %Calculate range of all dBs that will be used.
@@ -107,18 +112,31 @@ rampProfile = ones(L,1);
 rampProfile(1:onRampDur+1) = onRampProfile;
 rampProfile(end-offRampDur:end) = offRampProfile;
 
-
 %this makes the profile for the TTL signal
 ttlSig = zeros(paddingL,1);
 ttlSig(1:2*fs/1000) = 1;
+
+%generate white noise to be used repeatedly.
+%generate white gaussian noise of correct size
+y = wgn(fs*toneDur,1,0);
+
+%filters white gaussian noise (courtesy of RYAN MORRILL)
+Wn = 4e3/(0.5*fs); % pass above 3.9 kHz 160121 Adjusted to 4kHz
+n = 1000; % 1000th order filter (slower? but 100-order was too low)
+b = fir1(n, Wn, 'high'); 
+audio_data = filtfilt(b,1,y);
 
 
 %% Perform actual Tuning
 for i = 1:length(master)
     pause(prePause)
     toneFreq = master(i,1);
+    if toneFreq == 0;
+        toneWave = audio_data;
+    else
+        toneWave = sin(2*pi*(toneFreq/fs)*(1:L))';
+    end
     toneAmpl = master(i,3);
-    toneWave = sin(2*pi*(toneFreq/fs)*(1:L))';
     finalWave = toneWave.*rampProfile;
     finalWave = finalWave*toneAmpl;
     paddedWave = zeros(paddingL,1);
@@ -148,6 +166,7 @@ soundData.TrialMatrix = trialMatrix;
 soundData.Frequencies = master(:,1);
 soundData.dBs = master(:,2);
 soundData.Amplitudes = master(:,3);
+soundData.WhiteNoise = whiteNoise;
 
 
 
