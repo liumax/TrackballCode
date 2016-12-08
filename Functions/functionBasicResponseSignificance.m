@@ -35,12 +35,13 @@ function [sigResp] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,a
 baselineSpikes = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.BaselineWindow);
 inputRaster = functionBasicRaster(spikeTimes,alignTimes,calcWindow);
 inputRaster = inputRaster(:,1);
+baselineVector = [s.Parameters.BaselineWindow(1) + s.Parameters.histBin/2:s.Parameters.histBin:s.Parameters.BaselineWindow(2)];
 
 histBin = s.Parameters.histBin;
 
 if length(baselineSpikes) > s.Parameters.minSpikes
     %% First step is to computer an overall histogram of baseline bins.
-    baselineVector = [s.Parameters.BaselineWindow(1) + s.Parameters.histBin/2:s.Parameters.histBin:s.Parameters.BaselineWindow(2)];
+    
     baselineHist = hist(baselineSpikes(:,1),baselineVector)/histBin/trialNum;
     %These bins will serve as the distribution against which we will
     %compare. Currently, with 0.4 seconds/0.005 sec bins, this should
@@ -128,11 +129,14 @@ if length(baselineSpikes) > s.Parameters.minSpikes
     
     %% save data!
     sigResp.Histogram = targetHist;
+    sigResp.BaselineHist = baselineHist;
+    sigResp.MeanBaseline = mean(baselineHist);
     sigResp.Centers = targetHistVector;
     sigResp.Shuffling = 0; %warning about shuffling
     sigResp.Warning = 0; %warning indicates baseline was too low for anything.
     sigResp.SpikeNumber = length(baselineSpikes);
     sigResp.SigSpike = sigSpike;
+    sigResp.MaxResp = max(targetHist(:,1));
 elseif length(baselineSpikes) <= s.Parameters.minSpikes & length(spikeTimes) > s.Parameters.minSpikes
     %% If too few spikes, generate baseline firing based on entire spike train
     allISI = diff(spikeTimes);
@@ -199,26 +203,34 @@ elseif length(baselineSpikes) <= s.Parameters.minSpikes & length(spikeTimes) > s
     
     %% save data!
     sigResp.Histogram = targetHist;
+    sigResp.BaselineHist = totalHistHolder;
+    sigResp.MeanBaseline = mean(totalHistHolder);
     sigResp.Centers = targetHistVector;
     sigResp.Shuffling = 1; %warning about shuffling
     sigResp.Warning = 0; %warning indicates baseline was too low for anything.
     sigResp.SpikeNumber = length(spikeTimes);
     sigResp.SigSpike = sigSpike;
-    
+    sigResp.MaxResp = max(targetHist(:,1));
 else
     %this is the case where there are either no baseline spikes, or the
-    %number of total spikes is extremely low. Here. We will make an empty
-    %histogram, a nd trigger the warning
+    %number of total spikes is extremely low. Here. We will make a real
+    %histogram, and trigger the warning, so I know I cant look for
+    %significant responses. 
+    percentileRange = 100.-(s.Parameters.zLimit*100);
     targetHistVector = [calcWindow(1) + histBin/2: histBin:calcWindow(2)];
-    targetHist = zeros(length(targetHistVector),1+length(s.Parameters.zLimit)*2);
+    targetHist = hist(inputRaster,targetHistVector);
+    targetHist = reshape(targetHist,[],1)/histBin/trialNum;
+    targetHist(:,2:2*length(percentileRange)) = zeros;
     sigSpike = 0;
     
     sigResp.Histogram = targetHist;
+    sigResp.BaselineHist = zeros(length(baselineVector),1);
+    sigResp.MeanBaseline = 0;
     sigResp.Centers = targetHistVector;
     sigResp.Shuffling = 0; %warning about shuffling
     sigResp.Warning = 1; %warning indicates baseline was too low for anything.
     sigResp.SpikeNumber = length(spikeTimes);
     sigResp.SigSpike = sigSpike;
-    
+    sigResp.MaxResp = max(targetHist(:,1));
 end
 end
