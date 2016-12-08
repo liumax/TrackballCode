@@ -46,7 +46,7 @@ newDir = strcat(currDir,'\',dirNames{allMatches});
 %changes directory to matclust directory
 cd(newDir)
 %open matclust
-matclust
+% matclust
 
 
 % %this will extract continuous data. as of 160216 doesnt work. 
