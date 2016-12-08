@@ -1,31 +1,45 @@
+
+%opens dialogue box to change saved file name
 [fname pname] = uiputfile('test1.mat');
 
+%% USER ADJUSTED PARAMETERS
+%Duration and Repetition
 toneReps = 30; %number of repetitions of each tone/amplitude pair
 toneDur = 0.1; %tone duration in seconds
-fs = 192000; %sampling frequency in Hz
-L = toneDur*fs; %number of samples at correct sampling frequency
-paddingL = L + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
+onRampDur = 0.005;
+offRampDur = 0.005;
 
+%Timing
 prePause = 0.1; %pause in seconds before tone
 postPauseMin = 500; %pause in milliseconds after tone
 postPauseMax = 1000; %pause in milliseconds after tone
 
-
-warningCheck = (postPauseMin/1000 - toneDur)<0;
-if warningCheck == 1
-    disp('TONE DURATION LONGER THAN ITI')
-end
-
+%Frequency
 startF = 4000; %starting frequency in Hz
 endF = 64000; %ending frequency in Hz
 octFrac = 1; %fractions of octaves to move
 
+%dB
 maxdB = 100; %maximum decibel output
 startdB = 100; %starting decibel value
 enddB = 60; %lowest decibel value
 dbSteps = 20; %resolution of decible steps
 
-%this generates a vector with the frequencies that will be used
+%confirm pauses are longer than double the tone length
+warningCheck = (postPauseMin/1000 - 2*toneDur)<0;
+if warningCheck == 1
+    error('TONE DURATION LONGER THAN ITI')
+end
+
+%% FIXED PARAMETERS
+fs = 192000; %sampling frequency in Hz
+
+%% Calculations for Tuning Curve
+%determine length of file based on sound card sampling rate
+L = toneDur*fs; %number of samples at correct sampling frequency
+paddingL = L + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
+
+%Calculate the range of frequencies that will be used. 
 octRange = log2(endF/startF);
 freqs = zeros(octRange/octFrac+1,1);
 freqs(1) = startF;
@@ -33,18 +47,18 @@ for i = 2:octRange/octFrac+1
     freqs (i) = freqs(i-1)*(2^octFrac);
 end
 
-%this generates a vector of all decibel steps
+%Calculate range of all dBs that will be used.
 dBs = [startdB:-dbSteps:enddB];
 amps = ones(length(dBs),1);
 for i = 1:length(amps)
     amps(i) = amps(i)*10^-((maxdB-dBs(i))/20);
 end
 
-%list of all frequency/dB pairs
+%List the full set of combinations of frequency and dB. This should produce
+%all combinations, BUT NOT all tone repetitions
 fullList = zeros(length(freqs)*length(dBs),3);
 counter = 1;
 
-%simply list every combination
 for i = 1:length(freqs)
     for j = 1:length(dBs)
         fullList(counter,1) = freqs(i);
@@ -53,7 +67,7 @@ for i = 1:length(freqs)
         counter = counter+1;
     end
 end
-%computes length of list
+%Compute length of the list to do a check against hard calculation
 listLength = length(fullList);
 %check this is correct
 if listLength ~= length(freqs)*length(dBs)
@@ -61,6 +75,8 @@ if listLength ~= length(freqs)*length(dBs)
 end
 
 %generate a n x 1 vector that indicates all indices for every tuning trial.
+%This generates a pseudorandom set of indices for determining the frequency
+%and dB of the target trial.
 listDesig = zeros(listLength*toneReps,1);
 counter = 1;
 for i = 1:toneReps
@@ -81,9 +97,9 @@ x = round(postPauseMin + (-log(1-p))*tau);
 
 master(:,4) = x/1000;
 
-%ramp times for onset and offset in seconds
-onRampDur = 0.005*fs; 
-offRampDur = 0.005*fs;
+%recalculate ramp times for onset and offset in samples
+onRampDur = onRampDur*fs; 
+offRampDur = offRampDur*fs;
 remainingPoints = L-onRampDur-offRampDur;
 onRampProfile = (cos((0:1:onRampDur)/onRampDur*pi-pi)+1)/2;
 offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;
@@ -97,7 +113,7 @@ ttlSig = zeros(paddingL,1);
 ttlSig(1:2*fs/1000) = 1;
 
 
-%actual code for performing tuning
+%% Perform actual Tuning
 for i = 1:length(master)
     pause(prePause)
     toneFreq = master(i,1);
