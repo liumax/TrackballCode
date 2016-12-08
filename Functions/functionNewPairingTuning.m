@@ -86,6 +86,10 @@ for i = 1:numUnits
     if generalResponseHist.Warning == 0 & generalResponseHist.SigSpike == 1
         s.SignificantSpikes.(spikeName)(i) = 1;
     end
+    
+    [genFirstSpikeTimes,genFirstSpikeStats,genBinSpikeTimes,genBinSpikeStats] = ...
+    functionBasicFirstSpikeTiming(firstSpikeWindow,rasters,length(master),2,1:length(master)); %calculates information about first spike timing
+    
     %allocates empty array.
     responseHistHolder = cell(numFreqs,numDBs);
     organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
@@ -127,6 +131,10 @@ for i = 1:numUnits
     s.(desigNames{i}).(fieldName).FirstSpikeStats = firstSpikeStatsHolder;
     s.(desigNames{i}).(fieldName).BinSpikes = binSpikeHolder;
     s.(desigNames{i}).(fieldName).BinSpikeStats = binSpikeStatsHolder;
+    s.(desigNames{i}).(fieldName).GeneralFirstSpikeTimes = genFirstSpikeTimes;
+    s.(desigNames{i}).(fieldName).GeneralFirstSpikeStats = genFirstSpikeStats;
+    s.(desigNames{i}).(fieldName).GeneralBinSpikes = genBinSpikeTimes;
+    s.(desigNames{i}).(fieldName).GeneralBinSpikeStats = genBinSpikeStats;
     s.(desigNames{i}).(fieldName).FrequencyHistograms = freqSpecHist;
     s.(desigNames{i}).(fieldName).AverageRate = averageRate;
     s.(desigNames{i}).(fieldName).AverageSTD = averageSTD;
