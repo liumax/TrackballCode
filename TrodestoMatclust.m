@@ -1,7 +1,7 @@
 
 %this is the filename for the .rec file. Please put it in the same dir as
 %the config file if you decide to do post-hoc referencing etc.
-fileName = '160413_ML160218C_R17_2266_whiteNoise';
+fileName = 'pairingTester';
 
 %this extracts timestamps
 extractTimeBinaryFile(fileName)

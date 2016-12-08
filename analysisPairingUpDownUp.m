@@ -34,7 +34,7 @@ params.baselineBin = [-2,0]; %defines duration of baseline period based on toneD
 params.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
 params.zLimit = [0.05 0.01 0.001];
 params.numShuffle = 1000;
-params.firstSpikeWindow = [-1 0 0.5 1 2];%defines period for looking for first spike, based on toneDur
+params.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
 params.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
 params.minSpikes = 100; %minimum number of spikes to do spike shuffling
 params.minSigSpikes = 2; %minimum number of significant points to record a significant response.
@@ -62,6 +62,7 @@ s = struct;
     matclustFiles,s,params.clusterWindow);
 disp('Structured Array Generated, Names Extracted')
 
+%save params!
 s.Parameters = params;
 
 %pull number of units, as well as names and designation array.
@@ -76,7 +77,6 @@ soundFile = open(soundName);
 soundFile = soundFile.fullData;
 %extract names!
 soundNames = soundFile.Names;
-s.SoundNames = soundNames;
 %generate spike names from these. These will be used as headers for storage
 %of spikes from a particular time period.
 spikeNames = soundNames;
@@ -227,7 +227,7 @@ disp('Spikes Separated')
 %% calculates average firing rate for the initial period and overall firing rates across all periods
 [s] = functionNewPairingAverageRate(s,desigNames,...
     spikeNames,soundNames);
-disp('Average Speeds Calculated')
+disp('Average Rates Calculated')
 %% SET 1 
 
 %Analyze first tuning curve. 
@@ -325,12 +325,11 @@ s.SoundData.(soundNames{9}) = soundFile.(soundNames{9});
 [s] = functionPairingUDUMasterPlot(numUnits,s,...
     desigNames,params,fileName,soundNames);
 
-%save params!
-s.Parameters = params;
+
 
 pname = pwd;
 fname = strcat(fileName,'PairingAnalysis');
-save(fullfile(pname,fname),'s','-v7.3'); %version is to allow for big files to be saved.
+save(fullfile(pname,fname),'s');
 
 end
 

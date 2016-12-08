@@ -4,7 +4,7 @@ masterFolder = pwd;
 masterDir = dir;
 masterDir = {masterDir.name};
 %this code here is to remove folders reported in dir like "." or ".."
-masterIndex = strfind(masterDir,'ML');
+masterIndex = strfind(masterDir,'Pair');
 masterIndex = find(not(cellfun('isempty', masterIndex)));
 %masterFolders is a listing of all folders that I want to target for batch
 %analysis

@@ -1,9 +1,6 @@
 function [] = analysisAltLaserFunctions(fileName);
 
-%This is meant to be the analysis code for pairing experiments. This code
-%should analyze the tuning curves before and after, the playing of long
-%tones before and after, and the actual changes that may occur with laser
-%light itself. 
+
 
 % fileName = '160711TestingAltPairing';
 
@@ -11,7 +8,7 @@ function [] = analysisAltLaserFunctions(fileName);
 rpvTime = 0.0013; %limit to be considered an RPV.
 clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
 trodesFS = 30000; %sampling rate of trodes box.
-rasterWindow = [-1,3]; %duration of raster window. These are numbers that will
+rasterWindow = [-2,3]; %duration of raster window. These are numbers that will
 %be multiplied by the tone duration. EX: raster window for 0.1sec tone will
 %be -100 to 300 ms.
 histBin = 0.005; %bin size in seconds

@@ -13,7 +13,7 @@ offRampDur = rampDur*fs;
 onRampProfile = (cos((0:1:onRampDur)/onRampDur*pi-pi)+1)/2;
 offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;
 %if statements to calculate times based on different conditions
-if optoDelay < 0 %if opto leads tone
+if isnumeric(optoDelay) && optoDelay < 0 %if opto leads tone
     if optoDur > toneDur-optoDelay %if opto stim exceeds duration of tone and lag period
         L = round(fs*(optoDur));
         %GENERATES RAMP AT CORRECT TIME
@@ -44,7 +44,7 @@ if optoDelay < 0 %if opto leads tone
         %want single pulse to mark tone start
         ttlSig((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-optoTTL)*-1*fs) = 1;
     end
-elseif optoDelay > 0 %in cases where opto follows the tone
+elseif isnumeric(optoDelay) && optoDelay > 0 %in cases where opto follows the tone
     if toneDur > optoDelay + optoDur %if the tone is longer than the opto stim and delay period
         L = round(fs*toneDur);
         %GENERATES RAMP AT CORRECT TIME
@@ -74,7 +74,7 @@ elseif optoDelay > 0 %in cases where opto follows the tone
         ttlSig((optoDelay-optoLag)*fs:(optoDelay-optoLag+optoTTL)*fs) = 1;
         ttlSig((optoDelay)*fs:(optoDelay+optoTTL)*fs) = 1;
     end
-elseif optoDelay == 0 %if opto stim is coincident with tone
+elseif isnumeric(optoDelay) && optoDelay == 0 %if opto stim is coincident with tone
     if optoDur + optoLag >= toneDur %if opto stim and lag is longer than duration of tone
         L = round(fs*(optoDur + optoLag));
         %GENERATES RAMP AT CORRECT TIME

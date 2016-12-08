@@ -82,13 +82,13 @@ for i = 1:size(uniqueFreqs,1)
         %generate histogram using 1ms bins. this is hardcoded.
         toneBinCenters = [toneRespWindow(1)+0.001/2:0.001:toneRespWindow(2)-0.001/2];
         [counts centers] = hist(rasterHolder{i,j}(:,2),toneBinCenters);
-        counts = counts/0.001/toneReps; %this normalizes so it is calculated per trial
+        counts = counts; %/0.001/toneReps; %this normalizes so it is calculated per trial
         for k = 1:size(toneHistBins,2)
             smoothSpan = toneHistBins(k)/0.001;
             if smoothSpan == 1;
                 smoothedToneCounts = counts;
             else
-                smoothedToneCounts = smooth(counts,smoothSpan);
+                smoothedToneCounts = smooth(counts,smoothSpan,'lowess');
             end
             rawHistHolder{i,j}{k} = smoothedToneCounts;
 
@@ -147,10 +147,10 @@ end
 % sigHolder(:,:,4,1)
 % sigHolder(:,:,4,2)
 % 
-% figure
-% hold on
-% plot(histHolder{7,1}{1,1})
-% plot(histHolder{7,1}{2,1},'r')
+figure
+hold on
+plot(histHolder{7,1}{1,1})
+plot(histHolder{7,1}{2,1},'r')
 % plot(histHolder{7,1}{3,1},'g')
 % plot(histHolder{7,1}{4,1},'c')
 % plot(histHolder{7,1}{4,1},'r*')
