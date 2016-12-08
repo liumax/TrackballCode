@@ -30,13 +30,18 @@ params.histBin = 0.005; %bin size in seconds
 params.clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
 
 %variables for tuning analysis
-params.baselineBin = [-1,0]; %defines duration of baseline period based on toneDur. 
-params.smoothingBins  = [0.01 0.001];
-params.defaultBins = 0.001;
-params.calcWindow = [0 2];
-params.zLimit = 3;
-params.firstSpikeWindow = [0 1];
+params.baselineBin = [-2,0]; %defines duration of baseline period based on toneDur. 
+params.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
+params.zLimit = [0.05 0.01 0.001];
+params.numShuffle = 1000;
+params.firstSpikeWindow = [-1 0 0.5 1 2];%defines period for looking for first spike, based on toneDur
 params.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
+params.minSpikes = 100; %minimum number of spikes to do spike shuffling
+params.minSigSpikes = 2; %minimum number of significant points to record a significant response.
+params.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
+params.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
+
+
 
 disp('Parameters Set')
 %% Establishes the folder and subfolders for analysis. Adds all folders to
@@ -57,6 +62,8 @@ s = struct;
     matclustFiles,s,params.clusterWindow);
 disp('Structured Array Generated, Names Extracted')
 
+s.Parameters = params;
+
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);
 desigNames = s.DesignationName;
@@ -69,6 +76,7 @@ soundFile = open(soundName);
 soundFile = soundFile.fullData;
 %extract names!
 soundNames = soundFile.Names;
+s.SoundNames = soundNames;
 %generate spike names from these. These will be used as headers for storage
 %of spikes from a particular time period.
 spikeNames = soundNames;
@@ -322,7 +330,7 @@ s.Parameters = params;
 
 pname = pwd;
 fname = strcat(fileName,'PairingAnalysis');
-save(fullfile(pname,fname),'s');
+save(fullfile(pname,fname),'s','-v7.3'); %version is to allow for big files to be saved.
 
 end
 
