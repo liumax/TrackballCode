@@ -62,8 +62,10 @@ elseif numTTLs == 3*expectedTTLs %This is the scenario in which laser is not coi
     %replaces TTL signals in the masterstructure.
     s.TTLs.(strcat(soundName,'Original')) = s.TTLs.(soundName);
     s.TTLs.(soundName) = TTLs;
-
+elseif numTTLs == expectedTTLs %This is scenario with no laser
+    laserTTLs = sort(TTLs);
 else
+    disp(numTTLs)
     error('SOMETHING IS WRONG WITH TTL INPUTS: INCORRECT NUMBER OF INPUTS')
 end
 
