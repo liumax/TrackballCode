@@ -80,7 +80,7 @@ for i=1:numUnits
     %plots heatmap
     subplot(4,3,4)
     %plots heatmap for first tuning curve.
-    dataPrep1 = s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinSpikeStats(:,:,params.chosenSpikeBin);
+    dataPrep1 = s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinSpikeStats(:,:,1,params.chosenSpikeBin);
     imagesc(dataPrep1')
     colormap hot
     colorbar
@@ -107,7 +107,7 @@ for i=1:numUnits
     
     %plots heatmap for second tuning curve.
     subplot(4,3,7)
-    dataPrep2 = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinSpikeStats(:,:,params.chosenSpikeBin);
+    dataPrep2 = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinSpikeStats(:,:,1,params.chosenSpikeBin);
     if cMinMax(1) == cMinMax(2)
         imagesc(dataPrep2')
     else
@@ -255,7 +255,7 @@ for i=1:numUnits
     plot([0 0],[ylim],'b');
     plot([s.SoundData.(soundNames{1}).ToneDur s.SoundData.(soundNames{1}).ToneDur],[ylim],'b');
     rasterFreqLines1 = zeros(size(s.SoundData.(soundNames{1}).UniqueFreqs,1),2);
-    rasterFreqLines1(:,1) = s.SoundData.(soundNames{1}).ToneReps*...
+    rasterFreqLines1(:,1) = s.SoundData.(soundNames{1}).ToneReps/2*...
         size(s.SoundData.(soundNames{1}).UniqueDBs,1):s.SoundData.(soundNames{1}).ToneReps*...
         size(s.SoundData.(soundNames{1}).UniqueDBs,1):length(s.SoundData.(soundNames{1}).Frequencies);
     rasterFreqLines1(:,2) = s.SoundData.(soundNames{1}).UniqueFreqs;
@@ -276,7 +276,7 @@ for i=1:numUnits
     plot([0 0],[ylim],'b');
     plot([s.SoundData.(soundNames{2}).ToneDur s.SoundData.(soundNames{2}).ToneDur],[ylim],'b');
     rasterFreqLines2 = zeros(size(s.SoundData.(soundNames{2}).UniqueFreqs,1),2);
-    rasterFreqLines2(:,1) = s.SoundData.(soundNames{2}).ToneReps*...
+    rasterFreqLines2(:,1) = s.SoundData.(soundNames{2}).ToneReps/2*...
         size(s.SoundData.(soundNames{2}).UniqueDBs,1):s.SoundData.(soundNames{2}).ToneReps*...
         size(s.SoundData.(soundNames{2}).UniqueDBs,1):length(s.SoundData.(soundNames{2}).Frequencies);
     rasterFreqLines2(:,2) = s.SoundData.(soundNames{2}).UniqueFreqs;
