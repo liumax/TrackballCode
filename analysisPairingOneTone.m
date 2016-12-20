@@ -34,8 +34,8 @@ params.baselineBin = [-2,0]; %defines duration of baseline period based on toneD
 params.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
 params.zLimit = [0.05 0.01 0.001];
 params.numShuffle = 1000;
-params.firstSpikeWindow = [-1 0 0.5 1 1.5];%defines period for looking for first spike, based on toneDur
-params.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
+params.firstSpikeWindow = [-1 0 1 1.5];%defines period for looking for first spike, based on toneDur
+params.chosenSpikeBin = 2; %spike bin selected in binSpike (in the event of multiple spike bins)
 params.minSpikes = 80; %minimum number of spikes to do spike shuffling
 params.minSigSpikes = 2; %minimum number of significant points to record a significant response.
 params.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
@@ -213,7 +213,7 @@ s.SoundData.(soundNames{3}) = soundFile.(soundNames{3});
     spikeNames{3},soundNames{3},params); 
 disp('Pairing Analyzed')
 %% NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
-[s] = functionNewPairingMasterPlot(numUnits,s,...
+[s] = functionOneTonePairingMasterPlot(numUnits,s,...
     desigNames,params,fileName,soundNames);
 
 
