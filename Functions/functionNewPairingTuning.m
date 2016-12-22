@@ -119,7 +119,7 @@ for i = 1:numUnits
             responseHistHolder{k,l} = responseHist;
             responseHist = [];
         end
-        freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
+        freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:))');
     end
     s.(desigNames{i}).(fieldName).AllRasters = fullRasterData;
     s.(desigNames{i}).(fieldName).AllHistograms = fullHistData;
