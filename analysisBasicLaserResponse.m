@@ -118,18 +118,14 @@ for i = 1:numUnits
         nonLaserIndex = 1:1:length(s.(desigNames{i}).SpikeTimes);
     end
     %calculates average waves derived from the above indices.
-    averageWaveLaser = mean(s.(desigNames{i}).AllWaves(:,laserWaveIndex),2);
-    waveSTDLaser = std(s.(desigNames{i}).AllWaves(:,laserWaveIndex),0,2);
-    averageWaveNon = mean(s.(desigNames{i}).AllWaves(:,nonLaserIndex),2);
-    waveSTDNon = std(s.(desigNames{i}).AllWaves(:,nonLaserIndex),0,2);
+    averageWaveLaser = mean(s.(desigNames{i}).AllWaves(:,:,laserWaveIndex),3);
+    averageWaveNon = mean(s.(desigNames{i}).AllWaves(:,:,nonLaserIndex),3);
     
     %save these values
     s.(desigNames{i}).LaserRelated.PercentLaserResponse = laserRespPercent;
     s.(desigNames{i}).LaserRelated.SpikesPerLaser = laserRespSize;
     s.(desigNames{i}).LaserRelated.AverageLaserWave = averageWaveLaser;
-    s.(desigNames{i}).LaserRelated.LaserWaveSTD = waveSTDLaser;
     s.(desigNames{i}).LaserRelated.AverageNormalWave = averageWaveNon;
-    s.(desigNames{i}).LaserRelated.NormalWaveSTD = waveSTDNon;
     
     %move on to next step, aligning actual spikes. This involves generating
     %simple raster as well as histogram.
@@ -180,8 +176,11 @@ for i = 1:numUnits
     hold on
     plot(s.(desigNames{i}).LaserRelated.AverageNormalWave,'k','LineWidth',2)
     plot(s.(desigNames{i}).LaserRelated.AverageLaserWave,'c','LineWidth',2)
+    %turns out corrcoef can function across multiple columns! Produces a
+    %maybe inflated value?
+    
     waveCorrelation = corrcoef(s.(desigNames{i}).LaserRelated.AverageLaserWave,s.(desigNames{i}).LaserRelated.AverageNormalWave);
-
+% 
     title({strcat('OverallFiringRate:',num2str(s.(desigNames{i}).OverallFiringRate)),strcat('WaveCorrelation:',num2str(waveCorrelation(2))),...
         strcat('LaserResponsePercentage:',num2str(s.(desigNames{i}).LaserRelated.PercentLaserResponse))})
     %plots ISI

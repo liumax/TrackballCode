@@ -13,9 +13,7 @@ for i=1:numUnits
     %plots average waveform
     subplot(4,8,1)
     hold on
-    plot(s.(desigNames{i}).AverageWaveForms(:,2),'LineWidth',2)
-    plot(s.(desigNames{i}).AverageWaveForms(:,1),'r','LineWidth',1)
-    plot(s.(desigNames{i}).AverageWaveForms(:,3),'r','LineWidth',1)
+    plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
     title({fileName;desigNames{i};strcat('AverageFiringRate:',num2str(s.(desigNames{i}).BaselineFiringRate))});
     set(0, 'DefaulttextInterpreter', 'none')
     %plots ISI

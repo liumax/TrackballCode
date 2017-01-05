@@ -50,20 +50,10 @@ for clusterCount = 1:numTrodes
         %pull waves and squeeze to a 40 x X array
         targetWaveName = strcat('waves_',truncatedNames{clusterCount},'.mat');
         waveLoader = open(targetWaveName);
-        %need to check for the number of waves. This is the compensate for
-        %tetrodes. currently is a kludgy solution. 
-        waveSizeCheck = size(waveLoader.waves);
-        if waveSizeCheck(2) == 1
-            waveForms = squeeze(waveLoader.waves);
-        elseif waveSizeCheck(2) > 1
-            waveForms = squeeze(mean(waveLoader.waves,2));
-        end
         %extract relevant waves
-        waveHolder = waveForms(:,clusterSpikes);
+        waveHolder = waveLoader.waves(:,:,clusterSpikes);
         %pull out average and standard error
-        averageWaveHolder(:,2) = mean(waveHolder,2);
-        averageWaveHolder(:,1) = mean(waveHolder,2)-std(waveHolder,0,2)/sqrt(size(waveHolder,2)-1);
-        averageWaveHolder(:,3) = mean(waveHolder,2)+std(waveHolder,0,2)/sqrt(size(waveHolder,2)-1);
+        averageWaveHolder = mean(waveHolder,3);
         %store into structured array!
         s.(desigNames{desigCounter}).ISIGraph = selectedSpikes;
         s.(desigNames{desigCounter}).RPVNumber = rpvNumber;

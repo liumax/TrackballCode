@@ -22,7 +22,7 @@
 
 function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
-s.Parameters.RasterWindow = [-1 3]; %ratio for raster window. will be multiplied by toneDur
+s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
 s.Parameters.RPVTime = 0.001; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.005; %histogram bin size in seconds
@@ -308,9 +308,7 @@ for i = 1:numUnits
     %plots average waveform
     subplot(4,6,1)
     hold on
-    plot(s.(desigNames{i}).AverageWaveForms(:,2),'LineWidth',2)
-    plot(s.(desigNames{i}).AverageWaveForms(:,1),'r','LineWidth',1)
-    plot(s.(desigNames{i}).AverageWaveForms(:,3),'r','LineWidth',1)
+    plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
     title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
     %plots ISI
     subplot(4,6,2)

@@ -316,9 +316,7 @@ for i = 1:numTrodes
         %plots average waveform
         subplot(4,6,1)
         hold on
-        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,rasterCounter,2),'LineWidth',2)
-        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,rasterCounter,1),'r','LineWidth',1)
-        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms(:,rasterCounter,3),'r','LineWidth',1)
+        plot(matclustStruct.(truncatedNames{i}).AverageWaveForms,'LineWidth',2)
         title(strcat('AverageFiringRate:',num2str(matclustStruct.(truncatedNames{i}).AverageFiringRate(rasterCounter))))
         
         %plots ISI
