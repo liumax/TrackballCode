@@ -1,9 +1,15 @@
 %This code will be for extraction of spikes, calculation of RPVs, and
 %calculation of overall firing rate. This code will also extract the
 %average waveform of the cluster.
+%Addendum 170105 Adding code to eliminate duplicate units.
 
 function [s, truncatedNames] = functionMatclustExtraction(rpvTime,...
     matclustFiles,s,clusterWindow);
+
+%Parameters for selection of duplicates
+dupSelectLim = 0.20;
+spikeHolder = cell(0,0);
+expPower = 4;
 
 %The code below extracts out the names of the nTrodes and generates both
 %names for nTrode-Cluster combinations, as well as an array for indexing
@@ -15,6 +21,7 @@ numTrodes = length(truncatedNames);
 desigNames = cell(0,0);
 desigArray = [];
 desigCounter = 1;
+
 for clusterCount = 1:numTrodes
     %extracts the "ntX" part of the nTrode name.
     truncatedNames{clusterCount} = truncatedNames{clusterCount}(16:find(truncatedNames{clusterCount} == '.')-1);
@@ -35,6 +42,7 @@ for clusterCount = 1:numTrodes
         clusterSpikes = matclustFile.clustattrib.clusters{1,matclustFile.clustattrib.clustersOn(nameCount)}.index;
         %find spike times.
         spikeTimes = matclustFile.clustdata.params(clusterSpikes,1);
+        spikeHolder{desigCounter} = round(spikeTimes*(10^expPower))/(10^expPower); %stores spikes for separating out duplicate units.
         %find difference in time between spikes. 
         diffSpikes = diff(spikeTimes);
         %based on differences, calculate RPV number and percentage
@@ -68,6 +76,41 @@ for clusterCount = 1:numTrodes
         desigCounter = desigCounter + 1;
     end
 end
+
+%now that things are all squared away, lets eliminate duplicates!
+c = nchoosek([1:length(desigNames)],2);
+compHolder = zeros(length(c),3);
+
+for clusterCounter = 1:length(c)
+    compHolder(clusterCounter,1) = length(intersect(spikeHolder{c(clusterCounter,1)},spikeHolder{c(clusterCounter,2)}));
+    compHolder(clusterCounter,2) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,1)});
+    compHolder(clusterCounter,3) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,2)});
+end
+
+%find duplicates with cutoff set above. 
+dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
+
+%find the true indices of the units, choose which to eliminate.
+for clusterCounter = 1:length(dupTargets)
+    targetInds = c(dupTargets(clusterCounter),:);
+    waves1 = mean(max(s.(desigNames{targetInds(1)}).AverageWaveForms));
+    waves2 = mean(max(s.(desigNames{targetInds(2)}).AverageWaveForms));
+    if waves1 > waves2
+        disp(strcat(desigNames{targetInds(1)},'>',desigNames{targetInds(2)},'Saving Former'))
+        s = rmfield(s,desigNames{targetInds(2)});
+        desigNames(targetInds(2)) = [];
+        desigArray(targetInds(2),:) = [];
+    elseif waves2 > waves1
+        disp(strcat(desigNames{targetInds(1)},'<',desigNames{targetInds(2)},'Saving Latter'))
+        s = rmfield(s,desigNames{targetInds(1)});
+        desigNames(targetInds(1)) = [];
+        desigArray(targetInds(1),:) = [];
+    else
+        disp(strcat(desigNames{targetInds(1)},' and_',desigNames{targetInds(2)},'Equal, Saving Both'))
+    end
+end
+
+
 
 s.DesignationArray = desigArray;
 s.DesignationName = desigNames;
