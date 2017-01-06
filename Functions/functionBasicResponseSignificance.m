@@ -40,7 +40,7 @@ baselineVector = [s.Parameters.BaselineWindow(1) + s.Parameters.histBin/2:s.Para
 histBin = s.Parameters.histBin;
 
 if length(baselineSpikes) > s.Parameters.minSpikes
-    %% First step is to computer an overall histogram of baseline bins.
+    %% First step is to compute an overall histogram of baseline bins.
     
     baselineHist = hist(baselineSpikes(:,1),baselineVector)/histBin/trialNum;
     %These bins will serve as the distribution against which we will
