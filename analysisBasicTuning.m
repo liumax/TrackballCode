@@ -23,6 +23,8 @@
 function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
+s.Parameters.ToneWindow = [0 1];
+s.Parameters.GenWindow = [0 3];
 s.Parameters.RPVTime = 0.001; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.005; %histogram bin size in seconds
@@ -47,7 +49,9 @@ s.Parameters.minSpikes = 100; %minimum number of spikes to do spike shuffling
 s.Parameters.minSigSpikes = 2; %minimum number of significant points to record a significant response.
 s.Parameters.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
 s.Parameters.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
-
+s.Parameters.PercentCutoff = 99.9;
+s.Parameters.BaselineCutoff = 95;
+s.Parameters.latBin = 0.001;
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
@@ -98,6 +102,8 @@ totalTrialNum = length(soundData.Frequencies);
 
 %Recalculate raster window and such
 s.Parameters.RasterWindow = s.Parameters.RasterWindow * toneDur;
+s.Parameters.ToneWindow = s.Parameters.ToneWindow * toneDur;
+s.Parameters.GenWindow = s.Parameters.GenWindow * toneDur;
 s.Parameters.FirstSpikeWindow = s.Parameters.FirstSpikeWindow * toneDur;
 s.Parameters.BaselineBin = s.Parameters.BaselineBin * toneDur;
 calcWindow = s.Parameters.calcWindow*toneDur;
@@ -252,6 +258,7 @@ for i = 1:numUnits
     organizedRasters = cell(numFreqs,numDBs);
     responseHistHolder = cell(numFreqs,numDBs);
     histErr = zeros(numFreqs,numDBs,length(histBinVector));
+    latPeakBinStore = cell(numFreqs,numDBs);
     
     for k = 1:numFreqs
         for l = 1:numDBs
@@ -263,12 +270,10 @@ for i = 1:numUnits
             organizedHist(k,l,:) = histCounts/toneReps/s.Parameters.histBin; %saves histogram
             specHist = fullHistHolder(:,targetTrials);
             histErr(k,l,:) = std(specHist,0,2)/sqrt(length(targetTrials));
-            [firstSpikeTimes,firstSpikeStats,binSpikeTimes,binSpikeStats] = ...
-                functionBasicFirstSpikeTiming(s.Parameters.FirstSpikeWindow,targetRasters,toneReps,2,targetTrials); %calculates information about first spike timing
-            firstSpikeTimeHolder{k,l} = firstSpikeTimes; %saves first spike times
-            firstSpikeStatsHolder(k,l,:,:) = firstSpikeStats; %saves statistics about first spikes
-            binSpikeHolder{k,l} = binSpikeTimes; %binned spikes from the defined window.
-            binSpikeStatsHolder(k,l,:,:) = binSpikeStats; %stats about those spikes
+            [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneWindow,s.Parameters.GenWindow,s.Parameters.RasterWindow,...
+                targetRasters,length(targetTrials),2,targetTrials,s.Parameters.latBin,s.Parameters.histBin,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
+            latePeakBinStore{k,l} = latPeakBinOut;
+            latPeakBinOut = [];
             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
             responseHistHolder{k,l} = responseHist;
         end
@@ -282,10 +287,6 @@ for i = 1:numUnits
     s.(desigNames{i}).FreqDBRasters = organizedRasters;
     s.(desigNames{i}).FreqDBHistograms = organizedHist;
     s.(desigNames{i}).FreqDBHistogramErrors = histErr;
-    s.(desigNames{i}).FirstSpikeTimes = firstSpikeTimeHolder;
-    s.(desigNames{i}).FirstSpikeStats = firstSpikeStatsHolder;
-    s.(desigNames{i}).BinSpikes = binSpikeHolder;
-    s.(desigNames{i}).BinSpikeStats = binSpikeStatsHolder;
     s.(desigNames{i}).FrequencyHistograms = freqSpecHist;
     s.(desigNames{i}).AverageRate = averageRate;
     s.(desigNames{i}).AverageSTD = averageSTD;
@@ -293,6 +294,7 @@ for i = 1:numUnits
     s.(desigNames{i}).HistBinVector = histBinVector;
     s.(desigNames{i}).AllHistogramSig = generalResponseHist;
     s.(desigNames{i}).SpecHistogramSig = responseHistHolder;
+    s.(desigNames{i}).LatPeakBin = latePeakBinStore;
 end
 
 %calculate and plot LFP information
@@ -318,36 +320,36 @@ for i = 1:numUnits
     xlim(s.Parameters.ClusterWindow)
     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-    %plots first spike latency
-    subplot(4,3,4)
-    imagesc(s.(desigNames{i}).FirstSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin)')
-    colormap hot
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean First Spike Latency')
-    %plots heatmap of binned spikes to the chosen spike timing window.
-    subplot(4,3,7)
-    imagesc(squeeze(s.(desigNames{i}).BinSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin))')
-    colormap hot
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Binned Response')
-    %plots heatmaps of response reliability in chosen bin 
-    subplot(4,3,10)
-    imagesc(squeeze(s.(desigNames{i}).FirstSpikeStats(:,:,3,s.Parameters.ChosenSpikeBin))')
-    colormap hot
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Probability of Response')
+%     %plots first spike latency
+%     subplot(4,3,4)
+%     imagesc(s.(desigNames{i}).FirstSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin)')
+%     colormap hot
+%     colorbar
+%     set(gca,'XTick',octaveRange(:,2));
+%     set(gca,'XTickLabel',octaveRange(:,1));
+%     set(gca,'YTick',dbRange(:,2));
+%     set(gca,'YTickLabel',dbRange(:,1));
+%     title('Mean First Spike Latency')
+%     %plots heatmap of binned spikes to the chosen spike timing window.
+%     subplot(4,3,7)
+%     imagesc(squeeze(s.(desigNames{i}).BinSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin))')
+%     colormap hot
+%     colorbar
+%     set(gca,'XTick',octaveRange(:,2));
+%     set(gca,'XTickLabel',octaveRange(:,1));
+%     set(gca,'YTick',dbRange(:,2));
+%     set(gca,'YTickLabel',dbRange(:,1));
+%     title('Binned Response')
+%     %plots heatmaps of response reliability in chosen bin 
+%     subplot(4,3,10)
+%     imagesc(squeeze(s.(desigNames{i}).FirstSpikeStats(:,:,3,s.Parameters.ChosenSpikeBin))')
+%     colormap hot
+%     colorbar
+%     set(gca,'XTick',octaveRange(:,2));
+%     set(gca,'XTickLabel',octaveRange(:,1));
+%     set(gca,'YTick',dbRange(:,2));
+%     set(gca,'YTickLabel',dbRange(:,1));
+%     title('Probability of Response')
     %plots rasters (chronological)
     subplot(3,3,2)
     plot(s.(desigNames{i}).AllRasters(:,1),...
@@ -411,7 +413,7 @@ for i = 1:numUnits
         s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1),...
         s.(desigNames{i}).AllHistogramSig.Histogram(...
         s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1,1),...
-        'c*')
+        'bo')
     %plot negative values for first tuning
     plot(s.(desigNames{i}).AllHistogramSig.Centers(...
         s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1),...

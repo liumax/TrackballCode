@@ -1,13 +1,71 @@
 
-%This function is meant to calculate the latency of a significant response,
+%170106 This function is meant to calculate the latency of a significant response,
 %the binned number of spikes in a given window, and the peak response
 %following a tone. 
+
+%Inputs:
+%toneWindow: two element vector delineating beginning and end of tone in
+%seconds
+
+%generalWindow: two element vector delineating beginning and end of general
+%period in seconds, meant to allow capture of responses to tone offset.
+
+%fullWindow: two element vector representing the bounds of the raster, in
+%seconds. This should correspond to raster window from main analysis
+%scripts.
+
+%alignedSpikes: n x m matrix, with n spikes, and spikes in column 1. Column
+%2 should contain information about trial number, to allow for separation
+%by trial number for calculation of response binning
+
+%numTrials: scalar input for the number of trials to examine
+
+%trialColumn: column in alignedSpikes with the information about which
+%trial number
+
+%trialNumbers: numbers of the trials of interest
+
+%latBins: bin size for calculation of latency. Default should be 0.001
+
+%peakBins: bin size for calculation of peak response. Default should be
+%0.005
+
+%percentCutoff: percentile cutoff for calculation as a significant
+%response. This is important for calculation of latency. Default is 99.9
+
+%baselineCutoff: percentile cutoff for tracing back response initiation.
+%This is lower than percentCutoff, and is used as an arbitrary bound to
+%determine when responses are no longer significant, thereby deriving the
+%first response bin. Default is 95.
+
+%Outputs:
+
+%latPeakBinOut: structured array with multiple components. 
+
+% Concerning latency, we have: 
+% ResponseLatency (latency in ms), and 
+% ResponseFirstSig, which is the first bin reaching significance (in ms)
+
+% Concerning binned responses, we have:
+% BinnedSpikesTone: which bins all spikes in the tone period, and
+% BinnedSpikesGen: which bins all spikes in the general period.
+
+% Concerning Probability of response, we have:
+% ProbSpikeTone: overall probability of having any spikes in the tone period
+% ProbSpikeGen: overall probability of having any spikes in the general period
+
+% Concerning Peak Responses, we have:
+% PeakRespTone: peak response during tone period
+% PeakRespToneTime: time of the peak response, in ms
+% PeakRespGen: peak response during general period
+% PeakRespGenTime: time of general peak response, in ms.
+
 
 function [latPeakBinOut] = functionLatPeakBinCalculation(toneWindow,generalWindow,fullWindow,alignedSpikes,numTrials,trialColumn,trialNumbers,latBins,peakBins,percentCutoff,baselineCutoff);
 
 %% Calculate binned spikes occurring during tone or general period
-binSpikeTone = zeros(length(numTrials),1);
-binSpikeGen = zeros(length(numTrials),1);
+binSpikeTone = zeros(numTrials,1);
+binSpikeGen = zeros(numTrials,1);
 
 for latCount = 1:numTrials
     targetSpikes = alignedSpikes(alignedSpikes(:,trialColumn) == trialNumbers(latCount),1);
