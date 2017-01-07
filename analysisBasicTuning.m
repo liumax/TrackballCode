@@ -259,6 +259,13 @@ for i = 1:numUnits
     responseHistHolder = cell(numFreqs,numDBs);
     histErr = zeros(numFreqs,numDBs,length(histBinVector));
     latPeakBinStore = cell(numFreqs,numDBs);
+    latStore = zeros(numFreqs,numDBs);
+    peakStoreGen = zeros(numFreqs,numDBs);
+    binStoreTone = zeros(numFreqs,numDBs);
+    binStoreGen = zeros(numFreqs,numDBs);
+    probStoreTone = zeros(numFreqs,numDBs);
+    probStoreGen = zeros(numFreqs,numDBs);
+    
     
     for k = 1:numFreqs
         for l = 1:numDBs
@@ -273,6 +280,12 @@ for i = 1:numUnits
             [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneWindow,s.Parameters.GenWindow,s.Parameters.RasterWindow,...
                 targetRasters,length(targetTrials),2,targetTrials,s.Parameters.latBin,s.Parameters.histBin,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
             latePeakBinStore{k,l} = latPeakBinOut;
+            latStore(k,l) = latPeakBinOut.ResponseLatency;
+            peakStoreGen(k,l) = latPeakBinOut.PeakRespGen;
+            binStoreTone(k,l) = mean(latPeakBinOut.BinnedSpikesTone);
+            binStoreGen(k,l) = mean(latPeakBinOut.BinnedSpikesGen);
+            probStoreTone(k,l) = latPeakBinOut.ProbSpikeTone;
+            probStoreGen(k,l) = latPeakBinOut.ProbSpikeGen;
             latPeakBinOut = [];
             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
             responseHistHolder{k,l} = responseHist;
@@ -295,6 +308,12 @@ for i = 1:numUnits
     s.(desigNames{i}).AllHistogramSig = generalResponseHist;
     s.(desigNames{i}).SpecHistogramSig = responseHistHolder;
     s.(desigNames{i}).LatPeakBin = latePeakBinStore;
+    s.(desigNames{i}).LatencyMap = latStore;
+    s.(desigNames{i}).PeakMap = peakStoreGen;
+    s.(desigNames{i}).BinTone = binStoreTone;
+    s.(desigNames{i}).BinGen = binStoreGen;
+    s.(desigNames{i}).ProbTone = probStoreTone;
+    s.(desigNames{i}).ProbGen = probStoreGen;
 end
 
 %calculate and plot LFP information
@@ -302,7 +321,7 @@ end
 % s.LFP = lfpStruct;
 
 %% Plotting
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.01 0.01]);
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
 for i = 1:numUnits
     hFig = figure;
@@ -320,36 +339,61 @@ for i = 1:numUnits
     xlim(s.Parameters.ClusterWindow)
     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-%     %plots first spike latency
-%     subplot(4,3,4)
-%     imagesc(s.(desigNames{i}).FirstSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin)')
-%     colormap hot
-%     colorbar
-%     set(gca,'XTick',octaveRange(:,2));
-%     set(gca,'XTickLabel',octaveRange(:,1));
-%     set(gca,'YTick',dbRange(:,2));
-%     set(gca,'YTickLabel',dbRange(:,1));
-%     title('Mean First Spike Latency')
-%     %plots heatmap of binned spikes to the chosen spike timing window.
-%     subplot(4,3,7)
-%     imagesc(squeeze(s.(desigNames{i}).BinSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin))')
-%     colormap hot
-%     colorbar
-%     set(gca,'XTick',octaveRange(:,2));
-%     set(gca,'XTickLabel',octaveRange(:,1));
-%     set(gca,'YTick',dbRange(:,2));
-%     set(gca,'YTickLabel',dbRange(:,1));
-%     title('Binned Response')
-%     %plots heatmaps of response reliability in chosen bin 
-%     subplot(4,3,10)
-%     imagesc(squeeze(s.(desigNames{i}).FirstSpikeStats(:,:,3,s.Parameters.ChosenSpikeBin))')
-%     colormap hot
-%     colorbar
-%     set(gca,'XTick',octaveRange(:,2));
-%     set(gca,'XTickLabel',octaveRange(:,1));
-%     set(gca,'YTick',dbRange(:,2));
-%     set(gca,'YTickLabel',dbRange(:,1));
-%     title('Probability of Response')
+    %Plot binned response during tone period
+    subplot(4,3,4)
+    imagesc(s.(desigNames{i}).BinTone')
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Mean Binned Response (tone)')
+    %Plot binned response during general period
+    subplot(4,3,7)
+    imagesc(s.(desigNames{i}).BinGen')
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Mean Binned Response (general)')
+    %Plot peak response during general period
+    subplot(4,3,10)
+    imagesc(s.(desigNames{i}).PeakMap')
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Peak Response (general)')
+    %plot latency data
+    subplot(4,3,6)
+    imagesc(s.(desigNames{i}).LatencyMap')
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Calculated Latency (1ms sample)')
+    %plot probability of response (tone)
+    subplot(4,3,9)
+    imagesc(s.(desigNames{i}).ProbTone')
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Probability of Response (tone)')
+    %plot probability of response (gen)
+    subplot(4,3,12)
+    imagesc(s.(desigNames{i}).ProbGen')
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Probability of Response (general)')
+    
     %plots rasters (chronological)
     subplot(3,3,2)
     plot(s.(desigNames{i}).AllRasters(:,1),...

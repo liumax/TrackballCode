@@ -99,7 +99,9 @@ peakHist = hist(alignedSpikes(:,1),peakBinVector);
 %finally, find max values during this window
 [peakGenVal,peakGenTime]= max(peakHist(genStart:genEnd));
 [peakToneVal,peakToneTime]= max(peakHist(toneStart:toneEnd));
-
+%compensate for bin size and number of trials
+peakGenVal = peakGenVal/peakBins/numTrials;
+peakToneVal = peakToneVal/peakBins/numTrials;
 %supplement indices for time with the correct offsets
 peakGenTime = peakBinVector(peakGenTime + genStart - 1);
 peakToneTime = peakBinVector(peakToneTime + toneStart - 1);

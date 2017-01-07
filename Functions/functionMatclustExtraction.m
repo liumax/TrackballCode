@@ -91,8 +91,8 @@ end
 dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
 
 %find the true indices of the units, choose which to eliminate.
-for clusterCounter = 1:length(dupTargets)
-    targetInds = c(dupTargets(clusterCounter),:);
+while length(dupTargets)>0
+    targetInds = c(dupTargets(1),:);
     waves1 = mean(max(s.(desigNames{targetInds(1)}).AverageWaveForms));
     waves2 = mean(max(s.(desigNames{targetInds(2)}).AverageWaveForms));
     if waves1 > waves2
@@ -108,6 +108,17 @@ for clusterCounter = 1:length(dupTargets)
     else
         disp(strcat(desigNames{targetInds(1)},' and_',desigNames{targetInds(2)},'Equal, Saving Both'))
     end
+    
+    c = nchoosek([1:length(desigNames)],2);
+    compHolder = zeros(length(c),3);
+    for clusterCounter = 1:length(c)
+        compHolder(clusterCounter,1) = length(intersect(spikeHolder{c(clusterCounter,1)},spikeHolder{c(clusterCounter,2)}));
+        compHolder(clusterCounter,2) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,1)});
+        compHolder(clusterCounter,3) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,2)});
+    end
+    %find duplicates with cutoff set above. 
+    dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
+    
 end
 
 

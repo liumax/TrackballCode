@@ -22,7 +22,7 @@ params = struct;
 params.rpvTime = 0.0013; %limit to be considered an RPV.
 params.clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
 params.trodesFS = 30000; %sampling rate of trodes box.
-params.rasterWindow = [-2,3]; %duration of raster window. These are numbers that will
+params.rasterWindow = [-4,3]; %duration of raster window. These are numbers that will
 params.pairingWindow = [-10,20]; %window for looking at pairing.
 %be multiplied by the tone duration. EX: raster window for 0.1sec tone will
 %be -100 to 300 ms.
@@ -40,6 +40,13 @@ params.minSpikes = 100; %minimum number of spikes to do spike shuffling
 params.minSigSpikes = 2; %minimum number of significant points to record a significant response.
 params.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
 params.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
+
+%variables for latBinPeak calculations
+params.toneWindow = [0,1];
+params.genWindow = [0,3];
+params.latBin = 0.001;
+params.percentCutoff = 99.9;
+params.baseCutoff = 95;
 
 
 
@@ -321,6 +328,11 @@ s.SoundData.(soundNames{9}) = soundFile.(soundNames{9});
 [s] = functionNewPairingPairedToneHist(s,desigNames,...
     spikeNames{9},soundNames{9},params); 
 
+
+
+
+
+
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
 [s] = functionPairingUDUMasterPlot(numUnits,s,...
     desigNames,params,fileName,soundNames);
@@ -329,7 +341,7 @@ s.SoundData.(soundNames{9}) = soundFile.(soundNames{9});
 
 pname = pwd;
 fname = strcat(fileName,'PairingAnalysis');
-save(fullfile(pname,fname),'s');
+save(fullfile(pname,fname),'s','-v7.3');
 
 end
 

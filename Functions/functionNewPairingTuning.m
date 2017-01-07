@@ -21,6 +21,11 @@ fieldName = strcat(soundName,'Analysis');
 
 %pulls out things into variables to make them easier to call.
 rasterWindow = params.rasterWindow;
+toneWindow = params.toneWindow;
+genWindow = params.genWindow;
+latBin = params.latBin;
+percentCutoff = params.percentCutoff;
+baselineCutoff = params.baseCutoff;
 histBin = params.histBin;
 baselineBin = params.baselineBin;
 calcWindow = params.calcWindow;
@@ -38,6 +43,8 @@ numFreqs = size(unique(master(:,2)),1);
 toneReps = soundData.ToneReps;
 %converts raster window from ratio to actual time in seconds.
 rasterWindow = rasterWindow*soundData.ToneDur;
+toneWindow = toneWindow * soundData.ToneDur;
+genWindow = genWindow * soundData.ToneDur;
 calcWindow = calcWindow*soundData.ToneDur;
 baselineBin = baselineBin*soundData.ToneDur;
 firstSpikeWindow = firstSpikeWindow*soundData.ToneDur;
@@ -73,6 +80,10 @@ for i = 1:numUnits
     averageRate = mean(averageSpikeHolder/(baselineBin(2)-baselineBin(1)));
     averageSTD = std(averageSpikeHolder/(baselineBin(2)-baselineBin(1)));
     
+    %make compensatory binning relative to average rate.
+    compBinTone = averageRate*(toneWindow(2)-toneWindow(1));
+    compBinGen = averageRate*(genWindow(2)-genWindow(1));
+    
     [histCounts histCenters] = hist(rasters(:,1),histBinVector);
     fullHistData = histCounts'/length(master)/histBin;
     
@@ -86,15 +97,21 @@ for i = 1:numUnits
     if generalResponseHist.Warning == 0 & generalResponseHist.SigSpike == 1
         s.SignificantSpikes.(spikeName)(i) = 1;
     end
-    
-    [genFirstSpikeTimes,genFirstSpikeStats,genBinSpikeTimes,genBinSpikeStats] = ...
-    functionBasicFirstSpikeTiming(firstSpikeWindow,rasters,length(master),2,1:length(master)); %calculates information about first spike timing
+    [generalLatPeakBinOut] = functionLatPeakBinCalculation(toneWindow,genWindow,rasterWindow,rasters,...
+                length(master),2,[1:1:length(master)],latBin,histBin,percentCutoff,baselineCutoff);
     
     %allocates empty array.
     responseHistHolder = cell(numFreqs,numDBs);
     organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
     organizedRasters = cell(numFreqs,numDBs);
     histErr = zeros(numFreqs,numDBs,length(histBinVector));
+    latStore = zeros(numFreqs,numDBs);
+    peakStoreTone = zeros(numFreqs,numDBs);
+    peakStoreGen = zeros(numFreqs,numDBs);
+    binStoreTone = zeros(numFreqs,numDBs);
+    binStoreGen = zeros(numFreqs,numDBs);
+    probStoreTone = zeros(numFreqs,numDBs);
+    probStoreGen = zeros(numFreqs,numDBs);
     
     for k = 1:numFreqs
         for l = 1:numDBs
@@ -107,12 +124,19 @@ for i = 1:numUnits
             %Calculate standard error based on individual histograms
             specHist = indivHist(:,targetTrials);
             histErr(k,l,:) = std(specHist,0,2)/sqrt(length(targetTrials));
-            [firstSpikeTimes,firstSpikeStats,binSpikeTimes,binSpikeStats] = ...
-                functionBasicFirstSpikeTiming(firstSpikeWindow,targetRasters,toneReps,2,targetTrials); %calculates information about first spike timing
-            firstSpikeTimeHolder{k,l} = firstSpikeTimes; %saves first spike times
-            firstSpikeStatsHolder(k,l,:,:) = firstSpikeStats; %saves statistics about first spikes
-            binSpikeHolder{k,l} = binSpikeTimes; %binned spikes from the defined window.
-            binSpikeStatsHolder(k,l,:,:) = binSpikeStats; %stats about those spikes
+            [latPeakBinOut] = functionLatPeakBinCalculation(toneWindow,genWindow,rasterWindow,targetRasters,...
+                length(targetTrials),2,targetTrials,latBin,histBin,percentCutoff,baselineCutoff);
+            latPeakBinOut.BinnedSpikesToneComp = latPeakBinOut.BinnedSpikesTone - compBinTone;
+            latPeakBinOut.BinnedSpikesGenComp = latPeakBinOut.BinnedSpikesGen - compBinGen;
+            latePeakBinStore{k,l} = latPeakBinOut;
+            latStore(k,l) = latPeakBinOut.ResponseLatency;
+            peakStoreTone(k,l) = latPeakBinOut.PeakRespTone;
+            peakStoreGen(k,l) = latPeakBinOut.PeakRespGen;
+            binStoreTone(k,l) = mean(latPeakBinOut.BinnedSpikesTone);
+            binStoreGen(k,l) = mean(latPeakBinOut.BinnedSpikesGen);
+            probStoreTone(k,l) = latPeakBinOut.ProbSpikeTone;
+            probStoreGen(k,l) = latPeakBinOut.ProbSpikeGen;
+            latPeakBinOut = [];
             inputRaster = targetRasters(:,1);
             [responseHist] = functionBasicResponseSignificance(s,calcWindow,...
             spikeTimes,alignTimes,length(master));
@@ -127,20 +151,33 @@ for i = 1:numUnits
     s.(desigNames{i}).(fieldName).FreqDBRasters = organizedRasters;
     s.(desigNames{i}).(fieldName).FreqDBHistograms = organizedHist;
     s.(desigNames{i}).(fieldName).FreqDBHistogramErrors = histErr;
-    s.(desigNames{i}).(fieldName).FirstSpikeTimes = firstSpikeTimeHolder;
-    s.(desigNames{i}).(fieldName).FirstSpikeStats = firstSpikeStatsHolder;
-    s.(desigNames{i}).(fieldName).BinSpikes = binSpikeHolder;
-    s.(desigNames{i}).(fieldName).BinSpikeStats = binSpikeStatsHolder;
-    s.(desigNames{i}).(fieldName).GeneralFirstSpikeTimes = genFirstSpikeTimes;
-    s.(desigNames{i}).(fieldName).GeneralFirstSpikeStats = genFirstSpikeStats;
-    s.(desigNames{i}).(fieldName).GeneralBinSpikes = genBinSpikeTimes;
-    s.(desigNames{i}).(fieldName).GeneralBinSpikeStats = genBinSpikeStats;
+
+    s.(desigNames{i}).(fieldName).OverallLatBinPeakCalcs = generalLatPeakBinOut;
+    s.(desigNames{i}).(fieldName).IndividualLatbinPeakCalcs = latePeakBinStore;
+    s.(desigNames{i}).(fieldName).LatencyStore = latStore;
+    s.(desigNames{i}).(fieldName).PeakStoreTone = peakStoreTone;
+    s.(desigNames{i}).(fieldName).PeakStoreGen = peakStoreGen;
+    s.(desigNames{i}).(fieldName).BinStoreTone = binStoreTone;
+    s.(desigNames{i}).(fieldName).BinStoreGen = binStoreGen;
+    s.(desigNames{i}).(fieldName).ProbStoreTone = probStoreTone;
+    s.(desigNames{i}).(fieldName).ProbStoreGen = probStoreGen;
+    
     s.(desigNames{i}).(fieldName).FrequencyHistograms = freqSpecHist;
     s.(desigNames{i}).(fieldName).AverageRate = averageRate;
     s.(desigNames{i}).(fieldName).AverageSTD = averageSTD;
     s.(desigNames{i}).(fieldName).AllHistogramSig = generalResponseHist;
     s.(desigNames{i}).(fieldName).SpecHistogramSig = responseHistHolder;
     s.(desigNames{i}).(fieldName).HistBinVector = histBinVector;
+    
+    s.(desigNames{i}).(fieldName).CompBinTone = compBinTone;
+    s.(desigNames{i}).(fieldName).CompBinGen = compBinGen;
+    %fuck it, lets just calculate all the shit here before the plotting
+    %code
+    
+    s.(desigNames{i}).(fieldName).BinStoreToneComp = binStoreTone - compBinTone;
+    s.(desigNames{i}).(fieldName).BinStoreGenComp = binStoreGen - compBinGen;
+    s.(desigNames{i}).(fieldName).PeakStoreGenComp = peakStoreGen - averageRate;
+    
 end
 
 
