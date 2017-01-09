@@ -14,18 +14,18 @@ pipReps = 30; %number of repetitions of each frequency of presentation
 interPipITI = 4; %ITI of tone blocks in seconds. DOES NOT INCLUDE TONE DUR
 
 %control variability of tone pips here
-indivITI = [1 0.5 0.25]; %ITI in seconds.
+indivITI = [2 1 0.5]; %ITI in seconds.
 numITI = length(indivITI);
 
 % control over parameters of individual tone pips
-% targetFreq = 8000; %either frequency in Hz or 'white'
-targetFreq = 'white';
+targetFreq = 32000; %either frequency in Hz or 'white'
+% targetFreq = 'white';
 targetDB = 100;%amplitude in dB with 100 set as max with driver at no attenuation, speakers set to max
 maxDB = 100;%DONT ADJUST
 targetAmp= 10^-((maxDB-targetDB)/20);
 
 %control for tone pips 
-controlFreq = 8000;
+controlFreq = 16000;
 % controlFreq = 'white';
 controlDB = 100;
 controlAmp = 10^-((maxDB-controlDB)/20);

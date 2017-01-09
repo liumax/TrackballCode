@@ -19,7 +19,7 @@ fs = 192000; %sampling frequency in Hz
 firstWait = 120; %first waiting period in seconds. 
 interFunctionPause = 10; %seconds to wait after a function to finish before starting next
 postPairPause = 300; %wait after pairing.
-postSetPause = 600; %waiting between sets
+postSetPause = 300; %waiting between sets
 TTLDur = 2; %duration of TTL pulses is ms to be sent via the sound card.
 maxDB = 100; %maximum DB that the system is set to. 
 rampDur = 0.005; %duration of ramp for tone, in seconds!!!
@@ -36,24 +36,33 @@ postPauseMin = 800; %pause in milliseconds after tone
 postPauseMax = 1400; %pause in milliseconds after tone
 
 startF = 4000; %starting frequency in Hz
-endF = 64000; %ending frequency in Hz
-octFrac = 1; %fractions of octaves to move
+endF = 32000; %ending frequency in Hz
+octFrac = 0.5; %fractions of octaves to move
 
-startdB = 100; %starting decibel value
-enddB = 100; %lowest decibel value
+startdB = 80; %starting decibel value
+enddB = 80; %lowest decibel value
 dbSteps = 20; %resolution of decible steps
 %%
 %auditory pairing parameters:
-targetFreq = 8000; %target frequency in Hz
-targetDB = 100; %target DBs. 100 is max.
+targetFreq = 16000; %target frequency in Hz
+targetDB = 80; %target DBs. 100 is max.
 pairingToneReps = 200; %tone repetitions for pairing experiment
 interRep = 5; %seconds between tones
 
-optoDelay1 = 0; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
-optoDelay2 = -1; %opto delay for the down period.
+optoDelay1 = 'none'; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
+optoDelay2 = 0; %opto delay for the down period.
+optoDelay3 = -1;
 optoDur = 1; %duration of all opto pulses, in seconds. THIS IS SHITTY HARD CODED VALUE SHOULD EVENTUALLY CHANGE
 optoTTL = 0.002; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
+
+%% Error Detection: Kill the program if the target frequency or frequencies for tuning curve are less than 4kHz
+if startF < 4000
+    error('StartF for Tuning Curve Too Low')
+elseif targetFreq < 4000
+    error('TargetFreq is Too Low')
+end
+
 
 %%
 %parameters for TTLs that will signal shifts between functions
@@ -227,7 +236,7 @@ pause(interFunctionPause);
 %This should execute the pairing of auditory stimuli with dopamine
 %terminal/cellbody stimulation
 [s] = functionDAOneTonePairing(targetFreq,...
-    fs,targetDB,pairingToneReps,interRep,toneDur,optoDelay1,...
+    fs,targetDB,pairingToneReps,interRep,toneDur,optoDelay3,...
     optoDur,optoTTL,optoLag,maxDB, rampDur);
 
 fullData.(names{9})=s;

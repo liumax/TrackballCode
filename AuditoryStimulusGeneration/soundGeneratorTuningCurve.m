@@ -17,7 +17,7 @@ postPauseMax = 1000; %pause in milliseconds after tone
 %Frequency
 startF = 4000; %starting frequency in Hz
 endF = 64000; %ending frequency in Hz
-octFrac = 1; %fractions of octaves to move
+octFrac = 0.5; %fractions of octaves to move
 
 %dB
 maxdB = 100; %maximum decibel output

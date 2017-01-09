@@ -16,14 +16,14 @@ postPauseMax = 1000; %pause in milliseconds after tone
 
 %Frequency
 startF = 4000; %starting frequency in Hz
-endF = 64000; %ending frequency in Hz
+endF = 8000; %ending frequency in Hz
 octFrac = 1; %fractions of octaves to move
 %White noise?
 whiteNoise = 1; %1 for white noise inclusion.
 
 %dB
 startdB = 100; %starting decibel value
-enddB = 60; %lowest decibel value
+enddB = 80; %lowest decibel value
 dbSteps = 20; %resolution of decible steps
 
 %confirm pauses are longer than double the tone length

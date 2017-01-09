@@ -12,7 +12,7 @@ postPauseMin = 600; %pause in milliseconds after tone
 postPauseMax = 1200; %pause in milliseconds after tone
 
 overallReps = 2; %times the whole tuning curve is to be repeated.
-toneReps = 5; %number of repetitions of each tone/amplitude pair
+toneReps = 20; %number of repetitions of each tone/amplitude pair
 toneDur = 0.1; %tone duration in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs; %number of samples at correct sampling frequency
@@ -30,13 +30,13 @@ if warningCheck == 1
 end
 
 startF = 4000; %starting frequency in Hz
-endF = 32000; %ending frequency in Hz
+endF = 64000; %ending frequency in Hz
 octFrac = 1; %fractions of octaves to move
 
 maxdB = 100; %maximum decibel output
 startdB = 100; %starting decibel value
 enddB = 60; %lowest decibel value
-dbSteps = 10; %resolution of decible steps
+dbSteps = 20; %resolution of decible steps
 
 %this generates a vector with the frequencies that will be used
 octRange = log2(endF/startF);

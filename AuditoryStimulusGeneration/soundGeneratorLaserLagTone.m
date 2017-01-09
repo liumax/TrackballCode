@@ -15,12 +15,12 @@ onRampDur = 0.005; %both onramp and offramp will be cosine waves
 offRampDur = 0.005;
 
 %tone amplitude and frequency
-toneFreq = 8000; %if want white noise, enter 0
-toneDB = 100;
+toneFreq = 16000; %if want white noise, enter 0
+toneDB = 80;
 
 %task structure (assumes laser is delivered over 400ms)
-repsPerLag = 150; %number of tone presentations per block
-laserLags = [0 0.85 1.1 1.35 1.6]; %different positive lags in seconds (tone follows laser). 
+repsPerLag = 100; %number of tone presentations per block
+laserLags = [0 0.5 0.75 1 1.25]; %different positive lags in seconds (tone follows laser). 
 %NOTE: 0 lag is no laser. 
 postPauseMin = 5; %max and minimum pause times. In seconds.
 postPauseMax = 7;
@@ -142,6 +142,7 @@ soundData.Frequencies = master(:,1);
 soundData.dBs = master(:,2);
 soundData.Amplitudes = master(:,3);
 soundData.Delays = master(:,4);
+soundData.LaserDesig = master(:,5);
 soundData.LaserLags = laserLags;
 
 save(fullfile(pname,fname),'soundData');

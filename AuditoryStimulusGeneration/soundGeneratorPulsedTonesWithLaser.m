@@ -10,20 +10,20 @@ fs = 192000; %sampling frequency in Hz
 prePause = 0.1; %pause in seconds before tone delivery
 
 %control over timing of blocks of tone pips
-totalReps = 30; %number of repetitions of tone blocks
+totalReps = 50; %number of repetitions of tone blocks
 totalITI = 10; %ITI of tone blocks in seconds. DOES NOT INCLUDE TONE DUR
 
 %control over parameters of individual tone pips
-toneFreq = 8000; %either frequency in Hz or 'white'
-% toneFreq = 'white';
-toneDB = 80;%amplitude in dB with 100 set as max with driver at no attenuation, speakers set to max
+% toneFreq = 8000; %either frequency in Hz or 'white'
+toneFreq = 'white';
+toneDB = 100;%amplitude in dB with 100 set as max with driver at no attenuation, speakers set to max
 maxDB = 100;%DONT ADJUST
 toneAmp= 10^-((maxDB-toneDB)/20);
 
 %control for tone pips 
-controlFreq = 8000;
-% controlFreq = 'white';
-controlDB = 80;
+% controlFreq = 8000;
+controlFreq = 'white';
+controlDB = 100;
 controlAmp = 10^-((maxDB-controlDB)/20);
 
 indivReps = 10; %number of tone pips per presentation

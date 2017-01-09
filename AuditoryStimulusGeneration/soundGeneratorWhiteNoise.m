@@ -3,14 +3,14 @@
 %control over settings here
 toneReps = 100; %number of repetitions of each tone/amplitude pair
 totalReps = toneReps;
-toneDur = 0.3; %tone duration in seconds
+toneDur = 0.1; %tone duration in seconds
 ttlDur = 0.01; %duration of signaling TTL in seconds
 fs = 192000; %sampling frequency in Hz
 L = toneDur*fs;
 
 %pausing times!
-minPause = 1.5;
-maxPause = 3;
+minPause = 1;
+maxPause = 2;
 
 prePause = 0.1; %pause in seconds before tone
 
