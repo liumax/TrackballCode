@@ -53,6 +53,13 @@ optoDur = 1; %duration of all opto pulses, in seconds. THIS IS SHITTY HARD CODED
 optoTTL = 0.002; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
 
+%% Confirm frequencies okay
+if targetFreq < 4000
+    error('Target Frequency Below 4 kHz Cutoff')
+elseif startF < 4000
+    error('Starting Frequency Below 4 kHz Cutoff')
+end
+
 %%
 %parameters for TTLs that will signal shifts between functions
 signalTTLDur = TTLDur/1000;

@@ -56,11 +56,11 @@ optoDur = 1; %duration of all opto pulses, in seconds. THIS IS SHITTY HARD CODED
 optoTTL = 0.002; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
 
-%% Error Detection: Kill the program if the target frequency or frequencies for tuning curve are less than 4kHz
-if startF < 4000
-    error('StartF for Tuning Curve Too Low')
-elseif targetFreq < 4000
-    error('TargetFreq is Too Low')
+%% Confirm frequencies okay
+if targetFreq < 4000
+    error('Target Frequency Below 4 kHz Cutoff')
+elseif startF < 4000
+    error('Starting Frequency Below 4 kHz Cutoff')
 end
 
 
