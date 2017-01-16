@@ -77,49 +77,49 @@ for clusterCount = 1:numTrodes
     end
 end
 
-%now that things are all squared away, lets eliminate duplicates!
-c = nchoosek([1:length(desigNames)],2);
-compHolder = zeros(length(c),3);
-
-for clusterCounter = 1:length(c)
-    compHolder(clusterCounter,1) = length(intersect(spikeHolder{c(clusterCounter,1)},spikeHolder{c(clusterCounter,2)}));
-    compHolder(clusterCounter,2) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,1)});
-    compHolder(clusterCounter,3) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,2)});
-end
-
-%find duplicates with cutoff set above. 
-dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
-
-%find the true indices of the units, choose which to eliminate.
-while length(dupTargets)>0
-    targetInds = c(dupTargets(1),:);
-    waves1 = mean(max(s.(desigNames{targetInds(1)}).AverageWaveForms));
-    waves2 = mean(max(s.(desigNames{targetInds(2)}).AverageWaveForms));
-    if waves1 > waves2
-        disp(strcat(desigNames{targetInds(1)},'>',desigNames{targetInds(2)},'Saving Former'))
-        s = rmfield(s,desigNames{targetInds(2)});
-        desigNames(targetInds(2)) = [];
-        desigArray(targetInds(2),:) = [];
-    elseif waves2 > waves1
-        disp(strcat(desigNames{targetInds(1)},'<',desigNames{targetInds(2)},'Saving Latter'))
-        s = rmfield(s,desigNames{targetInds(1)});
-        desigNames(targetInds(1)) = [];
-        desigArray(targetInds(1),:) = [];
-    else
-        disp(strcat(desigNames{targetInds(1)},' and_',desigNames{targetInds(2)},'Equal, Saving Both'))
-    end
-    
-    c = nchoosek([1:length(desigNames)],2);
-    compHolder = zeros(length(c),3);
-    for clusterCounter = 1:length(c)
-        compHolder(clusterCounter,1) = length(intersect(spikeHolder{c(clusterCounter,1)},spikeHolder{c(clusterCounter,2)}));
-        compHolder(clusterCounter,2) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,1)});
-        compHolder(clusterCounter,3) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,2)});
-    end
-    %find duplicates with cutoff set above. 
-    dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
-    
-end
+% %now that things are all squared away, lets eliminate duplicates!
+% c = nchoosek([1:length(desigNames)],2);
+% compHolder = zeros(length(c),3);
+% 
+% for clusterCounter = 1:length(c)
+%     compHolder(clusterCounter,1) = length(intersect(spikeHolder{c(clusterCounter,1)},spikeHolder{c(clusterCounter,2)}));
+%     compHolder(clusterCounter,2) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,1)});
+%     compHolder(clusterCounter,3) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,2)});
+% end
+% 
+% %find duplicates with cutoff set above. 
+% dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
+% 
+% %find the true indices of the units, choose which to eliminate.
+% while length(dupTargets)>0
+%     targetInds = c(dupTargets(1),:);
+%     waves1 = mean(max(s.(desigNames{targetInds(1)}).AverageWaveForms));
+%     waves2 = mean(max(s.(desigNames{targetInds(2)}).AverageWaveForms));
+%     if waves1 > waves2
+%         disp(strcat(desigNames{targetInds(1)},'>',desigNames{targetInds(2)},'Saving Former'))
+%         s = rmfield(s,desigNames{targetInds(2)});
+%         desigNames(targetInds(2)) = [];
+%         desigArray(targetInds(2),:) = [];
+%     elseif waves2 > waves1
+%         disp(strcat(desigNames{targetInds(1)},'<',desigNames{targetInds(2)},'Saving Latter'))
+%         s = rmfield(s,desigNames{targetInds(1)});
+%         desigNames(targetInds(1)) = [];
+%         desigArray(targetInds(1),:) = [];
+%     else
+%         disp(strcat(desigNames{targetInds(1)},' and_',desigNames{targetInds(2)},'Equal, Saving Both'))
+%     end
+%     
+%     c = nchoosek([1:length(desigNames)],2);
+%     compHolder = zeros(length(c),3);
+%     for clusterCounter = 1:length(c)
+%         compHolder(clusterCounter,1) = length(intersect(spikeHolder{c(clusterCounter,1)},spikeHolder{c(clusterCounter,2)}));
+%         compHolder(clusterCounter,2) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,1)});
+%         compHolder(clusterCounter,3) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,2)});
+%     end
+%     %find duplicates with cutoff set above. 
+%     dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
+%     
+% end
 
 
 
