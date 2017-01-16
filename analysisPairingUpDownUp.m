@@ -30,7 +30,7 @@ params.histBin = 0.005; %bin size in seconds
 params.clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
 
 %variables for tuning analysis
-params.baselineBin = [-2,0]; %defines duration of baseline period based on toneDur. 
+params.baselineBin = [-4,0]; %defines duration of baseline period based on toneDur. 
 params.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
 params.zLimit = [0.05 0.01 0.001];
 params.numShuffle = 1000;

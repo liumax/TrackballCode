@@ -22,7 +22,7 @@ params = struct;
 params.rpvTime = 0.0013; %limit to be considered an RPV.
 params.clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
 params.trodesFS = 30000; %sampling rate of trodes box.
-params.rasterWindow = [-2,3]; %duration of raster window. These are numbers that will
+params.rasterWindow = [-4,3]; %duration of raster window. These are numbers that will
 %be multiplied by the tone duration. EX: raster window for 0.1sec tone will
 %be -100 to 300 ms.
 params.pairingWindow = [-10,20];
@@ -30,16 +30,23 @@ params.histBin = 0.005; %bin size in seconds
 params.clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
 
 %variables for tuning analysis
-params.baselineBin = [-2,0]; %defines duration of baseline period based on toneDur. 
+params.baselineBin = [-4,0]; %defines duration of baseline period based on toneDur. 
 params.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
 params.zLimit = [0.05 0.01 0.001];
 params.numShuffle = 1000;
-params.firstSpikeWindow = [-1 0 1 1.5];%defines period for looking for first spike, based on toneDur
+params.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
 params.chosenSpikeBin = 2; %spike bin selected in binSpike (in the event of multiple spike bins)
 params.minSpikes = 80; %minimum number of spikes to do spike shuffling
 params.minSigSpikes = 2; %minimum number of significant points to record a significant response.
 params.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
 params.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
+
+%for latbinPeak
+params.toneWindow = [0,1];
+params.genWindow = [0,3];
+params.latBin = 0.001;
+params.percentCutoff = 99.9;
+params.baseCutoff = 95;
 
 disp('Parameters Set')
 
