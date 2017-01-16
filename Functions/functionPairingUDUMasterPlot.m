@@ -222,11 +222,11 @@ for i=1:numUnits
     rasterFreqLines(:,1) = s.SoundData.(soundNames{1}).ToneReps*...
         size(s.SoundData.(soundNames{1}).UniqueDBs,1):s.SoundData.(soundNames{1}).ToneReps*...
         size(s.SoundData.(soundNames{1}).UniqueDBs,1):length(s.SoundData.(soundNames{1}).Frequencies);
-    rasterFreqLines(:,2) = s.SoundData.(soundNames{1}).UniqueFreqs;
+    rasterFreqLines(:,2) = s.SoundData.(soundNames{1}).UniqueFreqs/1000;
     for k = 1:size(s.SoundData.(soundNames{1}).UniqueFreqs,1)
         plot(params.rasterWindow*s.SoundData.(soundNames{1}).ToneDur,[rasterFreqLines(k,1) rasterFreqLines(k,1)],'g','LineWidth',1)
     end
-    set(gca,'YTick',rasterFreqLines(:,1));
+    set(gca,'YTick',rasterFreqLines(:,1)-(s.SoundData.(soundNames{1}).ToneReps/2));
     set(gca,'YTickLabel',rasterFreqLines(:,2));
     set(gca,'Ydir','reverse')
     ylim([0 length(s.SoundData.(soundNames{1}).Frequencies)])
@@ -242,7 +242,7 @@ for i=1:numUnits
     for k = 1:size(s.SoundData.(soundNames{2}).UniqueFreqs,1)
         plot(params.rasterWindow*s.SoundData.(soundNames{2}).ToneDur,[rasterFreqLines(k,1) rasterFreqLines(k,1)],'g','LineWidth',1)
     end
-    set(gca,'YTick',rasterFreqLines(:,1));
+    set(gca,'YTick',rasterFreqLines(:,1)-(s.SoundData.(soundNames{1}).ToneReps/2));
     set(gca,'YTickLabel',rasterFreqLines(:,2));
     set(gca,'Ydir','reverse')
     ylim([0 length(s.SoundData.(soundNames{2}).Frequencies)])
@@ -267,15 +267,10 @@ for i=1:numUnits
     hold on
     plot([0 0],[ylim],'b');
     plot([s.SoundData.(soundNames{1}).ToneDur s.SoundData.(soundNames{1}).ToneDur],[ylim],'b');
-    rasterFreqLines = zeros(size(s.SoundData.(soundNames{1}).UniqueFreqs,1),2);
-    rasterFreqLines(:,1) = s.SoundData.(soundNames{1}).ToneReps*...
-        size(s.SoundData.(soundNames{1}).UniqueDBs,1):s.SoundData.(soundNames{1}).ToneReps*...
-        size(s.SoundData.(soundNames{1}).UniqueDBs,1):length(s.SoundData.(soundNames{1}).Frequencies);
-    rasterFreqLines(:,2) = s.SoundData.(soundNames{1}).UniqueFreqs;
     for k = 1:size(s.SoundData.(soundNames{1}).UniqueFreqs,1)
         plot(params.rasterWindow*s.SoundData.(soundNames{1}).ToneDur,[rasterFreqLines(k,1) rasterFreqLines(k,1)],'g','LineWidth',1)
     end
-    set(gca,'YTick',rasterFreqLines(:,1));
+    set(gca,'YTick',rasterFreqLines(:,1)-(s.SoundData.(soundNames{1}).ToneReps/2));
     set(gca,'YTickLabel',rasterFreqLines(:,2));
     set(gca,'Ydir','reverse')
     ylim([0 length(s.SoundData.(soundNames{1}).Frequencies)])
@@ -291,7 +286,7 @@ for i=1:numUnits
     for k = 1:size(s.SoundData.(soundNames{2}).UniqueFreqs,1)
         plot(params.rasterWindow*s.SoundData.(soundNames{2}).ToneDur,[rasterFreqLines(k,1) rasterFreqLines(k,1)],'g','LineWidth',1)
     end
-    set(gca,'YTick',rasterFreqLines(:,1));
+    set(gca,'YTick',rasterFreqLines(:,1)-(s.SoundData.(soundNames{1}).ToneReps/2));
     set(gca,'YTickLabel',rasterFreqLines(:,2));
     set(gca,'Ydir','reverse')
     ylim([0 length(s.SoundData.(soundNames{2}).Frequencies)])
@@ -316,15 +311,10 @@ for i=1:numUnits
     hold on
     plot([0 0],[ylim],'b');
     plot([s.SoundData.(soundNames{1}).ToneDur s.SoundData.(soundNames{1}).ToneDur],[ylim],'b');
-    rasterFreqLines = zeros(size(s.SoundData.(soundNames{1}).UniqueFreqs,1),2);
-    rasterFreqLines(:,1) = s.SoundData.(soundNames{1}).ToneReps*...
-        size(s.SoundData.(soundNames{1}).UniqueDBs,1):s.SoundData.(soundNames{1}).ToneReps*...
-        size(s.SoundData.(soundNames{1}).UniqueDBs,1):length(s.SoundData.(soundNames{1}).Frequencies);
-    rasterFreqLines(:,2) = s.SoundData.(soundNames{1}).UniqueFreqs;
     for k = 1:size(s.SoundData.(soundNames{1}).UniqueFreqs,1)
         plot(params.rasterWindow*s.SoundData.(soundNames{1}).ToneDur,[rasterFreqLines(k,1) rasterFreqLines(k,1)],'g','LineWidth',1)
     end
-    set(gca,'YTick',rasterFreqLines(:,1));
+    set(gca,'YTick',rasterFreqLines(:,1)-(s.SoundData.(soundNames{1}).ToneReps/2));
     set(gca,'YTickLabel',rasterFreqLines(:,2));
     set(gca,'Ydir','reverse')
     ylim([0 length(s.SoundData.(soundNames{1}).Frequencies)])
@@ -340,7 +330,7 @@ for i=1:numUnits
     for k = 1:size(s.SoundData.(soundNames{2}).UniqueFreqs,1)
         plot(params.rasterWindow*s.SoundData.(soundNames{2}).ToneDur,[rasterFreqLines(k,1) rasterFreqLines(k,1)],'g','LineWidth',1)
     end
-    set(gca,'YTick',rasterFreqLines(:,1));
+    set(gca,'YTick',rasterFreqLines(:,1)-(s.SoundData.(soundNames{1}).ToneReps/2));
     set(gca,'YTickLabel',rasterFreqLines(:,2));
     set(gca,'Ydir','reverse')
     ylim([0 length(s.SoundData.(soundNames{2}).Frequencies)])
@@ -375,7 +365,8 @@ for i=1:numUnits
     set(hFig, 'Position', [10 80 1280 1000])
     
     %% First Pairing
-    %lets calculate significance using a rank sum!
+    %170116 Rank sum code has some weird glitches. Instead plot standard
+    %error for visualization purposes
     %first pull all the data
     freqLength = length(s.SoundData.(soundNames{1}).UniqueFreqs);
     dbLength = length(s.SoundData.(soundNames{1}).UniqueDBs);
@@ -385,13 +376,11 @@ for i=1:numUnits
     postDataTone = zeros(freqLength,dbLength,toneReps);
     postPostDataTone = zeros(freqLength,dbLength,toneReps);
     
-    rankSumTone = zeros(freqLength,dbLength,2);
     
     preDataGen = zeros(freqLength,dbLength,toneReps);
     postDataGen = zeros(freqLength,dbLength,toneReps);
     postPostDataGen = zeros(freqLength,dbLength,toneReps);
-    
-    rankSumGen = zeros(freqLength,dbLength,2);
+
     
     for freqInd = 1:freqLength
         for dbInd = 1:dbLength
@@ -399,29 +388,33 @@ for i=1:numUnits
             postDataTone(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesTone;
             postPostDataTone(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesTone;
             
-            rankSumTone(freqInd,dbInd,1) = ranksum(squeeze(preDataTone(freqInd,dbInd,:)),squeeze(postDataTone(freqInd,dbInd,:)));
-            rankSumTone(freqInd,dbInd,2) = ranksum(squeeze(postDataTone(freqInd,dbInd,:)),squeeze(postPostDataTone(freqInd,dbInd,:)));
-            
             preDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
             postDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
             postPostDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
             
-            rankSumGen(freqInd,dbInd,1) = ranksum(squeeze(preDataGen(freqInd,dbInd,:)),squeeze(postDataGen(freqInd,dbInd,:)));
-            rankSumGen(freqInd,dbInd,2) = ranksum(squeeze(postDataGen(freqInd,dbInd,:)),squeeze(postPostDataGen(freqInd,dbInd,:)));
         end
     end
+    
+    preToneSTD = std(preDataTone,1,3)/sqrt(toneReps); 
+    postToneSTD = std(postDataTone,1,3)/sqrt(toneReps); 
+    postPostToneSTD = std(postPostDataTone,1,3)/sqrt(toneReps); 
+    
+    preGenSTD = std(preDataGen,1,3)/sqrt(toneReps); 
+    postGenSTD = std(postDataGen,1,3)/sqrt(toneReps);
+    postPostGenSTD = std(postPostDataGen,1,3)/sqrt(toneReps);
+    
     %do the same for compensated binned values
     preDataToneComp = zeros(freqLength,dbLength,toneReps);
     postDataToneComp = zeros(freqLength,dbLength,toneReps);
     postPostDataToneComp = zeros(freqLength,dbLength,toneReps);
     
-    rankSumToneComp = zeros(freqLength,dbLength,2);
+   
     
     preDataGenComp = zeros(freqLength,dbLength,toneReps);
     postDataGenComp = zeros(freqLength,dbLength,toneReps);
     postPostDataGenComp = zeros(freqLength,dbLength,toneReps);
     
-    rankSumGenComp = zeros(freqLength,dbLength,2);
+    
     
     for freqInd = 1:freqLength
         for dbInd = 1:dbLength
@@ -429,46 +422,60 @@ for i=1:numUnits
             postDataToneComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesToneComp;
             postPostDataToneComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesToneComp;
             
-            rankSumToneComp(freqInd,dbInd,1) = ranksum(squeeze(preDataToneComp(freqInd,dbInd,:)),squeeze(postDataToneComp(freqInd,dbInd,:)));
-            rankSumToneComp(freqInd,dbInd,2) = ranksum(squeeze(postDataToneComp(freqInd,dbInd,:)),squeeze(postPostDataToneComp(freqInd,dbInd,:)));
-            
             preDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
             postDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
             postPostDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
             
-            rankSumGenComp(freqInd,dbInd,1) = ranksum(squeeze(preDataGenComp(freqInd,dbInd,:)),squeeze(postDataGenComp(freqInd,dbInd,:)));
-            rankSumGenComp(freqInd,dbInd,2) = ranksum(squeeze(postDataGenComp(freqInd,dbInd,:)),squeeze(postPostDataGenComp(freqInd,dbInd,:)));
         end
     end
+    
+    preToneCompSTD = std(preDataToneComp,1,3)/sqrt(toneReps); 
+    postToneCompSTD = std(postDataToneComp,1,3)/sqrt(toneReps); 
+    postPostToneCompSTD = std(postPostDataToneComp,1,3)/sqrt(toneReps); 
+    
+    preGenCompSTD = std(preDataGenComp,1,3)/sqrt(toneReps); 
+    postGenCompSTD = std(postDataGenComp,1,3)/sqrt(toneReps);
+    postPostGenCompSTD = std(postPostDataGenComp,1,3)/sqrt(toneReps);
     
     %first plot binned responses, first to tone
     %first pairing
     subplot(4,6,1)
-    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreTone,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreTone,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreTone+preToneSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreTone-preToneSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone+postToneSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone-postToneSTD,'r','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreTone,'g','LineWidth',2)
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumTone(:,:,1))<0.05);
-    sigVal2 = find(squeeze(rankSumTone(:,:,2))<0.05);
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone(sigVal1),'k*')
-    plot(sigVal2,s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreTone(sigVal2),'r*')
-    title('Binned K R G (Tone)')
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreTone+postPostToneSTD,'g','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreTone-postPostToneSTD,'g','LineWidth',1)
+
+    %check if timing is string or num
+    titleCheck = isstr(s.SoundData.(soundNames{3}).OptoStimDelay);
+    if titleCheck == 1
+        title({'Binned K R G (Tone)';strcat(num2str(s.SoundData.(soundNames{3}).Frequency/1000),'kHz',s.SoundData.(soundNames{3}).OptoStimDelay,'Timing')})
+    elseif titleCheck == 0
+        title({'Binned K R G (Tone)';strcat(num2str(s.SoundData.(soundNames{3}).Frequency/1000),'kHz',num2str(s.SoundData.(soundNames{3}).OptoStimDelay),'Timing')})
+    end
     xlim([1 freqLength])
     set(gca,'XTick',[1:2:freqLength]);
     set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
     
     %first pairing, with compensation for background
     subplot(4,6,2)
-    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp+preToneCompSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp-preToneCompSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp+postToneCompSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp-postToneCompSTD,'r','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreToneComp,'g','LineWidth',2)
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumToneComp(:,:,1))<0.05);
-    sigVal2 = find(squeeze(rankSumToneComp(:,:,2))<0.05);
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp(sigVal1),'k*')
-    plot(sigVal2,s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreToneComp(sigVal2),'r*')
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreToneComp+postPostToneCompSTD,'g','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreToneComp-postPostToneCompSTD,'g','LineWidth',1)
+
+    
     xlim([1 freqLength])
     title('Binned K R G (Tone) BACK')
     set(gca,'XTick',[1:2:freqLength]);
@@ -476,30 +483,35 @@ for i=1:numUnits
     
     %now for general range
     subplot(4,6,7)
-    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGen,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGen,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGen+preGenSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGen-preGenSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGen,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGen+postGenSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGen-postGenSTD,'r','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGen,'g','LineWidth',2)
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumGen(:,:,1))<0.05);
-    sigVal2 = find(squeeze(rankSumGen(:,:,2))<0.05);
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGen(sigVal1),'k*')
-    plot(sigVal2,s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGen(sigVal2),'r*')
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGen+postPostGenSTD,'g','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGen-postPostGenSTD,'g','LineWidth',1)
+    
     title('Binned K R G (Gen)')
     xlim([1 freqLength])
     set(gca,'XTick',[1:2:freqLength]);
     set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
     %first pairing, with compensation for background
     subplot(4,6,8)
-    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGenComp,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGenComp,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGenComp+preGenCompSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGenComp-preGenCompSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGenComp,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGenComp+postGenCompSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGenComp-postGenCompSTD,'r','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGenComp,'g','LineWidth',2)
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumGenComp(:,:,1))<0.05);
-    sigVal2 = find(squeeze(rankSumGenComp(:,:,2))<0.05);
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGenComp(sigVal1),'k*')
-    plot(sigVal2,s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGenComp(sigVal2),'r*')
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGenComp+postPostGenCompSTD,'g','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGenComp-postPostGenCompSTD,'g','LineWidth',1)
+    
+    
     title('Binned K R G (Gen) BACK')
     xlim([1 freqLength])
     set(gca,'XTick',[1:2:freqLength]);
@@ -548,14 +560,11 @@ for i=1:numUnits
     preDataTone = zeros(freqLength,dbLength,toneReps);
     postDataTone = zeros(freqLength,dbLength,toneReps);
     postPostDataTone = zeros(freqLength,dbLength,toneReps);
-    
-    rankSumTone = zeros(freqLength,dbLength,2);
+
     
     preDataGen = zeros(freqLength,dbLength,toneReps);
     postDataGen = zeros(freqLength,dbLength,toneReps);
     postPostDataGen = zeros(freqLength,dbLength,toneReps);
-    
-    rankSumGen = zeros(freqLength,dbLength,2);
     
     for freqInd = 1:freqLength
         for dbInd = 1:dbLength
@@ -563,29 +572,31 @@ for i=1:numUnits
             postDataTone(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesTone;
             postPostDataTone(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesTone;
             
-            rankSumTone(freqInd,dbInd,1) = ranksum(squeeze(preDataTone(freqInd,dbInd,:)),squeeze(postDataTone(freqInd,dbInd,:)));
-            rankSumTone(freqInd,dbInd,2) = ranksum(squeeze(postDataTone(freqInd,dbInd,:)),squeeze(postPostDataTone(freqInd,dbInd,:)));
-            
             preDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
             postDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
             postPostDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
             
-            rankSumGen(freqInd,dbInd,1) = ranksum(squeeze(preDataGen(freqInd,dbInd,:)),squeeze(postDataGen(freqInd,dbInd,:)));
-            rankSumGen(freqInd,dbInd,2) = ranksum(squeeze(postDataGen(freqInd,dbInd,:)),squeeze(postPostDataGen(freqInd,dbInd,:)));
         end
     end
+    
+    preToneSTD = std(preDataTone,1,3)/sqrt(toneReps); 
+    postToneSTD = std(postDataTone,1,3)/sqrt(toneReps); 
+    postPostToneSTD = std(postPostDataTone,1,3)/sqrt(toneReps); 
+    preGenSTD = std(preDataGen,1,3)/sqrt(toneReps); 
+    postPostGenSTD = std(postPostDataGen,1,3)/sqrt(toneReps);
+    
     %do the same for compensated binned values
     preDataToneComp = zeros(freqLength,dbLength,toneReps);
     postDataToneComp = zeros(freqLength,dbLength,toneReps);
     postPostDataToneComp = zeros(freqLength,dbLength,toneReps);
     
-    rankSumToneComp = zeros(freqLength,dbLength,2);
+
     
     preDataGenComp = zeros(freqLength,dbLength,toneReps);
     postDataGenComp = zeros(freqLength,dbLength,toneReps);
     postPostDataGenComp = zeros(freqLength,dbLength,toneReps);
     
-    rankSumGenComp = zeros(freqLength,dbLength,2);
+
     
     for freqInd = 1:freqLength
         for dbInd = 1:dbLength
@@ -593,46 +604,63 @@ for i=1:numUnits
             postDataToneComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesToneComp;
             postPostDataToneComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesToneComp;
             
-            rankSumToneComp(freqInd,dbInd,1) = ranksum(squeeze(preDataToneComp(freqInd,dbInd,:)),squeeze(postDataToneComp(freqInd,dbInd,:)));
-            rankSumToneComp(freqInd,dbInd,2) = ranksum(squeeze(postDataToneComp(freqInd,dbInd,:)),squeeze(postPostDataToneComp(freqInd,dbInd,:)));
-            
             preDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
             postDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
             postPostDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
-            
-            rankSumGenComp(freqInd,dbInd,1) = ranksum(squeeze(preDataGenComp(freqInd,dbInd,:)),squeeze(postDataGenComp(freqInd,dbInd,:)));
-            rankSumGenComp(freqInd,dbInd,2) = ranksum(squeeze(postDataGenComp(freqInd,dbInd,:)),squeeze(postPostDataGenComp(freqInd,dbInd,:)));
+           
         end
     end
+    preToneCompSTD = std(preDataToneComp,1,3)/sqrt(toneReps); 
+    postToneCompSTD = std(postDataToneComp,1,3)/sqrt(toneReps); 
+    postPostToneCompSTD = std(postPostDataToneComp,1,3)/sqrt(toneReps); 
+    preGenCompSTD = std(preDataGenComp,1,3)/sqrt(toneReps); 
+    postGenCompSTD = std(postDataGenComp,1,3)/sqrt(toneReps);
+    postPostGenCompSTD = std(postPostDataGenComp,1,3)/sqrt(toneReps);
     
     %first plot binned responses, first to tone
     %first pairing
     subplot(4,6,3)
-    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreTone,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreTone,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreTone + preToneSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreTone - preToneSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreTone,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreTone + postToneSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreTone - postToneSTD,'r','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone,'g','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone + postPostToneSTD,'g','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone - postPostToneSTD,'g','LineWidth',1)
     %plot significant values as asterisks?
     sigVal1 = find(squeeze(rankSumTone(:,:,1))<0.05);
     sigVal2 = find(squeeze(rankSumTone(:,:,2))<0.05);
     plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreTone(sigVal1),'k*')
     plot(sigVal2,s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone(sigVal2),'r*')
-    title('Binned K R G (Tone)')
+    %check if timing is string or num
+    titleCheck = isstr(s.SoundData.(soundNames{6}).OptoStimDelay);
+    if titleCheck == 1
+        title({'Binned K R G (Tone)';strcat(num2str(s.SoundData.(soundNames{6}).Frequency/1000),'kHz',s.SoundData.(soundNames{6}).OptoStimDelay,'Timing')})
+    elseif titleCheck == 0
+        title({'Binned K R G (Tone)';strcat(num2str(s.SoundData.(soundNames{6}).Frequency/1000),'kHz',num2str(s.SoundData.(soundNames{6}).OptoStimDelay),'Timing')})
+    end
+    
     xlim([1 freqLength])
     set(gca,'XTick',[1:2:freqLength]);
     set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
     
     %first pairing, with compensation for background
     subplot(4,6,4)
-    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreToneComp,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreToneComp,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreToneComp + preToneCompSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreToneComp - preToneCompSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreToneComp,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreToneComp + postToneCompSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreToneComp - postToneCompSTD,'r','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreToneComp,'g','LineWidth',2)
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumToneComp(:,:,1))<0.05);
-    sigVal2 = find(squeeze(rankSumToneComp(:,:,2))<0.05);
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreToneComp(sigVal1),'k*')
-    plot(sigVal2,s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreToneComp(sigVal2),'r*')
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreToneComp + postPostToneCompSTD,'g','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreToneComp - postPostToneCompSTD,'g','LineWidth',1)
+    
+    
     xlim([1 freqLength])
     title('Binned K R G (Tone) BACK')
     set(gca,'XTick',[1:2:freqLength]);
@@ -640,30 +668,36 @@ for i=1:numUnits
     
     %now for general range
     subplot(4,6,9)
-    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGen,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGen,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGen + preGenSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGen - preGenSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreGen,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreGen + postGenSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreGen - postGenSTD,'r','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGen,'g','LineWidth',2)
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumGen(:,:,1))<0.05);
-    sigVal2 = find(squeeze(rankSumGen(:,:,2))<0.05);
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreGen(sigVal1),'k*')
-    plot(sigVal2,s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGen(sigVal2),'r*')
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGen + postPostGenSTD,'g','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGen - postPostGenSTD,'g','LineWidth',1)
+    
+
     title('Binned K R G (Gen)')
     xlim([1 freqLength])
     set(gca,'XTick',[1:2:freqLength]);
     set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
-    %first pairing, with compensation for background
+    %first pairing, with compensation for background, general window
     subplot(4,6,10)
-    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGenComp,'k','LineWidth',2)
     hold on
+    
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGenComp,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGenComp + preGenCompSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{4},'Analysis')).BinStoreGenComp - preGenCompSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreGenComp,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreGenComp + postGenCompSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreGenComp - postGenCompSTD,'r','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGenComp,'g','LineWidth',2)
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumGenComp(:,:,1))<0.05);
-    sigVal2 = find(squeeze(rankSumGenComp(:,:,2))<0.05);
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreGenComp(sigVal1),'k*')
-    plot(sigVal2,s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGenComp(sigVal2),'r*')
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGenComp + postPostGenCompSTD,'g','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGenComp - postPostGenCompSTD,'g','LineWidth',1)
+    
     title('Binned K R G (Gen) BACK')
     xlim([1 freqLength])
     set(gca,'XTick',[1:2:freqLength]);
@@ -712,13 +746,9 @@ for i=1:numUnits
     postDataTone = zeros(freqLength,dbLength,toneReps);
 
     
-    rankSumTone = zeros(freqLength,dbLength);
-    
     preDataGen = zeros(freqLength,dbLength,toneReps);
     postDataGen = zeros(freqLength,dbLength,toneReps);
 
-    
-    rankSumGen = zeros(freqLength,dbLength);
     
     for freqInd = 1:freqLength
         for dbInd = 1:dbLength
@@ -726,29 +756,25 @@ for i=1:numUnits
             postDataTone(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesTone;
 
             
-            rankSumTone(freqInd,dbInd) = ranksum(squeeze(preDataTone(freqInd,dbInd,:)),squeeze(postDataTone(freqInd,dbInd,:)));
-
-            
             preDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
             postDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
 
-            
-            rankSumGen(freqInd,dbInd) = ranksum(squeeze(preDataGen(freqInd,dbInd,:)),squeeze(postDataGen(freqInd,dbInd,:)));
-
         end
     end
+    
+    preToneSTD = std(preDataTone,1,3)/sqrt(toneReps); 
+    postToneSTD = std(postDataTone,1,3)/sqrt(toneReps); 
+    preGenSTD = std(preDataGen,1,3)/sqrt(toneReps); 
+    postGenSTD = std(postDataGen,1,3)/sqrt(toneReps);
+    
     %do the same for compensated binned values
     preDataToneComp = zeros(freqLength,dbLength,toneReps);
     postDataToneComp = zeros(freqLength,dbLength,toneReps);
 
     
-    rankSumToneComp = zeros(freqLength,dbLength);
-    
     preDataGenComp = zeros(freqLength,dbLength,toneReps);
     postDataGenComp = zeros(freqLength,dbLength,toneReps);
 
-    
-    rankSumGenComp = zeros(freqLength,dbLength);
     
     for freqInd = 1:freqLength
         for dbInd = 1:dbLength
@@ -756,45 +782,50 @@ for i=1:numUnits
             postDataToneComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesToneComp;
 
             
-            rankSumToneComp(freqInd,dbInd) = ranksum(squeeze(preDataToneComp(freqInd,dbInd,:)),squeeze(postDataToneComp(freqInd,dbInd,:)));
-
-            
             preDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
             postDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
-
-            
-            rankSumGenComp(freqInd,dbInd) = ranksum(squeeze(preDataGenComp(freqInd,dbInd,:)),squeeze(postDataGenComp(freqInd,dbInd,:)));
 
         end
     end
     
+    preToneCompSTD = std(preDataToneComp,1,3)/sqrt(toneReps); 
+    postToneCompSTD = std(postDataToneComp,1,3)/sqrt(toneReps); 
+    preGenCompSTD = std(preDataGenComp,1,3)/sqrt(toneReps); 
+    postGenCompSTD = std(postDataGenComp,1,3)/sqrt(toneReps);
+    
     %first plot binned responses, first to tone
     %first pairing
     subplot(4,6,5)
-    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone+preToneSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone-preToneSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreTone,'r','LineWidth',2)
-
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumTone(:,:))<0.05);
-
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreTone(sigVal1),'k*')
-
-    title('Binned K R (Tone)')
+    plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreTone+postToneSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreTone-postToneSTD,'r','LineWidth',1)
+    
+    
+    
+    %check if timing is string or num
+    titleCheck = isstr(s.SoundData.(soundNames{9}).OptoStimDelay);
+    if titleCheck == 1
+        title({'Binned K R G (Tone)';strcat(num2str(s.SoundData.(soundNames{9}).Frequency/1000),'kHz',s.SoundData.(soundNames{9}).OptoStimDelay,'Timing')})
+    elseif titleCheck == 0
+        title({'Binned K R G (Tone)';strcat(num2str(s.SoundData.(soundNames{9}).Frequency/1000),'kHz',num2str(s.SoundData.(soundNames{9}).OptoStimDelay),'Timing')})
+    end
     xlim([1 freqLength])
     set(gca,'XTick',[1:2:freqLength]);
     set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
     
     %first pairing, with compensation for background
     subplot(4,6,6)
-    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreToneComp,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreToneComp,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreToneComp+preToneCompSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreToneComp-preToneCompSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreToneComp,'r','LineWidth',2)
-
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumToneComp(:,:))<0.05);
-
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreToneComp(sigVal1),'k*')
+    plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreToneComp+postToneCompSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreToneComp-postToneCompSTD,'r','LineWidth',1)
 
     xlim([1 freqLength])
     title('Binned K R (Tone) BACK')
@@ -803,14 +834,13 @@ for i=1:numUnits
     
     %now for general range
     subplot(4,6,11)
-    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGen,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGen,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGen+preGenSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGen-preGenSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreGen,'r','LineWidth',2)
-
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumGen(:,:))<0.05);
-
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreGen(sigVal1),'k*')
+    plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreGen+postGenSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreGen-postGenSTD,'r','LineWidth',1)
 
     title('Binned K R (Gen)')
     xlim([1 freqLength])
@@ -819,15 +849,13 @@ for i=1:numUnits
     
     %first pairing, with compensation for background
     subplot(4,6,12)
-    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGenComp,'k','LineWidth',2)
     hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGenComp,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGenComp+preGenCompSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreGenComp-preGenCompSTD,'k','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreGenComp,'r','LineWidth',2)
-
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumGenComp(:,:))<0.05);
-
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreGenComp(sigVal1),'k*')
-
+    plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreGenComp+postGenCompSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{8},'Analysis')).BinStoreGenComp-postGenCompSTD,'r','LineWidth',1)
     title('Binned K R (Gen) BACK')
     xlim([1 freqLength])
     set(gca,'XTick',[1:2:freqLength]);
@@ -864,7 +892,14 @@ for i=1:numUnits
     title('Latency K R G (Gen)')
     xlim([1 freqLength])
     
-    
+    hold off
+    %save as matlab figure with correct name (fileName+LFP)
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
     
     
 end

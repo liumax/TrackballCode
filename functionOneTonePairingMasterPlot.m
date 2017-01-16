@@ -26,7 +26,7 @@ for i=1:numUnits
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))});
     
     %% plots histogram
-    subplot(4,3,4)
+    subplot(4,3,2)
     %plots histogram from first tuning.
     plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistograms,'k','LineWidth',1)
     hold on
@@ -36,35 +36,35 @@ for i=1:numUnits
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Histogram(:,3) == 1),...
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Histogram(...
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Histogram(:,3) == 1,1),...
-        'b*')
+        'k*')
     plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Centers(...
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Histogram(:,4) == 1),...
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Histogram(...
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Histogram(:,4) == 1,1),...
-        'c*')
+        'ko')
     %plot negative values for first tuning
     plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Centers(...
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Histogram(:,6) == 1),...
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Histogram(...
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllHistogramSig.Histogram(:,6) == 1,1),...
-        'k*')
+        'b*')
     %plot significant positive values for second tuning
     plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Centers(...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Histogram(:,3) == 1),...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Histogram(...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Histogram(:,3) == 1,1),...
-        'm*')
+        'r*')
     plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Centers(...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Histogram(:,4) == 1),...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Histogram(...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Histogram(:,4) == 1,1),...
-        'g*')
+        'ro')
     %plot negative values for second tuning
     plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Centers(...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Histogram(:,6) == 1),...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Histogram(...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllHistogramSig.Histogram(:,6) == 1,1),...
-        'r*')
+        'm*')
     
     %draws in tone!
     plot([0 0],[ylim],'r');
@@ -74,8 +74,8 @@ for i=1:numUnits
     xlim([params.rasterWindow(1)*s.SoundData.(soundNames{1}).ToneDur...
         params.rasterWindow(2)*s.SoundData.(soundNames{1}).ToneDur])
     title('Histogram K before B after')
-    %% plot rasters organized by time
-    subplot(4,3,7)
+    %% plot rasters organized by freq for first tuning
+    subplot(4,3,3)
     plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllRasters(:,1),...
         s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllRasters(:,3),'k.','markersize',4)
     hold on
@@ -95,8 +95,8 @@ for i=1:numUnits
     ylim([0 length(s.SoundData.(soundNames{1}).Frequencies)])
     xlim([params.rasterWindow(1)*s.SoundData.(soundNames{1}).ToneDur params.rasterWindow(2)*s.SoundData.(soundNames{1}).ToneDur])
     title({'Pre-Pairing Rasters';'dB Increase in Descending Order'})
-    %% plot rasters organized by frequency
-    subplot(4,3,10)
+    %% plot rasters organized by freq for second tuning
+    subplot(4,3,6)
     plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllRasters(:,1),...
         s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).AllRasters(:,3),'k.','markersize',4)
     hold on
@@ -118,102 +118,9 @@ for i=1:numUnits
     xlim([params.rasterWindow(1)*s.SoundData.(soundNames{2}).ToneDur params.rasterWindow(2)*s.SoundData.(soundNames{2}).ToneDur])
     title({'Post-Pairing Rasters';'dB Increase in Descending Order'})
     
-    %% plots heatmap by frequencies and time. Plots the first tuning.
-    subplot(4,3,5)
-    dataPrep1 = squeeze(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).FreqDBHistograms);
-    imagesc(dataPrep1)
-    colorbar
-    cMinMax = [0 0];
-    %sets limits so that next graph is displayed with the same color
-    %settings. 
-    cMinMax(1) = min(min(dataPrep1));
-    cMinMax(2) = max(max(dataPrep1));
-    set(gca,'YTick',s.SoundData.(soundNames{1}).OctaveRange(:,2));
-    set(gca,'YTickLabel',s.SoundData.(soundNames{1}).OctaveRange(:,1));
-    set(gca,'XTick',[1:20:size(histBinVector,2)]);
-    set(gca,'XTickLabel',histBinVector(1:20:end));
-    histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
-    histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),s.SoundData.(soundNames{1}).ToneDur);
-    line([histBinZero histBinZero],[-1 size(s.SoundData.(soundNames{1}).UniqueFreqs,1)],'LineWidth',3,'Color','green')
-    line([histBinZero histBinZero],[-1 size(s.SoundData.(soundNames{1}).UniqueFreqs,1)],'LineWidth',2,'Color','black')
-    line([histBinTone histBinTone],[-1 size(s.SoundData.(soundNames{1}).UniqueFreqs,1)],'LineWidth',3,'Color','green')
-    line([histBinTone histBinTone],[-1 size(s.SoundData.(soundNames{1}).UniqueFreqs,1)],'LineWidth',2,'Color','black')
-    
-     %this will plot a colored box around the target frequency
-    %target!
-    if ~isempty(find(round(s.SoundData.(soundNames{2}).UniqueFreqs) == s.SoundData.(soundNames{3}).Frequency)-0.5)
-        rectangle('Position',[0.5 find(round(s.SoundData.(soundNames{2}).UniqueFreqs) == s.SoundData.(soundNames{3}).Frequency)-0.5 size(dataPrep1,2) 1],'EdgeColor','g','LineWidth',2)
-    else
-        findClosest = round(s.SoundData.(soundNames{2}).UniqueFreqs) - s.SoundData.(soundNames{3}).Frequency;
-        smallestDiff = min(abs(findClosest));
-        findClosest = find(abs(findClosest) == smallestDiff);
-        rectangle('Position',[0.5 findClosest-0.5 size(dataPrep1,2) 1],'EdgeColor','g','LineWidth',2)
-    end
-    title('Pre-Pairing Heatmap by Frequency and Time')
-    
-    %% plots heatmap by frequencies and time. Plots the second tuning.
-    subplot(4,3,8)
-    dataPrep2 = squeeze(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).FreqDBHistograms);
-    if cMinMax(1) == cMinMax(2)
-        imagesc(dataPrep2)
-    else
-        imagesc(dataPrep2, cMinMax)
-    end
-    colorbar
-    set(gca,'YTick',s.SoundData.(soundNames{2}).OctaveRange(:,2));
-    set(gca,'YTickLabel',s.SoundData.(soundNames{2}).OctaveRange(:,1));
-    set(gca,'XTick',[1:20:size(histBinVector,2)]);
-    set(gca,'XTickLabel',histBinVector(1:20:end));
-    histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
-    histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),s.SoundData.(soundNames{1}).ToneDur);
-    line([histBinZero histBinZero],[-1 size(s.SoundData.(soundNames{2}).UniqueFreqs,1)],'LineWidth',3,'Color','green')
-    line([histBinZero histBinZero],[-1 size(s.SoundData.(soundNames{2}).UniqueFreqs,1)],'LineWidth',2,'Color','black')
-    line([histBinTone histBinTone],[-1 size(s.SoundData.(soundNames{2}).UniqueFreqs,1)],'LineWidth',3,'Color','green')
-    line([histBinTone histBinTone],[-1 size(s.SoundData.(soundNames{2}).UniqueFreqs,1)],'LineWidth',2,'Color','black')
-    
-     %this will plot a colored box around the target frequency
-    %target!
-    if ~isempty(find(round(s.SoundData.(soundNames{2}).UniqueFreqs) == s.SoundData.(soundNames{3}).Frequency)-0.5)
-        rectangle('Position',[0.5 find(round(s.SoundData.(soundNames{2}).UniqueFreqs) == s.SoundData.(soundNames{3}).Frequency)-0.5 size(dataPrep1,2) 1],'EdgeColor','g','LineWidth',2)
-    else
-        findClosest = round(s.SoundData.(soundNames{2}).UniqueFreqs) - s.SoundData.(soundNames{3}).Frequency;
-        smallestDiff = min(abs(findClosest));
-        findClosest = find(abs(findClosest) == smallestDiff);
-        rectangle('Position',[0.5 findClosest-0.5 size(dataPrep1,2) 1],'EdgeColor','g','LineWidth',2)
-    end
-    title('Post-Pairing Heatmap by Frequency and Time') 
-    
-    %% plots difference in heatmaps by frequency. Raw subtraction
-    subplot(4,3,11)
-    imagesc(dataPrep2-dataPrep1)
-    colorbar
-    set(gca,'YTick',s.SoundData.(soundNames{2}).OctaveRange(:,2));
-    set(gca,'YTickLabel',s.SoundData.(soundNames{2}).OctaveRange(:,1));
-    set(gca,'XTick',[1:20:size(histBinVector,2)]);
-    set(gca,'XTickLabel',histBinVector(1:20:end));
-    histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
-    histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),s.SoundData.(soundNames{1}).ToneDur);
-    line([histBinZero histBinZero],[-1 size(s.SoundData.(soundNames{2}).UniqueFreqs,1)],'LineWidth',3,'Color','green')
-    line([histBinZero histBinZero],[-1 size(s.SoundData.(soundNames{2}).UniqueFreqs,1)],'LineWidth',2,'Color','black')
-    line([histBinTone histBinTone],[-1 size(s.SoundData.(soundNames{2}).UniqueFreqs,1)],'LineWidth',3,'Color','green')
-    line([histBinTone histBinTone],[-1 size(s.SoundData.(soundNames{2}).UniqueFreqs,1)],'LineWidth',2,'Color','black')
-    
-     %this will plot a colored box around the target frequency
-    %target!
-    if ~isempty(find(round(s.SoundData.(soundNames{2}).UniqueFreqs) == s.SoundData.(soundNames{3}).Frequency)-0.5)
-        rectangle('Position',[0.5 find(round(s.SoundData.(soundNames{2}).UniqueFreqs) == s.SoundData.(soundNames{3}).Frequency)-0.5 size(dataPrep1,2) 1],'EdgeColor','g','LineWidth',2)
-    else
-        findClosest = round(s.SoundData.(soundNames{2}).UniqueFreqs) - s.SoundData.(soundNames{3}).Frequency;
-        smallestDiff = min(abs(findClosest));
-        findClosest = find(abs(findClosest) == smallestDiff);
-        rectangle('Position',[0.5 findClosest-0.5 size(dataPrep1,2) 1],'EdgeColor','g','LineWidth',2)
-    end
-    title('Difference Heatmap by Frequency and Time') 
-    
-    
     
     %% plot rasters from pairing
-    subplot(4,3,3)
+    subplot(4,3,9)
     plot(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).AllRasters(:,1),...
         s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).AllRasters(:,2),'k.','markersize',4)
     hold on
@@ -223,38 +130,154 @@ for i=1:numUnits
     xlim([params.rasterWindow(1)*s.SoundData.(soundNames{3}).ToneDuration params.rasterWindow(2)*s.SoundData.(soundNames{3}).ToneDuration])
     title('Pairing Rasters')
     
-    %% plots binned responses relative to pairing presentation
-    subplot(4,3,6)
-    plot(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).BinSpikeTimes(:,s.Parameters.chosenSpikeBin))
-    xlim([1 size(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).BinSpikeTimes,1)])
-    try
-        ylim([min(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).BinSpikeTimes)...
-        max(s.(desigNames{i}).(strcat(soundNames{3},'Analysis')).BinSpikeTimes)])
-    catch
+    %% Now plot tuning data based on binned/peak data
+    %first calculate standard errors
+    freqLength = length(s.SoundData.(soundNames{1}).UniqueFreqs);
+    dbLength = length(s.SoundData.(soundNames{1}).UniqueDBs);
+    toneReps = s.SoundData.(soundNames{1}).ToneReps;
+    
+    preDataTone = zeros(freqLength,dbLength,toneReps);
+    postDataTone = zeros(freqLength,dbLength,toneReps);
+
+    preDataGen = zeros(freqLength,dbLength,toneReps);
+    postDataGen = zeros(freqLength,dbLength,toneReps);
+
+    for freqInd = 1:freqLength
+        for dbInd = 1:dbLength
+            preDataTone(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesTone;
+            postDataTone(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesTone;
+            preDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
+            postDataGen(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGen;
+        end
     end
-    ylabel('Binned Spikes')
-    xlabel('Pairing Trial Number')
-    title('Binned Responses During Pairing')
     
-    %% Plot tuning curve! Non background subtracted
-    subplot(4,3,9)
-    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinSpikeStats(:,1,1,s.Parameters.chosenSpikeBin),'k');
+    preToneSTD = std(preDataTone,1,3)/sqrt(toneReps); 
+    postToneSTD = std(postDataTone,1,3)/sqrt(toneReps); 
+    preGenSTD = std(preDataGen,1,3)/sqrt(toneReps); 
+    postGenSTD = std(postDataGen,1,3)/sqrt(toneReps);
+    
+    %do the same for compensated binned values
+    preDataToneComp = zeros(freqLength,dbLength,toneReps);
+    postDataToneComp = zeros(freqLength,dbLength,toneReps);
+
+    preDataGenComp = zeros(freqLength,dbLength,toneReps);
+    postDataGenComp = zeros(freqLength,dbLength,toneReps);
+
+    for freqInd = 1:freqLength
+        for dbInd = 1:dbLength
+            preDataToneComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesToneComp;
+            postDataToneComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesToneComp;
+            preDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
+            postDataGenComp(freqInd,dbInd,:) = s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).IndividualLatbinPeakCalcs{freqInd,dbInd}.BinnedSpikesGenComp;
+        end
+    end
+    preToneCompSTD = std(preDataToneComp,1,3)/sqrt(toneReps); 
+    postToneCompSTD = std(postDataToneComp,1,3)/sqrt(toneReps); 
+    preGenCompSTD = std(preDataGenComp,1,3)/sqrt(toneReps); 
+    postGenCompSTD = std(postDataGenComp,1,3)/sqrt(toneReps);
+    
+    %first plot binned responses, first to tone
+    %first pairing
+    subplot(4,3,4)
     hold on
-    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinSpikeStats(:,1,1,s.Parameters.chosenSpikeBin),'r');
-    set(gca,'XTick',[1:1:size(s.SoundData.(soundNames{1}).UniqueFreqs,1)]);
-    set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs);
-    title('RAW Tuning Curves K before R after')
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreTone,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreTone+preToneSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreTone-preToneSTD,'k','LineWidth',1)
     
-    %% Plot tuning curve , with background subtracted
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone+postToneSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone-postToneSTD,'r','LineWidth',1)
+
+    %check if timing is string or num
+    titleCheck = isstr(s.SoundData.(soundNames{3}).OptoStimDelay);
+    if titleCheck == 1
+        title({'Binned K R G (Tone)';strcat(num2str(s.SoundData.(soundNames{3}).Frequency/1000),'kHz',s.SoundData.(soundNames{3}).OptoStimDelay,'Timing')})
+    elseif titleCheck == 0
+        title({'Binned K R G (Tone)';strcat(num2str(s.SoundData.(soundNames{3}).Frequency/1000),'kHz',num2str(s.SoundData.(soundNames{3}).OptoStimDelay),'Timing')})
+    end
+    xlim([1 freqLength])
+    set(gca,'XTick',[1:2:freqLength]);
+    set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
+    
+    %first pairing, with compensation for background
+    subplot(4,3,5)
+    hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp+preToneCompSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp-preToneCompSTD,'k','LineWidth',1)
+    
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp+postToneCompSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp-postToneCompSTD,'r','LineWidth',1)
+    
+    xlim([1 freqLength])
+    title('Binned K R (Tone) BACK')
+    set(gca,'XTick',[1:2:freqLength]);
+    set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
+    
+    %now for general range
+    subplot(4,3,7)
+    hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGen,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGen+preGenSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGen-preGenSTD,'k','LineWidth',1)
+
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGen,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGen+postGenSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGen-postGenSTD,'r','LineWidth',1)
+
+    
+    title('Binned K R (Gen)')
+    xlim([1 freqLength])
+    set(gca,'XTick',[1:2:freqLength]);
+    set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
+    
+    %first pairing, with compensation for background
+    subplot(4,3,8)
+    hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGenComp,'k','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGenComp+preGenCompSTD,'k','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreGenComp-preGenCompSTD,'k','LineWidth',1)
+    
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGenComp,'r','LineWidth',2)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGenComp+postGenCompSTD,'r','LineWidth',1)
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreGenComp-postGenCompSTD,'r','LineWidth',1)
+
+    title('Binned K R (Gen) BACK')
+    xlim([1 freqLength])
+    set(gca,'XTick',[1:2:freqLength]);
+    set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
+    
+    %now plot peak values, all for general
+    subplot(4,3,10)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).PeakStoreGen,'k','LineWidth',2)
+    hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).PeakStoreGen,'r','LineWidth',2)
+
+    title('Peak K R (Tone)')
+    xlim([1 freqLength])
+    set(gca,'XTick',[1:2:freqLength]);
+    set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
+    %plot compensated version
+    subplot(4,3,11)
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).PeakStoreGenComp,'k','LineWidth',2)
+    hold on
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).PeakStoreGenComp,'r','LineWidth',2)
+
+    title('Peak K R (Tone) BACK')
+    xlim([1 freqLength])
+    set(gca,'XTick',[1:2:freqLength]);
+    set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
+    
+    %plot latency
     subplot(4,3,12)
-    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinSpikeStats(:,1,1,s.Parameters.chosenSpikeBin)-...
-        s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinSpikeStats(:,1,1,1),'k');
+    plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).LatencyStore,'k','LineWidth',2)
     hold on
-    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinSpikeStats(:,1,1,s.Parameters.chosenSpikeBin)-...
-        s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinSpikeStats(:,1,1,1),'r');
-    set(gca,'XTick',[1:1:size(s.SoundData.(soundNames{1}).UniqueFreqs,1)]);
-    set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs);
-    title('Back Subtract Tuning Curves K before R after')
+    plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).LatencyStore,'r','LineWidth',2)
+    set(gca,'XTick',[1:2:freqLength]);
+    set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
+    title('Latency K R G (Gen)')
+    xlim([1 freqLength])
     %%
     hold off
     %save as matlab figure with correct name (fileName+LFP)
