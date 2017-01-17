@@ -630,11 +630,7 @@ for i=1:numUnits
     plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone,'g','LineWidth',2)
     plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone + postPostToneSTD,'g','LineWidth',1)
     plot(s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone - postPostToneSTD,'g','LineWidth',1)
-    %plot significant values as asterisks?
-    sigVal1 = find(squeeze(rankSumTone(:,:,1))<0.05);
-    sigVal2 = find(squeeze(rankSumTone(:,:,2))<0.05);
-    plot(sigVal1,s.(desigNames{i}).(strcat(soundNames{5},'Analysis')).BinStoreTone(sigVal1),'k*')
-    plot(sigVal2,s.(desigNames{i}).(strcat(soundNames{7},'Analysis')).BinStoreTone(sigVal2),'r*')
+    
     %check if timing is string or num
     titleCheck = isstr(s.SoundData.(soundNames{6}).OptoStimDelay);
     if titleCheck == 1
