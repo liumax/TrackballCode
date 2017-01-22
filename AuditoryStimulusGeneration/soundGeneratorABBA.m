@@ -317,7 +317,7 @@ soundData.TargetDB = toneDBA;
 soundData.FoilFreq = toneFreqB;
 soundData.FoilDB = toneDBB;
 soundData.LaserLag = laserLag;
-
+soundData.Names = {'BaselineRepetitions','LaserRepetitions','FinishRepetitions'};
 
 save(fullfile(pname,fname),'soundData');
 
