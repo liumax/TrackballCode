@@ -54,10 +54,12 @@ x = round(interRepMin + (-log(1-p))*tau);
 for i=1:length(controller)
     if controller(i) == 1
         sound(targetVector,fs);
+        disp(strcat('Trial:',num2str(i),'/',num2str(length(controller)),'Frequency:',num2str(targetFreq),' DB:',num2str(targetDB)))
     elseif controller(i) == 0
         sound(controlVector,fs);
+        disp(strcat('Trial:',num2str(i),'/',num2str(length(controller)),'Frequency:',num2str(controlFreq),' DB:',num2str(controlDB)))
     end
-    length(controller)-i
+    
     pause(x(i))
 end
 

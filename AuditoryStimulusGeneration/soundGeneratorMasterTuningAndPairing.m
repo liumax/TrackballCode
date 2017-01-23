@@ -13,27 +13,10 @@
 [fname pname] = uiputfile('TuningAndPairing.mat');
 periodFinder = strfind(fname,'.');
 fileName = fname(1:periodFinder-1);
-%%
-% general parameters:
-fs = 192000; %sampling frequency in Hz
-firstWait = 10; %first waiting period in seconds. 
-interFunctionPause = 2; %seconds to wait after a function to finish before starting next
-TTLDur = 2; %duration of TTL pulses is ms to be sent via the sound card.
-maxDB = 100; %maximum DB that the system is set to. 
-rampDur = 0.005; %duration of ramp for tone, in seconds!!!
-%%
-%tuning curve parameters:
-secondTuningRatio = 1; %ratio of second tuning/first tuning. >1 means more 
-%tones in the second tuning period
-tuningReps = 10; %number of repetitions of each tone/amplitude pair
+%% Parameters
+%Tuning Curve Parameters
 tuningToneDur = 0.1; %tone duration in seconds
-
-tuningL = tuningToneDur*fs; %number of samples at correct sampling frequency
-tuningpaddingL = tuningL + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
-
-prePause = 0.1; %pause in seconds before tone
-postPauseMin = 600; %pause in milliseconds after tone
-postPauseMax = 1000; %pause in milliseconds after tone
+tuningReps = 10; %number of repetitions of each tone/amplitude pair
 
 startF = 4000; %starting frequency in Hz
 endF = 32000; %ending frequency in Hz
@@ -42,28 +25,47 @@ octFrac = 0.5; %fractions of octaves to move
 startdB = 100; %starting decibel value
 enddB = 100; %lowest decibel value
 dbSteps = 20; %resolution of decible steps
-%%
-%auditory pairing parameters:
+
+secondTuningRatio = 1; %ratio of second tuning/first tuning. >1 means more 
+%tones in the second tuning period
+prePause = 0.1; %pause in seconds before tone
+postPauseMin = 600; %pause in milliseconds after tone
+postPauseMax = 1000; %pause in milliseconds after tone
+
+%Tone Presentation Parameters
+pairingToneDur = 0.1; %tone duration in seconds
 targetFreq = 22627; %target frequency in Hz
 controlFreq = 8000;
 targetDB = 100; %target DBs. 100 is max.
 controlDB = 80;
+
 baselineToneReps = 10; %tone repetitions for presentations of long tones before pairing
 pairingToneReps = 10; %tone repetitions for pairing experiment
 presPauseMin = 2; %seconds between tones min
 presPauseMax = 4;%seconds between tones max
 
-pairingToneDur = 0.1; %tone duration in seconds
+%General Function Parameters:
+firstWait = 10; %first waiting period in seconds. 
+interFunctionPause = 2; %seconds to wait after a function to finish before starting next
+
+%Laser Pairing Parameters:
 optoDelay = 0; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
 optoTTL = 0.002; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
 
-%%
+%% Fixed Parameters
 %parameters for TTLs that will signal shifts between functions
+TTLDur = 2; %duration of TTL pulses is ms to be sent via the sound card.
 signalTTLDur = TTLDur/1000;
 signalTTLiti = 0.02; %ITI between signal pulse onsets
 signalTTLNum = 4; %number of signal pulses
+fs = 192000; %sampling frequency in Hz
+maxDB = 100; %maximum DB that the system is set to. 
+rampDur = 0.005; %duration of ramp for tone, in seconds!!!
 
+
+tuningL = tuningToneDur*fs; %number of samples at correct sampling frequency
+tuningpaddingL = tuningL + fs*0.1; %adds 0.1 seconds of padding to the end of the tone to ensure things are not cut off.
 
 %%test
 %generates signal TTL signal
