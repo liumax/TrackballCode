@@ -49,7 +49,7 @@ elseif numTTLs == 3*expectedTTLs/2 %This is the scenario in which laser is
     laserITIFinder = find(TTLdiff >acceptableRange(1) & TTLdiff<acceptableRange(2));
     %removes all TTLs associated with the laser.
     for i = size(laserITIFinder,1):-1:1
-        TTLs(laserITIFinder(i)+1) = [];
+        TTLs(laserITIFinder(i)) = [];
     end
     
     %check to make sure its okay

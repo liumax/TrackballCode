@@ -1,7 +1,7 @@
 %this is meant to be the function version of the
 %soundGeneratorAlternatingToneWithOptoPulsing. 
 function [s] = functionPlayTwoTones(targetFreq,controlFreq,...
-    fs,targetDB,controlDB,toneReps,interRep,toneDur,TTLDur,maxDB, rampDur);
+    fs,targetDB,controlDB,toneReps,interRepMin,interRepMax,toneDur,TTLDur,maxDB,rampDur);
 
 calcDBtarget = targetDB - maxDB;
 calcDBcontrol = controlDB - maxDB;
@@ -28,8 +28,6 @@ rampProfile(end-offRampDur:end) = offRampProfile;
 ttlSig = zeros(paddingL,1);
 ttlSig(1:TTLDur*fs/1000) = 1;
 
-interRep = paddingL/fs+interRep;
-
 %actual code for running behavior!
 toneWave = sin(2*pi*(targetFreq/fs)*(1:L))';
 finalWave = (toneWave.*rampProfile)*targetAmpl;
@@ -47,6 +45,12 @@ controlVector = [paddedWave,ttlSig];
 controller = zeros(2*toneReps,1);
 controller(1:2:end) = 1;
 
+%generate pauses with exponential distribution
+k = 2.5;
+p = (1-exp(-k))*rand(length(controller),1);
+tau = (interRepMax-interRepMin)/k;
+x = round(interRepMin + (-log(1-p))*tau); 
+
 for i=1:length(controller)
     if controller(i) == 1
         sound(targetVector,fs);
@@ -54,7 +58,7 @@ for i=1:length(controller)
         sound(controlVector,fs);
     end
     length(controller)-i
-    pause(interRep)
+    pause(x(i))
 end
 
 freqRecord = controller;
@@ -72,7 +76,7 @@ ampRecord(ampRecord == 0) = controlAmpl;
 soundData = struct;
 soundData.ToneRepetitions = toneReps;
 soundData.ToneDuration = toneDur;
-soundData.ITI = interRep;
+soundData.ITI = x;
 soundData.ToneDuration = toneDur;
 soundData.Frequencies = freqRecord;
 soundData.dBs = dbRecord;

@@ -1,8 +1,11 @@
 %this is meant to be the function version of the
 %soundGeneratorAlternatingToneWithOptoPulsing. 
 function [s] = functionDATwoTonePairing(targetFreq,controlFreq,...
-    fs,targetDB,controlDB,toneReps,interRep,toneDur,optoDelay,...
-    optoDur,optoTTL,optoLag,maxDB, rampDur);
+    fs,targetDB,controlDB,toneReps,interRepMin,interRepMax,toneDur,laserLag,...
+    ttlDur,ttlITI,maxDB,rampDur);
+
+timeBuffer = 0.1;
+longTimeBuffer = 0.2;
 
 calcDBtarget = targetDB - maxDB;
 calcDBcontrol = controlDB - maxDB;
@@ -14,122 +17,137 @@ onRampDur = rampDur*fs;
 offRampDur = rampDur*fs;
 onRampProfile = (cos((0:1:onRampDur)/onRampDur*pi-pi)+1)/2;
 offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;
-%if statements to calculate times based on different conditions
-if optoDelay < 0 %if opto leads tone
-    if optoDur > toneDur-optoDelay %if opto stim exceeds duration of tone and lag period
-        L = round(fs*(optoDur));
-        %GENERATES RAMP AT CORRECT TIME
-        rampProfile = ones(L,1);
-        rampProfile(1:fs*(optoDelay*-1+optoLag)) = 0;
-        rampProfile(fs*(optoDelay*-1+optoLag):fs*(optoDelay*-1+optoLag)+onRampDur) = onRampProfile;
-        rampProfile(fs*(optoDelay*-1+optoLag)+fs*toneDur-offRampDur:fs*(optoDelay*-1+optoLag)+fs*toneDur) = offRampProfile;
-        rampProfile(fs*(optoDelay*-1+optoLag)+fs*toneDur:end) = 0;
-        %generates TTL signature. 
-        ttlSig = zeros(L,1);
-        %want double pulse at beginning to trigger laser.
-        ttlSig(1:fs*optoTTL) = 1;
-        ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
-        %want single pulse to mark tone start
-        ttlSig((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-optoTTL)*-1*fs) = 1;
-    elseif optoDur <= toneDur - optoDelay %if opto stim is shorter than duration of tone and lag period
-        L = round(fs*(toneDur-optoDelay));
-        %GENERATES RAMP AT CORRECT TIME
-        rampProfile = ones(L,1);
-        rampProfile(1:fs*(optoDelay*-1)) = 0;
-        rampProfile(fs*(optoDelay*-1):fs*(optoDelay*-1)+onRampDur) = onRampProfile;
-        rampProfile(end-offRampDur:end) = offRampProfile;
-        %generates TTL signature. 
-        ttlSig = zeros(L,1);
-        %want double pulse at beginning to trigger laser.
-        ttlSig(1:fs*optoTTL) = 1;
-        ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
-        %want single pulse to mark tone start
-        ttlSig((optoDelay-optoLag)*-1*fs:(optoDelay-optoLag-optoTTL)*-1*fs) = 1;
-    end
-elseif optoDelay > 0 %in cases where opto follows the tone
-    if toneDur > optoDelay + optoDur %if the tone is longer than the opto stim and delay period
+L = round(fs*toneDur);
+
+rampProfile = ones(L,1);
+%generate the overall ramp profile
+rampProfile(1:onRampDur+1) = onRampProfile;
+rampProfile(end-offRampDur:end) = offRampProfile;
+%% Calculate laser lag and incorporate into duration of sound file
+
+%first, compensate for loss of time due to second TTL pulse
+laserLag = laserLag - ttlITI;
+
+if isnumeric(laserLag) && laserLag == 0
+    %set length of tone file
+    L = round(fs*toneDur);
+    paddingL = round(L + round(fs*timeBuffer)); %add buffer
+    
+    %this makes the profile for the TTL signal
+    ttlSig = zeros(paddingL,1);
+    ttlSig(1:round(ttlDur*fs)) = 1;
+    
+    %make laser TTL
+    laserTTL = zeros(paddingL,1);
+    laserTTL(1:round(ttlDur*fs)) = 1;
+    laserTTL(round(fs*ttlITI):round(fs*(ttlITI+ttlDur))) = 1;
+    
+    %adjust ramp profile
+    newRamp = zeros(paddingL,1);
+    newRamp(round(ttlDur*fs):round(ttlDur*fs)+length(rampProfile)-1) = rampProfile;
+    rampProfile = newRamp;
+elseif isnumeric(laserLag) && laserLag > 0
+    if laserLag < toneDur
+        %set length of tone file
         L = round(fs*toneDur);
-        %GENERATES RAMP AT CORRECT TIME
-        rampProfile = ones(L,1);
-        rampProfile(1:onRampDur+1) = onRampProfile;
-        rampProfile(fs*toneDur-offRampDur:fs*toneDur) = offRampProfile;
-        rampProfile(fs*toneDur:end) = 0;
-        %generates TTL signature. 
-        ttlSig = zeros(L,1);
-        %want single pulse at beginning to mark tone
-        ttlSig(1:fs*optoTTL) = 1;
-        %double pulse to trigger laser
-        ttlSig((optoDelay-optoLag)*fs:(optoDelay-optoLag+optoTTL)*fs) = 1;
-        ttlSig((optoDelay)*fs:(optoDelay+optoTTL)*fs) = 1;
-    elseif toneDur <= optoDelay + optoDur %if the tone is shorter than the opto stim and delay period
-        L = round(fs*(optoDelay + optoDur));
-        %GENERATES RAMP AT CORRECT TIME
-        rampProfile = ones(L,1);
-        rampProfile(1:onRampDur+1) = onRampProfile;
-        rampProfile(fs*toneDur-offRampDur:fs*toneDur) = offRampProfile;
-        rampProfile(fs*toneDur:end) = 0;
-        %generates TTL signature. 
-        ttlSig = zeros(L,1);
-        %want single pulse at beginning to mark tone
-        ttlSig(1:fs*optoTTL) = 1;
-        %double pulse to trigger laser
-        ttlSig((optoDelay-optoLag)*fs:(optoDelay-optoLag+optoTTL)*fs) = 1;
-        ttlSig((optoDelay)*fs:(optoDelay+optoTTL)*fs) = 1;
+        paddingL = round(L + round(fs*timeBuffer)); %add buffer
+
+        %this makes the profile for the TTL signal
+        ttlSig = zeros(paddingL,1);
+        ttlSig(1:round(ttlDur*fs)) = 1;
+
+        %make laser TTL
+        laserTTL = zeros(paddingL,1);
+        laserTTL(round(fs*laserLag):round(fs*(laserLag+ttlDur))) = 1;
+        laserTTL(round(fs*(laserLag+ttlITI)):round(fs*(laserLag+ttlITI+ttlDur))) = 1;
+        %insert tone TTL
+        laserTTL(1:round(ttlDur*fs)) = 1;
+        
+        %reset ramp profile
+        newRamp = zeros(paddingL,1);
+        newRamp(1:length(rampProfile)) = rampProfile;
+        rampProfile = newRamp;
+
+    elseif laserLag >= toneDur
+        %set length of tone file
+        L = round(fs*laserLag);
+        paddingL = round(L + round(fs*longTimeBuffer)); %add 0.2 second buffer
+
+        %this makes the profile for the TTL signal
+        ttlSig = zeros(paddingL,1);
+        ttlSig(1:round(ttlDur*fs)) = 1;
+
+        %make laser TTL
+        laserTTL = zeros(paddingL,1);
+        laserTTL(round(fs*laserLag):round(fs*(laserLag+ttlDur))) = 1;
+        laserTTL(round(fs*(laserLag+ttlITI)):round(fs*(laserLag+ttlITI+ttlDur))) = 1;
+        %insert tone TTL
+        laserTTL(1:round(ttlDur*fs)) = 1;
+        %reset ramp profile
+        newRamp = zeros(paddingL,1);
+        newRamp(1:length(rampProfile)) = rampProfile;
+        rampProfile = newRamp;
     end
-elseif optoDelay == 0 %if opto stim is coincident with tone
-    if optoDur + optoLag >= toneDur %if opto stim and lag is longer than duration of tone
-        L = round(fs*(optoDur + optoLag));
-        %GENERATES RAMP AT CORRECT TIME
-        rampProfile = ones(L,1);
-        rampProfile(1:fs*(optoLag)) = 0;
-        rampProfile(fs*(optoLag):fs*(optoLag)+onRampDur) = onRampProfile;
-        rampProfile(fs*(optoLag)+fs*toneDur-offRampDur:fs*(optoLag)+fs*toneDur) = offRampProfile;
-        rampProfile(fs*(optoLag)+fs*toneDur:end) = 0;
-        %generates TTL signature. 
-        ttlSig = zeros(L,1);
-        %want single pulse at beginning to mark tone
-        ttlSig(1:fs*optoTTL) = 1;
-        %double pulse to trigger laser
-        ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
-    elseif optoDur + optoLag < toneDur %if tone duration exceeds opto stim
-        L = round(fs*(toneDur+optoLag));
-        rampProfile = ones(L,1);
-        rampProfile(1:fs*(optoLag)) = 0;
-        rampProfile(fs*(optoLag):fs*(optoLag)+onRampDur) = onRampProfile;
-        rampProfile(fs*(optoLag)+fs*toneDur-offRampDur:fs*(optoLag)+fs*toneDur) = offRampProfile;
-        %generates TTL signature. 
-        ttlSig = zeros(L,1);
-        %want single pulse at beginning to mark tone
-        ttlSig(1:fs*optoTTL) = 1;
-        %double pulse to trigger laser
-        ttlSig(optoLag*fs:(optoLag + optoTTL)*fs) = 1;
-    end
+elseif isnumeric(laserLag) && laserLag < 0
+    %set length of tone file
+    L = round(fs*(toneDur-laserLag));
+    paddingL = round(L + round(fs*longTimeBuffer)); %add 0.2 second buffer
+    
+    %this makes the profile for the TTL signal
+    ttlSig = zeros(paddingL,1);
+    ttlSig(round(fs*-laserLag):round(fs*(-laserLag+ttlDur))) = 1;
+    
+    %make laser TTL
+    laserTTL = zeros(paddingL,1);
+    laserTTL(1:round(ttlDur*fs)) = 1;
+    laserTTL(round(fs*ttlITI):round(fs*(ttlITI+ttlDur))) = 1;
+    
+    %add tone TTL to laser TTL signal
+    laserTTL(round(fs*-laserLag):round(fs*(-laserLag+ttlDur))) = 1;
+    
+    %reset ramp profile
+    newRamp = zeros(paddingL,1);
+    newRamp(round(fs*-laserLag):round(fs*-laserLag)-1+length(rampProfile)) = rampProfile;
+    rampProfile = newRamp;
+elseif ~isnumeric(laserLag)
+    %set length of tone file
+    L = round(fs*toneDur);
+    paddingL = round(L + fs*timeBuffer); %add buffer
+    
+    %this makes the profile for the TTL signal
+    ttlSig = zeros(paddingL,1);
+    ttlSig(1:round(ttlDur*fs)) = 1;
+    
+    %make laser TTL
+    laserTTL = zeros(paddingL,1);
+    laserTTL(1:round(ttlDur*fs)) = 1;
 end
 
-paddingL = round(L + fs*0.4);
 
-interRep = paddingL/fs+interRep;
 
 %actual code for running behavior!
-toneWave = sin(2*pi*(targetFreq/fs)*(1:L))';
+toneWave = sin(2*pi*(targetFreq/fs)*(1:paddingL))';
 finalWave = (toneWave.*rampProfile)*targetAmpl;
 paddedWave = zeros(paddingL,1);
 paddedWave(1:size(finalWave,1)) = finalWave;
-paddedTTL = zeros(paddingL,1);
-paddedTTL(1:size(ttlSig,1)) = ttlSig;
-targetVector = [paddedWave,paddedTTL];
+targetVector = [paddedWave,laserTTL];
 
-toneWave = sin(2*pi*(controlFreq/fs)*(1:L))';
+toneWave = sin(2*pi*(controlFreq/fs)*(1:paddingL))';
 finalWave = (toneWave.*rampProfile)*controlAmpl;
 paddedWave = zeros(paddingL,1);
 paddedWave(1:size(finalWave,1)) = finalWave;
-paddedTTL = zeros(paddingL,1);
-paddedTTL(1:size(controlTTL,1)) = controlTTL;
-controlVector = [paddedWave,paddedTTL];
+controlVector = [paddedWave,ttlSig];
 
 %generates alternating array of ones and zeros
 controller = zeros(2*toneReps,1);
 controller(1:2:end) = 1;
+
+%generate pauses with exponential distribution
+k = 2.5;
+p = (1-exp(-k))*rand(length(controller),1);
+tau = (interRepMax-interRepMin)/k;
+x = (interRepMin + (-log(1-p))*tau); 
+
 
 for i=1:length(controller)
     if controller(i) == 1
@@ -138,7 +156,7 @@ for i=1:length(controller)
         sound(controlVector,fs);
     end
     length(controller)-i
-    pause(interRep)
+    pause(x(i))
 end
 
 freqRecord = controller;
@@ -157,19 +175,18 @@ ampRecord(ampRecord == 0) = controlAmpl;
 soundData = struct;
 soundData.ToneRepetitions = toneReps;
 soundData.ToneDuration = toneDur;
-soundData.ITI = interRep;
-soundData.ToneDuration = toneDur;
+soundData.ITI = x;
 soundData.Frequencies = freqRecord;
 soundData.dBs = dbRecord;
 soundData.Amplitudes = ampRecord;
-soundData.OptoStimDelay = optoDelay;
+soundData.OptoStimDelay = laserLag;
 soundData.OnRampDuration = onRampDur;
 soundData.OffRampDuration = offRampDur;
 soundData.TargetFreq = targetFreq;
 soundData.TargetDB = targetDB;
 soundData.ControlFreq = controlFreq;
 soundData.ControlDB = controlDB;
-soundData.LaserTriggerPulseITI = optoLag;
+soundData.LaserTriggerPulseITI = ttlITI;
 
 s = soundData;
 

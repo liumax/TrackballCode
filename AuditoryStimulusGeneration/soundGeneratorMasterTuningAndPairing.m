@@ -16,7 +16,7 @@ fileName = fname(1:periodFinder-1);
 %%
 % general parameters:
 fs = 192000; %sampling frequency in Hz
-firstWait = 120; %first waiting period in seconds. 
+firstWait = 10; %first waiting period in seconds. 
 interFunctionPause = 2; %seconds to wait after a function to finish before starting next
 TTLDur = 2; %duration of TTL pulses is ms to be sent via the sound card.
 maxDB = 100; %maximum DB that the system is set to. 
@@ -25,7 +25,7 @@ rampDur = 0.005; %duration of ramp for tone, in seconds!!!
 %tuning curve parameters:
 secondTuningRatio = 1; %ratio of second tuning/first tuning. >1 means more 
 %tones in the second tuning period
-tuningReps = 20; %number of repetitions of each tone/amplitude pair
+tuningReps = 10; %number of repetitions of each tone/amplitude pair
 tuningToneDur = 0.1; %tone duration in seconds
 
 tuningL = tuningToneDur*fs; %number of samples at correct sampling frequency
@@ -37,10 +37,10 @@ postPauseMax = 1000; %pause in milliseconds after tone
 
 startF = 4000; %starting frequency in Hz
 endF = 32000; %ending frequency in Hz
-octFrac = 0.25; %fractions of octaves to move
+octFrac = 0.5; %fractions of octaves to move
 
 startdB = 100; %starting decibel value
-enddB = 60; %lowest decibel value
+enddB = 100; %lowest decibel value
 dbSteps = 20; %resolution of decible steps
 %%
 %auditory pairing parameters:
@@ -49,12 +49,12 @@ controlFreq = 8000;
 targetDB = 100; %target DBs. 100 is max.
 controlDB = 80;
 baselineToneReps = 10; %tone repetitions for presentations of long tones before pairing
-pairingToneReps = 50; %tone repetitions for pairing experiment
-interRep = 10; %seconds between tones
+pairingToneReps = 10; %tone repetitions for pairing experiment
+presPauseMin = 2; %seconds between tones min
+presPauseMax = 4;%seconds between tones max
 
-pairingToneDur = 1; %tone duration in seconds
-optoDelay = 0.5; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
-optoDur = 1; %duration of all opto pulses, in seconds. THIS IS SHITTY HARD CODED VALUE SHOULD EVENTUALLY CHANGE
+pairingToneDur = 0.1; %tone duration in seconds
+optoDelay = 0; %delay between tone onset and opto output. Positive means opto follows sound, negative means sound follows opto
 optoTTL = 0.002; %duration of opto TTL pulse send through audio card.
 optoLag = 0.004; %lag due to the double pulse requirement for triggering
 
@@ -120,7 +120,7 @@ pause(interFunctionPause);
 %properties of cells to longer tones.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
     fs,targetDB,controlDB,baselineToneReps,...
-    interRep,pairingToneDur,TTLDur,maxDB,rampDur);
+    presPauseMin,presPauseMax,pairingToneDur,TTLDur,maxDB,rampDur);
 
 fullData.(names{3})=s;
 s = [];
@@ -135,9 +135,8 @@ pause(interFunctionPause);
 %This should execute the pairing of auditory stimuli with dopamine
 %terminal/cellbody stimulation
 [s] = functionDATwoTonePairing(targetFreq,controlFreq,...
-    fs,targetDB,controlDB,pairingToneReps,interRep,...
-    pairingToneDur,optoDelay,...
-    optoDur,optoTTL,optoLag,maxDB,rampDur);
+    fs,targetDB,controlDB,pairingToneReps,presPauseMin,presPauseMax,...
+    pairingToneDur,optoDelay,optoTTL,optoLag,maxDB,rampDur);
 
 fullData.(names{5})=s;
 s = [];
@@ -152,7 +151,7 @@ pause(interFunctionPause);
 %play tones again after pairing.
 [s] = functionPlayTwoTones(targetFreq,controlFreq,...
     fs,targetDB,controlDB,baselineToneReps,...
-    interRep,pairingToneDur,TTLDur,maxDB,rampDur);
+    presPauseMin,presPauseMax,pairingToneDur,TTLDur,maxDB,rampDur);
 
 fullData.(names{4})=s;
 s = [];
