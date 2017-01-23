@@ -5,8 +5,6 @@
 %phase, in which one tone is paired with optogenetic release of dopamine,
 %followed by a final settling phase, in which the tones are played alone
 
-
-
 %% Dialog for inputing file name
 [fname pname] = uiputfile('ABBA.mat');
 
@@ -137,7 +135,6 @@ signalVector = [zeroSig,spacerTTL];
 %recalculate ramp times for onset and offset in samples
 onRampDur = onRampDur*fs; 
 offRampDur = offRampDur*fs;
-remainingPoints = L-onRampDur-offRampDur;
 onRampProfile = (cos((0:1:onRampDur)/onRampDur*pi-pi)+1)/2;
 offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;
 rampProfile = ones(L,1);
@@ -148,7 +145,7 @@ rampProfile(end-offRampDur:end) = offRampProfile;
 %% Calculate laser lag and incorporate into duration of sound file
 
 %first, compensate for loss of time due to second TTL pulse
-laserLag = laserLag - 0.004;
+laserLag = laserLag - ttlITI;
 
 if isnumeric(laserLag) && laserLag == 0
     %set length of tone file
@@ -163,6 +160,11 @@ if isnumeric(laserLag) && laserLag == 0
     laserTTL = zeros(paddingL,1);
     laserTTL(1:round(ttlDur*fs)) = 1;
     laserTTL(round(fs*ttlITI):round(fs*(ttlITI+ttlDur))) = 1;
+    
+    %adjust ramp profile
+    newRamp = zeros(paddingL,1);
+    newRamp(round(ttlDur*fs):round(ttlDur*fs)+length(rampProfile)-1) = rampProfile;
+    rampProfile = newRamp;
 elseif isnumeric(laserLag) && laserLag > 0
     if laserLag < toneDur
         %set length of tone file
@@ -302,6 +304,10 @@ for i = 1:numTrials
     
 end
 
+
+%unfudge laserlag
+laserLag = laserLag + ttlITI;
+
 %save the information! (important!!)
 soundData = struct;
 soundData.Delays = master(:,1);
@@ -318,6 +324,9 @@ soundData.FoilFreq = toneFreqB;
 soundData.FoilDB = toneDBB;
 soundData.LaserLag = laserLag;
 soundData.Names = {'BaselineRepetitions','LaserRepetitions','FinishRepetitions'};
+soundData.DividerTTLNumber = signalTTLNum;
+soundData.DividerTTLITI = signalTTLiti;
+soundData.LaserITI = ttlITI;
 
 save(fullfile(pname,fname),'soundData');
 
