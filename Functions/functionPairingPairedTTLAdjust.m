@@ -33,7 +33,7 @@ if numTTLs == 2* expectedTTLs %in this condition, the laser tones are clearly
     end
     %replaces TTL signals in the masterstructure.
     masterStruct.TTLs.(ttlName5) = TTLs;
-
+    masterStruct.TTLs.(strcat(ttlName5,'ORIG')) = masterStruct.TTLs.(ttlName5);
 elseif numTTLs == 3*expectedTTLs/2 %This is the scenario in which laser is 
     %turned on at the same time as the tone.
     %find all TTL diffs.
@@ -58,7 +58,10 @@ elseif numTTLs == 3*expectedTTLs/2 %This is the scenario in which laser is
     end
     
     %replaces TTL signals in the masterstructure.
+    masterStruct.TTLs.(strcat(ttlName5,'ORIG')) = masterStruct.TTLs.(ttlName5);
     masterStruct.TTLs.(ttlName5) = TTLs;
+elseif numTTLs == expectedTTLs
+    disp('Already Corrected? TTLs = Expected TTLs')
 else
     error('SOMETHING IS WRONG WITH TTL INPUTS: INCORRECT NUMBER OF INPUTS')
 end

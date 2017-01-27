@@ -1,7 +1,7 @@
 
 
 %NOTE: spikeName and ttlName must be in quotations.
-function [masterStruct] = functionPairingToneAnalysis(masterStruct,desigNames,...
+function [s] = functionPairingToneAnalysis(s,desigNames,...
     spikeName,soundName,params); 
 %pulls out things into variables to make them easier to call.
 rasterWindow = params.rasterWindow;
@@ -15,18 +15,11 @@ baselineBin = params.baselineBin;
 calcWindow = params.calcWindow;
 firstSpikeWindow = params.firstSpikeWindow;
 
-soundData = masterStruct.SoundData.(soundName);
-%pulls out freq and db data for easy access.
-targetSet = soundData.TargetSet;
-controlSet = soundData.ControlSet;
+soundData = s.SoundData.(soundName);
 %pulls frequencies.
-targetFreq = targetSet(1);
-controlFreq = controlSet(1);
-%pulls master array.
-master = masterStruct.SoundData.(soundName).MasterArray;
-%finds all TTL times and feeds them into the master array.
-TTLTimes = masterStruct.TTLs.(soundName);
-master(:,1) = TTLTimes;
+targetFreq = soundData.TargetFreq;
+controlFreq = soundData.ControlFreq;
+TTLTimes = s.TTLs.(soundName);
 %divide TTLs into two arrays: one for control, one for target.
 TTLDesig = cell(2,1);
 TTLDesig{1} = TTLTimes(soundData.Frequencies == targetFreq);
@@ -34,14 +27,14 @@ TTLDesig{2} = TTLTimes(soundData.Frequencies == controlFreq);
 TTLNames = {'Target','Control'};
 
 %pull tone repetitions
-toneReps = soundData.ToneReps;
+toneReps = soundData.ToneRepetitions;
 
 %converts raster window from ratio to actual time in seconds.
-rasterWindow = rasterWindow*soundData.ToneDur;
-toneWindow = toneWindow * soundData.ToneDur;
-genWindow = genWindow * soundData.ToneDur;
-calcWindow = calcWindow*soundData.ToneDur;
-baselineBin = baselineBin*soundData.ToneDur;
+rasterWindow = rasterWindow*soundData.ToneDuration;
+toneWindow = toneWindow * soundData.ToneDuration;
+genWindow = genWindow * soundData.ToneDuration;
+calcWindow = calcWindow*soundData.ToneDuration;
+baselineBin = baselineBin*soundData.ToneDuration;
 histBinVector = [rasterWindow(1)+histBin/2:histBin:rasterWindow(2)-histBin/2];
 
 numUnits = size(s.DesignationName,2);

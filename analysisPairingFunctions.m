@@ -1,4 +1,4 @@
-function [] = analysisPairingFunctions(fileName);
+function [s] = analysisPairingFunctions(fileName);
 
 %This is meant to be the analysis code for pairing experiments. This code
 %should analyze the tuning curves before and after, the playing of long
@@ -149,18 +149,18 @@ TTLsPairing = DIO1True(signalHolder(2,3)+1:signalHolder(1,4)-1);
 TTLsPresentationSecond = DIO1True(signalHolder(2,4)+1:signalHolder(1,5)-1);
 TTLsTuningSecond = DIO1True(signalHolder(2,5)+1:end);
 %stores these values into the master structure. Converts to seconds.
-s.TTLs.(names{1}) = TTLsTuningFirst/trodesFS;
-s.TTLs.(names{2}) = TTLsTuningSecond/trodesFS;
-s.TTLs.(names{3}) = TTLsPresentationFirst/trodesFS;
-s.TTLs.(names{4}) = TTLsPresentationSecond/trodesFS;
-s.TTLs.(names{5}) = TTLsPairing/trodesFS;
+s.TTLs.(names{1}) = TTLsTuningFirst/params.trodesFS;
+s.TTLs.(names{2}) = TTLsTuningSecond/params.trodesFS;
+s.TTLs.(names{3}) = TTLsPresentationFirst/params.trodesFS;
+s.TTLs.(names{4}) = TTLsPresentationSecond/params.trodesFS;
+s.TTLs.(names{5}) = TTLsPairing/params.trodesFS;
 %Remember that this has converted time values to seconds.
-s.TimePeriods.Baseline = timesBaseline/trodesFS;
-s.TimePeriods.(names{1}) = timesTuningFirst/trodesFS;
-s.TimePeriods.(names{2}) = timesTuningSecond/trodesFS;
-s.TimePeriods.(names{3}) = timesPresentationFirst/trodesFS;
-s.TimePeriods.(names{4}) = timesPresentationSecond/trodesFS;
-s.TimePeriods.(names{5}) = timesPairing/trodesFS;
+s.TimePeriods.Baseline = timesBaseline/params.trodesFS;
+s.TimePeriods.(names{1}) = timesTuningFirst/params.trodesFS;
+s.TimePeriods.(names{2}) = timesTuningSecond/params.trodesFS;
+s.TimePeriods.(names{3}) = timesPresentationFirst/params.trodesFS;
+s.TimePeriods.(names{4}) = timesPresentationSecond/params.trodesFS;
+s.TimePeriods.(names{5}) = timesPairing/params.trodesFS;
 
 %% check size!if the wrong size will throw error!
 
@@ -191,14 +191,14 @@ end
 
 
 %% First thing I want to do is divvy up spikes to different time periods
-[s] = functionNewPairingSpikeSeparator(s,...
+[s] = functionPairingSpikeSeparator(s,...
    desigNames,spikeNames,names);
 disp('Spikes Separated')
 
 %% calculates average firing rate for the initial period and overall firing rates across all periods
-[s] = functionNewPairingAverageRate(s,desigNames,...
+[s] = functionPairingAverageRate(s,desigNames,...
     spikeNames,names);
-disp('Average Rates Calculated')
+disp('Overall Rates Calculated')
 
 %% Next thing is to analyze tuning curve chunks for differences.
 
@@ -225,40 +225,35 @@ disp('Second Tuning Curve Analyzed')
 %% Next I analyze the first and second long tone presentations
 
 %extract sound data:
-[s] = functionPairingTonePresentSoundExtraction(s,...
-    names{3},soundFile); 
+
+for i = 3:5
+    s.SoundData.(names{i}) = soundFile.(names{i});
+end
+
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
-[masterStruct] = functionPairingToneAnalysis(masterStruct,desigNames,...
+[s] = functionPairingToneAnalysis(s,desigNames,...
     spikeNames{3},names{3},params); 
 
 %pull data from the second set.
-
-%extract sound data:
-[s] = functionPairingTonePresentSoundExtraction(s,...
-    names{4},soundFile); 
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
-[masterStruct] = functionPairingToneAnalysis(masterStruct,desigNames,...
+[s] = functionPairingToneAnalysis(s,desigNames,...
     spikeNames{4},names{4},params);  
 
 %% next pull data from pairing session:
 
-%extract sound data:
-[s] = functionPairingTonePresentSoundExtraction(s,...
-    names{5},soundFile); 
 %process TTLs (since these are not just unitary TTLs signaling tone onset.
 [s] = functionPairingPairedTTLAdjust(s,names{5},...
     soundFile,names{5});
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
-[masterStruct] = functionPairingToneAnalysis(masterStruct,desigNames,...
+[s] = functionPairingToneAnalysis(s,desigNames,...
     spikeNames{5},names{5},params);  
 
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
-[s] = functionPairingMasterPlot(numTrodes,s,...
-    truncatedNames,rpvTime,clusterWindow,rasterWindow,histBin,...
-    clims1,fileName,trodesDesignation,names);
+[s] = functionPairingMasterPlot(numUnits,s,...
+    desigNames,params,fileName,names);
 
 pname = pwd;
 fname = strcat(fileName,'Analysis');
