@@ -33,7 +33,7 @@ D2FileName = D2FileName{1};
 
 %extracts port states and times of changes
 dio2State = double(DIO2Data.fields(2).data);
-dio2Time = double(DIO2Data.fields(1).data)/s.Parameters.SampleRate;
+dio2Time = double(DIO2Data.fields(1).data)/s.Parameters.trodesFS;
 
 %if there isnt anything coming through, this will only have one value.
 laserSwitch = 0;
