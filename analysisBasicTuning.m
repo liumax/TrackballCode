@@ -28,7 +28,7 @@ s.Parameters.GenWindow = [0 3];
 s.Parameters.RPVTime = 0.001; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.005; %histogram bin size in seconds
-s.Parameters.SampleRate = 30000;%trodes sampling rate
+s.Parameters.trodesFS = 30000;%trodes sampling rate
 s.Parameters.DefaultBins = 0.001;% bin size for calculating significant responses
 s.Parameters.SmoothingBins = [0.01 0.001];%bins for smoothing
 s.Parameters.CalcWindow = [0 2]; %window for calculating significant responses
@@ -179,7 +179,7 @@ D1FileName = D1FileName{1};
 [DIOData] = readTrodesExtractedDataFile(D1FileName);
 
 %pulls out DIO up state onsets.
-[dioTimes,dioTimeDiff] = functionBasicDIOCheck(DIOData,s.Parameters.SampleRate);
+[dioTimes,dioTimeDiff] = functionBasicDIOCheck(DIOData,s.Parameters.trodesFS);
 
 %insert to master. check for errors
 if length(dioTimes) ~= length(master)
