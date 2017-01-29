@@ -40,6 +40,7 @@ params.minSpikes = 80; %minimum number of spikes to do spike shuffling
 params.minSigSpikes = 2; %minimum number of significant points to record a significant response.
 params.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
 params.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
+params.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
 
 %for latbinPeak
 params.toneWindow = [0,1];
@@ -47,6 +48,11 @@ params.genWindow = [0,3];
 params.latBin = 0.001;
 params.percentCutoff = 99.9;
 params.baseCutoff = 95;
+
+%for duplicate elimination
+params.DownSampFactor = 3; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
+params.corrSlide = 0.05; % window in seconds for xcorr
+params.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
 disp('Parameters Set')
 
@@ -60,17 +66,23 @@ subFoldersCell = strsplit(subFolders,';')';
 %% Find and ID Matclust Files for Subsequent Analysis. Generates Structured Array for Data Storage
 %pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
+[paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
+
 %generate placeholder structure
 s = struct;
 
 %put in parameters!
 s.Parameters = params;
+s.NumberTrodes = length(paramFiles)-length(matclustFiles);
 
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(params.rpvTime,...
     matclustFiles,s,params.clusterWindow);
 disp('Structured Array Generated, Names and Spikes Extracted')
+
+disp('Now Selecting Based on xCORR')
+[s] = functionDuplicateElimination(s);
 
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);
