@@ -31,7 +31,7 @@
 
 
 function [sigResp] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,trialNum);
-
+thresholdHz = s.Parameters.ThresholdHz;
 baselineSpikes = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.BaselineWindow);
 inputRaster = functionBasicRaster(spikeTimes,alignTimes,calcWindow);
 inputRaster = inputRaster(:,1);
@@ -40,6 +40,8 @@ baselineVector = [s.Parameters.BaselineWindow(1) + s.Parameters.histBin/2:s.Para
 histBin = s.Parameters.histBin;
 
 if length(baselineSpikes) > s.Parameters.minSpikes
+    %This is the case where there are sufficient baseline spikes to go
+    %ahead directly
     %% First step is to compute an overall histogram of baseline bins.
     
     baselineHist = hist(baselineSpikes(:,1),baselineVector)/histBin/trialNum;
@@ -47,36 +49,6 @@ if length(baselineSpikes) > s.Parameters.minSpikes
     %compare. Currently, with 0.4 seconds/0.005 sec bins, this should
     %produce 80 bins.
     
-%     %Calculate spike ISIs
-%     negDiff = diff(sort(baselineSpikes(:,1)));
-%     %pull number of times to shuffle spikes
-%     numShuffle = s.Parameters.numShuffle;
-%     %pull number of spikes
-%     numSpikes = length(baselineSpikes);
-% %     baselineWindow = s.Parameters.BaselineWindow;
-% 
-%     %allocate array for storage of data
-%     simDataHolder = zeros(numShuffle,numSpikes);
-%     simDataHolder(:,1) = baselineSpikes(1); %seed with first spike time
-% 
-%     for respInd = 1:numShuffle
-%         %generate random permutation of ISIs
-%         randInd = randperm(numSpikes-1);
-%         %add these to the data!
-%         simDataHolder(respInd,2:end) = negDiff(randInd);
-%     end
-%     %sum to generate appropriate values (adding ISIs to times)
-%     simDataHolder = cumsum(simDataHolder,2);
-% 
-%     %process so that produce histogram with appropriate bin size
-%     histBin = s.Parameters.histBin;
-%     baseHistVector = [rasterWindow(1)+histBin/2:histBin:0];
-%     simHist = hist(simDataHolder',baseHistVector);
-% 
-%     %reshape and normalize data so that reporting firing rate in Hz. 
-%     baselineSim = reshape(simHist,[],1)/histBin/trialNum;
-
-
     %% Based on  distribution, generate positive percentile values
     %generate a percentile range from the data. 
     percentileRange = 100.-(s.Parameters.zLimit*100);
@@ -132,25 +104,21 @@ if length(baselineSpikes) > s.Parameters.minSpikes
     sigResp.BaselineHist = baselineHist;
     sigResp.MeanBaseline = mean(baselineHist);
     sigResp.Centers = targetHistVector;
-    sigResp.Shuffling = 0; %warning about shuffling
     sigResp.Warning = 0; %warning indicates baseline was too low for anything.
     sigResp.SpikeNumber = length(baselineSpikes);
     sigResp.SigSpike = sigSpike;
     sigResp.MaxResp = max(targetHist(:,1));
-elseif length(baselineSpikes) <= s.Parameters.minSpikes & length(spikeTimes) > s.Parameters.minSpikes
-    %% If too few spikes, generate baseline firing based on entire spike train
-    allISI = diff(spikeTimes);
-    totalTime = spikeTimes(end) - spikeTimes(1);
-    totalVector = [s.Parameters.BaselineCalcBins/2:s.Parameters.BaselineCalcBins:totalTime];
-    totalHistHolder = zeros(length(totalVector),s.Parameters.numShuffle);
-    for permRep = 1:s.Parameters.numShuffle
-        permInd = randperm(length(allISI));
-        permSpikes = cumsum(allISI(permInd));
-        totalHistHolder(:,permRep) = hist(permSpikes,totalVector);
-    end
-    totalHistHolder = reshape(totalHistHolder,[],1);
+elseif length(baselineSpikes) <= s.Parameters.minSpikes
+    %This is the case where there are insufficient baseline spikes. I think
+    %my approach here will be to still use the baseline histogram for
+    %percentiles, but then also use raster data to get a firm idea of total
+    %number of spikes. 
+
+    baselineHist = hist(baselineSpikes(:,1),baselineVector)/histBin/trialNum;
+    %These bins will serve as the distribution against which we will
+    %compare. Currently, with 0.4 seconds/0.005 sec bins, this should
+    %produce 80 bins.
     
-    %now that we have a baseline, lets calculate significance!
     %% Based on  distribution, generate positive percentile values
     %generate a percentile range from the data. 
     percentileRange = 100.-(s.Parameters.zLimit*100);
@@ -161,10 +129,10 @@ elseif length(baselineSpikes) <= s.Parameters.minSpikes & length(spikeTimes) > s
 %     simValueRange = zeros(length(percentileRange),1);
 
     for respInd = 1:length(percentileRange)
-        valueRange(respInd) = prctile(totalHistHolder,percentileRange(respInd));
+        valueRange(respInd) = prctile(baselineHist,percentileRange(respInd));
 %         simValueRange(respInd) = prctile(baselineSim,percentileRange(respInd));
     end
-    
+
     %% Now we use the  distribution and percentiles to calculate positive significant responses
     %generate vector for bin centers for histogram
     targetHistVector = [calcWindow(1) + histBin/2: histBin:calcWindow(2)];
@@ -176,6 +144,8 @@ elseif length(baselineSpikes) <= s.Parameters.minSpikes & length(spikeTimes) > s
     %find all values above specific thresholds
     for respInd = 1:length(percentileRange)
         sigFinder = find(targetHist(:,1)> valueRange(respInd));
+        numBinSpikes = targetHist(sigFinder,1);
+        sigFinder(numBinSpikes<thresholdHz) = [];
         targetHist(sigFinder,respInd+1) = 1;
     end
     
@@ -184,7 +154,7 @@ elseif length(baselineSpikes) <= s.Parameters.minSpikes & length(spikeTimes) > s
     negValues = zeros(length(negRange),1);
 %     simNegValues = zeros(length(negRange),1);
     for respInd = 1:length(percentileRange)
-        negValues(respInd) = prctile(totalHistHolder,negRange(respInd));
+        negValues(respInd) = prctile(baselineHist,negRange(respInd));
 %         simNegValues(respInd) = prctile(baselineSim,negRange(respInd));
     end
     %allocate space
@@ -203,34 +173,13 @@ elseif length(baselineSpikes) <= s.Parameters.minSpikes & length(spikeTimes) > s
     
     %% save data!
     sigResp.Histogram = targetHist;
-    sigResp.BaselineHist = totalHistHolder;
-    sigResp.MeanBaseline = mean(totalHistHolder);
+    sigResp.BaselineHist = baselineHist;
+    sigResp.MeanBaseline = mean(baselineHist);
     sigResp.Centers = targetHistVector;
-    sigResp.Shuffling = 1; %warning about shuffling
-    sigResp.Warning = 0; %warning indicates baseline was too low for anything.
-    sigResp.SpikeNumber = length(spikeTimes);
-    sigResp.SigSpike = sigSpike;
-    sigResp.MaxResp = max(targetHist(:,1));
-else
-    %this is the case where there are either no baseline spikes, or the
-    %number of total spikes is extremely low. Here. We will make a real
-    %histogram, and trigger the warning, so I know I cant look for
-    %significant responses. 
-    percentileRange = 100.-(s.Parameters.zLimit*100);
-    targetHistVector = [calcWindow(1) + histBin/2: histBin:calcWindow(2)];
-    targetHist = hist(inputRaster,targetHistVector);
-    targetHist = reshape(targetHist,[],1)/histBin/trialNum;
-    targetHist(:,2:2*length(percentileRange)) = zeros;
-    sigSpike = 0;
-    
-    sigResp.Histogram = targetHist;
-    sigResp.BaselineHist = zeros(length(baselineVector),1);
-    sigResp.MeanBaseline = 0;
-    sigResp.Centers = targetHistVector;
-    sigResp.Shuffling = 0; %warning about shuffling
     sigResp.Warning = 1; %warning indicates baseline was too low for anything.
-    sigResp.SpikeNumber = length(spikeTimes);
+    sigResp.SpikeNumber = length(baselineSpikes);
     sigResp.SigSpike = sigSpike;
     sigResp.MaxResp = max(targetHist(:,1));
+
 end
 end
