@@ -52,6 +52,14 @@ s.Parameters.BaselineCalcBins = 1; %bin size in seconds if there are insufficien
 s.Parameters.PercentCutoff = 99.9;
 s.Parameters.BaselineCutoff = 95;
 s.Parameters.latBin = 0.001;
+s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
+
+%for duplicate elimination
+s.Parameters.DownSampFactor = 3; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
+s.Parameters.corrSlide = 0.05; % window in seconds for xcorr
+s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
+
+
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
@@ -67,12 +75,19 @@ subFoldersCell = strsplit(subFolders,';')';
 %% Find and ID Matclust Files for Subsequent Analysis. Generates Structured Array for Data Storage
 %pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
+[paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
+s.NumberTrodes = length(paramFiles)-length(matclustFiles);
+
 %generate placeholder structure
 % s = struct;
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(s.Parameters.RPVTime,...
     matclustFiles,s,s.Parameters.ClusterWindow);
+
+disp('Now Selecting Based on xCORR')
+[s] = functionDuplicateElimination(s);
+
 
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);
