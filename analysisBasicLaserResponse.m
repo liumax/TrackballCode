@@ -64,22 +64,36 @@ desigArray = s.DesignationArray;
 D2FileName = D2FileName{1};
 
 %extracts DIO stuffs!
-[DIOData] = readTrodesExtractedDataFile(D2FileName);
+[DIO2Data] = readTrodesExtractedDataFile(D2FileName);
 
 %extracts port states and times of changes
-dioState = double(DIOData.fields(2).data);
-dioTime = double(DIOData.fields(1).data);
+dioState = double(DIO2Data.fields(2).data);
+dioTime = double(DIO2Data.fields(1).data)/sampleRate;
 
-%pulls the times when state goes up!
-inTimes = dioTime(dioState == 1)/sampleRate;
+%pulls the times when state goes up/down
+upTimes = dioTime(dioState == 1);
+downTimes = dioTime(dioState == 0);
 
+%we want the duration of the pulse. Therefore, we need to determine if
+%upTimes == downTimes. Because the program always begins on a zero, lets
+%use this a system to eliminate extras. We'll find the first up, and remove
+%all downs before it
+firstUp = upTimes(1);
+downTimes(downTimes<firstUp) = [];
+
+%check!
+if length(upTimes) == length(downTimes)
+    disp('Up Times and Down Times Matched')
+else
+    error(strcat('Mismatched Pulses Up (',num2str(length(upTimes)),') vs Down(',num2str(length(downTimes)),')'))
+end
 
 %pulls the duration of the pulse (this should give laser pulse duration
-dioDiff = diff(dioTime);
-dioDiff = dioDiff(dioDiff<5000);
-meanDiff = mean(dioDiff)/30;
+dioDiff = downTimes - upTimes;
+meanDiff = mean(dioDiff);
 
-s.LaserData.LaserTimes = inTimes;
+s.LaserData.LaserStartTimes = upTimes;
+s.LaserData.LaserEndTimes = downTimes;
 s.LaserData.LaserDuration = meanDiff;
 %% do actual extraction of data!
 for i = 1:numUnits
@@ -93,17 +107,17 @@ for i = 1:numUnits
     %spike times minus the time of the laser pulse. 
     
     %allocates zero matrix
-    laserMatrix = zeros(length(s.(desigNames{i}).SpikeTimes),length(inTimes));
+    laserMatrix = zeros(length(s.(desigNames{i}).SpikeTimes),length(upTimes));
     %performs subtraction by laser pulse
-    for j = 1:length(inTimes)
-        laserMatrix(:,j) = s.(desigNames{i}).SpikeTimes - inTimes(j);
+    for j = 1:length(upTimes)
+        laserMatrix(:,j) = s.(desigNames{i}).SpikeTimes - upTimes(j);
     end
     %determines which waveforms are laser related. 
     [rows,cols] = find(laserMatrix > pairingEarlyCutoff/1000 & laserMatrix< pairingCutoff/1000);
     %safeguard against no response
     if ~isempty(rows)
         %calculate percentage of trials with a response
-        laserRespPercent = length(unique(cols))/length(inTimes);
+        laserRespPercent = length(unique(cols))/length(upTimes);
         %calculate average spiking response to laser
         laserRespSize = length(cols)/length(unique(cols));
         %identify laser waveforms, use these to identify non-laser
@@ -150,7 +164,7 @@ for i = 1:numUnits
     if centerSize(1)>centerSize(2)
         centers = centers';
     end
-    laserHist = [counts'*(1/histBin)/length(inTimes),centers'];
+    laserHist = [counts'*(1/histBin)/length(upTimes),centers'];
     
     %calculate a z score (this is dirty, since it includes the laser
     %period)
@@ -195,10 +209,10 @@ for i = 1:numUnits
     subplot(4,1,2)
     plot(s.(desigNames{i}).LaserRelated.LaserRaster(:,1),...
         s.(desigNames{i}).LaserRelated.LaserRaster(:,2),'k.')
-    line([0 0],[0 size(inTimes,1)],'LineWidth',1,'Color','blue')
-    line([meanDiff/1000 meanDiff/1000],[0 size(inTimes,1)],'LineWidth',1,'Color','blue')
-    line([pairingCutoff/1000 pairingCutoff/1000],[0 size(inTimes,1)],'LineWidth',2,'Color','red')
-    ylim([0 size(inTimes,1)]);
+    line([0 0],[0 size(upTimes,1)],'LineWidth',1,'Color','blue')
+    line([meanDiff/1000 meanDiff/1000],[0 size(upTimes,1)],'LineWidth',1,'Color','blue')
+    line([pairingCutoff/1000 pairingCutoff/1000],[0 size(upTimes,1)],'LineWidth',2,'Color','red')
+    ylim([0 size(upTimes,1)]);
     xlim([rasterWindow(1) rasterWindow(2)]);
     h = title(strcat(fileName,desigNames{i}));
     set(h,'interpreter','none') 
