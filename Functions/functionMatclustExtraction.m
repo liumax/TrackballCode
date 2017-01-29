@@ -76,12 +76,14 @@ numTrodes = length(truncatedNames);
 desigNames = cell(0,0);
 desigArray = [];
 desigCounter = 1;
+timeFilterHolder = []; %this will store first and last time values
 
 for clusterCount = 1:numTrodes
     %extracts the "ntX" part of the nTrode name.
     truncatedNames{clusterCount} = truncatedNames{clusterCount}(16:find(truncatedNames{clusterCount} == '.')-1);
     %opens matclust file and extracts cluster numbers. 
     matclustFile = open(matclustFiles{clusterCount});
+    timeFilterHolder(clusterCount,:) = matclustFile.clustdata.timefilterranges;
     clusterLength = length(matclustFile.clustattrib.clustersOn);
     %based on number of clusters, generates for loop to fit generate names
     %of nTrode-cluster pairs, and designates space in s. Also
@@ -234,13 +236,11 @@ end
 %     
 % end
 
-
-
 s.DesignationArray = desigArray;
 s.DesignationName = desigNames;
-
-
-
+firstPoint = min(timeFilterHolder(:,1));
+lastPoint = max(timeFilterHolder(:,2));
+s.TimeFilterRange = [firstPoint lastPoint];
 
 
 end
