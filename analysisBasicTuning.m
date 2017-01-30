@@ -25,7 +25,7 @@ function [s] = analysisBasicTuning(fileName);
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
 s.Parameters.ToneWindow = [0 1];
 s.Parameters.GenWindow = [0 3];
-s.Parameters.RPVTime = 0.001; %time limit in seconds for consideration as an RPV
+s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.005; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
@@ -85,9 +85,10 @@ s.NumberTrodes = length(paramFiles)-length(matclustFiles);
 [s, truncatedNames] = functionMatclustExtraction(s.Parameters.RPVTime,...
     matclustFiles,s,s.Parameters.ClusterWindow);
 
-disp('Now Selecting Based on xCORR')
-[s] = functionDuplicateElimination(s);
-
+if length(s.DesignationName) > 1
+    disp('Now Selecting Based on xCORR')
+    [s] = functionDuplicateElimination(s);
+end
 
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);

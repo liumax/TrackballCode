@@ -64,8 +64,10 @@ s.NumberTrodes = length(paramFiles)-length(matclustFiles);
     matclustFiles,s,params.clusterWindow);
 disp('Structured Array Generated, Names and Spikes Extracted')
 
-disp('Now Selecting Based on xCORR')
-[s] = functionDuplicateElimination(s);
+if length(s.DesignationName) > 1
+    disp('Now Selecting Based on xCORR')
+    [s] = functionDuplicateElimination(s);
+end
 
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);

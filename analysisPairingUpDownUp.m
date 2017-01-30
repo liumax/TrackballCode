@@ -77,8 +77,10 @@ s.NumberTrodes = length(paramFiles)-length(matclustFiles);
     matclustFiles,s,params.clusterWindow);
 disp('Structured Array Generated, Names Extracted')
 
-disp('Now Selecting Based on xCORR')
-[s] = functionDuplicateElimination(s);
+if length(s.DesignationName) > 1
+    disp('Now Selecting Based on xCORR')
+    [s] = functionDuplicateElimination(s);
+end
 
 %save params!
 s.Parameters = params;
