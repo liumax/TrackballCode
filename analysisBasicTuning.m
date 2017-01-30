@@ -29,13 +29,13 @@ s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.005; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
-s.Parameters.DefaultBins = 0.001;% bin size for calculating significant responses
-s.Parameters.SmoothingBins = [0.01 0.001];%bins for smoothing
-s.Parameters.CalcWindow = [0 2]; %window for calculating significant responses
+% s.Parameters.DefaultBins = 0.001;% bin size for calculating significant responses
+% s.Parameters.SmoothingBins = [0.01 0.001];%bins for smoothing
+% s.Parameters.CalcWindow = [0 2]; %window for calculating significant responses
 s.Parameters.zLimit = 3; %zlimit for calculating significant responses
 % s.Parameters.FirstSpikeWindow = [0 0.5 1 1.5]; %ratios! need to be multiplied by tone duration.
 s.Parameters.FirstSpikeWindow = [0 1];
-s.Parameters.ChosenSpikeBin = 1; %delineates which spike window I will graph.
+% s.Parameters.ChosenSpikeBin = 1; %delineates which spike window I will graph.
 s.Parameters.BaselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
 s.Parameters.LFPWindow = [-1 3];
 
@@ -43,8 +43,8 @@ s.Parameters.LFPWindow = [-1 3];
 s.Parameters.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
 s.Parameters.zLimit = [0.05 0.01 0.001];
 s.Parameters.numShuffle = 1000;
-s.Parameters.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
-s.Parameters.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
+% s.Parameters.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
+% s.Parameters.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
 s.Parameters.minSpikes = 100; %minimum number of spikes to do spike shuffling
 s.Parameters.minSigSpikes = 2; %minimum number of significant points to record a significant response.
 s.Parameters.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
@@ -128,7 +128,7 @@ histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Param
 histBinVector = [s.Parameters.RasterWindow(1)+s.Parameters.histBin/2:s.Parameters.histBin:s.Parameters.RasterWindow(2)-s.Parameters.histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes
-s.Parameters.CalcWindow = s.Parameters.CalcWindow * toneDur;
+% s.Parameters.CalcWindow = s.Parameters.CalcWindow * toneDur;
 s.Parameters.LFPWindow = s.Parameters.LFPWindow * toneDur;
 
 % Generates cell array of frequency names for use in legend
