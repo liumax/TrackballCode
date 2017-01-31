@@ -23,7 +23,7 @@ end
 if (~isempty(strfind(newLine,'StartSession')))
     scQtUserData.trial = scQtUserData.trial + 1;
     sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.Master(scQtUserData.trial,4))]); 
-    
+    sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
     toneFreq = scQtUserData.Master(scQtUserData.trial,1);
     toneAmpl = scQtUserData.Master(scQtUserData.trial,3);
     toneWave = sin(2*pi*(toneFreq/scQtUserData.fs)*(1:scQtUserData.L))';
@@ -39,7 +39,7 @@ end
 if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
     scQtUserData.trial = scQtUserData.trial + 1;
     sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.Master(scQtUserData.trial,4))]); 
-    
+    sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
     toneFreq = scQtUserData.Master(scQtUserData.trial,1);
     toneAmpl = scQtUserData.Master(scQtUserData.trial,3);
     toneWave = sin(2*pi*(toneFreq/scQtUserData.fs)*(1:scQtUserData.L))';
