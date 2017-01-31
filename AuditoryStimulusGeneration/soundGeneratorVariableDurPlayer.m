@@ -10,7 +10,7 @@ toneFreq = 4000; %tone frequency in Hz
 toneDB = 100; %tone loudness in dB
 
 %Presentation Parameters
-toneReps = 100; %repetitions of each tone length
+toneReps = 20; %repetitions of each tone length
 toneDur = [0.1 1 5]; %tone duration in seconds
 minITI = max(toneDur) * 1.5; %minimum ITI between tone onsets
 maxITI = max(toneDur) * 3; %maximum ITI between tone onsets
@@ -21,11 +21,15 @@ fs = 192000; %sampling frequency of sound card
 maxDB = 100; %maximum output.
 prePause = 0.1; %prepause in seconds for loop so that we dont get crashes
 timeBuffer = 0.5; %time buffer in seconds from end of tone. This is to avoid tone cutoffs.
-rampDur = 0.005; %ramp duration in seconds. Will be cosine ramp. 
+rampDur = 0.05; %ramp duration in seconds. Will be cosine ramp. 
 
 %% Safety Checks
 if toneFreq < 4000;
     error('Insufficient Tone Frequency, will damage speaker')
+end
+
+if minITI <= max(toneDur)
+    error('Insufficient Tone ITI')
 end
 
 %% Calculations
@@ -49,12 +53,7 @@ paddingL = L + round(fs*timeBuffer);
 genericSig = zeros(paddingL,1);
 genericSig(1:round(ttlDur*fs)) = 1;
 
-ttlSig = cell(length(toneDur),1);
-
-for i = 1:length(toneDur)
-    ttlSig{i} = genericSig;
-    ttlSig{i}(round(toneDur(i)*fs):round((toneDur(i)+ttlDur)*fs)) = 1;
-end
+ttlSig = genericSig;
 
 %generate ramp profiles
 sampleRampDur = rampDur*fs;
@@ -94,7 +93,7 @@ end
 %combine these things!
 finalVectors = cell(length(toneDur),1);
 for i = 1:length(toneDur)
-    finalVectors{i} = [(toneWave*toneAmp).*rampProfs{i},ttlSig{i}];
+    finalVectors{i} = [(toneWave*toneAmp).*rampProfs{i},ttlSig];
 end
 
 %generate order of tones
@@ -112,6 +111,7 @@ end
 for i = 1:totalReps
     pause(prePause)
     sound(finalVectors{toneOrder(i)},fs)
+    disp(strcat('Trial:',num2str(i),'/',num2str(length(toneOrder)),' Duration:',num2str(toneDur(toneOrder(i)))))
     pause(pauseTimes(i))
 end
 
@@ -122,8 +122,10 @@ soundData.ToneFreq = toneFreq;
 soundData.ToneDB = toneDB;
 soundData.ToneAmplitude = toneAmp;
 soundData.ToneDurations =toneDur;
+soundData.ToneOrder = toneOrder;
 soundData.TTLDur = ttlDur;
 soundData.RampDur = rampDur;
+soundData.ToneReps = toneReps;
 
 save(fullfile(pname,fname),'soundData');
 
