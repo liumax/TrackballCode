@@ -1,5 +1,10 @@
 %This is the Matlab Script
 
+%I HAVE A HARD OFFSET FOR TIMING. This is due to a roughly 200-350ms delay
+%between execution of sound(s,sf) and actual delivery of sound, as detected
+%by TTL pulse. 
+hardOffset = 350; %hard offset in ms.
+
 global scQtUserData;
           
 % UI prompt:
@@ -135,7 +140,7 @@ tau = (postPauseMax-postPauseMin)/k;
 x = round(postPauseMin + (-log(1-p))*tau); 
 itiTime = x;
 
-master(:,4) = x;
+master(:,4) = x+hardOffset;
 
 %save master to global
 scQtUserData.Master = master;
