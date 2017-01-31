@@ -22,19 +22,8 @@ end
 
 if (~isempty(strfind(newLine,'StartSession')))
     scQtUserData.trial = scQtUserData.trial + 1;
-    sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
     sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.Master(scQtUserData.trial,4))]); 
-    sendScQtControlMessage(['trigger(3)']);
-end
-
-if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
-    scQtUserData.trial = scQtUserData.trial + 1;
-    sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
-    sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.Master(scQtUserData.trial,4))]); 
-    sendScQtControlMessage(['trigger(3)']);
-end
-
-if (~isempty(strfind(newLine,'Play Sound')))
+    
     toneFreq = scQtUserData.Master(scQtUserData.trial,1);
     toneAmpl = scQtUserData.Master(scQtUserData.trial,3);
     toneWave = sin(2*pi*(toneFreq/scQtUserData.fs)*(1:scQtUserData.L))';
@@ -42,8 +31,29 @@ if (~isempty(strfind(newLine,'Play Sound')))
     finalWave = finalWave*toneAmpl;
     paddedWave = zeros(scQtUserData.paddingL,1);
     paddedWave(1:size(finalWave,1)) = finalWave;
-    soundVector = [paddedWave,scQtUserData.ttlSig];
-    sound(soundVector,scQtUserData.fs);
+    scQtUserData.soundVector = [paddedWave,scQtUserData.ttlSig];
+    
+    sendScQtControlMessage(['trigger(3)']);
+end
+
+if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
+    scQtUserData.trial = scQtUserData.trial + 1;
+    sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.Master(scQtUserData.trial,4))]); 
+    
+    toneFreq = scQtUserData.Master(scQtUserData.trial,1);
+    toneAmpl = scQtUserData.Master(scQtUserData.trial,3);
+    toneWave = sin(2*pi*(toneFreq/scQtUserData.fs)*(1:scQtUserData.L))';
+    finalWave = toneWave.*scQtUserData.rampProfile;
+    finalWave = finalWave*toneAmpl;
+    paddedWave = zeros(scQtUserData.paddingL,1);
+    paddedWave(1:size(finalWave,1)) = finalWave;
+    scQtUserData.soundVector = [paddedWave,scQtUserData.ttlSig];
+    
+    sendScQtControlMessage(['trigger(3)']);
+end
+
+if (~isempty(strfind(newLine,'Play Sound')))
+    sound(scQtUserData.soundVector,scQtUserData.fs);
     sendScQtControlMessage(['disp(''Trial: ',num2str(scQtUserData.trial),'/',num2str(length(scQtUserData.Master)),' Frequency:',num2str(scQtUserData.Master(scQtUserData.trial,1)),' DB:',num2str(scQtUserData.Master(scQtUserData.trial,2)),''')']);
 end
 

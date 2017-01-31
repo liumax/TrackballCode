@@ -57,6 +57,9 @@ end;
 function 3
     do in itiDur
         disp('Play Sound')
+	 do in toneDur
+             disp('TriggerMatlab')
+        end
     end
 end;
 
@@ -71,9 +74,6 @@ callback portin[2] up
     end
     do in intWindow
         ttlCount = ttlCount - 1
-    end
-    do in toneDur
-        disp('TriggerMatlab')
     end
 end;
 
