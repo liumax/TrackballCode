@@ -58,6 +58,8 @@ subFoldersCell = strsplit(subFolders,';')';
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
 [paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
 s.NumberTrodes = length(paramFiles)-length(matclustFiles);
+%put in parameters!
+s.Parameters = params;
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(params.rpvTime,...
@@ -75,8 +77,7 @@ desigNames = s.DesignationName;
 desigArray = s.DesignationArray;
 
 
-%put in parameters!
-s.Parameters = params;
+
 
 
 %% Import Sound Data
