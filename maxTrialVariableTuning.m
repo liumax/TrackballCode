@@ -1,5 +1,5 @@
  function [trialStates, portStates, trialParams] = ...
-    maxTrialVariables(fname)   
+    maxTrialVariableTuning(fname)
 
 %These are counters
 allLineNum = 0; %This is the counter for all lines. Serves as a general counter for repeats of the while loop
@@ -172,8 +172,8 @@ trialParams.dbEnd = dbEnd;
 trialParams.dbJump = dbJump;
 trialParams.totalTrials = totalTrials;
 
-trialStates.rewLength = trialFreq;
-trialStates.preLick = trialDB;
+trialStates.trialFreq = trialFreq;
+trialStates.trialDB = trialDB;
 trialStates.playSound = playSound;
 trialStates.triggerMatlab = triggerMatlab;
 
