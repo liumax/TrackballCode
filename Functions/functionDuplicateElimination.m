@@ -8,7 +8,6 @@ function [s] = functionDuplicateElimination(s);
 downSampFactor = s.Parameters.DownSampFactor;
 corrSlide = s.Parameters.corrSlide;
 threshComp = s.Parameters.ThresholdComparison;
-desigArray = s.DesignationArray;
 
 %pull time information to construct 
 firstPoint = s.TimeFilterRange(1);
@@ -66,24 +65,26 @@ set(hFig, 'Position', [10 80 600 600])
 for shnkInd = 1:shanks
     disp(strcat('Analyzing Shank:',num2str(shnkInd)))
     %find the correct names for the targeted shank
-    indShank = find(ismember(desigArray(:,1),shankDesig(:,shnkInd)));
+    indShank = find(ismember(s.DesignationArray(:,1),shankDesig(:,shnkInd)));
     %find the unique trodes represented
-    uniqueTrodes = unique(desigArray(indShank,1));
+    uniqueTrodes = unique(s.DesignationArray(indShank,1));
     for trdInd = 1:length(uniqueTrodes)
         disp(strcat('Analyzing Trode:',num2str(trdInd)))
         %pulls unit identifiers
-        uniqueUnits = find(desigArray(:,1) == uniqueTrodes(trdInd));
+        uniqueUnits = find(s.DesignationArray(:,1) == uniqueTrodes(trdInd));
         %find if there are nearby tetrodes. Only go one above
         neighbor = uniqueTrodes(trdInd)+1;
         %check if this trode is represented
         neighborCheck = double(ismember(neighbor,uniqueTrodes));
         if neighborCheck == 1
-            %find the indices for these units
-            indNeighbor = find(ismember(desigArray(:,1),neighbor));
             %now we go through each unit of the current array to compare it
             %with neighbors
-            
-            for unitInd = 1:length(uniqueUnits)
+            targetUnits = uniqueUnits;
+            unitInd = 1;
+            while ~isempty(targetUnits)
+                %find the indices for these units
+                indNeighbor = find(ismember(s.DesignationArray(:,1),neighbor));
+                uniqueUnits = find(s.DesignationArray(:,1) == uniqueTrodes(trdInd));
                 disp(strcat('Analyzing:',names{uniqueUnits(unitInd)}))
                 %first step is gross go over, will basically use the crude
                 %old code I was using to see if there is any chance of
@@ -100,6 +101,8 @@ for shnkInd = 1:shanks
                 compFinder = find(compTester > threshComp);
                 if isempty(compFinder)
                     disp('No Duplicates Detected')
+                    targetUnits(1)=[];
+                    unitInd = unitInd + 1;
                 elseif ~isempty(compFinder)
                     disp(strcat(num2str(length(compFinder)),' Potential Duplicates Detected, Performing xCorr'))
                     while ~isempty(compFinder)
@@ -169,6 +172,8 @@ for shnkInd = 1:shanks
                         if strfind(str,'k')
                             disp('Keep Both Units')
                             compFinder(1) = [];
+                            targetUnits(1)=[];
+                            unitInd = unitInd + 1;
                         elseif strfind(str,'f')
                             disp('Keeping First, Deleting Second')
                             %create new variable in s to record unit as
@@ -181,9 +186,12 @@ for shnkInd = 1:shanks
                             %find the target name
                             nameInd = find(~cellfun(@isempty,strfind(s.DesignationName,names{indNeighbor(compFinder(1))})));
                             s.DesignationName(nameInd) = [];
+                            names(nameInd) = [];
                             s.DesignationArray(nameInd,:) = [];
                             %increment compFinder
                             compFinder(1) = [];
+                            targetUnits(1)=[];
+                            unitInd = unitInd + 1;
                         elseif strfind(str,'s')
                             disp('Keeping Second, Deleting First')
                             %create new variable in s to record unit as
@@ -195,10 +203,12 @@ for shnkInd = 1:shanks
                             %remove from s names and designation array
                             nameInd = find(~cellfun(@isempty,strfind(s.DesignationName,names{uniqueUnits(unitInd)})));
                             s.DesignationName(nameInd) = [];
+                            names(nameInd) = [];
                             s.DesignationArray(nameInd,:) = [];
                             %delete compFinder, since the target of
                             %comparison has been removed
                             compFinder = [];
+                            targetUnits(1)=[];
                         end
                     end
                 end
