@@ -25,7 +25,7 @@ s.Parameters.RasterWindow = [-1 3]; %ratio for raster window. will be multiplied
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.005; %histogram bin size in seconds
-s.Parameters.SampleRate = 30000;%trodes sampling rate
+s.Parameters.trodesFS = 30000;%trodes sampling rate
 s.Parameters.DefaultBins = 0.001;% bin size for calculating significant responses
 s.Parameters.SmoothingBins = [0.01 0.001];%bins for smoothing
 s.Parameters.CalcWindow = [0 2]; %window for calculating significant responses
@@ -48,6 +48,23 @@ s.Parameters.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in
 s.Parameters.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
 
 
+
+%for latency calculations
+s.Parameters.ToneWindow = [0 1];
+s.Parameters.GenWindow = [0 3];
+s.Parameters.latBin = 0.001;
+s.Parameters.PercentCutoff = 99.9;
+s.Parameters.BaselineCutoff = 95;
+s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
+
+%for duplicate elimination
+s.Parameters.DownSampFactor = 3; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
+s.Parameters.corrSlide = 0.05; % window in seconds for xcorr
+s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
+
+
+
+
 %% sets up file saving stuff
 saveName = strcat(fileName,'LaserLagAnalysis','.mat');
 fname = saveName;
@@ -62,6 +79,8 @@ subFoldersCell = strsplit(subFolders,';')';
 %% Find and ID Matclust Files for Subsequent Analysis. Generates Structured Array for Data Storage
 %pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
+[paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
+s.NumberTrodes = length(paramFiles)-length(matclustFiles);
 %generate placeholder structure
 % s = struct;
 %fill structure with correct substructures (units, not clusters/trodes) and
@@ -70,6 +89,12 @@ subFoldersCell = strsplit(subFolders,';')';
     matclustFiles,s,s.Parameters.ClusterWindow);
 
 disp('Spikes and Waveforms Allocated into Structured Array')
+
+%eliminate duplicates.
+if length(s.DesignationName) > 1
+    disp('Now Selecting Based on xCORR')
+    [s] = functionDuplicateElimination(s);
+end
 
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);
@@ -98,6 +123,8 @@ numLags = length(soundData.LaserLags);
 s.Parameters.RasterWindow = s.Parameters.RasterWindow * toneDur;
 s.Parameters.FirstSpikeWindow = s.Parameters.FirstSpikeWindow * toneDur;
 s.Parameters.BaselineBin = s.Parameters.BaselineBin * toneDur;
+s.Parameters.ToneWindow = s.Parameters.ToneWindow * toneDur;
+s.Parameters.GenWindow = s.Parameters.GenWindow * toneDur;
 calcWindow = s.Parameters.calcWindow*toneDur;
 rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
 histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin;
@@ -153,7 +180,7 @@ DIO1Diff = find(diff(DIO1Data(:,2))==1)+1;
 DIO1High = find(DIO1Data(:,2) == 1);
 %finds all points which are down to up states, extracts these times.
 DIO1True = intersect(DIO1Diff,DIO1High);
-DIO1True = DIO1Data(DIO1True,1)/s.Parameters.SampleRate;
+DIO1True = DIO1Data(DIO1True,1)/s.Parameters.trodesFS;
 %finds differences between time points
 DIO1TrueDiff = diff(DIO1True);
 
@@ -163,7 +190,7 @@ DIO2Diff = find(diff(DIO2Data(:,2))==1)+1;
 DIO2High = find(DIO2Data(:,2) == 1);
 %finds all points which are down to up states, extracts these times.
 DIO2True = intersect(DIO2Diff,DIO2High);
-DIO2True = DIO2Data(DIO2True,1)/s.Parameters.SampleRate;
+DIO2True = DIO2Data(DIO2True,1)/s.Parameters.trodesFS;
 %finds differences between time points
 DIO2TrueDiff = diff(DIO2True);
 
@@ -292,6 +319,9 @@ for i = 1:numUnits
         histErr(k,:) = std(specHist,0,2);
         [firstSpikeTimes,firstSpikeStats,binSpikeTimes,binSpikeStats] = ...
             functionBasicFirstSpikeTiming(s.Parameters.FirstSpikeWindow,targetRasters,toneReps,2,targetTrials); %calculates information about first spike timing
+        [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneWindow,s.Parameters.GenWindow,s.Parameters.RasterWindow,...
+                targetRasters,length(targetTrials),2,targetTrials,s.Parameters.latBin,s.Parameters.histBin,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
+        latStore{k} = latPeakBinOut;
         firstSpikeTimeHolder{k} = firstSpikeTimes; %saves first spike times
         firstSpikeStatsHolder(k,:,:) = firstSpikeStats; %saves statistics about first spikes
         binSpikeHolder{k} = binSpikeTimes; %binned spikes from the defined window.
@@ -318,6 +348,7 @@ for i = 1:numUnits
     s.(desigNames{i}).HistBinVector = histBinVector;
     s.(desigNames{i}).AllHistogramSig = generalResponseHist;
     s.(desigNames{i}).SpecHistogramSig = responseHistHolder;
+    s.(desigNames{i}).LatencyData = latStore;
 end
 
 %calculate and plot LFP information
@@ -332,10 +363,7 @@ for i = 1:numUnits
     set(hFig, 'Position', [10 80 1240 850])
     %plots average waveform
     subplot(4,6,1)
-    hold on
-    plot(s.(desigNames{i}).AverageWaveForms(:,2),'LineWidth',2)
-    plot(s.(desigNames{i}).AverageWaveForms(:,1),'r','LineWidth',1)
-    plot(s.(desigNames{i}).AverageWaveForms(:,3),'r','LineWidth',1)
+    plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
     title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
     %plots ISI
     subplot(4,6,2)
@@ -382,11 +410,24 @@ for i = 1:numUnits
         plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)+s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags 0 0])
     end
     title('Histograms by Lag (later is Redder)')
+    %plot zoomed in version
+    subplot(4,3,10)
+    hold on
+    %figure out tone period
+    timeZero = find(histBinVector>0,1,'first');
+    timeToneEnd = find(histBinVector>s.SoundData.ToneDuration,1,'first');
+    for k = 1:numLags
+        plot(histBinVector(timeZero:timeToneEnd),s.(desigNames{i}).LagHistograms(k,timeZero:timeToneEnd),'LineWidth',2,'Color',[(k-1)/numLags 0 0])
+        plot(histBinVector(timeZero),s.(desigNames{i}).LagHistograms(k,timeZero:timeToneEnd)-s.(desigNames{i}).LagHistogramErrors(k,timeZero:timeToneEnd),'Color',[(k-1)/numLags 0 0])
+        plot(histBinVector(timeZero),s.(desigNames{i}).LagHistograms(k,timeZero:timeToneEnd)+s.(desigNames{i}).LagHistogramErrors(k,timeZero:timeToneEnd),'Color',[(k-1)/numLags 0 0])
+    end
+    xlim([histBinVector(timeZero) histBinVector(timeToneEnd)])
+    title('Tone Period Histograms by Lag (later is Redder)')
     %plots rasters (chronological)
     subplot(3,3,2)
+    hold on
     plot(s.(desigNames{i}).AllRasters(:,1),...
         s.(desigNames{i}).AllRasters(:,2),'k.','markersize',4)
-    hold on
     ylim([0 totalTrialNum])
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     plot([0 0],[ylim],'b');
@@ -395,18 +436,19 @@ for i = 1:numUnits
     set(0, 'DefaulttextInterpreter', 'none')
     %plots rasters (organized by lag)
     subplot(3,3,5)
+    hold on
     plot(s.(desigNames{i}).AllRasters(:,1),...
         s.(desigNames{i}).AllRasters(:,3),'k.','markersize',4)
-    hold on
+    %this generates green lines separating by Frequency
+    for k = 1:numLags
+        plot([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)],[toneReps*k toneReps*k],'g')
+    end
     plot([0 0],[ylim],'b');
     plot([toneDur toneDur],[ylim],'b');
     rasterLagLines = zeros(numLags,2);
     rasterLagLines(:,1) = toneReps/2:toneReps:totalTrialNum;
     rasterLagLines(:,2) = soundData.LaserLags;
-    %this generates green lines separating by Frequency
-    for k = 1:size(targetFreq,1)
-        plot(s.Parameters.RasterWindow,[toneReps*numLags*k toneReps*numLags*k],'g','LineWidth',1)
-    end
+    
     set(gca,'YTick',rasterLagLines(:,1));
     set(gca,'YTickLabel',rasterLagLines(:,2));
     set(gca,'Ydir','reverse')
