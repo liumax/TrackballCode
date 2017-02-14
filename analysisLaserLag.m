@@ -316,7 +316,7 @@ for i = 1:numUnits
         [histCounts,histCenters] = hist(targetRasters(:,1),histBinVector); %calculates histogram with defined bin size
         organizedHist(k,:) = histCounts/toneReps/s.Parameters.histBin; %saves histogram
         specHist = fullHistHolder(:,targetTrials);
-        histErr(k,:) = std(specHist,0,2);
+        histErr(k,:) = std(specHist,0,2)/toneReps/s.Parameters.histBin;
         [firstSpikeTimes,firstSpikeStats,binSpikeTimes,binSpikeStats] = ...
             functionBasicFirstSpikeTiming(s.Parameters.FirstSpikeWindow,targetRasters,toneReps,2,targetTrials); %calculates information about first spike timing
         [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneWindow,s.Parameters.GenWindow,s.Parameters.RasterWindow,...
@@ -405,23 +405,22 @@ for i = 1:numUnits
     subplot(4,3,7)
     hold on
     for k = 1:numLags
-        plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:),'LineWidth',2,'Color',[(k-1)/numLags 0 0])
-        plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)-s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags 0 0])
-        plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)+s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags 0 0])
+        plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+        plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)-s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+        plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)+s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
     end
     title('Histograms by Lag (later is Redder)')
     %plot zoomed in version
     subplot(4,3,10)
     hold on
     %figure out tone period
-    timeZero = find(histBinVector>0,1,'first');
-    timeToneEnd = find(histBinVector>s.SoundData.ToneDuration,1,'first');
+    lagHistVector = s.(desigNames{i}).LatencyData{1,1}.LatBinVector;
+    timeZero = find(lagHistVector>0,1,'first');
+    timeToneEnd = find(lagHistVector>s.SoundData.ToneDuration,1,'first');
     for k = 1:numLags
-        plot(histBinVector(timeZero:timeToneEnd),s.(desigNames{i}).LagHistograms(k,timeZero:timeToneEnd),'LineWidth',2,'Color',[(k-1)/numLags 0 0])
-        plot(histBinVector(timeZero),s.(desigNames{i}).LagHistograms(k,timeZero:timeToneEnd)-s.(desigNames{i}).LagHistogramErrors(k,timeZero:timeToneEnd),'Color',[(k-1)/numLags 0 0])
-        plot(histBinVector(timeZero),s.(desigNames{i}).LagHistograms(k,timeZero:timeToneEnd)+s.(desigNames{i}).LagHistogramErrors(k,timeZero:timeToneEnd),'Color',[(k-1)/numLags 0 0])
+        plot(lagHistVector(timeZero:timeToneEnd),s.(desigNames{i}).LatencyData{k}.LatHist(timeZero:timeToneEnd),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
     end
-    xlim([histBinVector(timeZero) histBinVector(timeToneEnd)])
+    xlim([lagHistVector(timeZero) lagHistVector(timeToneEnd)])
     title('Tone Period Histograms by Lag (later is Redder)')
     %plots rasters (chronological)
     subplot(3,3,2)
@@ -472,6 +471,16 @@ for i = 1:numUnits
 %         title('Heatmap by Frequency and Time Max')
     title('Frequency Arranged Heatmap')
     
+    %plot timecourse of responses by binning
+    subplot(3,3,3)
+    hold on
+    
+    for k = 1:numLags
+        plot(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen,'ko','MarkerEdgeColor',[(k-1)/numLags (numLags-k+1)/numLags 0])
+        plot(smooth(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen,11),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+    end
+    xlim([0 length(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen)])
+    title('Responses to Different Lags Over Time')
     
     hold off
     spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
