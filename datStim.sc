@@ -13,10 +13,8 @@
 
 %This is code for cell ID purposes. Toggle holds whether the trip switch
 %has been changed, also has TTL pulse information.
-int toggle = 0
+
 int ITI = 0;
-int idPulseDur = 500
-int idCounter = 0
 
 %These are variables for tone triggered TTLs. names describe function.
 %These variables are for dopamine pulsing
@@ -27,33 +25,21 @@ int pulseCounter = 0
 
 
 function 1
-    while pulseCounter < pulseNum do every pulseITI
-        portout[5] = 1
+    do in ITI
+        portout[1] = 1 %signals start of pulse
         do in pulseDur
-            portout[5] = 0
+            portout[1] = 0
         end
-        pulseCounter = pulseCounter + 1
-    then do
-        pulseCounter = 0
-    end
-end;
-
-function 2
-    if toggle == 1
-        ITI = ITImin+
-        do in 
+        while pulseCounter < pulseNum do every pulseITI
+            portout[5] = 1
+            do in pulseDur
+                portout[5] = 0
+            end
+            pulseCounter = pulseCounter + 1
+        then do
+            pulseCounter = 0
+            disp('TriggerMatlab')
         end
-    end
-end;
-
-callback portin[4] up
-    if toggle == 0 do
-        toggle = 1
-        trigger(2)
-    else do
-        toggle = 0
-	idCounter = 0
-	disp('Stop ID')
     end
 end;
 
