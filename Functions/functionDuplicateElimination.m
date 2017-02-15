@@ -52,7 +52,7 @@ for shnkInd = 1:shanks
 end
 
 %set subplot settings!
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+subplot = @(m,n,p) subtightplot (m, n, p, [0.08 0.04], [0.05 0.08], [0.06 0.03]);
 
 %now go through systematically and look at cross correlations. What we are
 %doing is advancing forward down the shank, never backwards (with the
@@ -115,7 +115,9 @@ for shnkInd = 1:shanks
                         plot(lags,r)
                         xlim([-lagWindow,lagWindow])
                         ylim([0 max(r)])
-                        title(strcat('Correlogram of:',names{uniqueUnits(unitInd)},'&',names{indNeighbor(compFinder(1))}))
+                        title({strcat('Correlogram of:',names{uniqueUnits(unitInd)},'&',names{indNeighbor(compFinder(1))});...
+                            strcat(names{uniqueUnits(unitInd)},':',num2str(length(tmp.(names{uniqueUnits(unitInd)}).SpikeTimes)),',',...
+                            names{indNeighbor(compFinder(1))},':',num2str(length(tmp.(names{indNeighbor(compFinder(1))}).SpikeTimes)))})
                         subplot(3,1,2)
                         hold on
                         trueMax = 0;
