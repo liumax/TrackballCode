@@ -532,6 +532,7 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         clf
 
     end
+    s.TuningDecision = decisionTuning;
 else %in the case you dont want to do tuning selection, default to normal system
     for i = 1:numUnits
         hFig = figure;
