@@ -37,9 +37,7 @@ for i = 1:numUnits
     %plots average waveform
     subplot(4,6,1)
     hold on
-    plot(s.(desigNames{i}).AverageWaveForms(:,2),'LineWidth',2)
-    plot(s.(desigNames{i}).AverageWaveForms(:,1),'r','LineWidth',1)
-    plot(s.(desigNames{i}).AverageWaveForms(:,3),'r','LineWidth',1)
+    plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
     title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
     %plots ISI
     subplot(4,6,2)
@@ -49,36 +47,6 @@ for i = 1:numUnits
     xlim(s.Parameters.ClusterWindow)
     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-    %plots first spike latency
-    subplot(4,3,4)
-    imagesc(s.(desigNames{i}).FirstSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin)')
-    colormap hot
-    colorbar
-    set(gca,'XTick',s.Parameters.OctaveRange(:,2));
-    set(gca,'XTickLabel',s.Parameters.OctaveRange(:,1));
-    set(gca,'YTick',s.Parameters.DBRange(:,2));
-    set(gca,'YTickLabel',s.Parameters.DBRange(:,1));
-    title('Mean First Spike Latency')
-    %plots heatmap of binned spikes to the chosen spike timing window.
-    subplot(4,3,7)
-    imagesc(squeeze(s.(desigNames{i}).BinSpikeStats(:,:,1,s.Parameters.ChosenSpikeBin))')
-    colormap hot
-    colorbar
-    set(gca,'XTick',s.Parameters.OctaveRange(:,2));
-    set(gca,'XTickLabel',s.Parameters.OctaveRange(:,1));
-    set(gca,'YTick',s.Parameters.DBRange(:,2));
-    set(gca,'YTickLabel',s.Parameters.DBRange(:,1));
-    title('Binned Response')
-    %plots heatmaps of response reliability in chosen bin 
-    subplot(4,3,10)
-    imagesc(squeeze(s.(desigNames{i}).FirstSpikeStats(:,:,3,s.Parameters.ChosenSpikeBin))')
-    colormap hot
-    colorbar
-    set(gca,'XTick',s.Parameters.OctaveRange(:,2));
-    set(gca,'XTickLabel',s.Parameters.OctaveRange(:,1));
-    set(gca,'YTick',s.Parameters.DBRange(:,2));
-    set(gca,'YTickLabel',s.Parameters.DBRange(:,1));
-    title('Probability of Response')
     %plots rasters (chronological)
     subplot(3,3,2)
     plot(s.(desigNames{i}).AllRasters(:,1),...
@@ -181,6 +149,8 @@ for i = 1:numUnits
     %clear figure.
     clf
 end
+
+s.DecisionTuning = decisionTuning;
 
 close
 

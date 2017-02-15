@@ -16,6 +16,22 @@ rpvPercentCutoff = 5; %percent cutoff for RPVs. in %, so this is actually like 0
 artifactJitter = 0.0005; %in seconds!
 artifactCutoff = 0.7; %ratio cutoff for laser aligned spikes. 
 
+%check if there is a toggleRPV variable. If present, respect it. If not,
+%then set to 1 (will use RPV to eliminate units)
+toggleCheck = isfield(s.Parameters,'toggleRPV');
+
+if toggleCheck == 0
+    toggleRPV = 1;
+    disp('NO TOGGLE DETECTED DEFAULTING TO RPV ELIMINATION')
+else
+    toggleRPV = s.Parameters.toggleRPV;
+    if toggleRPV == 1
+        disp('TOGGLE DETECTED, ELIMINATING BY RPV')
+    else
+        disp('TOGGLE DETECTED, NOT ELIMINATING UNITS')
+    end
+end
+
 %first, lets see if there was any laser playback. If there was, this
 %initiates code for looking at laser alignment. 
 

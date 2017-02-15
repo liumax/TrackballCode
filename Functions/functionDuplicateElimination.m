@@ -2,19 +2,19 @@
 
 
 
-function [s] = functionDuplicateElimination(s);
+function [s] = functionDuplicateElimination(s,downSampFactor,corrSlide,threshComp,samplingRate);
 
 %pull parameters
-downSampFactor = s.Parameters.DownSampFactor;
-corrSlide = s.Parameters.corrSlide;
-threshComp = s.Parameters.ThresholdComparison;
+% downSampFactor = s.Parameters.DownSampFactor;
+% corrSlide = s.Parameters.corrSlide;
+% threshComp = s.Parameters.ThresholdComparison;
 
 %pull time information to construct 
 firstPoint = s.TimeFilterRange(1);
 lastPoint = s.TimeFilterRange(2);
 
 %compute lag window for xcorr
-lagWindow = corrSlide*s.Parameters.trodesFS/downSampFactor;
+lagWindow = corrSlide*samplingRate/downSampFactor;
 lags = [-lagWindow:1:lagWindow];
 
 %pull number of units
