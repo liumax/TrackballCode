@@ -61,7 +61,7 @@ s.Parameters.latBin = 0.001;
 s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
 
 %for duplicate elimination
-s.Parameters.DownSampFactor = 3; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
+s.Parameters.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
 s.Parameters.corrSlide = 0.05; % window in seconds for xcorr
 s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
