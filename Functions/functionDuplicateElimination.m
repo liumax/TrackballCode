@@ -178,7 +178,10 @@ for shnkInd = 1:shanks
                             disp('Keeping First, Deleting Second')
                             %create new variable in s to record unit as
                             %being deleted. Save the unit that was the
-                            %reason for deletion
+                            %reason for deletion. This is to say the field
+                            %will be the deleted unit. The name in the
+                            %field will be the unit that triggered the
+                            %deletion. 
                             s.DeletedUnits.(names{indNeighbor(compFinder(1))}) = (names{uniqueUnits(unitInd)});
                             %delete data from second unit from s
                             s = rmfield(s,(names{indNeighbor(compFinder(1))}));

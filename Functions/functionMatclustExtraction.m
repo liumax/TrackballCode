@@ -112,7 +112,7 @@ for clusterCount = 1:numTrodes
         if laserSwitch == 0
             if rpvPercent > rpvPercentCutoff
                 disp(strcat('Unit',desigNames{desigCounter},'Fails RPVs with:',num2str(rpvPercent),'% violations out of',num2str(totalNumber),' Spikes'))
-                desigNames{desigCounter} = [];
+                desigNames(desigCounter) = [];
                 desigArray(desigCounter,:) = [];
             else
                 %calculate overall firing rate
@@ -152,15 +152,15 @@ for clusterCount = 1:numTrodes
             propOffset = length(spikesOffset)/numSpikes;
             if rpvPercent > rpvPercentCutoff
                 disp(strcat('Unit',desigNames{desigCounter},'Fails RPVs with:',num2str(rpvPercent),'% violations out of',num2str(totalNumber),' Spikes'))
-                desigNames{desigCounter} = [];
+                desigNames(desigCounter) = [];
                 desigArray(desigCounter,:) = [];
             elseif propOnset > artifactCutoff 
                 disp(strcat('Unit',desigNames{desigCounter},'Fails LaserOnset with:',num2str(propOnset),'laser aligned spikes'))
-                desigNames{desigCounter} = [];
+                desigNames(desigCounter) = [];
                 desigArray(desigCounter,:) = [];
             elseif propOffset > artifactCutoff
                 disp(strcat('Unit',desigNames{desigCounter},'Fails LaserOffset with:',num2str(propOffset),'laser aligned spikes'))
-                desigNames{desigCounter} = [];
+                desigNames(desigCounter) = [];
                 desigArray(desigCounter,:) = [];
             else
                 %calculate overall firing rate

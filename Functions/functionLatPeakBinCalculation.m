@@ -157,6 +157,10 @@ else
 end
 
 latPeakBinOut = struct;
+
+latPeakBinOut.LatHist = latHist;
+latPeakBinOut.LatBinVector = latBinVector;
+
 latPeakBinOut.ResponseLatency = toneRespLat;
 latPeakBinOut.ResponseFirstSig = latBinVector(genStart + sigBins(respToneFirst)-1);
 
