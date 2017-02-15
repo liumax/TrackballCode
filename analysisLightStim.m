@@ -22,6 +22,11 @@
 
 function [s] = analysisLightStim(fileName);
 %% Constants and things you might want to tweak
+%lets set some switches to toggle things on and off.
+s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+
 s.Parameters.RasterWindow = [-1 1]; %seconds for raster window. will be multiplied by toneDur
 s.Parameters.ToneWindow = [0 0.5];
 s.Parameters.GenWindow = [0 1];
@@ -85,9 +90,14 @@ s.NumberTrodes = length(paramFiles)-length(matclustFiles);
 [s, truncatedNames] = functionMatclustExtraction(s.Parameters.RPVTime,...
     matclustFiles,s,s.Parameters.ClusterWindow);
 
-if length(s.DesignationName) > 1
-    disp('Now Selecting Based on xCORR')
-    [s] = functionDuplicateElimination(s);
+if toggleDuplicateElimination ==1
+    if length(s.DesignationName) > 1
+        disp('Now Selecting Based on xCORR')
+        [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS);
+    end
+else
+    disp('NOT EXECUTING DUPLICATE ELIMINATION')
 end
 
 %pull number of units, as well as names and designation array.
