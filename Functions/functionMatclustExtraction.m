@@ -126,7 +126,7 @@ for clusterCount = 1:numTrodes
         selectedSpikes = diffSpikes(diffSpikes<clusterWindow(2));
         %now lets remove things with shitty RPVs and/or laser response
         if laserSwitch == 0
-            if rpvPercent > rpvPercentCutoff
+            if rpvPercent > rpvPercentCutoff && toggleRPV == 1
                 disp(strcat('Unit',desigNames{desigCounter},'Fails RPVs with:',num2str(rpvPercent),'% violations out of',num2str(totalNumber),' Spikes'))
                 desigNames(desigCounter) = [];
                 desigArray(desigCounter,:) = [];
@@ -166,7 +166,7 @@ for clusterCount = 1:numTrodes
             numSpikes = length(spikeTimes);
             propOnset = length(spikesOnset)/numSpikes;
             propOffset = length(spikesOffset)/numSpikes;
-            if rpvPercent > rpvPercentCutoff
+            if rpvPercent > rpvPercentCutoff && toggleRPV == 1
                 disp(strcat('Unit',desigNames{desigCounter},'Fails RPVs with:',num2str(rpvPercent),'% violations out of',num2str(totalNumber),' Spikes'))
                 desigNames(desigCounter) = [];
                 desigArray(desigCounter,:) = [];
