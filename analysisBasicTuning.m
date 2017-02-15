@@ -350,10 +350,9 @@ end
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 if toggleTuneSelect == 1 %if you want tuning selection...
     hFig = figure;
+    set(hFig, 'Position', [10 80 1240 850])
     decisionTuning = zeros(numUnits,1);
     for i = 1:numUnits
-
-        set(hFig, 'Position', [10 80 1240 850])
         %plots average waveform
         subplot(4,6,1)
         hold on
