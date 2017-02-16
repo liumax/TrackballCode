@@ -41,6 +41,9 @@ elseif numTrodes == 8;
 elseif numTrodes == 16;
     %this means i'm on the 64 channel double shank
     shanks = 2;
+elseif numTrodes == 32;
+    %this likely means I am on an old designation
+    shanks = 2;
 end
 
 %this generates an array for the shanks.
