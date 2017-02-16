@@ -9,7 +9,12 @@ function [s] = analysisPairingFunctions(fileName);
 
 
 %% Hardcoded Variables:
-params = struct;
+%lets set some switches to toggle things on and off.
+params.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
+toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
+
+%parameters for data analysis
 params.rpvTime = 0.002; %limit to be considered an RPV.
 params.clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
 params.trodesFS = 30000; %sampling rate of trodes box.
@@ -41,7 +46,7 @@ params.percentCutoff = 99.9;
 params.baseCutoff = 95;
 
 %for duplicate elimination
-params.DownSampFactor = 3; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
+params.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
 params.corrSlide = 0.05; % window in seconds for xcorr
 params.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
@@ -66,9 +71,15 @@ s.Parameters = params;
     matclustFiles,s,params.clusterWindow);
 disp('Structured Array Generated, Names and Spikes Extracted')
 
-if length(s.DesignationName) > 1
-    disp('Now Selecting Based on xCORR')
-    [s] = functionDuplicateElimination(s);
+
+if toggleDuplicateElimination ==1
+    if length(s.DesignationName) > 1
+        disp('Now Selecting Based on xCORR')
+        [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS);
+    end
+else
+    disp('NOT EXECUTING DUPLICATE ELIMINATION')
 end
 
 %pull number of units, as well as names and designation array.
@@ -264,8 +275,51 @@ end
     spikeNames{5},names{5},params);  
 
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
-[s] = functionPairingMasterPlot(numUnits,s,...
-    desigNames,params,fileName,names);
+
+if toggleTuneSelect == 1 %if you want tuning selection...
+    hFig = figure;
+    set(hFig, 'Position', [10 80 1240 850])
+    decisionTuning = zeros(numUnits,1);
+    for i = 1:numUnits
+        [s] = functionPairingMasterPlot(i,s,...
+        desigNames,params,fileName,names,hFig);
+        %ask for input! 
+        promptCounter = 1; %This is used to run the while loop.
+        whileCounter = 0; %this is the counter that gets updated to exit the loop
+
+        while whileCounter ~= promptCounter
+            try
+                prompt = 'Is this unit tuned? (y/n)';
+                str = input(prompt,'s');
+                if str~='n' & str~='y'
+                    error
+                else
+                    whileCounter = 1;
+                end
+            catch
+            end
+        end
+        if strfind(str,'y')
+            decisionTuning(i) = 1;
+        elseif strfind(str,'n')
+            decisionTuning(i) = 0;
+        end
+
+        %clear figure.
+        clf
+    end
+    s.TuningDecision = decisionTuning;
+else
+    for i = 1:numUnits
+        hFig = figure;
+        set(hFig, 'Position', [10 80 1240 850])
+        [s] = functionPairingMasterPlot(i,s,...
+        desigNames,params,fileName,names,hFig);
+    end
+end
+
+    
+
 
 pname = pwd;
 fname = strcat(fileName,'Analysis');
