@@ -21,6 +21,13 @@
 
 function [s] = analysisLaserLag(fileName);
 %% Constants and things you might want to tweak
+
+%lets set some switches to toggle things on and off.
+s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+
+
 s.Parameters.RasterWindow = [-1 3]; %ratio for raster window. will be multiplied by toneDur
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
@@ -91,9 +98,15 @@ s.NumberTrodes = length(paramFiles)-length(matclustFiles);
 disp('Spikes and Waveforms Allocated into Structured Array')
 
 %eliminate duplicates.
-if length(s.DesignationName) > 1
-    disp('Now Selecting Based on xCORR')
-    [s] = functionDuplicateElimination(s);
+
+if toggleDuplicateElimination ==1
+    if length(s.DesignationName) > 1
+        disp('Now Selecting Based on xCORR')
+        [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS);
+    end
+else
+    disp('NOT EXECUTING DUPLICATE ELIMINATION')
 end
 
 %pull number of units, as well as names and designation array.
@@ -358,140 +371,306 @@ end
 %% Plotting
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.05 0.05], [0.05 0.01]);
 
-for i = 1:numUnits
+if toggleTuneSelect == 1 %if you want tuning selection...
     hFig = figure;
     set(hFig, 'Position', [10 80 1240 850])
-    %plots average waveform
-    subplot(4,6,1)
-    plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
-    title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
-    %plots ISI
-    subplot(4,6,2)
-    hist(s.(desigNames{i}).ISIGraph,1000)
-    histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
-    line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-    xlim(s.Parameters.ClusterWindow)
-    title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
-        strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-    %plot overall histogram
-    subplot(4,3,4)
-    plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
-    hold on
-    plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
-    plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
-    %plot significant values
-    plot(s.(desigNames{i}).AllHistogramSig.Centers(...
-        s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1),...
-        s.(desigNames{i}).AllHistogramSig.Histogram(...
-        s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1,1),...
-        'b*')
-    plot(s.(desigNames{i}).AllHistogramSig.Centers(...
-        s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1),...
-        s.(desigNames{i}).AllHistogramSig.Histogram(...
-        s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1,1),...
-        'c*')
-    %plot negative values for first tuning
-    plot(s.(desigNames{i}).AllHistogramSig.Centers(...
-        s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1),...
-        s.(desigNames{i}).AllHistogramSig.Histogram(...
-        s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1,1),...
-        'k*')
-    plot([0 0],[ylim],'b');
-    plot([toneDur toneDur],[ylim],'b');
-    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-    title('Histogram')
-    hold off
-    %plot by lag
-    subplot(4,3,7)
-    hold on
-    for k = 1:numLags
-        plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
-        plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)-s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
-        plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)+s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
-    end
-    title('Histograms by Lag (later is Redder)')
-    %plot zoomed in version
-    subplot(4,3,10)
-    hold on
-    %figure out tone period
-    lagHistVector = s.(desigNames{i}).LatencyData{1,1}.LatBinVector;
-    timeZero = find(lagHistVector>0,1,'first');
-    timeToneEnd = find(lagHistVector>s.SoundData.ToneDuration,1,'first');
-    for k = 1:numLags
-        plot(lagHistVector(timeZero:timeToneEnd),s.(desigNames{i}).LatencyData{k}.LatHist(timeZero:timeToneEnd),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
-    end
-    xlim([lagHistVector(timeZero) lagHistVector(timeToneEnd)])
-    title('Tone Period Histograms by Lag (later is Redder)')
-    %plots rasters (chronological)
-    subplot(3,3,2)
-    hold on
-    plot(s.(desigNames{i}).AllRasters(:,1),...
-        s.(desigNames{i}).AllRasters(:,2),'k.','markersize',4)
-    ylim([0 totalTrialNum])
-    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-    plot([0 0],[ylim],'b');
-    plot([toneDur toneDur],[ylim],'b');
-    title({fileName;desigNames{i}},'fontweight','bold')
-    set(0, 'DefaulttextInterpreter', 'none')
-    %plots rasters (organized by lag)
-    subplot(3,3,5)
-    hold on
-    plot(s.(desigNames{i}).AllRasters(:,1),...
-        s.(desigNames{i}).AllRasters(:,3),'k.','markersize',4)
-    %this generates green lines separating by Frequency
-    for k = 1:numLags
-        plot([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)],[toneReps*k toneReps*k],'g')
-    end
-    plot([0 0],[ylim],'b');
-    plot([toneDur toneDur],[ylim],'b');
-    rasterLagLines = zeros(numLags,2);
-    rasterLagLines(:,1) = toneReps/2:toneReps:totalTrialNum;
-    rasterLagLines(:,2) = soundData.LaserLags;
-    
-    set(gca,'YTick',rasterLagLines(:,1));
-    set(gca,'YTickLabel',rasterLagLines(:,2));
-    set(gca,'Ydir','reverse')
-    ylim([0 totalTrialNum])
-    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-    title('Descending = increase in amplitude and freq')
-    %plot heatmap organized by laser lag
-    subplot(3,3,8)
-    imagesc(s.(desigNames{i}).LagHistograms(:,:))
-    colorbar
-%     set(gca,'YTick',octaveRange(:,2));
-%     set(gca,'YTickLabel',octaveRange(:,1));
-%     set(gca,'XTick',[1:10:size(histBinVector,2)]);
-%     set(gca,'XTickLabel',histBinVector(1:20:end));
-    histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
-    histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
-    line([histBinZero histBinZero],[0 numLags],'LineWidth',3,'Color','green')
-    line([histBinZero histBinZero],[0 numLags],'LineWidth',2,'Color','black')
-    line([histBinTone histBinTone],[0 numLags],'LineWidth',3,'Color','green')
-    line([histBinTone histBinTone],[0 numLags],'LineWidth',2,'Color','black')
-%         title('Heatmap by Frequency and Time Max')
-    title('Frequency Arranged Heatmap')
-    
-    %plot timecourse of responses by binning
-    subplot(3,3,3)
-    hold on
-    
-    for k = 1:numLags
-        plot(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen,'ko','MarkerEdgeColor',[(k-1)/numLags (numLags-k+1)/numLags 0])
-        plot(smooth(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen,11),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
-    end
-    xlim([0 length(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen)])
-    title('Responses to Different Lags Over Time')
-    
-    hold off
-    spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
-    savefig(hFig,spikeGraphName);
+    decisionTuning = zeros(numUnits,1);
+    for i = 1:numUnits
+        %plots average waveform
+        subplot(4,6,1)
+        plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
+        title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
+        %plots ISI
+        subplot(4,6,2)
+        hist(s.(desigNames{i}).ISIGraph,1000)
+        histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
+        line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+        xlim(s.Parameters.ClusterWindow)
+        title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+            strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
+        %plot overall histogram
+        subplot(4,3,4)
+        plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
+        hold on
+        plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+        plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+        %plot significant values
+        plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1),...
+            s.(desigNames{i}).AllHistogramSig.Histogram(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1,1),...
+            'b*')
+        plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1),...
+            s.(desigNames{i}).AllHistogramSig.Histogram(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1,1),...
+            'c*')
+        %plot negative values for first tuning
+        plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1),...
+            s.(desigNames{i}).AllHistogramSig.Histogram(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1,1),...
+            'k*')
+        plot([0 0],[ylim],'b');
+        plot([toneDur toneDur],[ylim],'b');
+        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+        title('Histogram')
+        hold off
+        %plot by lag
+        subplot(4,3,7)
+        hold on
+        for k = 1:numLags
+            plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+            plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)-s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+            plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)+s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+        end
+        title('Histograms by Lag (later is Redder)')
+        %plot zoomed in version
+        subplot(4,3,10)
+        hold on
+        %figure out tone period
+        lagHistVector = s.(desigNames{i}).LatencyData{1,1}.LatBinVector;
+        timeZero = find(lagHistVector>0,1,'first');
+        timeToneEnd = find(lagHistVector>s.SoundData.ToneDuration,1,'first');
+        for k = 1:numLags
+            plot(lagHistVector(timeZero:timeToneEnd),s.(desigNames{i}).LatencyData{k}.LatHist(timeZero:timeToneEnd),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+        end
+        xlim([lagHistVector(timeZero) lagHistVector(timeToneEnd)])
+        title('Tone Period Histograms by Lag (later is Redder)')
+        %plots rasters (chronological)
+        subplot(3,3,2)
+        hold on
+        plot(s.(desigNames{i}).AllRasters(:,1),...
+            s.(desigNames{i}).AllRasters(:,2),'k.','markersize',4)
+        ylim([0 totalTrialNum])
+        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+        plot([0 0],[ylim],'b');
+        plot([toneDur toneDur],[ylim],'b');
+        title({fileName;desigNames{i}},'fontweight','bold')
+        set(0, 'DefaulttextInterpreter', 'none')
+        %plots rasters (organized by lag)
+        subplot(3,3,5)
+        hold on
+        plot(s.(desigNames{i}).AllRasters(:,1),...
+            s.(desigNames{i}).AllRasters(:,3),'k.','markersize',4)
+        %this generates green lines separating by Frequency
+        for k = 1:numLags
+            plot([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)],[toneReps*k toneReps*k],'g')
+        end
+        plot([0 0],[ylim],'b');
+        plot([toneDur toneDur],[ylim],'b');
+        rasterLagLines = zeros(numLags,2);
+        rasterLagLines(:,1) = toneReps/2:toneReps:totalTrialNum;
+        rasterLagLines(:,2) = soundData.LaserLags;
 
-    %save as PDF with correct name
-    set(hFig,'Units','Inches');
-    pos = get(hFig,'Position');
-    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-    print(hFig,spikeGraphName,'-dpdf','-r0')
+        set(gca,'YTick',rasterLagLines(:,1));
+        set(gca,'YTickLabel',rasterLagLines(:,2));
+        set(gca,'Ydir','reverse')
+        ylim([0 totalTrialNum])
+        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+        title('Descending = increase in amplitude and freq')
+        %plot heatmap organized by laser lag
+        subplot(3,3,8)
+        imagesc(s.(desigNames{i}).LagHistograms(:,:))
+        colorbar
+    %     set(gca,'YTick',octaveRange(:,2));
+    %     set(gca,'YTickLabel',octaveRange(:,1));
+    %     set(gca,'XTick',[1:10:size(histBinVector,2)]);
+    %     set(gca,'XTickLabel',histBinVector(1:20:end));
+        histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
+        histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
+        line([histBinZero histBinZero],[0 numLags],'LineWidth',3,'Color','green')
+        line([histBinZero histBinZero],[0 numLags],'LineWidth',2,'Color','black')
+        line([histBinTone histBinTone],[0 numLags],'LineWidth',3,'Color','green')
+        line([histBinTone histBinTone],[0 numLags],'LineWidth',2,'Color','black')
+    %         title('Heatmap by Frequency and Time Max')
+        title('Frequency Arranged Heatmap')
+
+        %plot timecourse of responses by binning
+        subplot(3,3,3)
+        hold on
+
+        for k = 1:numLags
+            plot(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen,'ko','MarkerEdgeColor',[(k-1)/numLags (numLags-k+1)/numLags 0])
+            plot(smooth(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen,11),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+        end
+        xlim([0 length(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen)])
+        title('Responses to Different Lags Over Time')
+
+        hold off
+        spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
+        savefig(hFig,spikeGraphName);
+
+        %save as PDF with correct name
+        set(hFig,'Units','Inches');
+        pos = get(hFig,'Position');
+        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+        print(hFig,spikeGraphName,'-dpdf','-r0')
+        
+        %ask for input! 
+        promptCounter = 1; %This is used to run the while loop.
+        whileCounter = 0; %this is the counter that gets updated to exit the loop
+
+        while whileCounter ~= promptCounter
+            try
+                prompt = 'Is this unit tuned? (y/n)';
+                str = input(prompt,'s');
+                if str~='n' & str~='y'
+                    error
+                else
+                    whileCounter = 1;
+                end
+            catch
+            end
+        end
+        if strfind(str,'y')
+            decisionTuning(i) = 1;
+        elseif strfind(str,'n')
+            decisionTuning(i) = 0;
+        end
+
+        %clear figure.
+        clf
+    end
+    s.TuningDecision = decisionTuning;
+else
+    for i = 1:numUnits
+        hFig = figure;
+        set(hFig, 'Position', [10 80 1240 850])
+        %plots average waveform
+        subplot(4,6,1)
+        plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
+        title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
+        %plots ISI
+        subplot(4,6,2)
+        hist(s.(desigNames{i}).ISIGraph,1000)
+        histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
+        line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+        xlim(s.Parameters.ClusterWindow)
+        title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+            strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
+        %plot overall histogram
+        subplot(4,3,4)
+        plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
+        hold on
+        plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+        plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+        %plot significant values
+        plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1),...
+            s.(desigNames{i}).AllHistogramSig.Histogram(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1,1),...
+            'b*')
+        plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1),...
+            s.(desigNames{i}).AllHistogramSig.Histogram(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1,1),...
+            'c*')
+        %plot negative values for first tuning
+        plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1),...
+            s.(desigNames{i}).AllHistogramSig.Histogram(...
+            s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1,1),...
+            'k*')
+        plot([0 0],[ylim],'b');
+        plot([toneDur toneDur],[ylim],'b');
+        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+        title('Histogram')
+        hold off
+        %plot by lag
+        subplot(4,3,7)
+        hold on
+        for k = 1:numLags
+            plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+            plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)-s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+            plot(histBinVector,s.(desigNames{i}).LagHistograms(k,:)+s.(desigNames{i}).LagHistogramErrors(k,:),'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+        end
+        title('Histograms by Lag (later is Redder)')
+        %plot zoomed in version
+        subplot(4,3,10)
+        hold on
+        %figure out tone period
+        lagHistVector = s.(desigNames{i}).LatencyData{1,1}.LatBinVector;
+        timeZero = find(lagHistVector>0,1,'first');
+        timeToneEnd = find(lagHistVector>s.SoundData.ToneDuration,1,'first');
+        for k = 1:numLags
+            plot(lagHistVector(timeZero:timeToneEnd),s.(desigNames{i}).LatencyData{k}.LatHist(timeZero:timeToneEnd),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+        end
+        xlim([lagHistVector(timeZero) lagHistVector(timeToneEnd)])
+        title('Tone Period Histograms by Lag (later is Redder)')
+        %plots rasters (chronological)
+        subplot(3,3,2)
+        hold on
+        plot(s.(desigNames{i}).AllRasters(:,1),...
+            s.(desigNames{i}).AllRasters(:,2),'k.','markersize',4)
+        ylim([0 totalTrialNum])
+        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+        plot([0 0],[ylim],'b');
+        plot([toneDur toneDur],[ylim],'b');
+        title({fileName;desigNames{i}},'fontweight','bold')
+        set(0, 'DefaulttextInterpreter', 'none')
+        %plots rasters (organized by lag)
+        subplot(3,3,5)
+        hold on
+        plot(s.(desigNames{i}).AllRasters(:,1),...
+            s.(desigNames{i}).AllRasters(:,3),'k.','markersize',4)
+        %this generates green lines separating by Frequency
+        for k = 1:numLags
+            plot([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)],[toneReps*k toneReps*k],'g')
+        end
+        plot([0 0],[ylim],'b');
+        plot([toneDur toneDur],[ylim],'b');
+        rasterLagLines = zeros(numLags,2);
+        rasterLagLines(:,1) = toneReps/2:toneReps:totalTrialNum;
+        rasterLagLines(:,2) = soundData.LaserLags;
+
+        set(gca,'YTick',rasterLagLines(:,1));
+        set(gca,'YTickLabel',rasterLagLines(:,2));
+        set(gca,'Ydir','reverse')
+        ylim([0 totalTrialNum])
+        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+        title('Descending = increase in amplitude and freq')
+        %plot heatmap organized by laser lag
+        subplot(3,3,8)
+        imagesc(s.(desigNames{i}).LagHistograms(:,:))
+        colorbar
+    %     set(gca,'YTick',octaveRange(:,2));
+    %     set(gca,'YTickLabel',octaveRange(:,1));
+    %     set(gca,'XTick',[1:10:size(histBinVector,2)]);
+    %     set(gca,'XTickLabel',histBinVector(1:20:end));
+        histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
+        histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
+        line([histBinZero histBinZero],[0 numLags],'LineWidth',3,'Color','green')
+        line([histBinZero histBinZero],[0 numLags],'LineWidth',2,'Color','black')
+        line([histBinTone histBinTone],[0 numLags],'LineWidth',3,'Color','green')
+        line([histBinTone histBinTone],[0 numLags],'LineWidth',2,'Color','black')
+    %         title('Heatmap by Frequency and Time Max')
+        title('Frequency Arranged Heatmap')
+
+        %plot timecourse of responses by binning
+        subplot(3,3,3)
+        hold on
+
+        for k = 1:numLags
+            plot(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen,'ko','MarkerEdgeColor',[(k-1)/numLags (numLags-k+1)/numLags 0])
+            plot(smooth(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen,11),'LineWidth',2,'Color',[(k-1)/numLags (numLags-k+1)/numLags 0])
+        end
+        xlim([0 length(s.(desigNames{i}).LatencyData{k}.BinnedSpikesGen)])
+        title('Responses to Different Lags Over Time')
+
+        hold off
+        spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
+        savefig(hFig,spikeGraphName);
+
+        %save as PDF with correct name
+        set(hFig,'Units','Inches');
+        pos = get(hFig,'Position');
+        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+        print(hFig,spikeGraphName,'-dpdf','-r0')
+    end
 end
+
+    
 %% Saving
 save(fullfile(pname,fname),'s');
 
