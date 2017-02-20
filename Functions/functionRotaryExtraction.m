@@ -1,6 +1,6 @@
 
 
-function [s] = functionRotaryExtraction(s,sampRate,interpStep);
+function [s] = functionRotaryExtraction(s,sampRate,interpStep,subFoldersCell);
 % sampRate = 30000; %trodes sampling rate.
 % interpStep = 0.01; %step size in seconds, for the interpolation. 
 
