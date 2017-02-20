@@ -23,9 +23,9 @@
 function [s] = analysisDATStim(fileName);
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
-s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
 
 s.Parameters.RasterWindow = [-1 6]; %seconds for raster window. 
 s.Parameters.ToneWindow = [0 0.5];
@@ -133,7 +133,7 @@ D1FileName = D1FileName{1};
 totalTrialNum = length(dioTimes);
 
 %Extract data from rotary encoder.
-[s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary);
+[s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
 
 %rasterize this data
 jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
@@ -160,7 +160,7 @@ if ~isempty(targetFileFinder)
     %flip toggle for graphing
     edrToggle = 1;
     %pull filename
-    targetFile = {fileNames{targetFileFinder}};%pulls out actual file name
+    targetFile = fileNames{targetFileFinder};%pulls out actual file name
     %extract data
     [s] = functionEDRPull(s,targetFile,s.Parameters.EDRTimeCol,s.Parameters.EDRTTLCol,s.Parameters.EDRPiezoCol);
     %downsample for sake of space and time
@@ -184,7 +184,7 @@ if ~isempty(targetFileFinder)
     edrMean = mean(edrRaster');
     edrAbsMean = mean(abs(edrRaster'));
     edrVector = [s.Parameters.RasterWindow(1):edrTimeStep*s.Parameters.EDRdownsamp:s.Parameters.RasterWindow(2)];
-    edrZero = find(edrVector => 0,1,'first');
+    edrZero = find(edrVector >= 0,1,'first');
 else
     disp('NO EDR FILE FOUND')
     edrToggle = 0;
@@ -290,10 +290,9 @@ for i = 1:numUnits
     %plot rotary encoder data
     subplot(4,2,3)
     hold on
-    plot(velRaster)
-    plot(averageVel,'r','LineWidth',3)
-    plot([velZero velZero],[ylim],'b','LineWidth',2)
-    xlim([0 length(velVector)])
+    plot(velVector,averageVel,'r','LineWidth',3)
+    plot([0 0],[ylim],'b','LineWidth',2)
+    xlim([velVector(1) velVector(end)])
     title('Indiv and Average Velocity Traces')
     
     %plot edr data, if exists
