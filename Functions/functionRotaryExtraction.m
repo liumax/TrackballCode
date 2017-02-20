@@ -1,8 +1,8 @@
 
 
 function [s] = functionRotaryExtraction(s,sampRate,interpStep);
-sampRate = 30000; %trodes sampling rate.
-interpStep = 0.01; %step size in seconds, for the interpolation. 
+% sampRate = 30000; %trodes sampling rate.
+% interpStep = 0.01; %step size in seconds, for the interpolation. 
 
 %steps are hard coded values based on sample data that are meant to
 %compensate for differences in how the rotary encoder can compute the

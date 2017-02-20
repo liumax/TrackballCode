@@ -15,9 +15,9 @@
 function [s] = functionEDRPull(s,fileName,colTime,colTTL,colPiezo);
 
 %parameters
-colTime = 1;
-colTTL = 3;
-colPiezo = 2;
+% colTime = 1;
+% colTTL = 3;
+% colPiezo = 2;
 threshTTL = 0.4; %threshold used to pull TTL data.
 
 fullFileName = strcat(fileName,'.EDR');
