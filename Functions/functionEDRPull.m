@@ -7,7 +7,7 @@
 %Inputs:
 
 %s: structured array for data storage
-%fileName: full name of file, without file extension
+%fileName: full name of file, with file extension
 %colTime: column for time variable
 %colTTL: column for TTL inputs
 %colPiezo: column for piezo inputs
@@ -20,9 +20,7 @@ function [s] = functionEDRPull(s,fileName,colTime,colTTL,colPiezo);
 % colPiezo = 2;
 threshTTL = 0.4; %threshold used to pull TTL data.
 
-fullFileName = strcat(fileName,'.EDR');
-
-[data, h] = import_edr(fullFileName);
+[data, h] = import_edr(fileName);
 %this outputs two data: data, which is a nxm array of n inputs and m
 %timepoints, with the first column as time, following columns as additional
 %information (in this case, 2 is piezo, 3 is TTL)
