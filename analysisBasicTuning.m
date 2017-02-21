@@ -66,6 +66,19 @@ s.Parameters.corrSlide = 0.05; % window in seconds for xcorr
 s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
 
+%for rotary encoder:
+s.Parameters.InterpolationStepRotary = 0.01; %interpolation steps in seconds.
+
+%for edr
+s.Parameters.EDRdownsamp = 20; %number of samples to downsample by. Smoothing is likely unnecessary
+s.Parameters.EDRTimeCol = 1;
+s.Parameters.EDRTTLCol = 3;
+s.Parameters.EDRPiezoCol = 2;
+
+%for plotting speed vs firing
+s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
@@ -218,6 +231,87 @@ end
 
 
 
+%Extract data from rotary encoder.
+[s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
+
+%rasterize this data
+jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
+jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
+velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
+for i = 1:totalTrialNum
+    %find the time from the velocity trace closest to the actual stim time
+    targetInd = find(s.RotaryData.Velocity(:,1)-dioTimes(i) > 0,1,'first');
+    %pull appropriate velocity data
+    velRaster(:,i) = s.RotaryData.Velocity([targetInd+jumpsBack:targetInd+jumpsForward],2);
+end
+%make average trace:
+averageVel = mean(velRaster,2);
+velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
+velZero = find(velVector >= 0,1,'first');
+
+
+figure
+subplot(2,1,1)
+plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2))
+xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+title('Velocity Over Session (cm/s)')
+subplot(2,1,2)
+hold on
+plot(velVector,averageVel,'r','LineWidth',2)
+plot([0 0],[ylim],'b');
+xlim([velVector(1) velVector(end)])
+title('Average Velocity Traces')
+
+%see if EDR data exists
+fileNames = dir(homeFolder);
+fileNames = {fileNames.name};
+targetFileFinder = strfind(fileNames,'.EDR'); %examines names for D1
+targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
+if ~isempty(targetFileFinder)
+    %flip toggle for graphing
+    edrToggle = 1;
+    %pull filename
+    targetFile = fileNames{targetFileFinder};%pulls out actual file name
+    %extract data
+    [s] = functionEDRPull(s,targetFile,s.Parameters.EDRTimeCol,s.Parameters.EDRTTLCol,s.Parameters.EDRPiezoCol);
+    %downsample for sake of space and time
+    s.EDR.NewData = downsample(s.EDR.FullData,s.Parameters.EDRdownsamp);
+    %confirm ttls line up
+    if length(s.EDR.TTLTimes) ~= totalTrialNum
+        error('Incorrect match of EDR TTLs and trial number')
+    end
+    %figure out raster window
+    edrTimeStep = mean(diff(s.EDR.FullData(:,s.Parameters.EDRTimeCol)));
+    jumpsBack = round(s.Parameters.RasterWindow(1)/(edrTimeStep*s.Parameters.EDRdownsamp));
+    jumpsForward = round(s.Parameters.RasterWindow(2)/(edrTimeStep*s.Parameters.EDRdownsamp));
+    edrRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
+    for i = 1:totalTrialNum
+        %find time closest to actual stim time
+        targetInd = find(s.EDR.NewData(:,s.Parameters.EDRTimeCol) - s.EDR.TTLTimes(i) > 0,1,'first');
+        edrRaster(:,i) = s.EDR.NewData([targetInd + jumpsBack:targetInd + jumpsForward],s.Parameters.EDRPiezoCol);
+    end
+    
+    %calculate overall mean
+    edrMean = mean(edrRaster');
+    edrAbsMean = mean(abs(edrRaster'));
+    edrVector = [s.Parameters.RasterWindow(1):edrTimeStep*s.Parameters.EDRdownsamp:s.Parameters.RasterWindow(2)];
+    edrZero = find(edrVector >= 0,1,'first');
+else
+    disp('NO EDR FILE FOUND')
+    edrToggle = 0;
+end
+
+if edrToggle == 1
+    figure
+    hold on
+    plot(edrVector,edrMean,'b')
+    plot(edrVector,edrAbsMean,'r')
+    plot([0 0],[ylim],'b')
+    xlim([edrVector(1) edrVector(end)])
+    title('Mean and AbsMean Piezo')
+end
+
+
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
 for i = 1:numUnits
     %allocate a bunch of empty arrays.
@@ -240,6 +334,10 @@ for i = 1:numUnits
     spikeTimes = s.(desigNames{i}).SpikeTimes;
     alignTimes = master(:,1);
     
+    %make a plot of firing rate over time. 
+    sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
+    sessionFiring(end) = 0; %this is to compensate for problems with spikes coming after the period
+    sessionFIring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
     %calculates rasters based on spike information. 
     [rasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.RasterWindow);
     rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
@@ -328,6 +426,7 @@ for i = 1:numUnits
     s.(desigNames{i}).FreqDBHistogramErrors = histErr;
     s.(desigNames{i}).FrequencyHistograms = freqSpecHist;
     s.(desigNames{i}).AverageRate = averageRate;
+    s.(desigNames{i}).SessionFiring = sessionFiring;
     s.(desigNames{i}).AverageSTD = averageSTD;
     s.(desigNames{i}).AverageSTE = averageSTE;
     s.(desigNames{i}).HistBinVector = histBinVector;
@@ -347,7 +446,7 @@ end
 % s.LFP = lfpStruct;
 
 %% Plotting
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+
 if toggleTuneSelect == 1 %if you want tuning selection...
     hFig = figure;
     set(hFig, 'Position', [10 80 1240 850])
@@ -395,13 +494,12 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         title('Peak Response (general)')
         %plot latency data
         subplot(4,3,6)
-        imagesc(s.(desigNames{i}).LatencyMap')
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Calculated Latency (1ms sample)')
+        hold on
+        plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+        plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+        xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+        ylim([-0.1,1])
+        title('Relative Velocity Plotted With Firing Rate')
         %plot probability of response (tone)
         subplot(4,3,9)
         imagesc(s.(desigNames{i}).ProbTone')

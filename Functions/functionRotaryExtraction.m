@@ -204,7 +204,7 @@ newTimes = [(round(catTimes(1)*(1/interpStep)))*interpStep:interpStep:(round(cat
 
 newDist = interp1(catTimes,cumDist,newTimes,'pchip');
 
-mouseVel = diff(newDist);
+mouseVel = diff(newDist)/interpStep;
 velTimes = newTimes(1:end-1); %this adds a fudge factor because of the change in the length of the array.
 
 %reshape and make distance and time vectors into two column arrays

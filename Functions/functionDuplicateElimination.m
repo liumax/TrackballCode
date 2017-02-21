@@ -112,7 +112,7 @@ for shnkInd = 1:shanks
                         %computer xcorr
                         [r,~] = xcorr(tmp.(names{uniqueUnits(unitInd)}).SpikeTrain,...
                             tmp.(names{indNeighbor(compFinder(1))}).SpikeTrain,lagWindow);
-                        %plot to display
+                        %% plot to display
                         clf;
                         subplot(3,1,1)
                         plot(lags,r)
@@ -177,8 +177,12 @@ for shnkInd = 1:shanks
                         if strfind(str,'k')
                             disp('Keep Both Units')
                             compFinder(1) = [];
-                            targetUnits(1)=[];
-                            unitInd = unitInd + 1;
+                            %if statement is to protect against cases with
+                            %multiple comparisons.
+                            if isempty(compFinder)
+                                targetUnits(1)=[];
+                                unitInd = unitInd + 1;
+                            end
                         elseif strfind(str,'f')
                             disp('Keeping First, Deleting Second')
                             %create new variable in s to record unit as
@@ -194,12 +198,16 @@ for shnkInd = 1:shanks
                             %find the target name
                             nameInd = find(~cellfun(@isempty,strfind(s.DesignationName,names{indNeighbor(compFinder(1))})));
                             s.DesignationName(nameInd) = [];
-                            names(nameInd) = [];
+%                             names(nameInd) = [];
                             s.DesignationArray(nameInd,:) = [];
                             %increment compFinder
                             compFinder(1) = [];
-                            targetUnits(1)=[];
-                            unitInd = unitInd + 1;
+                            %if statement is to protect against cases with
+                            %multiple comparisons.
+                            if isempty(compFinder)
+                                targetUnits(1)=[];
+                                unitInd = unitInd + 1;
+                            end
                         elseif strfind(str,'s')
                             disp('Keeping Second, Deleting First')
                             %create new variable in s to record unit as
@@ -211,12 +219,14 @@ for shnkInd = 1:shanks
                             %remove from s names and designation array
                             nameInd = find(~cellfun(@isempty,strfind(s.DesignationName,names{uniqueUnits(unitInd)})));
                             s.DesignationName(nameInd) = [];
-                            names(nameInd) = [];
+%                             names(nameInd) = [];
                             s.DesignationArray(nameInd,:) = [];
                             %delete compFinder, since the target of
                             %comparison has been removed
                             compFinder = [];
                             targetUnits(1)=[];
+                            %dont need to advance unitInd since I'm
+                            %deleting 
                         end
                     end
                 end
