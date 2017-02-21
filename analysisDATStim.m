@@ -73,6 +73,10 @@ s.Parameters.EDRTimeCol = 1;
 s.Parameters.EDRTTLCol = 3;
 s.Parameters.EDRPiezoCol = 2;
 
+
+%for plotting speed vs firing
+s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
+
 %% sets up file saving stuff
 saveName = strcat(fileName,'DatStimAnalysis','.mat');
 fname = saveName;
@@ -202,6 +206,10 @@ for i = 1:numUnits
     spikeTimes = s.(desigNames{i}).SpikeTimes;
     alignTimes = dioTimes;
     
+    %make a plot of firing rate over time. 
+    sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
+    sessionFiring(end) = 0; %this is to compensate for problems with spikes coming after the period
+    sessionFiring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
     %calculates rasters based on spike information. 
     [rasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.RasterWindow);
     fullRasterData = rasters;
@@ -238,6 +246,7 @@ for i = 1:numUnits
     s.(desigNames{i}).AverageRate = averageRate;
     s.(desigNames{i}).AverageSTD = averageSTD;
     s.(desigNames{i}).AverageSTE = averageSTE;
+    s.(desigNames{i}).SessionFiring = sessionFiring;
     s.(desigNames{i}).HistBinVector = histBinVector;
 end
 
@@ -265,8 +274,17 @@ for i = 1:numUnits
     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
     
+    %plot velocity vs firing rate
+    subplot(3,2,2)
+    hold on
+    plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+    xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+    ylim([-0.1,1])
+    title('Relative Velocity Plotted With Firing Rate')
+    
     % plot histogram.
-    subplot(2,2,2)
+    subplot(3,2,4)
     plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
     hold on
     plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
@@ -277,7 +295,7 @@ for i = 1:numUnits
     title('Histogram')
     
     %plots rasters (chronological)
-    subplot(2,2,4)
+    subplot(3,2,6)
     plot(s.(desigNames{i}).AllRasters(:,1),...
         s.(desigNames{i}).AllRasters(:,2),'k.','markersize',5)
     hold on

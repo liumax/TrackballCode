@@ -337,7 +337,7 @@ for i = 1:numUnits
     %make a plot of firing rate over time. 
     sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
     sessionFiring(end) = 0; %this is to compensate for problems with spikes coming after the period
-    sessionFIring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
+    sessionFiring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
     %calculates rasters based on spike information. 
     [rasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.RasterWindow);
     rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
@@ -492,7 +492,7 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         set(gca,'YTick',dbRange(:,2));
         set(gca,'YTickLabel',dbRange(:,1));
         title('Peak Response (general)')
-        %plot latency data
+        %plot velocity data
         subplot(4,3,6)
         hold on
         plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
