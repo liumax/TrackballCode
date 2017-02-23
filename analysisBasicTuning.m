@@ -23,9 +23,9 @@
 function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
-s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
+toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
 
 %parameters for data analysis
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -238,6 +238,7 @@ end
 jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
 jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
 velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
+length(s.RotaryData.Velocity);
 for i = 1:totalTrialNum
     %find the time from the velocity trace closest to the actual stim time
     targetInd = find(s.RotaryData.Velocity(:,1)-dioTimes(i) > 0,1,'first');
@@ -677,13 +678,12 @@ else %in the case you dont want to do tuning selection, default to normal system
         title('Peak Response (general)')
         %plot latency data
         subplot(4,3,6)
-        imagesc(s.(desigNames{i}).LatencyMap')
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Calculated Latency (1ms sample)')
+        hold on
+        plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+        plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+        xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+        ylim([-0.1,1])
+        title('Relative Velocity Plotted With Firing Rate')
         %plot probability of response (tone)
         subplot(4,3,9)
         imagesc(s.(desigNames{i}).ProbTone')
