@@ -27,7 +27,7 @@ s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means no
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
 
-s.Parameters.RasterWindow = [-1 6]; %seconds for raster window. 
+s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. 
 s.Parameters.ToneWindow = [0 0.5];
 s.Parameters.GenWindow = [0 1];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
@@ -92,8 +92,8 @@ subFoldersCell = strsplit(subFolders,';')';
 %pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
 [paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
-s.NumberTrodes = length(paramFiles)-length(matclustFiles);
-
+% s.NumberTrodes = length(paramFiles)-length(matclustFiles);
+s.NumberTrodes = 8;
 %generate placeholder structure
 % s = struct;
 %fill structure with correct substructures (units, not clusters/trodes) and
@@ -264,7 +264,7 @@ for i = 1:numUnits
     subplot(4,4,1)
     hold on
     plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
-    title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
+    title({fileName;desigNames{i};strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate))})
     %plots ISI
     subplot(4,4,2)
     hist(s.(desigNames{i}).ISIGraph,1000)
@@ -323,6 +323,11 @@ for i = 1:numUnits
         xlim([edrVector(1) edrVector(end)])
         title('Mean and AbsMean Piezo')
     end
+    
+    %plot heatmap of locomotion
+    subplot(4,2,7)
+    imagesc(velRaster')
+    colorbar
     
     hold off
     spikeGraphName = strcat(fileName,desigNames{i},'DATStimAnalysis');
