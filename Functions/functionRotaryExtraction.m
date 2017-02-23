@@ -24,6 +24,16 @@ D4FileName = D4FileName{1};
 [DIO3Data] = readTrodesExtractedDataFile(D3FileName);
 [DIO4Data] = readTrodesExtractedDataFile(D4FileName);
 
+%pull data from DIO1 in case there is no DIO activity for locomotion for
+%extended periods of time. 
+[D1FileName] = functionFileFinder(subFoldersCell,'DIO','D1');
+D1FileName = D1FileName{1};
+%pull data from targeted files.
+[DIO1Data] = readTrodesExtractedDataFile(D1FileName);
+
+dio1Times = double(DIO1Data.fields(1).data)/sampRate;
+dio1States = double(DIO1Data.fields(2).data);
+
 %turns out i wired things up funny, DIO4 is actually the first one to cross
 %the plastic in forward motion. XD
 
@@ -33,6 +43,9 @@ dio3States = double(DIO3Data.fields(2).data);
 
 dio4Times = double(DIO4Data.fields(1).data)/sampRate;
 dio4States = double(DIO4Data.fields(2).data);
+
+timeMin = min([dio1Times;dio3Times;dio4Times])-10;
+timeMax = max([dio1Times;dio3Times;dio4Times])+ 10;
 
 %the first values are initialized values when recording starts. These will
 %help track the direction of the wheel.
@@ -197,7 +210,7 @@ cumDist = cumsum(distInc);
 %can fill in the spaces between actual data entries. 
 
 %generate new time frame
-newTimes = [(round(catTimes(1)*(1/interpStep)))*interpStep:interpStep:(round(catTimes(end)*(1/interpStep)))*interpStep];
+newTimes = [(round(timeMin*(1/interpStep)))*interpStep:interpStep:(round(timeMax*(1/interpStep)))*interpStep];
 
 % Tested various interpolation methods, find that PCHIP seems to produce
 % most believable result out of all possibilities. 
