@@ -25,7 +25,7 @@ function [s] = analysisDATStim(fileName);
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 
 s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. 
 s.Parameters.ToneWindow = [0 0.5];
@@ -152,6 +152,8 @@ end
 %make average trace:
 averageVel = mean(velRaster,2);
 velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
+velDispVector = [s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)];
+velDispIndex = [1:round(1/s.Parameters.InterpolationStepRotary):(jumpsForward-jumpsBack+1)];
 velZero = find(velVector >= 0,1,'first');
 
 
@@ -189,6 +191,10 @@ if ~isempty(targetFileFinder)
     edrAbsMean = mean(abs(edrRaster'));
     edrVector = [s.Parameters.RasterWindow(1):edrTimeStep*s.Parameters.EDRdownsamp:s.Parameters.RasterWindow(2)];
     edrZero = find(edrVector >= 0,1,'first');
+    
+    edrDispVector = [s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)];
+    edrDispIndex = [1:round(1/(edrTimeStep*s.Parameters.EDRdownsamp)):(jumpsForward-jumpsBack+1)];
+    
 else
     disp('NO EDR FILE FOUND')
     edrToggle = 0;
@@ -301,26 +307,43 @@ for i = 1:numUnits
     hold on
     ylim([0 totalTrialNum])
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+    set(gca,'Ydir','reverse')
     plot([0 0],[ylim],'b');
     title({fileName;desigNames{i}},'fontweight','bold')
     set(0, 'DefaulttextInterpreter', 'none')
     
+    %plot heatmap of firing
+    subplot(4,2,3)
+    imagesc(s.(desigNames{i}).IndividualHistograms')
+    set(gca,'XTick',[1:(1/s.Parameters.histBin):(size(s.(desigNames{i}).IndividualHistograms,2))]);
+    set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)]);
+    colorbar
+    title('Colormap of Firing')
+    
+    %plot heatmap of locomotion
+    subplot(4,2,5)
+    imagesc((velRaster'))
+    colorbar
+    set(gca,'XTick',velDispIndex);
+    set(gca,'XTickLabel',velDispVector);
+    title('Colorized Velocity Trace Per Trial')
+    
     %plot edr data, if exists
     if edrToggle == 1
-        subplot(4,2,5)
+        subplot(4,2,7)
         hold on
-        imagesc(edrRaster')
+        imagesc(flipud(edrRaster'))
         xlim([0 size(edrRaster,1)])
         ylim([0 size(edrRaster,2)])
         colorbar
+        set(gca,'XTick',edrDispIndex);
+        set(gca,'XTickLabel',edrDispVector);
+        set(gca,'YTick',[1:10:totalTrialNum])
+        set(gca,'YTickLabel',[totalTrialNum:-10:1])
         title('Colorized Piezo Data')
     end
     
-    %plot heatmap of locomotion
-    subplot(4,2,7)
-    imagesc(velRaster')
-    colorbar
-    title('Colorized Velocity Trace Per Trial')
+    
     
     hold off
     spikeGraphName = strcat(fileName,desigNames{i},'DATStimAnalysis');
