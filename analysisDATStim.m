@@ -305,29 +305,22 @@ for i = 1:numUnits
     title({fileName;desigNames{i}},'fontweight','bold')
     set(0, 'DefaulttextInterpreter', 'none')
     
-    %plot rotary encoder data
-    subplot(4,2,3)
-    hold on
-    plot(velVector,averageVel,'r','LineWidth',3)
-    plot([0 0],[ylim],'b','LineWidth',2)
-    xlim([velVector(1) velVector(end)])
-    title('Indiv and Average Velocity Traces')
-    
     %plot edr data, if exists
     if edrToggle == 1
         subplot(4,2,5)
         hold on
-        plot(edrVector,edrMean,'b')
-        plot(edrVector,edrAbsMean,'r')
-        plot([0 0],[ylim],'b')
-        xlim([edrVector(1) edrVector(end)])
-        title('Mean and AbsMean Piezo')
+        imagesc(edrRaster')
+        xlim([0 size(edrRaster,1)])
+        ylim([0 size(edrRaster,2)])
+        colorbar
+        title('Colorized Piezo Data')
     end
     
     %plot heatmap of locomotion
     subplot(4,2,7)
     imagesc(velRaster')
     colorbar
+    title('Colorized Velocity Trace Per Trial')
     
     hold off
     spikeGraphName = strcat(fileName,desigNames{i},'DATStimAnalysis');
