@@ -10,45 +10,58 @@ function [s] = analysisPairingFunctions(fileName);
 
 %% Hardcoded Variables:
 %lets set some switches to toggle things on and off.
-params.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
 
 %parameters for data analysis
-params.rpvTime = 0.002; %limit to be considered an RPV.
-params.clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
-params.trodesFS = 30000; %sampling rate of trodes box.
-params.rasterWindow = [-4,3]; %duration of raster window. These are numbers that will
+s.Parameters.rpvTime = 0.002; %limit to be considered an RPV.
+s.Parameters.clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
+s.Parameters.trodesFS = 30000; %sampling rate of trodes box.
+s.Parameters.rasterWindow = [-4,3]; %duration of raster window. These are numbers that will
 %be multiplied by the tone duration. EX: raster window for 0.1sec tone will
 %be -100 to 300 ms.
-params.pairingWindow = [-10,20];
-params.histBin = 0.005; %bin size in seconds
-params.clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
+s.Parameters.pairingWindow = [-10,20];
+s.Parameters.histBin = 0.005; %bin size in seconds
+s.Parameters.clims1 = [-1 1]; %limits for the range of heatmaps for firing. Adjust if reach saturation. Currently based on log10
 
 %variables for tuning analysis
-params.baselineBin = [-4,0]; %defines duration of baseline period based on toneDur. 
-params.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
-params.zLimit = [0.05 0.01 0.001];
-params.numShuffle = 1000;
-params.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
-params.chosenSpikeBin = 2; %spike bin selected in binSpike (in the event of multiple spike bins)
-params.minSpikes = 80; %minimum number of spikes to do spike shuffling
-params.minSigSpikes = 2; %minimum number of significant points to record a significant response.
-params.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
-params.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
-params.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
+s.Parameters.baselineBin = [-4,0]; %defines duration of baseline period based on toneDur. 
+s.Parameters.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
+s.Parameters.zLimit = [0.05 0.01 0.001];
+s.Parameters.numShuffle = 1000;
+s.Parameters.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
+s.Parameters.chosenSpikeBin = 2; %spike bin selected in binSpike (in the event of multiple spike bins)
+s.Parameters.minSpikes = 80; %minimum number of spikes to do spike shuffling
+s.Parameters.minSigSpikes = 2; %minimum number of significant points to record a significant response.
+s.Parameters.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
+s.Parameters.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
+s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
 
 %for latbinPeak
-params.toneWindow = [0,1];
-params.genWindow = [0,3];
-params.latBin = 0.001;
-params.percentCutoff = 99.9;
-params.baseCutoff = 95;
+s.Parameters.toneWindow = [0,1];
+s.Parameters.genWindow = [0,3];
+s.Parameters.latBin = 0.001;
+s.Parameters.percentCutoff = 99.9;
+s.Parameters.baseCutoff = 95;
 
 %for duplicate elimination
-params.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
-params.corrSlide = 0.05; % window in seconds for xcorr
-params.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
+s.Parameters.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
+s.Parameters.corrSlide = 0.05; % window in seconds for xcorr
+s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
+
+
+%for rotary encoder:
+s.Parameters.InterpolationStepRotary = 0.01; %interpolation steps in seconds.
+
+%for edr
+s.Parameters.EDRdownsamp = 20; %number of samples to downsample by. Smoothing is likely unnecessary
+s.Parameters.EDRTimeCol = 1;
+s.Parameters.EDRTTLCol = 3;
+s.Parameters.EDRPiezoCol = 2;
+
+%for plotting speed vs firing
+s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
 
 
 %% Establishes the folder and subfolders for analysis. Adds all folders to
@@ -63,12 +76,10 @@ subFoldersCell = strsplit(subFolders,';')';
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
 [paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
 s.NumberTrodes = length(paramFiles)-length(matclustFiles);
-%put in parameters!
-s.Parameters = params;
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
-[s, truncatedNames] = functionMatclustExtraction(params.rpvTime,...
-    matclustFiles,s,params.clusterWindow);
+[s, truncatedNames] = functionMatclustExtraction(s.Parameters.rpvTime,...
+    matclustFiles,s,s.Parameters.clusterWindow);
 disp('Structured Array Generated, Names and Spikes Extracted')
 
 
@@ -87,6 +98,10 @@ numUnits = size(s.DesignationName,2);
 desigNames = s.DesignationName;
 desigArray = s.DesignationArray;
 
+
+
+%Extract data from rotary encoder.
+[s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
 
 
 
@@ -172,18 +187,18 @@ TTLsPairing = DIO1True(signalHolder(2,3)+1:signalHolder(1,4)-1);
 TTLsPresentationSecond = DIO1True(signalHolder(2,4)+1:signalHolder(1,5)-1);
 TTLsTuningSecond = DIO1True(signalHolder(2,5)+1:end);
 %stores these values into the master structure. Converts to seconds.
-s.TTLs.(names{1}) = TTLsTuningFirst/params.trodesFS;
-s.TTLs.(names{2}) = TTLsTuningSecond/params.trodesFS;
-s.TTLs.(names{3}) = TTLsPresentationFirst/params.trodesFS;
-s.TTLs.(names{4}) = TTLsPresentationSecond/params.trodesFS;
-s.TTLs.(names{5}) = TTLsPairing/params.trodesFS;
+s.TTLs.(names{1}) = TTLsTuningFirst/s.Parameters.trodesFS;
+s.TTLs.(names{2}) = TTLsTuningSecond/s.Parameters.trodesFS;
+s.TTLs.(names{3}) = TTLsPresentationFirst/s.Parameters.trodesFS;
+s.TTLs.(names{4}) = TTLsPresentationSecond/s.Parameters.trodesFS;
+s.TTLs.(names{5}) = TTLsPairing/s.Parameters.trodesFS;
 %Remember that this has converted time values to seconds.
-s.TimePeriods.Baseline = timesBaseline/params.trodesFS;
-s.TimePeriods.(names{1}) = timesTuningFirst/params.trodesFS;
-s.TimePeriods.(names{2}) = timesTuningSecond/params.trodesFS;
-s.TimePeriods.(names{3}) = timesPresentationFirst/params.trodesFS;
-s.TimePeriods.(names{4}) = timesPresentationSecond/params.trodesFS;
-s.TimePeriods.(names{5}) = timesPairing/params.trodesFS;
+s.TimePeriods.Baseline = timesBaseline/s.Parameters.trodesFS;
+s.TimePeriods.(names{1}) = timesTuningFirst/s.Parameters.trodesFS;
+s.TimePeriods.(names{2}) = timesTuningSecond/s.Parameters.trodesFS;
+s.TimePeriods.(names{3}) = timesPresentationFirst/s.Parameters.trodesFS;
+s.TimePeriods.(names{4}) = timesPresentationSecond/s.Parameters.trodesFS;
+s.TimePeriods.(names{5}) = timesPairing/s.Parameters.trodesFS;
 
 %% check size!if the wrong size will throw error!
 
@@ -232,7 +247,7 @@ disp('Overall Rates Calculated')
     names{1},soundFile); 
 %next, pull tuning information. DOES NOT GRAPH
 [s] = functionNewPairingTuning(s,desigNames,...
-    spikeNames{1},names{1},params); 
+    spikeNames{1},names{1},s.Parameters); 
 disp('First Tuning Curve Analyzed')
 %now I analyze the second tuning curve.
 %first pull out sound data for the relevant file
@@ -240,7 +255,7 @@ disp('First Tuning Curve Analyzed')
     names{2},soundFile); 
 %next, pull tuning information. DOES NOT GRAPH
 [s] = functionNewPairingTuning(s,desigNames,...
-    spikeNames{2},names{2},params); 
+    spikeNames{2},names{2},s.Parameters); 
 disp('Second Tuning Curve Analyzed')
 
 %%% EDITS TO HERE
@@ -256,13 +271,13 @@ end
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
 [s] = functionPairingToneAnalysis(s,desigNames,...
-    spikeNames{3},names{3},params); 
+    spikeNames{3},names{3},s.Parameters); 
 
 %pull data from the second set.
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
 [s] = functionPairingToneAnalysis(s,desigNames,...
-    spikeNames{4},names{4},params);  
+    spikeNames{4},names{4},s.Parameters);  
 
 %% next pull data from pairing session:
 
@@ -272,9 +287,11 @@ end
 %next, pair this data with spiking data. Stores under "soundName3" divided
 %into two structured arrays, one for target and one for control.
 [s] = functionPairingToneAnalysis(s,desigNames,...
-    spikeNames{5},names{5},params);  
+    spikeNames{5},names{5},s.Parameters);  
 
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
+
+%plot out velocity. 
 
 if toggleTuneSelect == 1 %if you want tuning selection...
     hFig = figure;
@@ -282,7 +299,7 @@ if toggleTuneSelect == 1 %if you want tuning selection...
     decisionTuning = zeros(numUnits,1);
     for i = 1:numUnits
         [s] = functionPairingMasterPlot(i,s,...
-        desigNames,params,fileName,names,hFig);
+        desigNames,s.Parameters,fileName,names,hFig);
         %ask for input! 
         promptCounter = 1; %This is used to run the while loop.
         whileCounter = 0; %this is the counter that gets updated to exit the loop
@@ -314,7 +331,7 @@ else
         hFig = figure;
         set(hFig, 'Position', [10 80 1240 850])
         [s] = functionPairingMasterPlot(i,s,...
-        desigNames,params,fileName,names,hFig);
+        desigNames,s.Parameters,fileName,names,hFig);
     end
 end
 
