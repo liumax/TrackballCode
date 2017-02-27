@@ -176,11 +176,11 @@ plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone+postToneS
 plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone-postToneSTD,'r','LineWidth',1)
 
 %plot compensated values
-plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp,'k:','LineWidth',2)
+plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp,'k:','LineWidth',4)
 plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp+preToneCompSTD,'k:','LineWidth',1)
 plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp-preToneCompSTD,'k:','LineWidth',1)
 
-plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp,'r:','LineWidth',2)
+plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp,'r:','LineWidth',4)
 plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp+postToneCompSTD,'r:','LineWidth',1)
 plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp-postToneCompSTD,'r:','LineWidth',1)
 

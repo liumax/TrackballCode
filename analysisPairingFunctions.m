@@ -11,7 +11,7 @@ function [s] = analysisPairingFunctions(fileName);
 %% Hardcoded Variables:
 %lets set some switches to toggle things on and off.
 params.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
+toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
 
 %parameters for data analysis
