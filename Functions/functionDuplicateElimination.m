@@ -14,8 +14,9 @@ firstPoint = s.TimeFilterRange(1);
 lastPoint = s.TimeFilterRange(2);
 
 %compute lag window for xcorr
-lagWindow = corrSlide*samplingRate/downSampFactor;
-lags = [-lagWindow:1:lagWindow];
+lagWindow = corrSlide;
+crossWindow = [-lagWindow,lagWindow];
+lags = [-lagWindow:0.001:lagWindow];
 
 %pull number of units
 numUnits = length(s.DesignationArray);
@@ -23,8 +24,6 @@ numUnits = length(s.DesignationArray);
 %construct spike trains, store in temporary structure
 tmp = struct;
 for tmpCount = 1:numUnits
-    tmp.(s.DesignationName{tmpCount}).SpikeTrain = zeros(round((lastPoint-firstPoint)*30000/downSampFactor),1);
-    tmp.(s.DesignationName{tmpCount}).SpikeTrain(round((s.(s.DesignationName{tmpCount}).SpikeTimes-firstPoint)*30000/downSampFactor)) = 1;
     %also create a temporally downsampled list of spike times
     tmp.(s.DesignationName{tmpCount}).SpikeTimes = round((s.(s.DesignationName{tmpCount}).SpikeTimes-firstPoint)*30000/downSampFactor);
 end
@@ -106,21 +105,33 @@ for shnkInd = 1:shanks
                     targetUnits(1)=[];
                     unitInd = unitInd + 1;
                 elseif ~isempty(compFinder)
-                    disp(strcat(num2str(length(compFinder)),' Potential Duplicates Detected, Performing xCorr'))
+                    disp(strcat(num2str(length(compFinder)),' Potential Duplicates Detected, Performing OwnCorr'))
                     while ~isempty(compFinder)
-                        %computer xcorr
-                        [r,~] = xcorr(tmp.(s.DesignationName{uniqueUnits(unitInd)}).SpikeTrain,...
-                            tmp.(s.DesignationName{indNeighbor(compFinder(1))}).SpikeTrain,lagWindow);
+                        %compute xcorr
+                        spikeTimes1 = tmp.(s.DesignationName{uniqueUnits(unitInd)}).SpikeTimes;
+                        spikeTimes2 = tmp.(s.DesignationName{indNeighbor(compFinder(1))}).SpikeTimes;
+                        histStore = ones(100000,1);
+                        histCounter = 1;
+                        for spikeInd = 1:length(spikeTimes1)
+                            %subtract spike time from first train out of all of second train
+                            subSpikes = spikeTimes2 - spikeTimes1(spikeInd);
+                            %remove things outside the window of interest
+                            subSpikes(subSpikes>crossWindow(2) | subSpikes<crossWindow(1)) = [];
+                            histStore(histCounter:(histCounter + length(subSpikes)-1)) = subSpikes;
+                            histCounter = histCounter + length(subSpikes);
+                        end
+                        histStore(histCounter:end) = [];
+%                         [r,~] = xcorr(tmp.(s.DesignationName{uniqueUnits(unitInd)}).SpikeTrain,...
+%                             tmp.(s.DesignationName{indNeighbor(compFinder(1))}).SpikeTrain,lagWindow);
                         %% plot to display
                         clf;
                         subplot(3,1,1)
-                        plot(lags,r)
+                        hist(histStore,lags)
                         xlim([-lagWindow,lagWindow])
-                        ylim([0 max(r)])
                         title({strcat('Correlogram of:',s.DesignationName{uniqueUnits(unitInd)},'&',s.DesignationName{indNeighbor(compFinder(1))});...
                             strcat(s.DesignationName{uniqueUnits(unitInd)},':',num2str(length(tmp.(s.DesignationName{uniqueUnits(unitInd)}).SpikeTimes)),',',...
                             s.DesignationName{indNeighbor(compFinder(1))},':',num2str(length(tmp.(s.DesignationName{indNeighbor(compFinder(1))}).SpikeTimes)))})
-                        subplot(3,1,2)
+                        subplot(3,2,3)
                         hold on
                         trueMax = 0;
                         trueMin = 0;
@@ -139,7 +150,15 @@ for shnkInd = 1:shanks
                         xlim([0 length(s.(s.DesignationName{uniqueUnits(unitInd)}).AverageWaveForms(:,1))])
                         ylim([trueMin trueMax])
                         title(strcat('Waves of:',s.DesignationName{uniqueUnits(unitInd)}))
-                        subplot(3,1,3)
+                        
+                        subplot(3,2,4)
+                        hist(s.(s.DesignationName{uniqueUnits(unitInd)}).ISIGraph,1000)
+                        histMax = max(hist(s.(s.DesignationName{uniqueUnits(unitInd)}).ISIGraph,1000));
+                        line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+                        xlim(s.Parameters.ClusterWindow)
+                        title('First Unit AutoCorr')
+                        
+                        subplot(3,2,5)
                         hold on
                         trueMax = 0;
                         trueMin = 0;
@@ -157,6 +176,13 @@ for shnkInd = 1:shanks
                         xlim([0 length(s.(s.DesignationName{indNeighbor(compFinder(1))}).AverageWaveForms(:,1))])
                         ylim([trueMin trueMax])
                         title(strcat('Waves of:',s.DesignationName{indNeighbor(compFinder(1))}))
+                        
+                        subplot(3,2,6)
+                        hist(s.(s.DesignationName{indNeighbor(compFinder(1))}).ISIGraph,1000)
+                        histMax = max(hist(s.(s.DesignationName{indNeighbor(compFinder(1))}).ISIGraph,1000));
+                        line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+                        xlim(s.Parameters.ClusterWindow)
+                        title('First Unit AutoCorr')
                         %% Ask for input
                         promptCounter = 1; %This is used to run the while loop.
                         whileCounter = 0; %this is the counter that gets updated to exit the loop
