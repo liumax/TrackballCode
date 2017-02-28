@@ -23,9 +23,10 @@
 function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
-s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+toggleROC = 1; %toggle for tuning on/off ROC analysis
 
 %parameters for data analysis
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -78,7 +79,9 @@ s.Parameters.EDRPiezoCol = 2;
 %for plotting speed vs firing
 s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
 
+%set other things
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+format short
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
@@ -440,6 +443,12 @@ for i = 1:numUnits
     s.(desigNames{i}).BinGen = binStoreGen;
     s.(desigNames{i}).ProbTone = probStoreTone;
     s.(desigNames{i}).ProbGen = probStoreGen;
+    
+    if toggleROC == 1
+        targetName = desigNames{i};
+        [s] = functionLocomotionROC(s,targetName);
+    end
+    
 end
 
 %calculate and plot LFP information
@@ -500,7 +509,11 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
         xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
         ylim([-0.1,1])
-        title('Relative Velocity Plotted With Firing Rate')
+        if toggleROC == 1
+            title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+        else
+            title('Vel & Firing Rate')
+        end
         %plot probability of response (tone)
         subplot(4,3,9)
         imagesc(s.(desigNames{i}).ProbTone')
@@ -676,14 +689,18 @@ else %in the case you dont want to do tuning selection, default to normal system
         set(gca,'YTick',dbRange(:,2));
         set(gca,'YTickLabel',dbRange(:,1));
         title('Peak Response (general)')
-        %plot latency data
+        %plot velocity data
         subplot(4,3,6)
         hold on
         plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
         plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
         xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
         ylim([-0.1,1])
-        title('Relative Velocity Plotted With Firing Rate')
+        if toggleROC == 1
+            title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+        else
+            title('Vel & Firing Rate')
+        end
         %plot probability of response (tone)
         subplot(4,3,9)
         imagesc(s.(desigNames{i}).ProbTone')

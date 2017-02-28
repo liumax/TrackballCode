@@ -23,9 +23,10 @@
 function [s] = analysisDATStim(fileName);
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
-s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+toggleROC = 1; %toggle for tuning on/off ROC analysis
 
 s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. 
 s.Parameters.ToneWindow = [0 0.5];
@@ -60,7 +61,7 @@ s.Parameters.latBin = 0.001;
 s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
 
 %for duplicate elimination
-s.Parameters.DownSampFactor = 3; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
+s.Parameters.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
 s.Parameters.corrSlide = 0.05; % window in seconds for xcorr
 s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
@@ -76,6 +77,9 @@ s.Parameters.EDRPiezoCol = 2;
 
 %for plotting speed vs firing
 s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
+
+%other settings
+format short
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'DatStimAnalysis','.mat');
@@ -254,6 +258,11 @@ for i = 1:numUnits
     s.(desigNames{i}).AverageSTE = averageSTE;
     s.(desigNames{i}).SessionFiring = sessionFiring;
     s.(desigNames{i}).HistBinVector = histBinVector;
+    
+    if toggleROC == 1
+        targetName = desigNames{i};
+        [s] = functionLocomotionROC(s,targetName);
+    end
 end
 
 %calculate and plot LFP information
@@ -287,8 +296,11 @@ for i = 1:numUnits
     plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
     xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
     ylim([-0.1,1])
-    title('Relative Velocity Plotted With Firing Rate')
-    
+    if toggleROC == 1
+        title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+    else
+        title('Vel & Firing Rate')
+    end
     % plot histogram.
     subplot(3,2,4)
     plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
