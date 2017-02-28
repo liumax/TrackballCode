@@ -206,6 +206,26 @@ distInc(bigArray(:,2) == 1 & timeStateArray(:,4) == 1) = -stepBig;
 %calculate cumulative sum for distance traveled
 cumDist = cumsum(distInc);
 
+
+%fill in time points of there is a mismatch of DIO times. Insert extra data
+%points!
+
+if timeMin < catTimes(1)
+    %shift catTimes by 1. 
+    catTimes(2:end+1) = catTimes(1:end);
+    %fill in first point with minimum time
+    catTimes(1) = timeMin;
+    %do the same for cumDist
+    cumDist(2:end+1) = cumDist(1:end);
+    cumDist(1) = cumDist(2);
+end
+
+if timeMax > catTimes(end)
+    %insert extra value for catTimes and cumDist
+    catTimes(end+1) = timeMax;
+    cumDist(end+1) = cumDist(end);
+end
+
 %What we want to do now is interpolate onto a new time frame, so that we
 %can fill in the spaces between actual data entries. 
 
