@@ -250,12 +250,19 @@ newDist = reshape(newDist,[],1);
 velTimes = reshape(velTimes,[],1);
 mouseVel = reshape(mouseVel,[],1);
 
+%find start times of velocity
+binVel = zeros(length(mouseVel),1);
+binVel(mouseVel > 0.1) = 1;
+binVelDiff = diff(binVel);
+velStart = find(binVelDiff == -1);
+velStart = velTimes(velStart);
 
 x=struct;
 x.Distance = [newTimes,newDist];
 x.Velocity = [velTimes,mouseVel];
 x.RawDistance = [catTimes,cumDist];
 x.RawData = timeStateArray;
+x.LocomotorStarts = velStart;
 
 s.RotaryData = x;
 
