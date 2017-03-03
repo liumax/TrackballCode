@@ -235,7 +235,13 @@ newTimes = [(round(timeMin*(1/interpStep)))*interpStep:interpStep:(round(timeMax
 % Tested various interpolation methods, find that PCHIP seems to produce
 % most believable result out of all possibilities. 
 
-newDist = interp1(catTimes,cumDist,newTimes,'pchip');
+try
+    newDist = interp1(catTimes,cumDist,newTimes,'pchip');
+catch
+    disp('Distance Interpolation Failed. Suggests there is no movement. Replacing with zeros')
+    cumDist = zeros(length(catTimes),1);
+    newDist = zeros(length(newTimes),1);
+end
 
 mouseVel = diff(newDist)/interpStep;
 velTimes = newTimes(1:end-1); %this adds a fudge factor because of the change in the length of the array.
