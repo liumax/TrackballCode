@@ -2,7 +2,7 @@
 
 
 
-function [s] = functionDuplicateElimination(s,downSampFactor,corrSlide,threshComp,samplingRate);
+function [s] = functionDuplicateElimination(s,downSampFactor,corrSlide,threshComp,samplingRate,rpvTime,clusterWindow);
 
 %pull parameters
 % downSampFactor = s.Parameters.DownSampFactor;
@@ -154,8 +154,8 @@ for shnkInd = 1:shanks
                         subplot(3,2,4)
                         hist(s.(s.DesignationName{uniqueUnits(unitInd)}).ISIGraph,1000)
                         histMax = max(hist(s.(s.DesignationName{uniqueUnits(unitInd)}).ISIGraph,1000));
-                        line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-                        xlim(s.Parameters.ClusterWindow)
+                        line([rpvTime rpvTime],[0 histMax],'LineWidth',1,'Color','red')
+                        xlim(clusterWindow)
                         title('First Unit AutoCorr')
                         
                         subplot(3,2,5)
@@ -180,8 +180,8 @@ for shnkInd = 1:shanks
                         subplot(3,2,6)
                         hist(s.(s.DesignationName{indNeighbor(compFinder(1))}).ISIGraph,1000)
                         histMax = max(hist(s.(s.DesignationName{indNeighbor(compFinder(1))}).ISIGraph,1000));
-                        line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-                        xlim(s.Parameters.ClusterWindow)
+                        line([rpvTime rpvTime],[0 histMax],'LineWidth',1,'Color','red')
+                        xlim(clusterWindow)
                         title('First Unit AutoCorr')
                         %% Ask for input
                         promptCounter = 1; %This is used to run the while loop.
