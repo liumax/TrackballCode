@@ -40,8 +40,8 @@ s.Parameters.BaselineCalcBins = 1; %bin size in seconds if there are insufficien
 s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
 
 %for latbinPeak
-s.Parameters.toneWindow = [0,1];
-s.Parameters.genWindow = [1,3];
+s.Parameters.toneWindow = [0,0.5];
+s.Parameters.genWindow = [0,3];
 s.Parameters.latBin = 0.001;
 s.Parameters.percentCutoff = 99.9;
 s.Parameters.baseCutoff = 95;
@@ -212,7 +212,8 @@ if size(TTLsPresentationFirst,1) == soundFile.PresentationRepetitions;
 else
     disp('MISMATCHED EARLY LONG PRESENTATIONS') 
     disp('Initiating Repair Code')
-    [s] = functionTTLRepairSystem(soundFile.PresentationRepetitions,expectedITIs,actualTimes,pairingToggle,laserSig,laserLag,s);
+    [s,repairedTTLs] = functionTTLRepairSystem(soundFile.PresentationRepetitions,soundFile.Tones1.Delays,s.TTLs.Tones1,0,0,0,s);
+    s.TTLs.Tones1 = repairedTTLs;
 end
 
 if size(TTLsPresentationSecond,1) == soundFile.PresentationRepetitions;
@@ -220,7 +221,8 @@ if size(TTLsPresentationSecond,1) == soundFile.PresentationRepetitions;
 else
     disp('MISMATCHED SECOND LONG PRESENTATIONS') 
     disp('Initiating Repair Code')
-    [s] = functionTTLRepairSystem(soundFile.PresentationRepetitions,expectedITIs,actualTimes,pairingToggle,laserSig,laserLag,s);
+    [s,repairedTTLs] = functionTTLRepairSystem(soundFile.PresentationRepetitions,soundFile.Tones2.Delays,s.TTLs.Tones2,0,0,0,s);
+    s.TTLs.Tones2 = repairedTTLs;
 end
 
 if size(TTLsTuningFirst,1) == soundFile.TuningRepetitions;
@@ -228,7 +230,8 @@ if size(TTLsTuningFirst,1) == soundFile.TuningRepetitions;
 else
     disp('MISMATCHED EARLY TUNING PRESENTATIONS') 
     disp('Initiating Repair Code')
-    [s] = functionTTLRepairSystem(soundFile.TuningRepetitions,expectedITIs,actualTimes,pairingToggle,laserSig,laserLag,s);
+    [s,repairedTTLs] = functionTTLRepairSystem(soundFile.TuningRepetitions,soundFile.Tuning1.Delays,s.TTLs.Tuning1,0,0,0,s);
+    s.TTLs.Tuning1 = repairedTTLs;
 end
 
 if size(TTLsTuningSecond,1) == soundFile.TuningRepetitions*soundFile.SecondTuningRatio;
@@ -236,7 +239,17 @@ if size(TTLsTuningSecond,1) == soundFile.TuningRepetitions*soundFile.SecondTunin
 else
     disp('MISMATCHED LATE TUNING PRESENTATIONS') 
     disp('Initiating Repair Code')
-    [s] = functionTTLRepairSystem(soundFile.TuningRepetitions,expectedITIs,actualTimes,pairingToggle,laserSig,laserLag,s);
+    [s,repairedTTLs] = functionTTLRepairSystem(soundFile.TuningRepetitions,soundFile.Tuning2.Delays,s.TTLs.Tuning2,0,laserSig,laserLag,s);
+    s.TTLs.Tuning2 = repairedTTLs;
+end
+
+if size(TTLsPairing,1) == soundFile.PairingRepetitions;
+    disp('Correct Number of Pairings')
+else
+    disp('MISMATCHED PAIRING PRESENTATIONS') 
+    disp('Initiating Repair Code')
+    [s,repairedTTLs] = functionTTLRepairSystem(soundFile.PairingRepetitions,soundFile.Pairing.ITI,s.TTLs.Pairing,1,soundFile.Pairing.LaserTriggerPulseITI,soundFile.Pairing.OptoStimDelay,s);
+    s.TTLs.Pairing = repairedTTLs;
 end
 
 
