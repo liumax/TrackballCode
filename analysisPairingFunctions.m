@@ -10,9 +10,10 @@ function [s] = analysisPairingFunctions(fileName);
 
 %% Hardcoded Variables:
 %lets set some switches to toggle things on and off.
-s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
+toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %parameters for data analysis
 s.Parameters.rpvTime = 0.002; %limit to be considered an RPV.
@@ -40,7 +41,7 @@ s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significa
 
 %for latbinPeak
 s.Parameters.toneWindow = [0,1];
-s.Parameters.genWindow = [0,3];
+s.Parameters.genWindow = [1,3];
 s.Parameters.latBin = 0.001;
 s.Parameters.percentCutoff = 99.9;
 s.Parameters.baseCutoff = 95;
@@ -86,6 +87,9 @@ disp('Structured Array Generated, Names and Spikes Extracted')
 if toggleDuplicateElimination ==1
     if length(s.DesignationName) > 1
         disp('Now Selecting Based on xCORR')
+        [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,...
+            s.Parameters.rpvTime,s.Parameters.clusterWindow);
         [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
             s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS);
     end
@@ -206,25 +210,33 @@ s.TimePeriods.(names{5}) = timesPairing/s.Parameters.trodesFS;
 if size(TTLsPresentationFirst,1) == soundFile.PresentationRepetitions;
     disp('Correct Number of Early Long Presentations')
 else
-    error('MISMATCHED EARLY LONG PRESENTATIONS') 
+    disp('MISMATCHED EARLY LONG PRESENTATIONS') 
+    disp('Initiating Repair Code')
+    [s] = functionTTLRepairSystem(soundFile.PresentationRepetitions,expectedITIs,actualTimes,pairingToggle,laserSig,laserLag,s);
 end
 
 if size(TTLsPresentationSecond,1) == soundFile.PresentationRepetitions;
     disp('Correct Number of Second Long Presentations')
 else
-    error('MISMATCHED SECOND LONG PRESENTATIONS') 
+    disp('MISMATCHED SECOND LONG PRESENTATIONS') 
+    disp('Initiating Repair Code')
+    [s] = functionTTLRepairSystem(soundFile.PresentationRepetitions,expectedITIs,actualTimes,pairingToggle,laserSig,laserLag,s);
 end
 
 if size(TTLsTuningFirst,1) == soundFile.TuningRepetitions;
     disp('Correct Number of Early Tuning Presentations')
 else
-    error('MISMATCHED EARLY TUNING PRESENTATIONS') 
+    disp('MISMATCHED EARLY TUNING PRESENTATIONS') 
+    disp('Initiating Repair Code')
+    [s] = functionTTLRepairSystem(soundFile.TuningRepetitions,expectedITIs,actualTimes,pairingToggle,laserSig,laserLag,s);
 end
 
 if size(TTLsTuningSecond,1) == soundFile.TuningRepetitions*soundFile.SecondTuningRatio;
     disp('Correct Number of Late Tuning Presentations')
 else
-    error('MISMATCHED LATE TUNING PRESENTATIONS') 
+    disp('MISMATCHED LATE TUNING PRESENTATIONS') 
+    disp('Initiating Repair Code')
+    [s] = functionTTLRepairSystem(soundFile.TuningRepetitions,expectedITIs,actualTimes,pairingToggle,laserSig,laserLag,s);
 end
 
 
@@ -291,7 +303,18 @@ end
 
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
 
-%plot out velocity. 
+%do ROC calculation for velocity
+if toggleROC == 1
+    for i = 1:numUnits
+        targetName = desigNames{i};
+        [s] = functionLocomotionROC(s,targetName);
+    end
+else
+    for i = 1:numUnits
+        s.(desigNames{i}).TrueAUC = [];
+        s.(desigNames{i}).ShuffleAUC = [];
+    end
+end
 
 if toggleTuneSelect == 1 %if you want tuning selection...
     hFig = figure;
