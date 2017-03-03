@@ -99,7 +99,12 @@ for clusterCount = 1:numTrodes
     truncatedNames{clusterCount} = truncatedNames{clusterCount}(16:find(truncatedNames{clusterCount} == '.')-1);
     %opens matclust file and extracts cluster numbers. 
     matclustFile = open(matclustFiles{clusterCount});
-    timeFilterHolder(clusterCount,:) = matclustFile.clustdata.timefilterranges;
+    timeFilterSize = size(matclustFile.clustdata.timefilterranges,1);
+    if timeFilterSize > 1;
+        timeFilterHolder(clusterCount,:) = matclustFile.clustdata.timefilterranges(end,:);
+    else
+       timeFilterHolder(clusterCount,:) = matclustFile.clustdata.timefilterranges;
+    end
     clusterLength = length(matclustFile.clustattrib.clustersOn);
     %based on number of clusters, generates for loop to fit generate names
     %of nTrode-cluster pairs, and designates space in s. Also
