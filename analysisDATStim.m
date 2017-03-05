@@ -26,7 +26,7 @@ function [s] = analysisDATStim(fileName);
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROC = 1; %toggle for tuning on/off ROC analysis
+toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. 
 s.Parameters.ToneWindow = [0 0.5];
@@ -109,7 +109,7 @@ if toggleDuplicateElimination ==1
     if length(s.DesignationName) > 1
         disp('Now Selecting Based on xCORR')
         [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
-            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS);
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow);
     end
 else
     disp('NOT EXECUTING DUPLICATE ELIMINATION')
@@ -162,6 +162,27 @@ velDispVector = [s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)];
 velDispIndex = [1:round(1/s.Parameters.InterpolationStepRotary):(jumpsForward-jumpsBack+1)];
 velZero = find(velVector >= 0,1,'first');
 
+%find trials that have locomotion during the laser period.
+laserPeriod = [-0.5 0.5]; %time window in seconds around laser onset that I want to analyze
+locoThresh = 0.9; %threshold for time points in which the locomotion is active for trial to be considered locomotion trial
+%need to redefine laser period as time points on the velRaster system. 
+firstPoint = find(velVector >= laserPeriod(1),1,'first');
+secondPoint = find(velVector >= laserPeriod(2),1,'first');
+laserPeriod = [firstPoint secondPoint];
+locoThresh = (secondPoint-firstPoint)*locoThresh;
+
+locoTrial = zeros(totalTrialNum,1);
+
+for i = 1:totalTrialNum
+    findTest = sum(velRaster(laserPeriod(1):laserPeriod(2),i));
+    if findTest >locoThresh
+        locoTrial(i) = 1;
+    else
+        locoTrial(i) = 0;
+    end
+end
+
+findLoco = find(locoTrial == 1);
 
 %see if EDR data exists
 fileNames = dir(homeFolder);
@@ -355,6 +376,12 @@ for i = 1:numUnits
         set(gca,'YTick',[1:10:totalTrialNum])
         set(gca,'YTickLabel',[totalTrialNum:-10:1])
         title('Colorized Piezo Data')
+    else
+        subplot(4,2,7)
+        hold on
+        memFinder = ismember(s.(desigNames{i}).AllRasters(:,2),findLoco);
+        memFinder = s.(desigNames{i}).AllRasters(memFinder,1);
+        hist(memFinder,[s.Parameters.RasterWindow(1):0.1:s.Parameters.RasterWindow(2)])
     end
     
     
