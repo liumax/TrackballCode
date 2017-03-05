@@ -151,7 +151,7 @@ for i = 1:totalTrialNum
     %find the time from the velocity trace closest to the actual stim time
     targetInd = find(s.RotaryData.Velocity(:,1)-dioTimes(i) > 0,1,'first');
     %pull appropriate velocity data
-    velRaster(:,i) = s.RotaryData.Velocity([targetInd+jumpsBack:targetInd+jumpsForward],2);
+    velRaster(:,i) = s.RotaryData.BinaryLocomotion([targetInd+jumpsBack:targetInd+jumpsForward]);
 end
 
 %make raster of velocity starts
