@@ -26,7 +26,7 @@ function [s] = analysisBasicTuning(fileName);
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROC = 1; %toggle for tuning on/off ROC analysis
+toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %parameters for data analysis
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -111,7 +111,7 @@ if toggleDuplicateElimination ==1
     if length(s.DesignationName) > 1
         disp('Now Selecting Based on xCORR')
         [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
-            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS);
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow);
     end
 else
     disp('NOT EXECUTING DUPLICATE ELIMINATION')
