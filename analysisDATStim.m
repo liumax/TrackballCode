@@ -154,20 +154,7 @@ for i = 1:totalTrialNum
     velRaster(:,i) = s.RotaryData.BinaryLocomotion([targetInd+jumpsBack:targetInd+jumpsForward]);
 end
 
-%make raster of velocity starts
-velStartRaster = zeros(1000,2);
-velStartRasterCount = 1;
-if length(s.RotaryData.LocomotorStarts) >0;
-    for i = 1:totalTrialNum
-        %subtract from velocity starts raster
-        diffTimes = s.RotaryData.LocomotorStarts - dioTimes(i);
-        diffTimes(diffTimes <= s.Parameters.RasterWindow(1) | diffTimes >= s.Parameters.RasterWindow(2)) = [];
-        velStartRaster(velStartRasterCount:velStartRasterCount+length(diffTimes)-1,1) = i;
-        velStartRaster(velStartRasterCount:velStartRasterCount+length(diffTimes)-1,2) = diffTimes;
-        velStartRasterCount = velStartRasterCount + length(diffTimes);
-    end
-    velStartRaster(velStartRaster(:,2) == 0,:) = [];
-end
+
 %make average trace:
 averageVel = mean(velRaster,2);
 velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
@@ -368,11 +355,6 @@ for i = 1:numUnits
         set(gca,'YTick',[1:10:totalTrialNum])
         set(gca,'YTickLabel',[totalTrialNum:-10:1])
         title('Colorized Piezo Data')
-    else
-        %plot locomotion start
-        subplot(4,2,7)
-        plot(velStartRaster(:,2),velStartRaster(:,1),'k.')
-        title('Raster of Locomotion Start Relative to Laser')
     end
     
     
