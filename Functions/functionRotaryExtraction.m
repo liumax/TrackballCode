@@ -257,18 +257,51 @@ velTimes = reshape(velTimes,[],1);
 mouseVel = reshape(mouseVel,[],1);
 
 %find start times of velocity
-binVel = zeros(length(mouseVel),1);
-binVel(mouseVel > 0.1) = 1;
-binVelDiff = diff(binVel);
-velStart = find(binVelDiff == -1);
-velStart = velTimes(velStart);
+
+locoBinary = zeros(length(mouseVel),1);
+locoBinary(mouseVel>1) = 1; 
+
+locoStarts = find(diff(locoBinary) == 1)+1;
+locoEnds = find(diff(locoBinary) == -1);
+
+loopTrig = 0;
+
+while loopTrig == 0;
+    %combine these two to generate a single timeline. 
+    [fullLocoTrace,iLoco,iC] = unique([locoStarts;locoEnds],'rows');
+    %since locoStarts come first, I can separate iC out into starts and
+    %ends. 
+    iStarts = iC(1:length(locoStarts));
+    iEnds = iC(length(locoStarts)+1:end);
+    %now i need to see if the animal was locomoting to being with. If so, then
+    %the first even will be a locomotion end without a preceding locomotion
+    %start.
+    if iEnds(1) == 1
+        locoStarts(2:end+1) = locoStarts(1:end);
+        locoStarts(1) = 1;
+    end
+
+    %now i need to check and see if the last value is an end or a start. If a
+    %start, then I need to insert an end at the final value for locomotion. 
+    if iStarts(end) == length(fullLocoTrace);
+        %add additional time point to the end of locoEnds.
+        locoEnds(end+1) = length(locoBinary);
+    end
+    
+    if iStarts(1) == 1 & iEnds(end) == length(fullLocoTrace);
+        loopTrig = 1;
+    end
+    
+end
 
 x=struct;
 x.Distance = [newTimes,newDist];
 x.Velocity = [velTimes,mouseVel];
 x.RawDistance = [catTimes,cumDist];
 x.RawData = timeStateArray;
-x.LocomotorStarts = velStart;
+x.BinaryLocomotion = locoBinary;
+x.LocoStarts = locoStarts;
+x.LocoEnds = locoEnds;
 
 s.RotaryData = x;
 
