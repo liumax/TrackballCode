@@ -26,7 +26,7 @@ function [s] = analysisDATStim(fileName);
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROC = 0; %toggle for tuning on/off ROC analysis
+toggleROC = 1; %toggle for tuning on/off ROC analysis
 
 s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. 
 s.Parameters.ToneWindow = [0 0.5];
@@ -140,7 +140,7 @@ D1FileName = D1FileName{1};
 [dioTimes,dioTimeDiff] = functionBasicDIOCheck(DIOData,s.Parameters.trodesFS);
 totalTrialNum = length(dioTimes);
 
-%Extract data from rotary encoder.
+%% Extract data from rotary encoder.
 [s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
 
 %rasterize this data
@@ -154,7 +154,6 @@ for i = 1:totalTrialNum
     velRaster(:,i) = s.RotaryData.BinaryLocomotion([targetInd+jumpsBack:targetInd+jumpsForward]);
 end
 
-
 %make average trace:
 averageVel = mean(velRaster,2);
 velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
@@ -162,8 +161,9 @@ velDispVector = [s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)];
 velDispIndex = [1:round(1/s.Parameters.InterpolationStepRotary):(jumpsForward-jumpsBack+1)];
 velZero = find(velVector >= 0,1,'first');
 
+%% Find locomotion trials
 %find trials that have locomotion during the laser period.
-laserPeriod = [-0.5 0.5]; %time window in seconds around laser onset that I want to analyze
+laserPeriod = [0 1.5]; %time window in seconds around laser onset that I want to analyze
 locoThresh = 0.9; %threshold for time points in which the locomotion is active for trial to be considered locomotion trial
 %need to redefine laser period as time points on the velRaster system. 
 firstPoint = find(velVector >= laserPeriod(1),1,'first');
@@ -184,6 +184,48 @@ end
 
 findLoco = find(locoTrial == 1);
 
+%% Find if there is a preference for locomotion start/stop during laser
+%now see if there is a preference for locomotion during laser periods. Do
+%this for both starts and stops.
+
+windowPref = [0 1.5]; %preference window in seconds. 
+prefReps = 1000;
+%starts first
+[X,Y] = meshgrid(s.RotaryData.LocoStarts,dioTimes);
+testSub = X-Y;
+testFind = find(testSub<windowPref(2) & testSub > windowPref(1));
+timeRange = s.TimeFilterRange(2) - s.TimeFilterRange(1);
+timeRatio = length(dioTimes)*(windowPref(2)-windowPref(1))/timeRange;
+expNum = length(s.RotaryData.LocoStarts)*timeRatio;
+
+s.RotaryData.PreferenceWindow = windowPref;
+s.RotaryData.StartPreference = length(testFind);
+
+%now ends
+[X,Y] = meshgrid(s.RotaryData.LocoEnds,dioTimes);
+testSub = X-Y;
+testFind = find(testSub<windowPref(2) & testSub > windowPref(1));
+timeRange = s.TimeFilterRange(2) - s.TimeFilterRange(1);
+timeRatio = length(dioTimes)*(windowPref(2)-windowPref(1))/timeRange;
+expNum = length(s.RotaryData.LocoStarts)*timeRatio;
+
+s.RotaryData.EndPreference = length(testFind);
+%generate distribution by simulating data by randomly pulling from velocity
+%times
+
+prefStore = zeros(prefReps,1);
+
+for i = 1:prefReps
+    timePoints = s.RotaryData.Velocity(randsample(length(s.RotaryData.Velocity),totalTrialNum),1);
+    [X,Y] = meshgrid(s.RotaryData.LocoStarts,timePoints);
+    testSub = X-Y;
+    testFind = find(testSub<windowPref(2) & testSub > windowPref(1));
+    prefStore(i) = length(testFind);
+end
+%store into structured array
+s.RotaryData.PreferenceDistribution = prefStore;
+
+%% Pull EDR Data
 %see if EDR data exists
 fileNames = dir(homeFolder);
 fileNames = {fileNames.name};
@@ -330,8 +372,12 @@ for i = 1:numUnits
     hold on
     plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
     plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
-    
+    %fill in laser onset
     plot([0 0],[ylim],'b');
+    %if there are locomotion trials, plot these as well.
+    if length(findLoco) > 5
+        plot(histBinVector,mean(s.(desigNames{i}).IndividualHistograms(:,findLoco)'/s.Parameters.histBin),'r')
+    end
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Histogram')
     
