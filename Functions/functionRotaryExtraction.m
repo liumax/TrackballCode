@@ -300,8 +300,8 @@ x.Velocity = [velTimes,mouseVel];
 x.RawDistance = [catTimes,cumDist];
 x.RawData = timeStateArray;
 x.BinaryLocomotion = locoBinary;
-x.LocoStarts = locoStarts;
-x.LocoEnds = locoEnds;
+x.LocoStarts = velTimes(locoStarts);
+x.LocoEnds = velTimes(locoEnds);
 
 s.RotaryData = x;
 
