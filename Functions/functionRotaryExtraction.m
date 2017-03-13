@@ -237,10 +237,13 @@ newTimes = [(round(timeMin*(1/interpStep)))*interpStep:interpStep:(round(timeMax
 
 try
     newDist = interp1(catTimes,cumDist,newTimes,'pchip');
+    failTrigger = 0;
 catch
     disp('Distance Interpolation Failed. Suggests there is no movement. Replacing with zeros')
     cumDist = zeros(length(catTimes),1);
     newDist = zeros(length(newTimes),1);
+    %also trigger failure notification for downstream code
+    failTrigger = 1;
 end
 
 mouseVel = diff(newDist)/interpStep;
@@ -265,33 +268,37 @@ locoStarts = find(diff(locoBinary) == 1)+1;
 locoEnds = find(diff(locoBinary) == -1);
 
 loopTrig = 0;
+if failTrigger == 0
+    while loopTrig == 0;
+        %combine these two to generate a single timeline. 
+        [fullLocoTrace,iLoco,iC] = unique([locoStarts;locoEnds],'rows');
+        %since locoStarts come first, I can separate iC out into starts and
+        %ends. 
+        iStarts = iC(1:length(locoStarts));
+        iEnds = iC(length(locoStarts)+1:end);
+        %now i need to see if the animal was locomoting to being with. If so, then
+        %the first even will be a locomotion end without a preceding locomotion
+        %start.
+        if iEnds(1) == 1
+            locoStarts(2:end+1) = locoStarts(1:end);
+            locoStarts(1) = 1;
+        end
 
-while loopTrig == 0;
-    %combine these two to generate a single timeline. 
-    [fullLocoTrace,iLoco,iC] = unique([locoStarts;locoEnds],'rows');
-    %since locoStarts come first, I can separate iC out into starts and
-    %ends. 
-    iStarts = iC(1:length(locoStarts));
-    iEnds = iC(length(locoStarts)+1:end);
-    %now i need to see if the animal was locomoting to being with. If so, then
-    %the first even will be a locomotion end without a preceding locomotion
-    %start.
-    if iEnds(1) == 1
-        locoStarts(2:end+1) = locoStarts(1:end);
-        locoStarts(1) = 1;
-    end
+        %now i need to check and see if the last value is an end or a start. If a
+        %start, then I need to insert an end at the final value for locomotion. 
+        if iStarts(end) == length(fullLocoTrace);
+            %add additional time point to the end of locoEnds.
+            locoEnds(end+1) = length(locoBinary);
+        end
 
-    %now i need to check and see if the last value is an end or a start. If a
-    %start, then I need to insert an end at the final value for locomotion. 
-    if iStarts(end) == length(fullLocoTrace);
-        %add additional time point to the end of locoEnds.
-        locoEnds(end+1) = length(locoBinary);
+        if iStarts(1) == 1 & iEnds(end) == length(fullLocoTrace);
+            loopTrig = 1;
+        end
+
     end
-    
-    if iStarts(1) == 1 & iEnds(end) == length(fullLocoTrace);
-        loopTrig = 1;
-    end
-    
+elseif failTrigger == 1
+    iStarts = 0;
+    iEnds = 0;
 end
 
 x=struct;
