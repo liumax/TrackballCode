@@ -24,7 +24,7 @@ function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
+toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
@@ -97,8 +97,9 @@ subFoldersCell = strsplit(subFolders,';')';
 %% Find and ID Matclust Files for Subsequent Analysis. Generates Structured Array for Data Storage
 %pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
-[paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
-s.NumberTrodes = length(paramFiles)-length(matclustFiles);
+%pull lfp file names. this allows detection of the number of trodes. 
+[lfpFiles] = functionFileFinder(subFoldersCell,'LFP','LFP');
+s.NumberTrodes = length(lfpFiles);
 
 %generate placeholder structure
 % s = struct;
@@ -624,9 +625,9 @@ if toggleTuneSelect == 1 %if you want tuning selection...
 
         while whileCounter ~= promptCounter
             try
-                prompt = 'Is this unit tuned? (y/n)';
+                prompt = 'How is this unit tuned? (excite(e)/inhib(i)/both(b)/none(n))';
                 str = input(prompt,'s');
-                if str~='n' & str~='y'
+                if str~='n' & str~='e' & str~='i' & str~='b'
                     error
                 else
                     whileCounter = 1;
@@ -634,17 +635,20 @@ if toggleTuneSelect == 1 %if you want tuning selection...
             catch
             end
         end
-        if strfind(str,'y')
+        if strfind(str,'e') | strfind(str,'i') | strfind(str,'b')
             decisionTuning(i) = 1;
         elseif strfind(str,'n')
             decisionTuning(i) = 0;
         end
-
+        
+        tuningType{i} = str;
         %clear figure.
         clf
 
     end
     s.TuningDecision = decisionTuning;
+    s.TuningType = tuningType;
+    close
 else %in the case you dont want to do tuning selection, default to normal system
     for i = 1:numUnits
         hFig = figure;
