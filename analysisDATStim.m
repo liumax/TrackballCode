@@ -423,11 +423,12 @@ for i = 1:numUnits
         set(gca,'YTickLabel',[totalTrialNum:-10:1])
         title('Colorized Piezo Data')
     else
-        subplot(4,2,7)
-        hold on
-        memFinder = ismember(s.(desigNames{i}).AllRasters(:,2),findLoco);
-        memFinder = s.(desigNames{i}).AllRasters(memFinder,1);
-        hist(memFinder,[s.Parameters.RasterWindow(1):0.1:s.Parameters.RasterWindow(2)])
+%         subplot(4,2,7)
+%         hold on
+%         memFinder = ismember(s.(desigNames{i}).AllRasters(:,2),findLoco);
+%         memFinder = s.(desigNames{i}).AllRasters(memFinder,1);
+%         hist(memFinder,[s.Parameters.RasterWindow(1):0.1:s.Parameters.RasterWindow(2)])
+%         title('Histogram of Responses During Locomotion Trials')
     end
     
     
