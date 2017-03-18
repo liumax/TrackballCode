@@ -26,7 +26,7 @@ function [s] = analysisBasicTuning(fileName);
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROC = 0; %toggle for tuning on/off ROC analysis
+toggleROC = 1; %toggle for tuning on/off ROC analysis
 
 %parameters for data analysis
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -98,8 +98,13 @@ subFoldersCell = strsplit(subFolders,';')';
 %pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
 %pull lfp file names. this allows detection of the number of trodes. 
-[lfpFiles] = functionFileFinder(subFoldersCell,'LFP','LFP');
-s.NumberTrodes = length(lfpFiles);
+try
+    [lfpFiles] = functionFileFinder(subFoldersCell,'LFP','LFP');
+    s.NumberTrodes = length(lfpFiles);
+catch
+    [paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
+    s.NumberTrodes = length(paramFiles) - length(matclustFiles);
+end
 
 %generate placeholder structure
 % s = struct;
