@@ -86,6 +86,9 @@ end
 %names for nTrode-Cluster combinations, as well as an array for indexing
 %things later on. This also generates a holder inside the s
 %structured array for storage of data relating to that structure. 
+
+%first, resort file names into normal order
+matclustFiles = sort_nat(matclustFiles);
 truncatedNames = matclustFiles;
 numTrodes = length(truncatedNames);
 %sets asside arrays and counters
@@ -256,6 +259,8 @@ end
 %     dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
 %     
 % end
+
+
 
 s.DesignationArray = desigArray;
 s.DesignationName = desigNames;
