@@ -26,6 +26,7 @@ function [s] = analysisBasicTuning(fileName);
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+toggleROC = 1; %toggle for tuning on/off ROC analysis
 
 %parameters for data analysis
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -78,7 +79,9 @@ s.Parameters.EDRPiezoCol = 2;
 %for plotting speed vs firing
 s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
 
+%set other things
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+format short
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
@@ -94,8 +97,14 @@ subFoldersCell = strsplit(subFolders,';')';
 %% Find and ID Matclust Files for Subsequent Analysis. Generates Structured Array for Data Storage
 %pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
-[paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
-s.NumberTrodes = length(paramFiles)-length(matclustFiles);
+%pull lfp file names. this allows detection of the number of trodes. 
+try
+    [lfpFiles] = functionFileFinder(subFoldersCell,'LFP','LFP');
+    s.NumberTrodes = length(lfpFiles);
+catch
+    [paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
+    s.NumberTrodes = length(paramFiles) - length(matclustFiles);
+end
 
 %generate placeholder structure
 % s = struct;
@@ -108,7 +117,7 @@ if toggleDuplicateElimination ==1
     if length(s.DesignationName) > 1
         disp('Now Selecting Based on xCORR')
         [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
-            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS);
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow);
     end
 else
     disp('NOT EXECUTING DUPLICATE ELIMINATION')
@@ -238,6 +247,7 @@ end
 jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
 jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
 velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
+length(s.RotaryData.Velocity);
 for i = 1:totalTrialNum
     %find the time from the velocity trace closest to the actual stim time
     targetInd = find(s.RotaryData.Velocity(:,1)-dioTimes(i) > 0,1,'first');
@@ -337,7 +347,7 @@ for i = 1:numUnits
     %make a plot of firing rate over time. 
     sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
     sessionFiring(end) = 0; %this is to compensate for problems with spikes coming after the period
-    sessionFIring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
+    sessionFiring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
     %calculates rasters based on spike information. 
     [rasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.RasterWindow);
     rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
@@ -439,6 +449,12 @@ for i = 1:numUnits
     s.(desigNames{i}).BinGen = binStoreGen;
     s.(desigNames{i}).ProbTone = probStoreTone;
     s.(desigNames{i}).ProbGen = probStoreGen;
+    
+    if toggleROC == 1
+        targetName = desigNames{i};
+        [s] = functionLocomotionROC(s,targetName);
+    end
+    
 end
 
 %calculate and plot LFP information
@@ -492,14 +508,18 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         set(gca,'YTick',dbRange(:,2));
         set(gca,'YTickLabel',dbRange(:,1));
         title('Peak Response (general)')
-        %plot latency data
+        %plot velocity data
         subplot(4,3,6)
         hold on
         plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
         plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
         xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
         ylim([-0.1,1])
-        title('Relative Velocity Plotted With Firing Rate')
+        if toggleROC == 1
+            title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+        else
+            title('Vel & Firing Rate')
+        end
         %plot probability of response (tone)
         subplot(4,3,9)
         imagesc(s.(desigNames{i}).ProbTone')
@@ -610,9 +630,9 @@ if toggleTuneSelect == 1 %if you want tuning selection...
 
         while whileCounter ~= promptCounter
             try
-                prompt = 'Is this unit tuned? (y/n)';
+                prompt = 'How is this unit tuned? (excite(e)/inhib(i)/both(b)/none(n))';
                 str = input(prompt,'s');
-                if str~='n' & str~='y'
+                if str~='n' & str~='e' & str~='i' & str~='b'
                     error
                 else
                     whileCounter = 1;
@@ -620,17 +640,20 @@ if toggleTuneSelect == 1 %if you want tuning selection...
             catch
             end
         end
-        if strfind(str,'y')
+        if strfind(str,'e') | strfind(str,'i') | strfind(str,'b')
             decisionTuning(i) = 1;
         elseif strfind(str,'n')
             decisionTuning(i) = 0;
         end
-
+        
+        tuningType{i} = str;
         %clear figure.
         clf
 
     end
     s.TuningDecision = decisionTuning;
+    s.TuningType = tuningType;
+    close
 else %in the case you dont want to do tuning selection, default to normal system
     for i = 1:numUnits
         hFig = figure;
@@ -675,15 +698,18 @@ else %in the case you dont want to do tuning selection, default to normal system
         set(gca,'YTick',dbRange(:,2));
         set(gca,'YTickLabel',dbRange(:,1));
         title('Peak Response (general)')
-        %plot latency data
+        %plot velocity data
         subplot(4,3,6)
-        imagesc(s.(desigNames{i}).LatencyMap')
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Calculated Latency (1ms sample)')
+        hold on
+        plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+        plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+        xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+        ylim([-0.1,1])
+        if toggleROC == 1
+            title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+        else
+            title('Vel & Firing Rate')
+        end
         %plot probability of response (tone)
         subplot(4,3,9)
         imagesc(s.(desigNames{i}).ProbTone')

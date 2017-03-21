@@ -10,19 +10,26 @@ params.histBin/2:params.histBin:(params.rasterWindow(2)*s.SoundData.(soundNames{
 
 spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
 %% plots average waveform
-subplot(4,6,1)
+subplot(8,6,7)
 hold on
 plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
 title({fileName;desigNames{i};strcat('AverageFiringRate:',num2str(mean(s.(desigNames{i}).OverallFiringRates)))});
 set(0, 'DefaulttextInterpreter', 'none')
 %% plots ISI
-subplot(4,6,2)
+subplot(9,6,8)
 hist(s.(desigNames{i}).ISIGraph,1000)
 histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
 line([params.rpvTime params.rpvTime],[0 histMax],'LineWidth',1,'Color','red')
 xlim(params.clusterWindow)
-title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+if ~isempty(s.(desigNames{i}).TrueAUC)
+    title({strcat('Loco AUC:',num2str(s.(desigNames{i}).TrueAUC),'(',num2str(prctile(s.(desigNames{i}).ShuffleAUC,0.5)),',',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99.5)),')');...
+        strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
     strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))});
+else
+    title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+    strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))});
+end
+
 
 %% plots histogram
 subplot(4,3,4)
@@ -176,11 +183,11 @@ plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone+postToneS
 plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreTone-postToneSTD,'r','LineWidth',1)
 
 %plot compensated values
-plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp,'k:','LineWidth',2)
+plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp,'k:','LineWidth',4)
 plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp+preToneCompSTD,'k:','LineWidth',1)
 plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).BinStoreToneComp-preToneCompSTD,'k:','LineWidth',1)
 
-plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp,'r:','LineWidth',2)
+plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp,'r:','LineWidth',4)
 plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp+postToneCompSTD,'r:','LineWidth',1)
 plot(s.(desigNames{i}).(strcat(soundNames{2},'Analysis')).BinStoreToneComp-postToneCompSTD,'r:','LineWidth',1)
 
@@ -221,43 +228,43 @@ set(gca,'XTick',[1:2:freqLength]);
 set(gca,'XTickLabel',s.SoundData.(soundNames{1}).UniqueFreqs(1:2:end)/1000);
 
 %% Plot information from pairing style presentations
-
-histBinVector = [(params.rasterWindow(1)*s.SoundData.(soundNames{3}).ToneDuration) + ...
-params.histBin/2:params.histBin:(params.rasterWindow(2)*s.SoundData.(soundNames{3}).ToneDuration)-params.histBin/2];
-
-%First, plot general histograms of each period, for control, then
-%target
-subplot(4,3,5)
-hold on
-plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{3},'ControlAnalysis')).Histograms,'k','LineWidth',1)
-plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{4},'ControlAnalysis')).Histograms,'r','LineWidth',1)
-plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{5},'ControlAnalysis')).Histograms,'g','LineWidth',1)
-%draws in tone!
-plot([0 0],[ylim],'r');
-plot([s.SoundData.(soundNames{3}).ToneDuration ...
-    s.SoundData.(soundNames{3}).ToneDuration],[ylim],'r');
-%sets xlimits to avoid awkward graphs
-xlim([params.rasterWindow(1)*s.SoundData.(soundNames{3}).ToneDuration...
-    params.rasterWindow(2)*s.SoundData.(soundNames{3}).ToneDuration])
-title(strcat('Control',num2str(s.SoundData.(soundNames{5}).ControlFreq),'kHz',num2str(s.SoundData.(soundNames{5}).ControlDB),' dB K G R'))
-%Now for target
-subplot(4,3,6)
-hold on
-plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{3},'TargetAnalysis')).Histograms,'k','LineWidth',1)
-plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{4},'TargetAnalysis')).Histograms,'r','LineWidth',1)
-plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{5},'TargetAnalysis')).Histograms,'g','LineWidth',1)
-%draws in tone!
-plot([0 0],[ylim],'r');
-plot([s.SoundData.(soundNames{3}).ToneDuration ...
-    s.SoundData.(soundNames{3}).ToneDuration],[ylim],'r');
-%sets xlimits to avoid awkward graphs
-xlim([params.rasterWindow(1)*s.SoundData.(soundNames{3}).ToneDuration...
-    params.rasterWindow(2)*s.SoundData.(soundNames{3}).ToneDuration])
-title(strcat('Control',num2str(s.SoundData.(soundNames{5}).TargetFreq),'kHz',num2str(s.SoundData.(soundNames{5}).TargetDB),' dB K G R'))
+% 
+% histBinVector = [(params.rasterWindow(1)*s.SoundData.(soundNames{3}).ToneDuration) + ...
+% params.histBin/2:params.histBin:(params.rasterWindow(2)*s.SoundData.(soundNames{3}).ToneDuration)-params.histBin/2];
+% 
+% %First, plot general histograms of each period, for control, then
+% %target
+% subplot(4,3,5)
+% hold on
+% plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{3},'ControlAnalysis')).Histograms,'k','LineWidth',1)
+% plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{4},'ControlAnalysis')).Histograms,'r','LineWidth',1)
+% plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{5},'ControlAnalysis')).Histograms,'g','LineWidth',1)
+% %draws in tone!
+% plot([0 0],[ylim],'r');
+% plot([s.SoundData.(soundNames{3}).ToneDuration ...
+%     s.SoundData.(soundNames{3}).ToneDuration],[ylim],'r');
+% %sets xlimits to avoid awkward graphs
+% xlim([params.rasterWindow(1)*s.SoundData.(soundNames{3}).ToneDuration...
+%     params.rasterWindow(2)*s.SoundData.(soundNames{3}).ToneDuration])
+% title(strcat('Control',num2str(s.SoundData.(soundNames{5}).ControlFreq),'kHz',num2str(s.SoundData.(soundNames{5}).ControlDB),' dB K G R'))
+% %Now for target
+% subplot(4,3,6)
+% hold on
+% plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{3},'TargetAnalysis')).Histograms,'k','LineWidth',1)
+% plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{4},'TargetAnalysis')).Histograms,'r','LineWidth',1)
+% plot(histBinVector,s.(desigNames{i}).(strcat(soundNames{5},'TargetAnalysis')).Histograms,'g','LineWidth',1)
+% %draws in tone!
+% plot([0 0],[ylim],'r');
+% plot([s.SoundData.(soundNames{3}).ToneDuration ...
+%     s.SoundData.(soundNames{3}).ToneDuration],[ylim],'r');
+% %sets xlimits to avoid awkward graphs
+% xlim([params.rasterWindow(1)*s.SoundData.(soundNames{3}).ToneDuration...
+%     params.rasterWindow(2)*s.SoundData.(soundNames{3}).ToneDuration])
+% title(strcat('Control',num2str(s.SoundData.(soundNames{5}).TargetFreq),'kHz',num2str(s.SoundData.(soundNames{5}).TargetDB),' dB K G R'))
 
 %Now plot rasters, in chronological order
 %first plot control
-subplot(4,3,8)
+subplot(4,3,5)
 hold on
 %need to link up rasters!
 rastersPre = s.(desigNames{i}).(strcat(soundNames{3},'ControlAnalysis')).Rasters;
@@ -283,10 +290,10 @@ plot([s.SoundData.(soundNames{3}).ToneDuration s.SoundData.(soundNames{3}).ToneD
 
 ylim([0 rasterNumPre+rasterNumPair+rasterNumPost])
 xlim([params.rasterWindow(1)*s.SoundData.(soundNames{3}).ToneDuration params.rasterWindow(2)*s.SoundData.(soundNames{3}).ToneDuration])
-title({'Control Rasters';'K G R'})
+ title(strcat('Control',num2str(s.SoundData.(soundNames{5}).ControlFreq),'kHz',num2str(s.SoundData.(soundNames{5}).ControlDB),' dB K G R'))
 
 %now plot Target
-subplot(4,3,9)
+subplot(4,3,6)
 hold on
 %need to link up rasters!
 rastersPre = s.(desigNames{i}).(strcat(soundNames{3},'TargetAnalysis')).Rasters;
@@ -312,9 +319,60 @@ plot([s.SoundData.(soundNames{3}).ToneDuration s.SoundData.(soundNames{3}).ToneD
 
 ylim([0 rasterNumPre+rasterNumPair+rasterNumPost])
 xlim([params.rasterWindow(1)*s.SoundData.(soundNames{3}).ToneDuration params.rasterWindow(2)*s.SoundData.(soundNames{3}).ToneDuration])
-title({'Target Rasters';'K G R'})
+title(strcat('Target',num2str(s.SoundData.(soundNames{5}).TargetFreq),'kHz',num2str(s.SoundData.(soundNames{5}).TargetDB),' dB K G R'))
 
 %% NEED TO PLOT TIME COURSE
+
+subplot(4,3,8)
+hold on
+%use the trial information from the rasters for the right designations
+binnedSpikes = zeros(rasterNumPre+rasterNumPair+rasterNumPost,2);
+binnedSpikes(:,1) = [1:1:rasterNumPre+rasterNumPair+rasterNumPost];
+binnedSpikesComp = zeros(rasterNumPre+rasterNumPair+rasterNumPost,2);
+binnedSpikesComp(:,1) = [1:1:rasterNumPre+rasterNumPair+rasterNumPost];
+binnedSpikeCounter = 1;
+for k = [3,5,4]
+    findBin = s.(desigNames{i}).(strcat(soundNames{k},'ControlAnalysis')).LatBinPeakCalcs.BinnedSpikesTone;
+    findBinComp = s.(desigNames{i}).(strcat(soundNames{k},'ControlAnalysis')).BinToneComp;
+    binnedSpikes(binnedSpikeCounter:binnedSpikeCounter + length(findBin)-1,2) = findBin;
+    binnedSpikesComp(binnedSpikeCounter:binnedSpikeCounter + length(findBin)-1,2) = findBinComp;
+    binnedSpikeCounter = binnedSpikeCounter + length(findBin);
+end
+plot(binnedSpikes(:,1),binnedSpikes(:,2),':ko')
+plot(binnedSpikes(:,1),smooth(binnedSpikes(:,2),11),'-k.')
+%plot in important time points. 
+plot([rasterNumPre rasterNumPre],[ylim],'r')
+plot([rasterNumPre+rasterNumPair rasterNumPre+rasterNumPair],[ylim],'r')
+xlim([1 rasterNumPre+rasterNumPair+rasterNumPost])
+
+title('Control Time Course For Tone Window')
+
+subplot(4,3,9)
+hold on
+%use the trial information from the rasters for the right designations
+%for now, going to use general period. however, can consider switching
+%this in the future.
+binnedSpikes = zeros(rasterNumPre+rasterNumPair+rasterNumPost,2);
+binnedSpikes(:,1) = [1:1:rasterNumPre+rasterNumPair+rasterNumPost];
+binnedSpikesComp = zeros(rasterNumPre+rasterNumPair+rasterNumPost,2);
+binnedSpikesComp(:,1) = [1:1:rasterNumPre+rasterNumPair+rasterNumPost];
+binnedSpikeCounter = 1;
+for k = [3,5,4]
+    findBin = s.(desigNames{i}).(strcat(soundNames{k},'TargetAnalysis')).LatBinPeakCalcs.BinnedSpikesTone;
+    findBinComp = s.(desigNames{i}).(strcat(soundNames{k},'TargetAnalysis')).BinToneComp;
+    binnedSpikes(binnedSpikeCounter:binnedSpikeCounter + length(findBin)-1,2) = findBin;
+    binnedSpikesComp(binnedSpikeCounter:binnedSpikeCounter + length(findBin)-1,2) = findBinComp;
+    binnedSpikeCounter = binnedSpikeCounter + length(findBin);
+end
+plot(binnedSpikes(:,1),binnedSpikes(:,2),':ko')
+plot(binnedSpikes(:,1),smooth(binnedSpikes(:,2),11),'-k.')
+%plot in important time points. 
+plot([rasterNumPre rasterNumPre],[ylim],'r')
+plot([rasterNumPre+rasterNumPair rasterNumPre+rasterNumPair],[ylim],'r')
+xlim([1 rasterNumPre+rasterNumPair+rasterNumPost])
+
+title('Target Time Course For Tone Window')
+%plot general window
 subplot(4,3,11)
 hold on
 %use the trial information from the rasters for the right designations
@@ -339,7 +397,7 @@ plot([rasterNumPre rasterNumPre],[ylim],'r')
 plot([rasterNumPre+rasterNumPair rasterNumPre+rasterNumPair],[ylim],'r')
 xlim([1 rasterNumPre+rasterNumPair+rasterNumPost])
 
-title('Control Time Course')
+title('Control Time Course for General Window')
 
 subplot(4,3,12)
 hold on
@@ -365,13 +423,13 @@ plot([rasterNumPre rasterNumPre],[ylim],'r')
 plot([rasterNumPre+rasterNumPair rasterNumPre+rasterNumPair],[ylim],'r')
 xlim([1 rasterNumPre+rasterNumPair+rasterNumPost])
 
-title('Target Time Course')
+title('Target Time Course for General Window')
 
 %%
 hold off
 %save as matlab figure with correct name (fileName+LFP)
 spikeGraphName = strcat(fileName,desigNames{i},'PairingAnalysis');
-
+savefig(figName,spikeGraphName);
 %save as PDF with correct name
 set(figName,'Units','Inches');
 pos = get(figName,'Position');
