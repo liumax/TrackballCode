@@ -146,7 +146,7 @@ for i = 1:length(fieldNames)
     testData = fullMaster.(fieldNames{i});
     desigNames = testData.DesignationName;
     %check if there is analysis for type of tuning
-    tuneCheck = isfield(testData.(desigNames{1}),'TuningType');
+    tuneCheck = isfield(testData,'TuningType');
     if tuneCheck == 0;
         disp('Tuning Type Analysis Not Performed, Initiating')
         [decisionTuning,tuningType] = functionTuningSelectionTool(testData,fieldNames{i});
@@ -168,6 +168,7 @@ store.BaselineRate = zeros(100,1);
 store.TrueAUC = zeros(100,1);
 store.ShuffleAUC = zeros(100,2);
 store.MinLat = zeros(100,1);
+store.Waves = zeros(40,4,100);
 
 placeHolder = 1;
 
@@ -193,9 +194,38 @@ for i = 1:length(fieldNames)
             store.ShuffleAUC(placeHolder - 1 + j,2) = prctile(testData.(desigNames{j}).ShuffleAUC,99.5);
         end
         
+        %store waveform
+        store.Waves(:,:,placeHolder - 1 + j) = testData.(desigNames{j}).AverageWaveForms;
+        
     end
 
     placeHolder = placeHolder + length(desigNames);
+end
+
+%lets go through the waveforms and try and pick out representative ones
+
+%as a first pass, lets go through all the shits and select the peak wave as
+%the model
+sortedWaves = zeros(40,size(store.Waves,3));
+sortedPeaks = zeros(size(store.Waves,3),1);
+sortedPeakTroughs = zeros(size(store.Waves,3),1);
+sortedPeakWidth = zeros(size(store.Waves,3),1);
+for i = 1:size(store.Waves,3);
+    %open up the set of waves
+    targetWaves = squeeze(store.Waves(:,:,i));
+    [maxVal maxFind] = max(max(targetWaves));
+    sortedWaves(:,i) = targetWaves(:,maxFind);
+    %turns out this seems to work fairly well. now lets pull peaks and
+    %troughs
+    %the peak should be the biggest point in the whole thing. Lets pull
+    %that out
+    [mVal,sortedPeaks(i)] = max(targetWaves(:,maxFind));
+    %the trough should be the opposite
+    [minVal,sortedPeakTroughs(i)] = min(targetWaves(sortedPeaks(i):end,maxFind));
+    %find peak width
+    startVal = find(targetWaves(:,maxFind) <= maxVal,1,'first');
+    endVal = find(targetWaves(:,maxFind) <= maxVal,1,'last');
+    sortedPeakWidth(i) = endVal - startVal;
 end
 
 
