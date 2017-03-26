@@ -42,6 +42,8 @@ elseif numTrodes == 16;
 elseif numTrodes == 32;
     %this likely means I am on an old designation
     shanks = 2;
+else
+    %find the number that is closest to 
 end
 
 %this generates an array for the shanks.
