@@ -3,13 +3,13 @@
 %control over settings here
 toneReps = 100; %number of repetitions of each condition
 totalReps = toneReps*3;
-toneDur = 0.2; %tone duration in seconds
+toneDur = 1; %tone duration in seconds
 ttlDur = 0.002; %duration of signaling TTL in seconds
 fs = 192000; %sampling frequency in Hz
 L = (toneDur*2)*fs;
 
 %time before tone that I want the laser to come on in seconds
-laserLag = 0.4;
+laserLag = 0.2;
 laserJitter = 0.1;
 %find the number of samples to pad.
 
@@ -18,8 +18,8 @@ laserITI = 0.006; %time betwen laser pulses
 jitterVec = (rand(toneReps,1)-0.5)*laserJitter+laserLag;
 
 %pausing times!
-minPause = 3;
-maxPause = 5;
+minPause = 4;
+maxPause = 7;
 
 prePause = 0.1; %pause in seconds before tone
 
@@ -87,13 +87,13 @@ finalWave = audio_data.*rampProfile;
 %makes two column matrix for sound and TTL output
 soundVector = [finalWave,ttlSig];
 
-
-for i = 1:toneReps*2
+jitterCount = 1;
+for i = 1:totalReps
     pause(prePause)
     if orderList(i) == 1 %play just the sound
         sound(soundVector,fs)
     elseif orderList(i) == 2 %play sound and laser
-        laserLadd = round(jitterVec(i/2) * fs);
+        laserLadd = round(jitterVec(jitterCount) * fs);
         laserTTLSig = zeros(L+laserLadd,1);
         laserTTLSig(laserLadd+1:end) = ttlSig;
         laserTTLSig(1:round(fs*ttlDur)) = 1;
@@ -103,6 +103,7 @@ for i = 1:toneReps*2
         finalLaserWave(1:laserLadd) = 0;
         soundLaserVector = [finalLaserWave,laserTTLSig];
         sound(soundLaserVector,fs)
+        jitterCount = jitterCount + 1;
     elseif orderList(i) == 3 %play just laser
         sound(laserOnlyVector,fs)
     end
