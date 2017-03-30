@@ -1,16 +1,16 @@
 %this code is to generate white noise. have not added laser functionality.
 
 %control over settings here
-toneReps = 100; %number of repetitions of each tone/amplitude pair
+toneReps = 200; %number of repetitions of each tone/amplitude pair
 totalReps = toneReps;
 toneDur = 0.1; %tone duration in seconds
-ttlDur = 0.01; %duration of signaling TTL in seconds
+ttlDur = 0.02; %duration of signaling TTL in seconds
 fs = 192000; %sampling frequency in Hz
-L = toneDur*fs;
+L = (toneDur*2)*fs;
 
 %pausing times!
-minPause = 1;
-maxPause = 2;
+minPause = 2;
+maxPause = 5;
 
 prePause = 0.1; %pause in seconds before tone
 
@@ -27,7 +27,7 @@ if warningCheck == 1
 end
 
 %generate white gaussian noise of correct size
-y = wgn(fs*toneDur,1,0);
+y = wgn(L,1,0);
 
 %filters white gaussian noise (courtesy of RYAN MORRILL)
 Wn = 4e3/(0.5*fs); % pass above 3.9 kHz 160121 Adjusted to 4kHz
@@ -49,7 +49,8 @@ offRampDur = 0.005;
 %with sharp white noises
 rampProfile = ones(L,1);
 rampProfile(1:(onRampDur*fs)) = [0:1/(onRampDur*fs):1-1/(onRampDur*fs)];
-rampProfile(end-(onRampDur*fs):end) = [1:-1/(onRampDur*fs):0];
+rampProfile(round(toneDur*fs):round((toneDur+offRampDur)*fs)) = [1:-1/(onRampDur*fs):0];
+rampProfile(round((toneDur+offRampDur)*fs):end) = 0;
 
 %this makes the profile for the TTL signal
 ttlSig = zeros(L,1);
