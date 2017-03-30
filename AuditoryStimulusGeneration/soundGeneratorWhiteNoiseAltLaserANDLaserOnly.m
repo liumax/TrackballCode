@@ -106,7 +106,7 @@ for i = 1:toneReps*2
     elseif orderList(i) == 3 %play just laser
         sound(laserOnlyVector,fs)
     end
-    disp(toneReps*2 - i)
+    disp(totalReps - i)
     pause(x(i))
 end
 
@@ -114,7 +114,7 @@ soundData = struct;
 soundData.ToneDuration = toneDur;
 soundData.ToneRepetitions = toneReps;
 soundData.ToneDesignation = orderList;
-soundData.OrderTags = [];
+soundData.OrderTags = {'NoiseOnly','Noise+Laser','LaserOnly'};
 soundData.LaserLag = laserLag;
 soundData.ITI = x;
 
