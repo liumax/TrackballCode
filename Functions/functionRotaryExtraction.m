@@ -246,6 +246,12 @@ catch
     failTrigger = 1;
 end
 
+%insert fail trigger if overall cumulative distance is zero
+if cumDist(end) == 0
+    failTrigger = 1;
+    disp('No Coherent Movement Detected, Do Have Wobbles')
+end
+
 mouseVel = diff(newDist)/interpStep;
 velTimes = newTimes(1:end-1); %this adds a fudge factor because of the change in the length of the array.
 
