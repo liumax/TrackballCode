@@ -23,10 +23,10 @@
 function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
-s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROC = 1; %toggle for tuning on/off ROC analysis
+s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
+toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
+toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %parameters for data analysis
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -183,13 +183,20 @@ for i = 1:size(octaveRange,1);
 end
 
 % Does the same for dBs. 
-dbSteps = uniqueDBs(2) - uniqueDBs(1);
-totalDBs = (uniqueDBs(end) - uniqueDBs(1))/dbSteps;
-dbRange = zeros(totalDBs + 1,2);
-dbRange(:,1) = uniqueDBs(1):dbSteps:uniqueDBs(end);
-for i = 1:size(dbRange,1)
-    dbRange(i,2) = find(uniqueDBs == dbRange(i,1));
+if length(uniqueDBs) == 1
+    dbSteps = 1;
+    totalDBs = 1;
+    dbRange = [100,1];
+else
+    dbSteps = uniqueDBs(2) - uniqueDBs(1);
+    totalDBs = (uniqueDBs(end) - uniqueDBs(1))/dbSteps;
+    dbRange = zeros(totalDBs + 1,2);
+    dbRange(:,1) = uniqueDBs(1):dbSteps:uniqueDBs(end);
+    for i = 1:size(dbRange,1)
+        dbRange(i,2) = find(uniqueDBs == dbRange(i,1));
+    end
 end
+
 
 %stores into s.
 s.Parameters.OctaveRange = octaveRange;
