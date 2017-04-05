@@ -10,18 +10,18 @@ params.histBin/2:params.histBin:(params.rasterWindow(2)*s.SoundData.(soundNames{
 
 spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
 %% plots average waveform
-subplot(8,6,7)
+subplot(4,6,1)
 hold on
 plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
-title({fileName;desigNames{i};strcat('AverageFiringRate:',num2str(mean(s.(desigNames{i}).OverallFiringRates)))});
+title({strcat('AverageFiringRate:',num2str(mean(s.(desigNames{i}).OverallFiringRates)))});
 set(0, 'DefaulttextInterpreter', 'none')
 %% plots ISI
-subplot(9,6,8)
+subplot(4,6,2)
 hist(s.(desigNames{i}).ISIGraph,1000)
 histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
 line([params.rpvTime params.rpvTime],[0 histMax],'LineWidth',1,'Color','red')
 xlim(params.clusterWindow)
-if ~isempty(s.(desigNames{i}).TrueAUC)
+if isfield(s.(desigNames{i}),'TrueAUC') && ~isempty(s.(desigNames{i}).TrueAUC)
     title({strcat('Loco AUC:',num2str(s.(desigNames{i}).TrueAUC),'(',num2str(prctile(s.(desigNames{i}).ShuffleAUC,0.5)),',',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99.5)),')');...
         strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
     strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))});
@@ -79,7 +79,7 @@ plot([s.SoundData.(soundNames{1}).ToneDur ...
 %sets xlimits to avoid awkward graphs
 xlim([params.rasterWindow(1)*s.SoundData.(soundNames{1}).ToneDur...
     params.rasterWindow(2)*s.SoundData.(soundNames{1}).ToneDur])
-title('Histogram K before B after')
+title(strcat(fileName,desigNames{i}))
 %% plot rasters organized by freq for first tuning
 subplot(4,3,7)
 plot(s.(desigNames{i}).(strcat(soundNames{1},'Analysis')).AllRasters(:,1),...

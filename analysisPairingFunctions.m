@@ -10,10 +10,11 @@ function [s] = analysisPairingFunctions(fileName);
 
 %% Hardcoded Variables:
 %lets set some switches to toggle things on and off.
-s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
+toggleNumSpike = 0; %toggle for turning on/off selection based on number of total spikes. 
 
 %parameters for data analysis
 s.Parameters.rpvTime = 0.002; %limit to be considered an RPV.
@@ -64,6 +65,11 @@ s.Parameters.EDRPiezoCol = 2;
 %for plotting speed vs firing
 s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
 
+%for summary figure
+s.Parameters.SumSmoothBin = 0.200; %time in sec for smoothing function
+
+%for toggleNumSpike
+numSpikeLim = 400; %limit for total number of spikes below which data will not be analyzed.
 
 %% Establishes the folder and subfolders for analysis. Adds all folders to
 %path for easy access to files.
@@ -90,11 +96,28 @@ if toggleDuplicateElimination ==1
         [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
             s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,...
             s.Parameters.rpvTime,s.Parameters.clusterWindow);
-        [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
-            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS);
     end
 else
     disp('NOT EXECUTING DUPLICATE ELIMINATION')
+end
+
+sizeCount = 1;
+if toggleNumSpike == 1
+    for i = 1:size(s.DesignationName,2)
+        sizeCheck = s.(s.DesignationName{i}).TotalSpikeNumber;
+        if sizeCheck < numSpikeLim
+            sizeFlag(sizeCount) = i;
+            sizeCount = sizeCount + 1;
+            disp(strcat('Eliminating',(s.DesignationName{i}),' with ',num2str(sizeCheck),' Spikes'))
+            %removes the unit
+            s = rmfield(s,(s.DesignationName{i}));
+        end
+    end
+    %now lets amend designation array and designation names
+    s.DesignationArray(sizeFlag,:) = [];
+    s.DesignationName(sizeFlag) = [];
+else
+    disp('NOT SELECTING BY TOTAL SPIKE NUMBER')
 end
 
 %pull number of units, as well as names and designation array.
@@ -102,13 +125,8 @@ numUnits = size(s.DesignationName,2);
 desigNames = s.DesignationName;
 desigArray = s.DesignationArray;
 
-
-
 %Extract data from rotary encoder.
 [s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
-
-
-
 
 %% Import Sound Data
 soundName = strcat(fileName,'.mat');
@@ -315,11 +333,67 @@ end
     spikeNames{5},names{5},s.Parameters);  
 
 %NOW I NEED TO PLOT EVERYTHING IN A WAY THAT MAKES SENSE
+%% get stuff for the summary figure
+s.SumPlot = [];
+timeWindow = [s.TimePeriods.Baseline(1),s.TimePeriods.Tuning2(2)];
+s.SumPlot.TimeSpan = [timeWindow(1):10:timeWindow(2)];
+smoothFact = round(s.Parameters.SumSmoothBin/s.Parameters.histBin);
+for i = 1:numUnits
+    %pull baseline firing rate
+    s.SumPlot.TotalSpikes(i) = s.(desigNames{i}).TotalSpikeNumber;
+    s.SumPlot.BaselineFiring(i) = s.(desigNames{i}).OverallFiringRate;
+    %pull peak values for waveforms to plot against time. Find the biggest
+    %waveform
+    waveMax = max(s.(desigNames{i}).AverageWaveForms);
+    [M maxInd] = max(waveMax);
+    waveSize = max(squeeze(s.(desigNames{i}).AllWaves(:,maxInd,:)));
+    s.SumPlot.WaveSize(i,:) = interp1(s.(desigNames{i}).SpikeTimes,waveSize,[timeWindow(1):10:timeWindow(2)]);
+    
+%     s.SumPlot.CtrlPre(i,:) = s.(desigNames{i}).Tones1ControlAnalysis.Histograms;
+%     s.SumPlot.CtrlPost(i,:) = s.(desigNames{i}).Tones2ControlAnalysis.Histograms;
+%     s.SumPlot.TarPre(i,:) = s.(desigNames{i}).Tones1TargetAnalysis.Histograms;
+%     s.SumPlot.TarPost(i,:) = s.(desigNames{i}).Tones2TargetAnalysis.Histograms;
+%     s.SumPlot.CtrlPair(i,:) = s.(desigNames{i}).PairingControlAnalysis.Histograms;
+%     s.SumPlot.TarPair(i,:) = s.(desigNames{i}).PairingTargetAnalysis.Histograms;
+%     s.SumPlot.CtrlSub(i,:) = s.SumPlot.CtrlPost(i,:) - s.SumPlot.TarPost(i,:);
+%     s.SumPlot.TarSub(i,:) = s.SumPlot.TarPost(i,:) - s.SumPlot.TarPre(i,:);
+%     
+    s.SumPlot.CtrlPre(i,:) = interp1([1:1:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)],smooth(s.(desigNames{i}).Tones1ControlAnalysis.Histograms,smoothFact),[1:10:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)]);
+    s.SumPlot.CtrlPost(i,:) = interp1([1:1:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)],smooth(s.(desigNames{i}).Tones2ControlAnalysis.Histograms,smoothFact),[1:10:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)]);
+    s.SumPlot.TarPre(i,:) = interp1([1:1:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)],smooth(s.(desigNames{i}).Tones1TargetAnalysis.Histograms,smoothFact),[1:10:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)]);
+    s.SumPlot.TarPost(i,:) = interp1([1:1:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)],smooth(s.(desigNames{i}).Tones2TargetAnalysis.Histograms,smoothFact),[1:10:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)]);
+    s.SumPlot.CtrlPair(i,:) = interp1([1:1:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)],smooth(s.(desigNames{i}).PairingControlAnalysis.Histograms,smoothFact),[1:10:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)]);
+    s.SumPlot.TarPair(i,:) = interp1([1:1:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)],smooth(s.(desigNames{i}).PairingTargetAnalysis.Histograms,smoothFact),[1:10:length(s.(desigNames{i}).Tones1ControlAnalysis.Histograms)]);
+    s.SumPlot.CtrlSub(i,:) = s.SumPlot.CtrlPost(i,:) - s.SumPlot.TarPost(i,:);
+    s.SumPlot.TarSub(i,:) = s.SumPlot.TarPost(i,:) - s.SumPlot.TarPre(i,:);
+    %do peak normalization
+    s.SumPlot.NormCtrlPre(i,:) = (s.SumPlot.CtrlPre(i,:)-min(s.SumPlot.CtrlPre(i,:)))/(max(s.SumPlot.CtrlPre(i,:))-min(s.SumPlot.CtrlPre(i,:)));
+    s.SumPlot.NormCtrlPost(i,:) = (s.SumPlot.CtrlPost(i,:)-min(s.SumPlot.CtrlPost(i,:)))/(max(s.SumPlot.CtrlPost(i,:))-min(s.SumPlot.CtrlPost(i,:)));
+    s.SumPlot.NormTarPre(i,:) = (s.SumPlot.TarPre(i,:)-min(s.SumPlot.TarPre(i,:)))/(max(s.SumPlot.TarPre(i,:))-min(s.SumPlot.TarPre(i,:)));
+    s.SumPlot.NormTarPost(i,:) = (s.SumPlot.TarPost(i,:)-min(s.SumPlot.TarPost(i,:)))/(max(s.SumPlot.TarPost(i,:))-min(s.SumPlot.TarPost(i,:)));
+    s.SumPlot.NormCtrlPair(i,:) = (s.SumPlot.CtrlPair(i,:)-min(s.SumPlot.CtrlPair(i,:)))/(max(s.SumPlot.CtrlPair(i,:))-min(s.SumPlot.CtrlPair(i,:)));
+    s.SumPlot.NormTarPair(i,:) = (s.SumPlot.TarPair(i,:)-min(s.SumPlot.TarPair(i,:)))/(max(s.SumPlot.TarPair(i,:))-min(s.SumPlot.TarPair(i,:)));
+    s.SumPlot.NormCtrlSub(i,:) = (s.SumPlot.CtrlSub(i,:)-min(s.SumPlot.CtrlSub(i,:)))/(max(s.SumPlot.CtrlSub(i,:))-min(s.SumPlot.CtrlSub(i,:)));
+    s.SumPlot.NormTarSub(i,:) = (s.SumPlot.CtrlSub(i,:)-min(s.SumPlot.CtrlSub(i,:)))/(max(s.SumPlot.CtrlSub(i,:))-min(s.SumPlot.CtrlSub(i,:)));
+    %do z scoring
+    s.SumPlot.ZCtrlPre(i,:) = zscore(s.SumPlot.CtrlPre(i,:));
+    s.SumPlot.ZCtrlPost(i,:) = zscore(s.SumPlot.CtrlPost(i,:));
+    s.SumPlot.ZTarPre(i,:) = zscore(s.SumPlot.TarPre(i,:));
+    s.SumPlot.ZTarPost(i,:) = zscore(s.SumPlot.TarPost(i,:));
+    s.SumPlot.ZCtrlPair(i,:) = zscore(s.SumPlot.CtrlPair(i,:));
+    s.SumPlot.ZTarPair(i,:) = zscore(s.SumPlot.TarPair(i,:));
+    s.SumPlot.ZCtrlSub(i,:) = zscore(s.SumPlot.CtrlSub(i,:));
+    s.SumPlot.ZTarSub(i,:) = zscore(s.SumPlot.TarSub(i,:));
+end
 
-%do ROC calculation for velocity
+[B,I] = sort(s.SumPlot.BaselineFiring);
+s.SumPlot.AxisVector = [s.Parameters.rasterWindow(1)*s.SoundData.Tones1.ToneDuration:1:s.Parameters.rasterWindow(2)*s.SoundData.Tones1.ToneDuration];
+s.SumPlot.AxisDesig = [0:length(s.SumPlot.CtrlPre(i,:))/(length(s.SumPlot.AxisVector)-1):length(s.SumPlot.CtrlPre(i,:))];
+s.SumPlot.AxisDesig(1) = 1;
+%% do ROC calculation for velocity
 if toggleROC == 1
     for i = 1:numUnits
-        targetName = desigNames{i};
+        targetName = desigNames{i}
         [s] = functionLocomotionROC(s,targetName);
     end
 else
@@ -328,6 +402,69 @@ else
         s.(desigNames{i}).ShuffleAUC = [];
     end
 end
+
+%% Plotting
+%first plot summary figure
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+hFig = figure;
+set(hFig, 'Position', [10 80 1240 850])
+%plot histogram of firing rates
+subplot(4,3,1)
+hist(s.SumPlot.BaselineFiring,100)
+title('Histogram of Firing Rates')
+%now plot peak waveform voltage over time
+subplot(4,3,4)
+plot(s.SumPlot.WaveSize')
+xlim([0 length(s.SumPlot.WaveSize)])
+title('Peak Waveform over Time')
+%now plot heatmaps of neural responses!
+subplot(4,3,2)
+imagesc(s.SumPlot.NormCtrlPre(I,:))
+title({fileName;'Norm Control Pre'})
+set(gca,'XTick',s.SumPlot.AxisDesig)
+set(gca,'XTickLabel',s.SumPlot.AxisVector)
+subplot(4,3,3)
+imagesc(s.SumPlot.NormTarPre(I,:))
+title('Target Pre')
+set(gca,'XTick',s.SumPlot.AxisDesig)
+set(gca,'XTickLabel',s.SumPlot.AxisVector)
+subplot(4,3,5)
+imagesc(s.SumPlot.NormCtrlPair(I,:))
+title('Ctrl Pair')
+set(gca,'XTick',s.SumPlot.AxisDesig)
+set(gca,'XTickLabel',s.SumPlot.AxisVector)
+subplot(4,3,6)
+imagesc(s.SumPlot.NormTarPair(I,:))
+title('Target Pair')
+set(gca,'XTick',s.SumPlot.AxisDesig)
+set(gca,'XTickLabel',s.SumPlot.AxisVector)
+subplot(4,3,8)
+imagesc(s.SumPlot.NormCtrlPost(I,:))
+title('Ctrl Post')
+set(gca,'XTick',s.SumPlot.AxisDesig)
+set(gca,'XTickLabel',s.SumPlot.AxisVector)
+subplot(4,3,9)
+imagesc(s.SumPlot.NormTarPost(I,:))
+title('Target Post')
+set(gca,'XTick',s.SumPlot.AxisDesig)
+set(gca,'XTickLabel',s.SumPlot.AxisVector)
+subplot(4,3,11)
+imagesc(s.SumPlot.NormCtrlSub(I,:))
+title('Ctrl Sub')
+set(gca,'XTick',s.SumPlot.AxisDesig)
+set(gca,'XTickLabel',s.SumPlot.AxisVector)
+subplot(4,3,12)
+imagesc(s.SumPlot.NormTarSub(I,:))
+title('Target Sub')
+set(gca,'XTick',s.SumPlot.AxisDesig)
+set(gca,'XTickLabel',s.SumPlot.AxisVector)
+spikeGraphName = strcat(fileName,'SummaryFigure');
+savefig(hFig,spikeGraphName);
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 if toggleTuneSelect == 1 %if you want tuning selection...
     hFig = figure;
