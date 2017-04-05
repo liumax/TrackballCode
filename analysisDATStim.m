@@ -24,41 +24,26 @@ function [s] = analysisDATStim(fileName);
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 1; %toggle for tuning on/off ROC analysis
 
-s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. 
+s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. NOT SCALED
 s.Parameters.ToneWindow = [0 0.5];
 s.Parameters.GenWindow = [0 1];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.05; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
-% s.Parameters.DefaultBins = 0.001;% bin size for calculating significant responses
-% s.Parameters.SmoothingBins = [0.01 0.001];%bins for smoothing
-% s.Parameters.CalcWindow = [0 2]; %window for calculating significant responses
-s.Parameters.zLimit = 3; %zlimit for calculating significant responses
-% s.Parameters.FirstSpikeWindow = [0 0.5 1 1.5]; %ratios! need to be multiplied by tone duration.
-s.Parameters.FirstSpikeWindow = [0 1];
-% s.Parameters.ChosenSpikeBin = 1; %delineates which spike window I will graph.
-s.Parameters.BaselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
-s.Parameters.LFPWindow = [-1 1];
-
-%stuff for significance
-s.Parameters.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
-s.Parameters.zLimit = [0.05 0.01 0.001];
-s.Parameters.numShuffle = 1000;
-% s.Parameters.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
-% s.Parameters.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
-s.Parameters.minSpikes = 100; %minimum number of spikes to do spike shuffling
-s.Parameters.minSigSpikes = 2; %minimum number of significant points to record a significant response.
-s.Parameters.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
-s.Parameters.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
-s.Parameters.PercentCutoff = 99.9;
-s.Parameters.BaselineCutoff = 95;
-s.Parameters.latBin = 0.001;
-s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
+s.Parameters.BaselineBin = [-4 0]; %time in seconds.
+% s.Parameters.LFPWindow = [-1 1];
+s.Parameters.PrePost = 3;%seconds that the code will look before and after zero point for binning spike responses
+if s.Parameters.PrePost > s.Parameters.RasterWindow(2)
+    disp('Resetting Pre/Post Window Based on Rasters')
+    s.Parameters.PrePost = s.Parameters.RasterWindow(2);
+elseif s.Parameters.PrePost > abs(s.Parameters.RasterWindow(1))
+    disp('Resetting Pre/Post Window Based on Rasters')
+    s.Parameters.PrePost = abs(s.Parameters.RasterWindow(1));
+end
 
 %for duplicate elimination
 s.Parameters.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
@@ -67,6 +52,10 @@ s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
 %for rotary encoder:
 s.Parameters.InterpolationStepRotary = 0.01;
+laserPeriod = [0 1.5]; %time window in seconds around laser onset that I want to analyze. This is if I want to select for trials with locomotion at a specifc time
+locoThresh = 0.9; %threshold for time points in which the locomotion is active for trial to be considered locomotion trial
+windowPref = [0 1.5]; %preference window in seconds. This is the period over which I determine whether locomotor starts are more or less common than expected by random chance
+prefReps = 1000; %repetitions for bootstrapping to determine if locomotor starts are more common during stimulation
 
 %for edr
 s.Parameters.EDRdownsamp = 20; %number of samples to downsample by. Smoothing is likely unnecessary
@@ -74,10 +63,12 @@ s.Parameters.EDRTimeCol = 1;
 s.Parameters.EDRTTLCol = 3;
 s.Parameters.EDRPiezoCol = 2;
 
-
 %for plotting speed vs firing
 s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
 
+%for summary figure
+s.Parameters.SumGraphSmooth = 200; %smoothing window in ms
+cLims = [-1,1]; %limits for color range for heatmap of z-scored firing rates
 %other settings
 format short
 
@@ -100,11 +91,11 @@ subFoldersCell = strsplit(subFolders,';')';
 s.NumberTrodes = 8;
 %generate placeholder structure
 % s = struct;
-%fill structure with correct substructures (units, not clusters/trodes) and
-%then extract waveform and spike data.
+%% Fill structure with correct substructures (units, not clusters/trodes) and then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(s.Parameters.RPVTime,...
     matclustFiles,s,s.Parameters.ClusterWindow);
 
+%% Execute duplicate elimination code. 
 if toggleDuplicateElimination ==1
     if length(s.DesignationName) > 1
         disp('Now Selecting Based on xCORR')
@@ -115,19 +106,19 @@ else
     disp('NOT EXECUTING DUPLICATE ELIMINATION')
 end
 
-%pull number of units, as well as names and designation array.
+
+%% Pull variables from parameters for easier looking code.
+
 numUnits = size(s.DesignationName,2);
 desigNames = s.DesignationName;
 desigArray = s.DesignationArray;
-
-calcWindow = s.Parameters.calcWindow;
 rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
 histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin;
 histBinVector = [s.Parameters.RasterWindow(1)+s.Parameters.histBin/2:s.Parameters.histBin:s.Parameters.RasterWindow(2)-s.Parameters.histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes
 
-%% Extract DIO information. Tuning curve should rely on just one DIO output, DIO1.
+%% Extract DIO information. Will be looking at DIO1, as this should be the output at the beginning of the stim. Can check DIO2 to validate.
 
 %find DIO folder and D1 file for analysis
 [D1FileName] = functionFileFinder(subFoldersCell,'DIO','D1');
@@ -156,6 +147,7 @@ end
 
 %make average trace:
 averageVel = mean(velRaster,2);
+velSTD = std(velRaster,0,2);
 velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
 velDispVector = [s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)];
 velDispIndex = [1:round(1/s.Parameters.InterpolationStepRotary):(jumpsForward-jumpsBack+1)];
@@ -163,8 +155,7 @@ velZero = find(velVector >= 0,1,'first');
 
 %% Find locomotion trials
 %find trials that have locomotion during the laser period.
-laserPeriod = [0 1.5]; %time window in seconds around laser onset that I want to analyze
-locoThresh = 0.9; %threshold for time points in which the locomotion is active for trial to be considered locomotion trial
+
 %need to redefine laser period as time points on the velRaster system. 
 firstPoint = find(velVector >= laserPeriod(1),1,'first');
 secondPoint = find(velVector >= laserPeriod(2),1,'first');
@@ -188,8 +179,7 @@ findLoco = find(locoTrial == 1);
 %now see if there is a preference for locomotion during laser periods. Do
 %this for both starts and stops.
 
-windowPref = [0 1.5]; %preference window in seconds. 
-prefReps = 1000;
+
 %starts first
 [X,Y] = meshgrid(s.RotaryData.LocoStarts,dioTimes);
 testSub = X-Y;
@@ -226,51 +216,51 @@ end
 s.RotaryData.PreferenceDistribution = prefStore;
 
 %% Pull EDR Data
-%see if EDR data exists
-fileNames = dir(homeFolder);
-fileNames = {fileNames.name};
-targetFileFinder = strfind(fileNames,'.EDR'); %examines names for D1
-targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
-if ~isempty(targetFileFinder)
-    %flip toggle for graphing
-    edrToggle = 1;
-    %pull filename
-    targetFile = fileNames{targetFileFinder};%pulls out actual file name
-    %extract data
-    [s] = functionEDRPull(s,targetFile,s.Parameters.EDRTimeCol,s.Parameters.EDRTTLCol,s.Parameters.EDRPiezoCol);
-    %downsample for sake of space and time
-    s.EDR.NewData = downsample(s.EDR.FullData,s.Parameters.EDRdownsamp);
-    %confirm ttls line up
-    if length(s.EDR.TTLTimes) ~= totalTrialNum
-        error('Incorrect match of EDR TTLs and trial number')
-    end
-    %figure out raster window
-    edrTimeStep = mean(diff(s.EDR.FullData(:,s.Parameters.EDRTimeCol)));
-    jumpsBack = round(s.Parameters.RasterWindow(1)/(edrTimeStep*s.Parameters.EDRdownsamp));
-    jumpsForward = round(s.Parameters.RasterWindow(2)/(edrTimeStep*s.Parameters.EDRdownsamp));
-    edrRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
-    for i = 1:totalTrialNum
-        %find time closest to actual stim time
-        targetInd = find(s.EDR.NewData(:,s.Parameters.EDRTimeCol) - s.EDR.TTLTimes(i) > 0,1,'first');
-        edrRaster(:,i) = s.EDR.NewData([targetInd + jumpsBack:targetInd + jumpsForward],s.Parameters.EDRPiezoCol);
-    end
-    
-    %calculate overall mean
-    edrMean = mean(edrRaster');
-    edrAbsMean = mean(abs(edrRaster'));
-    edrVector = [s.Parameters.RasterWindow(1):edrTimeStep*s.Parameters.EDRdownsamp:s.Parameters.RasterWindow(2)];
-    edrZero = find(edrVector >= 0,1,'first');
-    
-    edrDispVector = [s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)];
-    edrDispIndex = [1:round(1/(edrTimeStep*s.Parameters.EDRdownsamp)):(jumpsForward-jumpsBack+1)];
-    
-else
-    disp('NO EDR FILE FOUND')
-    edrToggle = 0;
-end
+% %see if EDR data exists
+% fileNames = dir(homeFolder);
+% fileNames = {fileNames.name};
+% targetFileFinder = strfind(fileNames,'.EDR'); %examines names for D1
+% targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
+% if ~isempty(targetFileFinder)
+%     %flip toggle for graphing
+%     edrToggle = 1;
+%     %pull filename
+%     targetFile = fileNames{targetFileFinder};%pulls out actual file name
+%     %extract data
+%     [s] = functionEDRPull(s,targetFile,s.Parameters.EDRTimeCol,s.Parameters.EDRTTLCol,s.Parameters.EDRPiezoCol);
+%     %downsample for sake of space and time
+%     s.EDR.NewData = downsample(s.EDR.FullData,s.Parameters.EDRdownsamp);
+%     %confirm ttls line up
+%     if length(s.EDR.TTLTimes) ~= totalTrialNum
+%         error('Incorrect match of EDR TTLs and trial number')
+%     end
+%     %figure out raster window
+%     edrTimeStep = mean(diff(s.EDR.FullData(:,s.Parameters.EDRTimeCol)));
+%     jumpsBack = round(s.Parameters.RasterWindow(1)/(edrTimeStep*s.Parameters.EDRdownsamp));
+%     jumpsForward = round(s.Parameters.RasterWindow(2)/(edrTimeStep*s.Parameters.EDRdownsamp));
+%     edrRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
+%     for i = 1:totalTrialNum
+%         %find time closest to actual stim time
+%         targetInd = find(s.EDR.NewData(:,s.Parameters.EDRTimeCol) - s.EDR.TTLTimes(i) > 0,1,'first');
+%         edrRaster(:,i) = s.EDR.NewData([targetInd + jumpsBack:targetInd + jumpsForward],s.Parameters.EDRPiezoCol);
+%     end
+%     
+%     %calculate overall mean
+%     edrMean = mean(edrRaster');
+%     edrAbsMean = mean(abs(edrRaster'));
+%     edrVector = [s.Parameters.RasterWindow(1):edrTimeStep*s.Parameters.EDRdownsamp:s.Parameters.RasterWindow(2)];
+%     edrZero = find(edrVector >= 0,1,'first');
+%     
+%     edrDispVector = [s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)];
+%     edrDispIndex = [1:round(1/(edrTimeStep*s.Parameters.EDRdownsamp)):(jumpsForward-jumpsBack+1)];
+%     
+% else
+%     disp('NO EDR FILE FOUND')
+%     edrToggle = 0;
+% end
 
 
-%% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
+%% Process spiking information
 for i = 1:numUnits
     %allocate a bunch of empty arrays.
     fullHistData = zeros(histBinNum,1);
@@ -310,6 +300,16 @@ for i = 1:numUnits
     %calculate standard deviation for each bin
     histSTE = (std(fullHistHolder'))';
     
+    %bin spikes within pre/post period for each trial and store
+    prepostStore = zeros(totalTrialNum,2);
+    preInd = find(histBinVector > -s.Parameters.PrePost,1,'first');
+    zeroInd = find(histBinVector > 0,1,'first');
+    postInd = find(histBinVector > s.Parameters.PrePost,1,'first');
+    for k = 1:totalTrialNum
+        prePostStore(k,1) = sum(fullHistHolder(preInd:zeroInd,k));
+        prePostStore(k,2) = sum(fullHistHolder(zeroInd:postInd,k));
+    end
+    
     [histCounts histCenters] = hist(rasters(:,1),histBinVector);
     fullHistData = histCounts'/totalTrialNum/s.Parameters.histBin;
     
@@ -323,12 +323,48 @@ for i = 1:numUnits
     s.(desigNames{i}).AverageSTE = averageSTE;
     s.(desigNames{i}).SessionFiring = sessionFiring;
     s.(desigNames{i}).HistBinVector = histBinVector;
-    
+    s.(desigNames{i}).PrePostBins = prePostStore;
     if toggleROC == 1
         targetName = desigNames{i};
         [s] = functionLocomotionROC(s,targetName);
     end
 end
+
+%% Put data into summary values for plotting as an initial summary figure
+%first, lets get the average velocity trace
+s.SumPlot.AveVel = averageVel;
+s.SumPlot.AveVelSTD = velSTD;
+s.SumPlot.AveVelVector = velVector;
+%next, pull hist bin vector
+s.SumPlot.HistBinVector = histBinVector;
+%calculate the smoothing factor based on histogram bin size
+smoothFact = round(s.Parameters.SumGraphSmooth/s.Parameters.histBin);
+
+for i = 1:numUnits
+    %get baseline firing rate
+    s.SumPlot.BaselineRates(i) = s.(desigNames{i}).AverageRate;
+    %check for AUC. If present, extract. 
+    if isfield(s.(desigNames{i}),'TrueAUC');
+        s.SumPlot.AUC(i) = s.(desigNames{i}).TrueAUC;
+        s.SumPlot.AUCLims(i,1) = prctile(s.(desigNames{i}).ShuffleAUC,0.05);
+        s.SumPlot.AUCLims(i,2) = prctile(s.(desigNames{i}).ShuffleAUC,99.95);
+        if s.(desigNames{i}).TrueAUC > s.SumPlot.AUCLims(i,2) | s.(desigNames{i}).TrueAUC < s.SumPlot.AUCLims(i,1)
+            s.SumPlot.AUCSig(i) = 1;
+        else
+            s.SumPlot.AUCSig(i) = 0;
+        end
+    end
+    %extract overall histogram and peak normalize
+    histMin = min(s.(desigNames{i}).AllHistograms);
+    histMax = max(s.(desigNames{i}).AllHistograms);
+    s.SumPlot.AllHists(i,:) = s.(desigNames{i}).AllHistograms;
+    s.SumPlot.SmoothNormHist(i,:) = smooth((s.(desigNames{i}).AllHistograms - histMin)/(histMax-histMin),smoothFact);
+    s.SumPlot.SmoothZHist(i,:) = smooth(zscore(s.(desigNames{i}).AllHistograms),smoothFact);
+end
+s.SumPlot.AverageFiringAllUnits = mean(s.SumPlot.AllHists);
+s.SumPlot.AverageSTDAllUnits = std(s.SumPlot.AllHists);
+[B,I] = sort(s.SumPlot.BaselineRates);
+
 
 %calculate and plot LFP information
 % [lfpStruct] = functionLFPaverage(master, s.Parameters.LFPWindow, s,homeFolder,fileName, 1, 1, 1, 1);
@@ -336,7 +372,58 @@ end
 
 %% Plotting
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+%first plot summary figure
+hFig = figure;
+set(hFig, 'Position', [10 80 1240 850])
+%plot histogram of baseline rates
+subplot(3,3,1)
+hist(s.SumPlot.BaselineRates,50)
+title('Histogram of Baseline Firing Rates')
+%if there is auc, plot AUC vs firing rates
+if toggleROC == 1
+    subplot(3,3,4)
+    plot(s.SumPlot.BaselineRates,s.SumPlot.AUC,'k.')
+    %plot significant points
+    hold on
+    s.SumPlot.SignificantAUCs = find(s.SumPlot.AUCSig == 1);
+    plot(s.SumPlot.BaselineRates(s.SumPlot.SignificantAUCs),s.SumPlot.AUC(s.SumPlot.SignificantAUCs),'ro')
+    title('Scatter Plot of Baseline Rate vs AUC')
+end
+%plot normalized average velocity and average firing rate
+subplot(3,3,2)
+hold on
+%plot normalized velocity with error lines
+plot(s.SumPlot.AveVelVector,(s.SumPlot.AveVel-min(s.SumPlot.AveVel))/(max(s.SumPlot.AveVel)-min(s.SumPlot.AveVel)),'b','LineWidth',2)
+plot(s.SumPlot.AveVelVector,(s.SumPlot.AveVel-s.SumPlot.AveVelSTD-min(s.SumPlot.AveVel))/(max(s.SumPlot.AveVel)-min(s.SumPlot.AveVel)),'b','LineWidth',1)
+plot(s.SumPlot.AveVelVector,(s.SumPlot.AveVel+s.SumPlot.AveVelSTD-min(s.SumPlot.AveVel))/(max(s.SumPlot.AveVel)-min(s.SumPlot.AveVel)),'b','LineWidth',1)
+%plot out average firing rate in the same manner
+plot(s.SumPlot.HistBinVector,(s.SumPlot.AverageFiringAllUnits-min(s.SumPlot.AverageFiringAllUnits))/(max(s.SumPlot.AverageFiringAllUnits)-min(s.SumPlot.AverageFiringAllUnits)),'r','LineWidth',2)
+plot(s.SumPlot.HistBinVector,(s.SumPlot.AverageFiringAllUnits-s.SumPlot.AverageSTDAllUnits-min(s.SumPlot.AverageFiringAllUnits))/(max(s.SumPlot.AverageFiringAllUnits)-min(s.SumPlot.AverageFiringAllUnits)),'r','LineWidth',1)
+plot(s.SumPlot.HistBinVector,(s.SumPlot.AverageFiringAllUnits+s.SumPlot.AverageSTDAllUnits-min(s.SumPlot.AverageFiringAllUnits))/(max(s.SumPlot.AverageFiringAllUnits)-min(s.SumPlot.AverageFiringAllUnits)),'r','LineWidth',1)
+title({strcat(fileName,desigNames{i});'Normalized Velocity (b) and Firing (r)'},'interpreter','none')
+%plot out heatmaps of peak normalized firing rates
+subplot(3,3,5)
+imagesc(s.SumPlot.SmoothNormHist(I,:))
+set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
+set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
+title('Normalized Histograms Ordered by Firing Rate')
+subplot(3,3,8)
+imagesc(s.SumPlot.SmoothZHist(I,:),cLims)
+colorbar
+set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
+set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
+title('Z Histograms Ordered by Firing Rate')
+spikeGraphName = strcat(fileName,'DATStimSummaryFigure');
+savefig(hFig,spikeGraphName);
 
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%next plot individual units
 for i = 1:numUnits
     hFig = figure;
     set(hFig, 'Position', [10 80 1240 850])
@@ -409,27 +496,34 @@ for i = 1:numUnits
     set(gca,'XTickLabel',velDispVector);
     title('Colorized Velocity Trace Per Trial')
     
+    %plot scatter of pre vs post bins
+    subplot(4,2,7)
+    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).PrePostBins(:,2),'k.')
+    plotMax = max(max(s.(desigNames{i}).PrePostBins));
+    hold on
+    plot([0 plotMax],[0 plotMax],'b')
+    title(strcat('Scatter Plot of Pre (x) and Post (y) Firing for',num2str(s.Parameters.PrePost),'Second Bins'))
     %plot edr data, if exists
-    if edrToggle == 1
-        subplot(4,2,7)
-        hold on
-        imagesc(flipud(edrRaster'),[-0.004 0.004])
-        xlim([0 size(edrRaster,1)])
-        ylim([0 size(edrRaster,2)])
-        colorbar
-        set(gca,'XTick',edrDispIndex);
-        set(gca,'XTickLabel',edrDispVector);
-        set(gca,'YTick',[1:10:totalTrialNum])
-        set(gca,'YTickLabel',[totalTrialNum:-10:1])
-        title('Colorized Piezo Data')
-    else
+%     if edrToggle == 1
 %         subplot(4,2,7)
 %         hold on
-%         memFinder = ismember(s.(desigNames{i}).AllRasters(:,2),findLoco);
-%         memFinder = s.(desigNames{i}).AllRasters(memFinder,1);
-%         hist(memFinder,[s.Parameters.RasterWindow(1):0.1:s.Parameters.RasterWindow(2)])
-%         title('Histogram of Responses During Locomotion Trials')
-    end
+%         imagesc(flipud(edrRaster'),[-0.004 0.004])
+%         xlim([0 size(edrRaster,1)])
+%         ylim([0 size(edrRaster,2)])
+%         colorbar
+%         set(gca,'XTick',edrDispIndex);
+%         set(gca,'XTickLabel',edrDispVector);
+%         set(gca,'YTick',[1:10:totalTrialNum])
+%         set(gca,'YTickLabel',[totalTrialNum:-10:1])
+%         title('Colorized Piezo Data')
+%     else
+% %         subplot(4,2,7)
+% %         hold on
+% %         memFinder = ismember(s.(desigNames{i}).AllRasters(:,2),findLoco);
+% %         memFinder = s.(desigNames{i}).AllRasters(memFinder,1);
+% %         hist(memFinder,[s.Parameters.RasterWindow(1):0.1:s.Parameters.RasterWindow(2)])
+% %         title('Histogram of Responses During Locomotion Trials')
+%     end
     
     
     
