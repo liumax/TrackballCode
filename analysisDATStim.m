@@ -67,7 +67,7 @@ s.Parameters.EDRPiezoCol = 2;
 s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
 
 %for summary figure
-s.Parameters.SumGraphSmooth = 200; %smoothing window in ms
+s.Parameters.SumGraphSmooth = 0.200; %smoothing window in seconds
 cLims = [-1,1]; %limits for color range for heatmap of z-scored firing rates
 %other settings
 format short
