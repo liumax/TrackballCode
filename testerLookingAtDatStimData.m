@@ -90,6 +90,12 @@ for i = 1:length(fieldNames)
         store.PostZeroBin(placeHolder - 1 + j) = testData.(desigNames{j}).AllHistograms(81);
         store.PostZeroSTD(placeHolder - 1 + j) = testData.(desigNames{j}).HistogramStandardDeviation(81);
         store.PostBigBin(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(81:101));
+        store.PreThree(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(20:80));
+        store.PostThree(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(81:141));
+        store.PreOne(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(60:80));
+        store.PostOne(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(81:101));
+        store.PreThreeSingle{placeHolder - 1 + j} = mean(testData.(desigNames{j}).IndividualHistograms(20:80,:));
+        store.PostThreeSingle{placeHolder - 1 + j} = mean(testData.(desigNames{j}).IndividualHistograms(81:141,:));
         store.FullHist(:,placeHolder - 1 + j) = testData.(desigNames{j}).AllHistograms;
         if isfield(testData.(desigNames{j}),'TrueAUC')
         store.TrueAUC(placeHolder - 1 + j) = testData.(desigNames{j}).TrueAUC;
@@ -103,6 +109,62 @@ for i = 1:length(fieldNames)
 end
 
 
+% %makes scatter plots of trial by trial pre and post stim values. 
+% figure
+% hold on
+% for i = 1:188
+% plot(store.PreThreeSingle{i},store.PostThreeSingle{i},'k.')
+% end
+% plot([0 3.5],[0 3.5],'b')
+% 
+% figure
+% hold on
+% for i = 1:188
+% plot((store.PreThreeSingle{i}-store.PostThreeSingle{i})/(store.PreThreeSingle{i}+store.PostThreeSingle{i}),'k.')
+% end
+% 
+% figure
+% hold on
+% for i = 1:168
+% plot(store.PreThreeSingle{i},store.PostThreeSingle{i},'k.')
+% end
+% plot([0 3.5],[0 3.5],'b')
+% 
+% figure
+% hold on
+% for i = 1:168
+% plot((store.PreThreeSingle{i}-store.PostThreeSingle{i})/(store.PreThreeSingle{i}+store.PostThreeSingle{i}),'k.')
+% end
+% 
+% figure
+% hold on
+% for i = 1:46
+% plot(store.PreThreeSingle{i},store.PostThreeSingle{i},'k.')
+% end
+% plot([0 3.5],[0 3.5],'b')
+% 
+% figure
+% hold on
+% for i = 1:46
+% plot((store.PostThreeSingle{i}-store.PreThreeSingle{i})./(store.PreThreeSingle{i}+store.PostThreeSingle{i}),'k.')
+% end
+% plot([0 2],[0 0],'b')
+% 
+% figure
+% hold on
+% plot(store.PreThree,store.PostThree,'k.')
+% plot([0 30],[0 30],'b')
+% 
+% figure
+% hold on
+% plot((store.PostThree - store.PreThree)./(store.PostThree + store.PreThree),'k.')
+% plot([0 2],[0 0],'b')
+% 
+% figure
+% hist((store.PostThree - store.PreThree)./(store.PostThree + store.PreThree),100)
+
+
+
 %lets plot some basics
 
 hFig = figure
@@ -113,6 +175,18 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'BaselineHistogramTerminalStim','-dpdf','-r0')
+
+
+hFig = figure
+plot(store.PreThree,store.PostThree,'k.')
+hold on
+plot([0 max([max(store.PreThree),max(store.PostThree)])],[0 max([max(store.PreThree),max(store.PostThree)])],'b')
+title('Distribution of Baseline Firing Rates For Terminal Stimulation Experiments')
+pbaspect([1 1 1])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostThree','-dpdf','-r0')
 
 
 for i = 1:placeHolder - 1
