@@ -23,8 +23,8 @@ for i=1:numUnits
     subplot(4,8,2)
     hist(s.(desigNames{i}).ISIGraph,1000)
     histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
-    line([params.rpvTime params.rpvTime],[0 histMax],'LineWidth',1,'Color','red')
-    xlim(params.clusterWindow)
+    line([params.RPVTime params.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+    xlim(params.ClusterWindow)
     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))});
     

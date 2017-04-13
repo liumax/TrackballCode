@@ -15,12 +15,18 @@ function [s] = analysisPairingUpDownUp(fileName);
 %tones before and after, and the actual changes that may occur with laser
 %light itself. 
 
+params.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+toggleROC = 0; %toggle for tuning on/off ROC analysis
+
+
 % fileName = '160622_ML160410A_L_2504_reversePairingProtocol';
 
 %% Hardcoded Variables:
-params = struct;
-params.rpvTime = 0.0013; %limit to be considered an RPV.
-params.clusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
+% params = struct;
+params.RPVTime = 0.0013; %limit to be considered an RPV.
+params.ClusterWindow = [-0.01,0.03]; %this is hardcoded for consistency
 params.trodesFS = 30000; %sampling rate of trodes box.
 params.rasterWindow = [-4,3]; %duration of raster window. These are numbers that will
 params.pairingWindow = [-10,20]; %window for looking at pairing.
@@ -51,10 +57,12 @@ params.baseCutoff = 95;
 
 
 %for duplicate elimination
-params.DownSampFactor = 3; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
+params.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
 params.corrSlide = 0.05; % window in seconds for xcorr
 params.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
+%save params!
+s.Parameters = params;
 
 disp('Parameters Set')
 %% Establishes the folder and subfolders for analysis. Adds all folders to
@@ -73,17 +81,22 @@ s.NumberTrodes = length(paramFiles)-length(matclustFiles);
 
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
-[s, truncatedNames] = functionMatclustExtraction(params.rpvTime,...
-    matclustFiles,s,params.clusterWindow);
+[s, truncatedNames] = functionMatclustExtraction(params.RPVTime,...
+    matclustFiles,s,params.ClusterWindow);
 disp('Structured Array Generated, Names Extracted')
 
-if length(s.DesignationName) > 1
-    disp('Now Selecting Based on xCORR')
-    [s] = functionDuplicateElimination(s);
+
+if toggleDuplicateElimination ==1
+    if length(s.DesignationName) > 1
+        disp('Now Selecting Based on xCORR')
+        [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow);
+    end
+else
+    disp('NOT EXECUTING DUPLICATE ELIMINATION')
 end
 
-%save params!
-s.Parameters = params;
+
 
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);
