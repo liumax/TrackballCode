@@ -210,10 +210,12 @@ sortedWaves = zeros(40,size(store.Waves,3));
 sortedPeaks = zeros(size(store.Waves,3),1);
 sortedPeakTroughs = zeros(size(store.Waves,3),1);
 sortedPeakWidth = zeros(size(store.Waves,3),1);
+sortedPeakValues = zeros(size(store.Waves,3),1);
 for i = 1:size(store.Waves,3);
-    %open up the set of waves
+    %open   up the set of waves
     targetWaves = squeeze(store.Waves(:,:,i));
     [maxVal maxFind] = max(max(targetWaves));
+    sortedPeakValues(i) = maxVal;
     sortedWaves(:,i) = targetWaves(:,maxFind);
     %turns out this seems to work fairly well. now lets pull peaks and
     %troughs
@@ -223,11 +225,13 @@ for i = 1:size(store.Waves,3);
     %the trough should be the opposite
     [minVal,sortedPeakTroughs(i)] = min(targetWaves(sortedPeaks(i):end,maxFind));
     %find peak width
-    startVal = find(targetWaves(:,maxFind) <= maxVal,1,'first');
-    endVal = find(targetWaves(:,maxFind) <= maxVal,1,'last');
-    sortedPeakWidth(i) = endVal - startVal;
+    startVal = find(targetWaves(:,maxFind) >= maxVal/2,1,'first');
+    endVal = find(targetWaves(sortedPeaks(i):end,maxFind) <= maxVal/2,1,'first');
+    sortedPeakWidth(i) = endVal + sortedPeaks(i) - startVal;
 end
 
+figure
+hist(sortedPeakValues,100)
 
 %lets look at mean rates
 baseRateUntuned = store.BaselineRate(store.DecisionTuning == 0);
@@ -523,4 +527,7 @@ for i = 1:length(findUntuned)
     histToneEnd = find(fullMaster.(store.FileName{findUntuned(i)}).(store.UnitName{findUntuned(i)}).HistBinVector < fullMaster.(store.FileName{findUntuned(i)}).SoundData.ToneDuration,1,'last');
     untunedData.MinVal(i) = min(min(min(fullMaster.(store.FileName{findUntuned(i)}).(store.UnitName{findUntuned(i)}).FreqDBHistograms(:,:,histZero:histToneEnd))));
 end
+
+
+
 
