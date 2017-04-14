@@ -79,28 +79,68 @@ for i = 1:length(fieldNames)
     %pull tuning data
     %go into individual units to pull data
     for j = 1:length(desigNames)
+        %pull names
         store.FileName{placeHolder - 1 + j} = fieldNames{i};
         store.UnitName{placeHolder - 1 + j} = desigNames{j};
+        %pull start/end preference scores and range
         store.StartPref(placeHolder - 1 + j) = testData.RotaryData.StartPreference;
         store.EndPref(placeHolder - 1 + j) = testData.RotaryData.EndPreference;
         store.PrefRange((placeHolder - 1 + j),1) = prctile(testData.RotaryData.PreferenceDistribution,0.5);
         store.PrefRange((placeHolder - 1 + j),2) = prctile(testData.RotaryData.PreferenceDistribution,99.5);
+        %pull baseline rates and std
         store.BaselineRate(placeHolder - 1 + j) = testData.(desigNames{j}).AverageRate;
         store.BaselineSTD(placeHolder - 1 + j) = testData.(desigNames{j}).AverageSTD;
+        %pull spikes from selected bins
         store.PostZeroBin(placeHolder - 1 + j) = testData.(desigNames{j}).AllHistograms(81);
         store.PostZeroSTD(placeHolder - 1 + j) = testData.(desigNames{j}).HistogramStandardDeviation(81);
         store.PostBigBin(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(81:101));
         store.PreThree(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(20:80));
         store.PostThree(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(81:141));
+        store.PostFour(placeHolder - 1 +j) = mean(testData.(desigNames{j}).AllHistograms(101:161));
         store.PreOne(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(60:80));
         store.PostOne(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(81:101));
         store.PreThreeSingle{placeHolder - 1 + j} = mean(testData.(desigNames{j}).IndividualHistograms(20:80,:));
         store.PostThreeSingle{placeHolder - 1 + j} = mean(testData.(desigNames{j}).IndividualHistograms(81:141,:));
+        %pull entire histogram of response
         store.FullHist(:,placeHolder - 1 + j) = testData.(desigNames{j}).AllHistograms;
+        %pull mean and std of each point along histogram. Lets re-bin into 1
+        %second bins to make things cleaner and reduce the number of zeros
+        for k = 1:10
+            spikeSum(k,:) = sum(testData.(desigNames{j}).IndividualHistograms(1+(k-1)*20:k*20,:));
+        end
+        store.HistMean(:,placeHolder - 1 + j) = mean(spikeSum,2);
+        store.HistVar(:,placeHolder - 1 + j) = var(spikeSum,0,2);
+        store.Fano(:,placeHolder - 1 + j) = store.HistVar(:,placeHolder - 1 +j)./store.HistMean(:,placeHolder - 1 + j);
+        spikeSum = [];
+        %lets try and get separated examples of the interspike interval for
+        %both pre and post tone periods
+        negCount = 1;
+        posCount = 1;
+        for k = 1:size(testData.(desigNames{j}).IndividualHistograms,2)
+            %find negative values first
+            tarFind = find(testData.(desigNames{j}).AllRasters(:,2) == k);
+            trialVals = testData.(desigNames{j}).AllRasters(tarFind,1);
+            negVals = trialVals(find(trialVals < 0));
+            posVals = trialVals(find(trialVals>0));
+            %now need to separate out positive and negative
+            if length(negVals) > 1
+                negDiff(negCount:negCount + length(negVals)-2) = diff(negVals);
+                negCount = negCount + length(negVals);
+            end
+            if length(posVals) > 1
+                posDiff(posCount: posCount + length(posVals)-2) = diff(posVals);
+                posCount = posCount + length(posVals);
+            end
+        end
+        store.ISIPre{placeHolder - 1 + j} = negDiff(negDiff~=0);
+        store.ISIPost{placeHolder-1 + j} = posDiff(posDiff~=0);
+        negDiff = [];
+        posDiff = [];
+        
         if isfield(testData.(desigNames{j}),'TrueAUC')
-        store.TrueAUC(placeHolder - 1 + j) = testData.(desigNames{j}).TrueAUC;
-        store.ShuffleAUC(placeHolder - 1 + j,1) = prctile(testData.(desigNames{j}).ShuffleAUC,0.5);
-        store.ShuffleAUC(placeHolder - 1 + j,2) = prctile(testData.(desigNames{j}).ShuffleAUC,99.5);
+            store.TrueAUC(placeHolder - 1 + j) = testData.(desigNames{j}).TrueAUC;
+            store.ShuffleAUC(placeHolder - 1 + j,1) = prctile(testData.(desigNames{j}).ShuffleAUC,0.5);
+            store.ShuffleAUC(placeHolder - 1 + j,2) = prctile(testData.(desigNames{j}).ShuffleAUC,99.5);
         end
         %store waveform
         store.Waves(:,:,placeHolder - 1 + j) = testData.(desigNames{j}).AverageWaveForms;
@@ -188,6 +228,28 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'preThreeVSpostThree','-dpdf','-r0')
 
+hFig = figure
+plot(store.PreThree,store.PostFour,'k.')
+hold on
+plot([0 max([max(store.PreThree),max(store.PostThree)])],[0 max([max(store.PreThree),max(store.PostThree)])],'b')
+title('Distribution of Baseline Firing Rates For Terminal Stimulation Experiments')
+pbaspect([1 1 1])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostFour','-dpdf','-r0')
+
+hFig = figure
+plot(store.PreThree,store.PostBigBin,'k.')
+hold on
+plot([0 max([max(store.PreThree),max(store.PostThree)])],[0 max([max(store.PreThree),max(store.PostThree)])],'b')
+title('Distribution of Baseline Firing Rates For Terminal Stimulation Experiments')
+pbaspect([1 1 1])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostOne','-dpdf','-r0')
+
 
 for i = 1:placeHolder - 1
     if store.TrueAUC(i) > store.ShuffleAUC(i,2) | store.TrueAUC(i) < store.ShuffleAUC(i,1)
@@ -202,7 +264,7 @@ hFig = figure
 plot(store.TrueAUC,store.BaselineRate,'k.')
 hold on
 plot(store.TrueAUC(findSigAUC),store.BaselineRate(findSigAUC),'ro')
-title({'AUC Values vs Baseline Rate';'Red Circles are Significant by 99% CI';strcat(num2str(length(findSigAUC)/(placeHolder-1)),'% Units Significant')})
+title({'AUC Values vs Baseline Rate';'Red Circles are Significant by 99% CI';strcat(num2str(length(findSigAUC)/(placeHolder-1)*100),'% Units Significant')})
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
@@ -254,13 +316,16 @@ end
 
 %how about histograms of responses?
 for i = 1:placeHolder - 1
-    normHist(:,i) = store.FullHist(:,i);
-    zHist(:,i) = (normHist(:,i)-store.BaselineRate(i))/store.BaselineSTD(i);
+    normHist(:,i) = (store.FullHist(:,i));
+    zHist(:,i) = (store.FullHist(:,i)-store.BaselineRate(i))/store.BaselineSTD(i);
     smoothZ(:,i) = smooth(zHist(:,i),9);
     histMin = min(normHist(:,i));
     histMax = max(normHist(:,i));
     normHist(:,i) = (normHist(:,i)-histMin)/(histMax-histMin); 
-    smoothNorm(:,i) = smooth(normHist(:,i),9);
+    smoothNorm(:,i) = smooth(store.FullHist(:,i),9);
+    histMin = min(smoothNorm(:,i));
+    histMax = max(smoothNorm(:,i));
+    smoothNorm(:,i) = (smoothNorm(:,i)-histMin)/(histMax-histMin); 
 end
 
 %for plotting separated by field/experiment
@@ -301,6 +366,7 @@ print(hFig,'HeatMapZHistTerminal','-djpeg','-r0')
 
 hFig = figure
 imagesc(smoothNorm(:,I)')
+colorbar
 set(gca,'XTick',[0:20:200])
 set(gca,'XTickLabel',[-4:1:6])
 title('Normalized Responses Sorted by Baseline Firing Rate')
@@ -310,7 +376,7 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,'HeatMapSmoothNormHistTerminal','-djpeg','-r0')
 
 hFig = figure
-imagesc(smoothZ(:,I)',[-2,2])
+imagesc(smoothZ(:,I)',[-1,1])
 colorbar
 set(gca,'XTick',[0:20:200])
 set(gca,'XTickLabel',[-4:1:6])
@@ -411,9 +477,70 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'ZVelocitySmoothTerminal','-dpdf','-r0')
 
+%now look at pre/post ITIs
 
+%decide on the window I want to look at
+ITIWindow = [0:0.001:0.050];
+preCount = 1;
+postCount = 1;
 
+for i = 1:placeHolder -1
+    %pull the data first
+    preITI = store.ISIPre{i};
+    postITI = store.ISIPost{i};
+    fullPre(preCount:preCount + length(preITI) - 1) = preITI;
+    fullPost(postCount:postCount + length(postITI) - 1) = postITI;
+    
+    preCount = preCount + length(preITI);
+    postCount = postCount + length(postITI);
+    %find number of ITIs here
+    numPre(i,1) = length(preITI);
+    numPost(i,1) = length(postITI);
+    %remove the ITIs bigger than the ITI window
+    preITI = preITI(preITI<ITIWindow(end));
+    postITI = postITI(postITI<ITIWindow(end));
+    %find number here
+    numPre(i,2) = length(preITI);
+    numPost(i,2) = length(postITI);
+    
+    histPre(:,i) = hist(preITI,ITIWindow);
+    histPost(:,i) = hist(postITI,ITIWindow);
+    
+end
 
+numPre(:,3) = numPre(:,2)./numPre(:,1);
+numPost(:,3) = numPost(:,2)./numPost(:,1);
+
+%plot overall percentage of neurons below cutoff
+figure
+plot(numPre(:,3),numPost(:,3),'k.')
+hold on
+plot([0 max(numPre(:,3))],[0 max(numPre(:,3))],'b')
+title('Proportion of Spike ISIs below 50ms, Pre(x) vs Post(y)')
+
+%plot pre vs post overall as cumulative distributions
+
+%fullPost is max maximum, use this for limit for histogram
+
+preCountCumDist = cumsum(hist(fullPre,[0:0.001:6]))/length(fullPre);
+postCountCumDist = cumsum(hist(fullPost,[0:0.001:6]))/length(fullPost);
+
+%dont seem to see much of a difference. If anything, the red line has fewer
+%short ISIs and more longer ISIs.....maybe something?
+
+%look at fano factor?
+preMeanFano = mean(store.Fano(1:4,:));
+postMeanFano = (store.Fano(5,:));
+postPostFano = mean(store.Fano(6:end,:));
+figure
+plot(preMeanFano,postMeanFano,'k.')
+hold on
+plot([0 max(preMeanFano)],[0 max(preMeanFano)],'b')
+
+figure
+plot(preMeanFano,postPostFano,'k.')
+hold on
+plot([0 max(preMeanFano)],[0 max(preMeanFano)],'b')
 
 
 
