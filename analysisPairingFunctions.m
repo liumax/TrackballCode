@@ -11,7 +11,7 @@ function [s] = analysisPairingFunctions(fileName);
 %% Hardcoded Variables:
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
+toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 toggleNumSpike = 0; %toggle for turning on/off selection based on number of total spikes. 
@@ -374,7 +374,7 @@ for i = 1:numUnits
     s.SumPlot.NormCtrlPair(i,:) = (s.SumPlot.CtrlPair(i,:)-min(s.SumPlot.CtrlPair(i,:)))/(max(s.SumPlot.CtrlPair(i,:))-min(s.SumPlot.CtrlPair(i,:)));
     s.SumPlot.NormTarPair(i,:) = (s.SumPlot.TarPair(i,:)-min(s.SumPlot.TarPair(i,:)))/(max(s.SumPlot.TarPair(i,:))-min(s.SumPlot.TarPair(i,:)));
     s.SumPlot.NormCtrlSub(i,:) = (s.SumPlot.CtrlSub(i,:)-min(s.SumPlot.CtrlSub(i,:)))/(max(s.SumPlot.CtrlSub(i,:))-min(s.SumPlot.CtrlSub(i,:)));
-    s.SumPlot.NormTarSub(i,:) = (s.SumPlot.CtrlSub(i,:)-min(s.SumPlot.CtrlSub(i,:)))/(max(s.SumPlot.CtrlSub(i,:))-min(s.SumPlot.CtrlSub(i,:)));
+    s.SumPlot.NormTarSub(i,:) = (s.SumPlot.TarSub(i,:)-min(s.SumPlot.TarSub(i,:)))/(max(s.SumPlot.TarSub(i,:))-min(s.SumPlot.TarSub(i,:)));
     %do z scoring
     s.SumPlot.ZCtrlPre(i,:) = zscore(s.SumPlot.CtrlPre(i,:));
     s.SumPlot.ZCtrlPost(i,:) = zscore(s.SumPlot.CtrlPost(i,:));
