@@ -1,41 +1,30 @@
 
-
-
-
-
-
-
-
-
-
-
-
-%this is meant to be master code to run analysis code!
-%Establishes the home folder as the base
-masterFolder = pwd;
-masterDir = dir;
-masterDir = {masterDir.name};
-%this code here is to remove folders reported in dir like "." or ".."
-masterIndex = strfind(masterDir,'ML');
-masterIndex = find(not(cellfun('isempty', masterIndex)));
-%masterFolders is a listing of all folders that I want to target for batch
-%analysis
-masterFolders = masterDir(masterIndex);
-numFolders = size(masterFolders,2);
-for masterCount = 1:numFolders
-%generates text that signifies path to the target folder
-targetPath = strcat(masterFolder,'\',masterFolders{masterCount});
-cd(targetPath)
-%what lists matlab files in the folder. can extract based on file type.
-test = what;
-test = test.mat;
-test = test{1};
-load(test);
-nameFind = strfind(test,'DatStimAnalysis');
-newName =strcat('x',test(1:nameFind-1));
-fullData.(newName) = s;
-cd(masterFolder)
-end
+% %this is meant to be master code to run analysis code!
+% %Establishes the home folder as the base
+% masterFolder = pwd;
+% masterDir = dir;
+% masterDir = {masterDir.name};
+% %this code here is to remove folders reported in dir like "." or ".."
+% masterIndex = strfind(masterDir,'ML');
+% masterIndex = find(not(cellfun('isempty', masterIndex)));
+% %masterFolders is a listing of all folders that I want to target for batch
+% %analysis
+% masterFolders = masterDir(masterIndex);
+% numFolders = size(masterFolders,2);
+% for masterCount = 1:numFolders
+% %generates text that signifies path to the target folder
+% targetPath = strcat(masterFolder,'\',masterFolders{masterCount});
+% cd(targetPath)
+% %what lists matlab files in the folder. can extract based on file type.
+% test = what;
+% test = test.mat;
+% test = test{1};
+% load(test);
+% nameFind = strfind(test,'DatStimAnalysis');
+% newName =strcat('x',test(1:nameFind-1));
+% fullData.(newName) = s;
+% cd(masterFolder)
+% end
 
 
 %pull names of recordings out
@@ -94,9 +83,13 @@ for i = 1:length(fieldNames)
         store.PostZeroBin(placeHolder - 1 + j) = testData.(desigNames{j}).AllHistograms(81);
         store.PostZeroSTD(placeHolder - 1 + j) = testData.(desigNames{j}).HistogramStandardDeviation(81);
         store.PostBigBin(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(81:101));
+        store.PostBigBinSTD(placeHolder - 1 + j) = std(testData.(desigNames{j}).AllHistograms(81:101))';
         store.PreThree(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(20:80));
+        store.PreThreeSTD(placeHolder - 1 + j) = std(testData.(desigNames{j}).AllHistograms(20:80));
         store.PostThree(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(81:141));
+        store.PostThreeSTD(placeHolder - 1 + j) = std(testData.(desigNames{j}).AllHistograms(81:141));
         store.PostFour(placeHolder - 1 +j) = mean(testData.(desigNames{j}).AllHistograms(101:161));
+        store.PostFourSTD(placeHolder - 1 +j) = std(testData.(desigNames{j}).AllHistograms(101:161));
         store.PreOne(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(60:80));
         store.PostOne(placeHolder - 1 + j) = mean(testData.(desigNames{j}).AllHistograms(81:101));
         store.PreThreeSingle{placeHolder - 1 + j} = mean(testData.(desigNames{j}).IndividualHistograms(20:80,:));
@@ -148,68 +141,11 @@ for i = 1:length(fieldNames)
     placeHolder = placeHolder + length(desigNames);
 end
 
-
-% %makes scatter plots of trial by trial pre and post stim values. 
-% figure
-% hold on
-% for i = 1:188
-% plot(store.PreThreeSingle{i},store.PostThreeSingle{i},'k.')
-% end
-% plot([0 3.5],[0 3.5],'b')
-% 
-% figure
-% hold on
-% for i = 1:188
-% plot((store.PreThreeSingle{i}-store.PostThreeSingle{i})/(store.PreThreeSingle{i}+store.PostThreeSingle{i}),'k.')
-% end
-% 
-% figure
-% hold on
-% for i = 1:168
-% plot(store.PreThreeSingle{i},store.PostThreeSingle{i},'k.')
-% end
-% plot([0 3.5],[0 3.5],'b')
-% 
-% figure
-% hold on
-% for i = 1:168
-% plot((store.PreThreeSingle{i}-store.PostThreeSingle{i})/(store.PreThreeSingle{i}+store.PostThreeSingle{i}),'k.')
-% end
-% 
-% figure
-% hold on
-% for i = 1:46
-% plot(store.PreThreeSingle{i},store.PostThreeSingle{i},'k.')
-% end
-% plot([0 3.5],[0 3.5],'b')
-% 
-% figure
-% hold on
-% for i = 1:46
-% plot((store.PostThreeSingle{i}-store.PreThreeSingle{i})./(store.PreThreeSingle{i}+store.PostThreeSingle{i}),'k.')
-% end
-% plot([0 2],[0 0],'b')
-% 
-% figure
-% hold on
-% plot(store.PreThree,store.PostThree,'k.')
-% plot([0 30],[0 30],'b')
-% 
-% figure
-% hold on
-% plot((store.PostThree - store.PreThree)./(store.PostThree + store.PreThree),'k.')
-% plot([0 2],[0 0],'b')
-% 
-% figure
-% hist((store.PostThree - store.PreThree)./(store.PostThree + store.PreThree),100)
-
-
-
 %lets plot some basics
 
 hFig = figure
 hist(store.BaselineRate,100);
-title('Distribution of Baseline Firing Rates For Terminal Stimulation Experiments')
+title('Distribution of Baseline Firing Rates')
 
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
@@ -218,38 +154,113 @@ print(hFig,'BaselineHistogramTerminalStim','-dpdf','-r0')
 
 
 hFig = figure
-plot(store.PreThree,store.PostThree,'k.')
+errorbarxy(store.PreThree,store.PostThree,store.PreThreeSTD,store.PreThreeSTD,store.PostThreeSTD,store.PostThreeSTD,{'ko','k','k'})
 hold on
 plot([0 max([max(store.PreThree),max(store.PostThree)])],[0 max([max(store.PreThree),max(store.PostThree)])],'b')
-title('Distribution of Baseline Firing Rates For Terminal Stimulation Experiments')
+title('Comparison of Firing Pre and Post (3 seconds)')
 pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree),max(store.PostThree)])])
+ylim([0 max([max(store.PreThree),max(store.PostThree)])])
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'preThreeVSpostThree','-dpdf','-r0')
 
 hFig = figure
-plot(store.PreThree,store.PostFour,'k.')
+errorbarxy(store.PreThree,store.PostFour,store.PreThreeSTD,store.PreThreeSTD,store.PostFourSTD,store.PostFourSTD,{'ko','k','k'})
 hold on
 plot([0 max([max(store.PreThree),max(store.PostThree)])],[0 max([max(store.PreThree),max(store.PostThree)])],'b')
-title('Distribution of Baseline Firing Rates For Terminal Stimulation Experiments')
+title('Comparison of Firing Pre and Post (3 seconds), Jumping 1')
 pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree),max(store.PostFour)])])
+ylim([0 max([max(store.PreThree),max(store.PostFour)])])
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'preThreeVSpostFour','-dpdf','-r0')
 
 hFig = figure
-plot(store.PreThree,store.PostBigBin,'k.')
+errorbarxy(store.PreThree,store.PostBigBin,store.PreThreeSTD,store.PreThreeSTD,store.PostBigBinSTD',store.PostBigBinSTD',{'ko','k','k'})
 hold on
 plot([0 max([max(store.PreThree),max(store.PostThree)])],[0 max([max(store.PreThree),max(store.PostThree)])],'b')
-title('Distribution of Baseline Firing Rates For Terminal Stimulation Experiments')
+title('Comparison of Firing Pre and Post (3 seconds vs 1 second)')
 pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree),max(store.PostBigBin)])])
+ylim([0 max([max(store.PreThree),max(store.PostBigBin)])])
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'preThreeVSpostOne','-dpdf','-r0')
 
+%lets plot ratio of pre vs post vs firing rate
+hFig = figure
+plot(store.BaselineRate,store.PostFour ./ store.PreThree,'k.')
+hold on
+plot([0 max(store.BaselineRate)],[1 1],'b')
+title('Firing Rate vs Ratio of 4/3')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'rateVsRatio4over3','-dpdf','-r0')
+
+hFig = figure
+plot(store.BaselineRate,store.PostBigBin' ./ store.PreThree,'k.')
+hold on
+plot([0 max(store.BaselineRate)],[1 1],'b')
+title('Firing Rate vs Ratio of 1/3')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'rateVsRatio1over3','-dpdf','-r0')
+
+%try log of firing rate to decompress it
+hFig = figure
+plot(log(store.BaselineRate),store.PostFour ./ store.PreThree,'k.')
+hold on
+plot([min(log(store.BaselineRate)) max(log(store.BaselineRate))],[1 1],'b')
+title('Log Firing Rate vs Ratio of 4/3')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'lograteVsRatio1over3','-dpdf','-r0')
+
+hFig = figure
+plot(log(store.BaselineRate),store.PostBigBin' ./ store.PreThree,'k.')
+hold on
+plot([min(log(store.BaselineRate)) max(log(store.BaselineRate))],[1 1],'b')
+title('Log Firing Rate vs Ratio of 1/3')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'lograteVsRatio1over3','-dpdf','-r0')
+
+%now try linear regression
+
+fourThree = (store.PostFour ./ store.PreThree)';
+fourThree = [ones(length(fourThree),1) fourThree];
+
+oneThree = (store.PostBigBin' ./ store.PreThree)';
+oneThree = [ones(length(oneThree),1) oneThree];
+
+bFourThree = fourThree\log(store.BaselineRate);
+bOneThree = oneThree\log(store.BaselineRate);
+%I think this is getting fucked by the fact that the high firing cells skew
+%everything. 
+
+hFig = figure
+plot(store.PostBigBin' ./ store.PreThree,store.PostFour ./ store.PreThree,'k.')
+hold on
+plot([0 max(store.PostBigBin' ./ store.PreThree)],[0 max(store.PostBigBin' ./ store.PreThree)],'b')
+title('Comparison of 1/3 (x) vs 4/3 (y)')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'1v3vs4v3','-dpdf','-r0')
+
+
+oneFour = (store.PostFour ./ store.PreThree)';
+oneFour = [ones(length(oneFour),1) oneFour];
+bOneFour = (store.PostBigBin'./store.PreThree)'\oneFour;
 
 for i = 1:placeHolder - 1
     if store.TrueAUC(i) > store.ShuffleAUC(i,2) | store.TrueAUC(i) < store.ShuffleAUC(i,1)
@@ -274,11 +285,15 @@ print(hFig,'BaselineVsAUCTerminal','-dpdf','-r0')
 for i = 1:placeHolder-1
     postZeroZ(i) = (store.PostZeroBin(i)-store.BaselineRate(i))/store.BaselineSTD(i);
     postBigZ(i) = (store.PostBigBin(i)-store.BaselineRate(i))/store.BaselineSTD(i);
+    postThreeZ(i) =(store.PostThree(i)-store.BaselineRate(i))/store.BaselineSTD(i);
+    postFourZ(i) = (store.PostFour(i)-store.BaselineRate(i))/store.BaselineSTD(i);
 end
 
 hFig = figure
 hist(postZeroZ,100)
-title('Histogram of Z-Score of First 50ms bin following onset of laser stimulation')
+title(strcat('Histogram of Z-Score of First 50ms bin: ',num2str(median(postZeroZ)),'median'))
+findBig = max(abs(postZeroZ));
+xlim([-findBig findBig])
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
@@ -286,11 +301,33 @@ print(hFig,'postZeroZTerminal','-dpdf','-r0')
 
 hFig = figure
 hist(postBigZ,100)
-title('Histogram of Z-Score of First 1s bin following onset of laser stimulation')
+title(strcat('Histogram of Z-Score of First 1s bin: ',num2str(median(postBigZ)),'median'))
+findBig = max(abs(postBigZ));
+xlim([-findBig findBig])
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'postBigZTerminal','-dpdf','-r0')
+
+hFig = figure
+hist(postThreeZ,100)
+title(strcat('Histogram of Z-Score of First 3s bin: ',num2str(median(postThreeZ)),'median'))
+findBig = max(abs(postThreeZ));
+xlim([-findBig findBig])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'postThreeZTerminal','-dpdf','-r0')
+
+hFig = figure
+hist(postFourZ,100)
+title(strcat('Histogram of Z-Score of First 1-4s bin: ',num2str(median(postFourZ)),'median'))
+findBig = max(abs(postFourZ));
+xlim([-findBig findBig])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'postFourZTerminal','-dpdf','-r0')
 
 %combine all units
 hFig = figure
@@ -525,6 +562,12 @@ title('Proportion of Spike ISIs below 50ms, Pre(x) vs Post(y)')
 preCountCumDist = cumsum(hist(fullPre,[0:0.001:6]))/length(fullPre);
 postCountCumDist = cumsum(hist(fullPost,[0:0.001:6]))/length(fullPost);
 
+figure
+plot(preCountCumDist)
+hold on
+plot(postCountCumDist,'r')
+title('Cumulative Distribution of ISIs, Pre (B) vs Post (R)')
+
 %dont seem to see much of a difference. If anything, the red line has fewer
 %short ISIs and more longer ISIs.....maybe something?
 
@@ -532,16 +575,27 @@ postCountCumDist = cumsum(hist(fullPost,[0:0.001:6]))/length(fullPost);
 preMeanFano = mean(store.Fano(1:4,:));
 postMeanFano = (store.Fano(5,:));
 postPostFano = mean(store.Fano(6:end,:));
-figure
+hFig = figure
 plot(preMeanFano,postMeanFano,'k.')
 hold on
 plot([0 max(preMeanFano)],[0 max(preMeanFano)],'b')
+pbaspect([1 1 1])
+title('Fano Factor of Pre-Laser and 1-sec Post-Laser')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'fanoPreVs1sec','-dpdf','-r0')
 
-figure
+hFig = figure
 plot(preMeanFano,postPostFano,'k.')
 hold on
 plot([0 max(preMeanFano)],[0 max(preMeanFano)],'b')
-
+pbaspect([1 1 1])
+title('Fano Factor of Pre-Laser and 1-4sec Post-Laser')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'fanoPreVs1-4sec','-dpdf','-r0')
 
 
 
