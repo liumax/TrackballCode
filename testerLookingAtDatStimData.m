@@ -137,11 +137,407 @@ for i = 1:length(fieldNames)
         end
         %store waveform
         store.Waves(:,:,placeHolder - 1 + j) = testData.(desigNames{j}).AverageWaveForms;
+        
+        %now lets go through and do spike shuffle
+        %first need to align to lasers
+        laserPulseNum = size(testData.(desigNames{j}).IndividualHistograms,2);
+        %go into laser pulse data
+        laserPulseTimes = testData.LaserData.LaserStartTimes;
+        laserRatio = length(laserPulseTimes)/laserPulseNum;
+        alignTimes = laserPulseTimes(1:laserRatio:end);
+        %now take spike train and perform shuffle
+%         spikeTimes = testData.(desigNames{j}).SpikeTimes;
+%         spikeDiffs = diff(spikeTimes);
+%         for k = 1:1000
+%             randInd = randperm(length(spikeDiffs));
+%             newTrain = cumsum(spikeDiffs(randInd));
+%             newTrain(2:end+1) = newTrain;
+%             newTrain = newTrain + spikeTimes(1);
+%             %make new raster
+%             newRaster = functionBasicRaster(newTrain,alignTimes,[-4 6]);
+%             for l = 1:laserPulseNum
+%                 %pull data from a particular trial
+%                 binStore(l,1) = length(find(newRaster(:,2) == l & newRaster(:,1) < 0));
+%                 binStore(l,2) = length(find(newRaster(:,2) == l & newRaster(:,1) > 0 & newRaster(:,1) < 1));
+%                 binStore(l,3) = length(find(newRaster(:,2) == l & newRaster(:,1) > 1 & newRaster(:,1) < 4));
+%             end
+%             %now lets calculate stuff! first get baseline rate
+%             baselineRateNew(placeHolder - 1 + j,k) = mean(binStore(:,1))/4;
+%             baselineSTDNew(placeHolder - 1 + j,k) = std(binStore(:,1)/4);
+%             postOne(placeHolder - 1 + j,k) = mean(binStore(:,2));
+%             postFour(placeHolder - 1 + j,k) = mean(binStore(:,3))/3;
+%         end
+        placeHolder - 1 + j
+            
     end
     placeHolder = placeHolder + length(desigNames);
 end
 
-%lets plot some basics
+[B,I] = sort(store.BaselineRate);
+
+
+%% Lets try separating
+sepCrit = 5; %hz cutoff for PV vs MSN
+msnData = find(store.BaselineRate < sepCrit);
+pvData = find(store.BaselineRate > sepCrit);
+%make z scored averages for msns and pvs
+for i = 1:length(msnData)
+    msnZ(:,i) = (store.FullHist(:,msnData(i))-store.BaselineRate(msnData(i)))/ store.BaselineSTD(msnData(i));
+    msnZSmooth(:,i) = smooth(msnZ(:,i),11);
+end
+msnZMean = mean(msnZ');
+msnZSTD = std(msnZ');
+
+hFig = figure
+plot(msnZMean,'LineWidth',2)
+hold on
+plot(msnZMean - msnZSTD,'LineWidth',1)
+plot(msnZMean + msnZSTD,'LineWidth',1)
+title('Average Z-Scored Firing Rate for Putative MSNs')
+set(gca,'XTick',[0:20:200])
+set(gca,'XTickLabel',[-4:1:6])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'msnZAverage','-dpdf','-r0')
+
+for i = 1:length(pvData)
+    pvZ(:,i) = (store.FullHist(:,pvData(i))-store.BaselineRate(pvData(i)))/ store.BaselineSTD(pvData(i));
+    pvZSmooth(:,i) = smooth(pvZ(:,i),11);
+end
+pvZMean = mean(pvZ');
+pvZSTD = std(pvZ');
+
+hFig = figure
+plot(pvZMean,'LineWidth',2)
+hold on
+plot(pvZMean - pvZSTD,'LineWidth',1)
+plot(pvZMean + pvZSTD,'LineWidth',1)
+title('Average Z-Scored Firing Rate for Putative PVs')
+set(gca,'XTick',[0:20:200])
+set(gca,'XTickLabel',[-4:1:6])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'pvZAverage','-dpdf','-r0')
+
+%that didnt look like terribly much. try with imagesc?
+[B,Imsn] = sort(store.BaselineRate(msnData));
+[B,Ipv] = sort(store.BaselineRate(pvData));
+
+
+hFig = figure
+imagesc(msnZSmooth(:,Imsn)',[-1 1])
+colorbar
+title('Z-Scored Heatmap for Putative MSNs')
+set(gca,'XTick',[0:20:200])
+set(gca,'XTickLabel',[-4:1:6])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'msnZsmoothHeat','-djpeg','-r0')
+
+hFig = figure
+imagesc(pvZSmooth(:,Ipv)',[-1,1])
+colorbar
+title('Z-Scored Heatmap for Putative PVs')
+set(gca,'XTick',[0:20:200])
+set(gca,'XTickLabel',[-4:1:6])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'pvZsmoothHeat','-djpeg','-r0')
+
+%plot scatter of prethree vs other time points. 
+statTest(1) = signrank(store.PreThree(msnData),store.PostBigBin(msnData));
+statTest(2) = signrank(store.PreThree(msnData),store.PostFour(msnData));
+statTest(3) = signrank(store.PreThree(pvData),store.PostBigBin(pvData));
+statTest(4) = signrank(store.PreThree(pvData),store.PostFour(pvData));
+
+
+hFig = figure
+errorbarxy(store.PreThree(msnData),store.PostFour(msnData),store.PreThreeSTD(msnData),store.PreThreeSTD(msnData),store.PostFourSTD(msnData),store.PostFourSTD(msnData),{'ko','k','k'})
+hold on
+plot([0 max([max(store.PreThree(msnData)),max(store.PostFour(msnData))])],[0 max([max(store.PreThree(msnData)),max(store.PostFour(msnData))])],'b')
+title(strcat('Comparison of Firing Pre and Post (3 seconds), Jumping 1 Putative MSNs:',num2str(statTest(2))))
+pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree(msnData)),max(store.PostFour(msnData))])])
+ylim([0 max([max(store.PreThree(msnData)),max(store.PostFour(msnData))])])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostFourmsn','-dpdf','-r0')
+
+hFig = figure
+errorbarxy(store.PreThree(msnData),store.PostBigBin(msnData),store.PreThreeSTD(msnData),store.PreThreeSTD(msnData),store.PostBigBinSTD(msnData)',store.PostBigBinSTD(msnData)',{'ko','k','k'})
+hold on
+plot([0 max([max(store.PreThree(msnData)),max(store.PostBigBin(msnData))])],[0 max([max(store.PreThree(msnData)),max(store.PostBigBin(msnData))])],'b')
+title(strcat('Comparison of Firing Pre and Post (3 seconds vs 1 second) Putative MSNs:',num2str(statTest(1))))
+pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree(msnData)),max(store.PostBigBin(msnData))])])
+ylim([0 max([max(store.PreThree(msnData)),max(store.PostBigBin(msnData))])])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostOnemsn','-dpdf','-r0')
+%for PVs
+hFig = figure
+errorbarxy(store.PreThree(pvData),store.PostFour(pvData),store.PreThreeSTD(pvData),store.PreThreeSTD(pvData),store.PostFourSTD(pvData),store.PostFourSTD(pvData),{'ko','k','k'})
+hold on
+plot([0 max([max(store.PreThree(pvData)),max(store.PostFour(pvData))])],[0 max([max(store.PreThree(pvData)),max(store.PostFour(pvData))])],'b')
+title(strcat('Comparison of Firing Pre and Post (3 seconds), Jumping 1 Putative PVs:',num2str(statTest(4))))
+pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree(pvData)),max(store.PostFour(pvData))])])
+ylim([0 max([max(store.PreThree(pvData)),max(store.PostFour(pvData))])])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostFourpv','-dpdf','-r0')
+
+hFig = figure
+errorbarxy(store.PreThree(pvData),store.PostBigBin(pvData),store.PreThreeSTD(pvData),store.PreThreeSTD(pvData),store.PostBigBinSTD(pvData)',store.PostBigBinSTD(pvData)',{'ko','k','k'})
+hold on
+plot([0 max([max(store.PreThree(pvData)),max(store.PostBigBin(pvData))])],[0 max([max(store.PreThree(pvData)),max(store.PostBigBin(pvData))])],'b')
+title(strcat('Comparison of Firing Pre and Post (3 seconds vs 1 second) Putative PVs:',num2str(statTest(3))))
+pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree(pvData)),max(store.PostBigBin(pvData))])])
+ylim([0 max([max(store.PreThree(pvData)),max(store.PostBigBin(pvData))])])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostOnepv','-dpdf','-r0')
+
+
+%try plotting out scatter of z score before and after
+for i = 1:length(msnData)
+    zBinnedmsn(i,1) = mean(msnZ(20:80,i));
+    zBinnedmsn(i,2) = mean(msnZ(81:100,i));
+    zBinnedmsn(i,3) = mean(msnZ(101:160,i));
+end
+
+%this plots z score of pre vs the first second
+figure
+plot(zBinnedmsn(:,1),zBinnedmsn(:,2),'k.')
+hold on
+minVal = min([min(zBinnedmsn(:,1)),min(zBinnedmsn(:,2))]);
+maxVal = max([max(zBinnedmsn(:,1)),max(zBinnedmsn(:,2))]);
+plot([minVal maxVal],[minVal maxVal],'b')
+xlim([minVal maxVal])
+ylim([minVal maxVal])
+
+%this plots z score of pre vs the first second
+figure
+plot(zBinnedmsn(:,1),zBinnedmsn(:,3),'k.')
+hold on
+minVal = min([min(zBinnedmsn(:,1)),min(zBinnedmsn(:,3))]);
+maxVal = max([max(zBinnedmsn(:,1)),max(zBinnedmsn(:,3))]);
+plot([minVal maxVal],[minVal maxVal],'b')
+xlim([minVal maxVal])
+ylim([minVal maxVal])
+
+%lets do entire train shuffle, which involves some deep diving into the
+%data
+
+
+
+figure
+plot(store.BaselineRate(msnData),store.PostFour(msnData) ./ store.PreThree(msnData),'k.')
+hold on
+plot([0 4.5],[1 1],'b')
+
+%lets do entire train shuffle, which involves some deep diving into the
+%data
+%now have train shuffled data. I need to set up a loop to find what the
+%percentile score is of each actual mean value relative to the distribution
+%of values
+for i = 1:size(postOne,1)
+    whileTrig = 0;
+    expVal = store.PostBigBin(i);
+    shuffleArray = postOne(i,:);
+    startPoint = 50;
+    shuffleStep = 1;
+    prevStep = 0;
+    while whileTrig == 0
+        testVal = prctile(shuffleArray,startPoint);
+        if prevStep == 0
+            if testVal > expVal
+                prevStep = 1;
+                startPoint = startPoint - shuffleStep;
+            elseif testVal < expVal
+                prevStep = -1;
+                startPoint = startPoint + shuffleStep;
+            elseif testVal == expVal
+                postOnePrctile(i) = startPoint;
+                whileTrig = 1;
+            end
+        elseif prevStep == 1
+            if testVal > expVal
+                startPoint = startPoint - shuffleStep;
+                if startPoint <1
+                    postOnePrctile(i) = 0;
+                    whileTrig = 1;
+                end
+            elseif testVal <= expVal
+                postOnePrctile(i) = startPoint;
+                whileTrig = 1;
+            end
+        elseif prevStep == -1
+            if testVal >= expVal
+                postOnePrctile(i) = startPoint;
+                whileTrig = 1;
+            elseif testVal < expVal
+                startPoint = startPoint + shuffleStep;
+                if startPoint > 100
+                    postOnePrctile(i) = 100;
+                    whileTrig = 1;
+                end
+            end
+        end
+    end
+end
+
+
+for i = 1:size(baselineRateNew,1)
+    whileTrig = 0;
+    expVal = store.BaselineRate(i);
+    shuffleArray = baselineRateNew(i,:);
+    startPoint = 50;
+    shuffleStep = 1;
+    prevStep = 0;
+    while whileTrig == 0
+        testVal = prctile(shuffleArray,startPoint);
+        if prevStep == 0
+            if testVal > expVal
+                prevStep = 1;
+                startPoint = startPoint - shuffleStep;
+            elseif testVal < expVal
+                prevStep = -1;
+                startPoint = startPoint + shuffleStep;
+            elseif testVal == expVal
+                BaselinePrctile(i) = startPoint;
+                whileTrig = 1;
+            end
+        elseif prevStep == 1
+            if testVal > expVal
+                startPoint = startPoint - shuffleStep;
+                if startPoint <1
+                    BaselinePrctile(i) = 0;
+                    whileTrig = 1;
+                end
+            elseif testVal <= expVal
+                BaselinePrctile(i) = startPoint;
+                whileTrig = 1;
+            end
+        elseif prevStep == -1
+            if testVal >= expVal
+                BaselinePrctile(i) = startPoint;
+                whileTrig = 1;
+            elseif testVal < expVal
+                startPoint = startPoint + shuffleStep;
+                if startPoint > 100
+                    BaselinePrctile(i) = 100;
+                    whileTrig = 1;
+                end
+            end
+        end
+    end
+end
+
+
+for i = 1:size(postFour,1)
+    whileTrig = 0;
+    expVal = store.PostFour(i);
+    shuffleArray = postFour(i,:);
+    startPoint = 50;
+    shuffleStep = 1;
+    prevStep = 0;
+    while whileTrig == 0
+        testVal = prctile(shuffleArray,startPoint);
+        if prevStep == 0
+            if testVal > expVal
+                prevStep = 1;
+                startPoint = startPoint - shuffleStep;
+            elseif testVal < expVal
+                prevStep = -1;
+                startPoint = startPoint + shuffleStep;
+            elseif testVal == expVal
+                postFourPrctile(i) = startPoint;
+                whileTrig = 1;
+            end
+        elseif prevStep == 1
+            if testVal > expVal
+                startPoint = startPoint - shuffleStep;
+                if startPoint <1
+                    postFourPrctile(i) = 0;
+                    whileTrig = 1;
+                end
+            elseif testVal <= expVal
+                postFourPrctile(i) = startPoint;
+                whileTrig = 1;
+            end
+        elseif prevStep == -1
+            if testVal >= expVal
+                postFourPrctile(i) = startPoint;
+                whileTrig = 1;
+            elseif testVal < expVal
+                startPoint = startPoint + shuffleStep;
+                if startPoint > 100
+                    postFourPrctile(i) = 100;
+                    whileTrig = 1;
+                end
+            end
+        end
+    end
+end
+
+for i = 1:size(baselineRateNew,1)
+    whileTrig = 0;
+    expVal = store.PreThree(i);
+    shuffleArray = baselineRateNew(i,:);
+    startPoint = 50;
+    shuffleStep = 1;
+    prevStep = 0;
+    while whileTrig == 0
+        testVal = prctile(shuffleArray,startPoint);
+        if prevStep == 0
+            if testVal > expVal
+                prevStep = 1;
+                startPoint = startPoint - shuffleStep;
+            elseif testVal < expVal
+                prevStep = -1;
+                startPoint = startPoint + shuffleStep;
+            elseif testVal == expVal
+                preThreePrctile(i) = startPoint;
+                whileTrig = 1;
+            end
+        elseif prevStep == 1
+            if testVal > expVal
+                startPoint = startPoint - shuffleStep;
+                if startPoint <1
+                    preThreePrctile(i) = 0;
+                    whileTrig = 1;
+                end
+            elseif testVal <= expVal
+                preThreePrctile(i) = startPoint;
+                whileTrig = 1;
+            end
+        elseif prevStep == -1
+            if testVal >= expVal
+                preThreePrctile(i) = startPoint;
+                whileTrig = 1;
+            elseif testVal < expVal
+                startPoint = startPoint + shuffleStep;
+                if startPoint > 100
+                    preThreePrctile(i) = 100;
+                    whileTrig = 1;
+                end
+            end
+        end
+    end
+end
+
+
+%% lets plot some basics
 
 hFig = figure
 hist(store.BaselineRate,100);
@@ -192,7 +588,80 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'preThreeVSpostOne','-dpdf','-r0')
 
-%lets plot ratio of pre vs post vs firing rate
+%% now lets plot out this shit as a comparison
+ratioScatter(:,1) = store.PreThree ./ store.PreThree;
+ratioScatter(:,2) = store.PostBigBin' ./ store.PreThree;
+ratioScatter(:,3) = store.PostFour ./ store.PreThree;
+
+%plot out as lines
+hFig = figure
+plot(ratioScatter')
+title('Ratio of Pre vs Pre, Laser, and Post')
+xlim([0.5 3.5])
+set(gca,'XTick',[1:1:3])
+set(gca,'XTickLabel',{'-3:0','0:1','1:4'})
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'RatioScatterLine','-dpdf','-r0')
+%plot out as points
+hFig = figure
+plot(ratioScatter','.')
+hold on
+plot(mean(ratioScatter),'o')
+title('Ratio of Pre vs Pre, Laser, and Post')
+xlim([0.5 3.5])
+set(gca,'XTick',[1:1:3])
+set(gca,'XTickLabel',{'-3:0','0:1','1:4'})
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'RatioScatterPoint','-dpdf','-r0')
+%plot as bar graphs
+
+barPrep = mean(ratioScatter);
+barSTD = std(ratioScatter);
+barTest(1) = ranksum(ratioScatter(:,1),ratioScatter(:,2));
+barTest(2) = ranksum(ratioScatter(:,1),ratioScatter(:,3));
+barTest(3) = ranksum(ratioScatter(:,2),ratioScatter(:,3));
+
+hFig = figure
+bar(barPrep)
+hold on
+errorbarxy([1 2 3],barPrep,[0,0,0],barSTD,{'k.','k','r'})
+
+%separate units that are suppressed vs excited in 1sec
+upLaser = find(ratioScatter(:,2) > 1);
+downLaser = find(ratioScatter(:,2) < 1);
+%plot out separated sets
+hFig = figure
+plot(ratioScatter(upLaser,:)')
+title('Ratio of Pre vs Pre, Laser, and Post')
+xlim([0.5 3.5])
+set(gca,'XTick',[1:1:3])
+set(gca,'XTickLabel',{'-3:0','0:1','1:4'})
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'RatioScatterZeroPos','-dpdf','-r0')
+
+
+hFig = figure
+plot(ratioScatter(downLaser,:)')
+title('Ratio of Pre vs Pre, Laser, and Post')
+xlim([0.5 3.5])
+set(gca,'XTick',[1:1:3])
+set(gca,'XTickLabel',{'-3:0','0:1','1:4'})
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'RatioScatterZeroNeg','-dpdf','-r0')
+
+
+
+
+
+%% lets plot ratio of pre vs post vs firing rate
 hFig = figure
 plot(store.BaselineRate,store.PostFour ./ store.PreThree,'k.')
 hold on
@@ -262,6 +731,7 @@ oneFour = (store.PostFour ./ store.PreThree)';
 oneFour = [ones(length(oneFour),1) oneFour];
 bOneFour = (store.PostBigBin'./store.PreThree)'\oneFour;
 
+
 for i = 1:placeHolder - 1
     if store.TrueAUC(i) > store.ShuffleAUC(i,2) | store.TrueAUC(i) < store.ShuffleAUC(i,1)
         findSigAUC(i) = 1;
@@ -329,7 +799,7 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'postFourZTerminal','-dpdf','-r0')
 
-%combine all units
+%% combine all units
 hFig = figure
 plot(mean(store.FullHist'),'LineWidth',2)
 hold on
@@ -375,7 +845,7 @@ end
 % end
 
 %order from highest baseline 
-[B,I] = sort(store.BaselineRate);
+
 newZHist = zHist(:,I);
 newNormHist = normHist(:,I);
 
