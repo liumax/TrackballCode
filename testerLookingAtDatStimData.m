@@ -178,7 +178,7 @@ end
 
 %% Lets try separating
 sepCrit = 5; %hz cutoff for PV vs MSN
-msnData = find(store.BaselineRate < sepCrit);
+msnData = find(store.BaselineRate < sepCrit & store.BaselineRate > 0.2);
 pvData = find(store.BaselineRate > sepCrit);
 %make z scored averages for msns and pvs
 for i = 1:length(msnData)
@@ -251,9 +251,69 @@ print(hFig,'pvZsmoothHeat','-djpeg','-r0')
 %plot scatter of prethree vs other time points. 
 statTest(1) = signrank(store.PreThree(msnData),store.PostBigBin(msnData));
 statTest(2) = signrank(store.PreThree(msnData),store.PostFour(msnData));
-statTest(3) = signrank(store.PreThree(pvData),store.PostBigBin(pvData));
-statTest(4) = signrank(store.PreThree(pvData),store.PostFour(pvData));
+statTest(3) = signrank(store.PostBigBin(msnData),store.PostFour(msnData));
+statTest(4) = signrank(store.PreThree(pvData),store.PostBigBin(pvData));
+statTest(5) = signrank(store.PreThree(pvData),store.PostFour(pvData));
+statTest(6) = signrank(store.PostBigBin(pvData),store.PostFour(pvData));
+statTest(7) = signrank(store.PreThree,store.PostBigBin);
+statTest(8) = signrank(store.PreThree,store.PostFour);
+statTest(9) = signrank(store.PostBigBin,store.PostFour);
 
+ratioTest(1) = median(store.PreThree(msnData) ./ store.PostBigBin(msnData)');
+ratioTest(2) = median(store.PreThree(msnData) ./ store.PostFour(msnData));
+ratioTest(3) = median(store.PostFour(msnData) ./ store.PostBigBin(msnData)');
+ratioTest(4) = median(store.PreThree(pvData) ./ store.PostBigBin(pvData)');
+ratioTest(5) = median(store.PreThree(pvData) ./ store.PostFour(pvData));
+ratioTest(6) = median(store.PostFour(pvData) ./ store.PostBigBin(pvData)');
+ratioTest(7) = median(store.PreThree ./ store.PostBigBin');
+ratioTest(8) = median(store.PreThree ./ store.PostFour);
+ratioTest(9) = median(store.PostFour ./ store.PostBigBin');
+
+ratioTestHeader = {'pre/1 msn','pre/four msn','four/1 msn','pre/1 pv','pre/4 pv','four/1 pv','pre/1tot','pre/4tot','4/1tot'};
+
+stdTest(1) = std(store.PreThree(msnData) ./ store.PostBigBin(msnData)');
+stdTest(2) = std(store.PreThree(msnData) ./ store.PostFour(msnData));
+stdTest(3) = std(store.PostFour(msnData) ./ store.PostBigBin(msnData)');
+stdTest(4) = std(store.PreThree(pvData) ./ store.PostBigBin(pvData)');
+stdTest(5) = std(store.PreThree(pvData) ./ store.PostFour(pvData));
+stdTest(6) = std(store.PostFour(pvData) ./ store.PostBigBin(pvData)');
+stdTest(7) = std(store.PreThree ./ store.PostBigBin');
+stdTest(8) = std(store.PreThree ./ store.PostFour);
+stdTest(9) = std(store.PostFour ./ store.PostBigBin');
+
+
+basicStats(1,1) = mean(store.PreThree(msnData));
+basicStats(1,2) = median(store.PreThree(msnData));
+basicStats(1,3) = std(store.PreThree(msnData));
+basicStats(1,4) = mean(store.PostBigBin(msnData));
+basicStats(1,5) = median(store.PostBigBin(msnData));
+basicStats(1,6) = std(store.PostBigBin(msnData));
+basicStats(1,7) = mean(store.PostFour(msnData));
+basicStats(1,8) = median(store.PostFour(msnData));
+basicStats(1,9) = std(store.PostFour(msnData));
+
+basicStats(2,1) = mean(store.PreThree(pvData));
+basicStats(2,2) = median(store.PreThree(pvData));
+basicStats(2,3) = std(store.PreThree(pvData));
+basicStats(2,4) = mean(store.PostBigBin(pvData));
+basicStats(2,5) = median(store.PostBigBin(pvData));
+basicStats(2,6) = std(store.PostBigBin(pvData));
+basicStats(2,7) = mean(store.PostFour(pvData));
+basicStats(2,8) = median(store.PostFour(pvData));
+basicStats(2,9) = std(store.PostFour(pvData));
+
+basicStats(3,1) = mean(store.PreThree);
+basicStats(3,2) = median(store.PreThree);
+basicStats(3,3) = std(store.PreThree);
+basicStats(3,4) = mean(store.PostBigBin);
+basicStats(3,5) = median(store.PostBigBin);
+basicStats(3,6) = std(store.PostBigBin);
+basicStats(3,7) = mean(store.PostFour);
+basicStats(3,8) = median(store.PostFour);
+basicStats(3,9) = std(store.PostFour);
+basicStatsHeader= {'meanPre','medianPre','stdPre','mean1','median1','std1','mean14','median14','std14'};
+
+save('statRatioTestResults.mat','statTest','ratioTest','stdTest','basicStats','basicStatsHeader','ratioTestHeader');
 
 hFig = figure
 errorbarxy(store.PreThree(msnData),store.PostFour(msnData),store.PreThreeSTD(msnData),store.PreThreeSTD(msnData),store.PostFourSTD(msnData),store.PostFourSTD(msnData),{'ko','k','k'})
@@ -306,6 +366,59 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'preThreeVSpostOnepv','-dpdf','-r0')
+
+
+hFig = figure
+plot(store.PreThree(msnData),store.PostFour(msnData),'k.')
+hold on
+plot([0 max([max(store.PreThree(msnData)),max(store.PostFour(msnData))])],[0 max([max(store.PreThree(msnData)),max(store.PostFour(msnData))])],'b')
+title(strcat('Comparison of Firing Pre and Post (3 seconds), Jumping 1 Putative MSNs:',num2str(statTest(2))))
+pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree(msnData)),max(store.PostFour(msnData))])])
+ylim([0 max([max(store.PreThree(msnData)),max(store.PostFour(msnData))])])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostFourmsnDOT','-dpdf','-r0')
+
+hFig = figure
+plot(store.PreThree(msnData),store.PostBigBin(msnData),'k.')
+hold on
+plot([0 max([max(store.PreThree(msnData)),max(store.PostBigBin(msnData))])],[0 max([max(store.PreThree(msnData)),max(store.PostBigBin(msnData))])],'b')
+title(strcat('Comparison of Firing Pre and Post (3 seconds vs 1 second) Putative MSNs:',num2str(statTest(1))))
+pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree(msnData)),max(store.PostBigBin(msnData))])])
+ylim([0 max([max(store.PreThree(msnData)),max(store.PostBigBin(msnData))])])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostOnemsnDOT','-dpdf','-r0')
+%for PVs
+hFig = figure
+plot(store.PreThree(pvData),store.PostFour(pvData),'k.')
+hold on
+plot([0 max([max(store.PreThree(pvData)),max(store.PostFour(pvData))])],[0 max([max(store.PreThree(pvData)),max(store.PostFour(pvData))])],'b')
+title(strcat('Comparison of Firing Pre and Post (3 seconds), Jumping 1 Putative PVs:',num2str(statTest(4))))
+pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree(pvData)),max(store.PostFour(pvData))])])
+ylim([0 max([max(store.PreThree(pvData)),max(store.PostFour(pvData))])])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostFourpvDOT','-dpdf','-r0')
+
+hFig = figure
+plot(store.PreThree(pvData),store.PostBigBin(pvData),'k.')
+hold on
+plot([0 max([max(store.PreThree(pvData)),max(store.PostBigBin(pvData))])],[0 max([max(store.PreThree(pvData)),max(store.PostBigBin(pvData))])],'b')
+title(strcat('Comparison of Firing Pre and Post (3 seconds vs 1 second) Putative PVs:',num2str(statTest(3))))
+pbaspect([1 1 1])
+xlim([0 max([max(store.PreThree(pvData)),max(store.PostBigBin(pvData))])])
+ylim([0 max([max(store.PreThree(pvData)),max(store.PostBigBin(pvData))])])
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'preThreeVSpostOnepvDOT','-dpdf','-r0')
 
 
 %try plotting out scatter of z score before and after
@@ -661,6 +774,13 @@ print(hFig,'RatioScatterZeroNeg','-dpdf','-r0')
 
 
 
+%look at post big bin and post first bin
+for i = 1:placeHolder-1
+    postZeroZ(i) = (store.PostZeroBin(i)-store.BaselineRate(i))/store.BaselineSTD(i);
+    postBigZ(i) = (store.PostBigBin(i)-store.BaselineRate(i))/store.BaselineSTD(i);
+    postThreeZ(i) =(store.PostThree(i)-store.BaselineRate(i))/store.BaselineSTD(i);
+    postFourZ(i) = (store.PostFour(i)-store.BaselineRate(i))/store.BaselineSTD(i);
+end
 %% lets plot ratio of pre vs post vs firing rate
 hFig = figure
 plot(store.BaselineRate,store.PostFour ./ store.PreThree,'k.')
@@ -691,7 +811,7 @@ title('Log Firing Rate vs Ratio of 4/3')
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,'lograteVsRatio1over3','-dpdf','-r0')
+print(hFig,'lograteVsRatio4over3','-dpdf','-r0')
 
 hFig = figure
 plot(log(store.BaselineRate),store.PostBigBin' ./ store.PreThree,'k.')
@@ -702,6 +822,49 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'lograteVsRatio1over3','-dpdf','-r0')
+
+%try log firing vs z score
+hFig = figure
+plot(log(store.BaselineRate),postFourZ,'k.')
+hold on
+plot([min(log(store.BaselineRate)) max(log(store.BaselineRate))],[0 0],'b')
+title('Log Firing Rate vs Z 4')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'lograteVsz4','-dpdf','-r0')
+
+hFig = figure
+plot(log(store.BaselineRate),postBigZ,'k.')
+hold on
+plot([min(log(store.BaselineRate)) max(log(store.BaselineRate))],[0 0],'b')
+title('Log Firing Rate vs Z 1')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'lograteVsz1','-dpdf','-r0')
+
+
+%try log firing vs z score
+hFig = figure
+plot(log(store.BaselineRate(msnData)),postFourZ(msnData),'k.')
+hold on
+plot([min(log(store.BaselineRate)) max(log(store.BaselineRate))],[0 0],'b')
+title('Log Firing Rate vs Z 4')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'lograteVsz4msn','-dpdf','-r0')
+
+hFig = figure
+plot(log(store.BaselineRate(msnData)),postBigZ(msnData),'k.')
+hold on
+plot([min(log(store.BaselineRate)) max(log(store.BaselineRate))],[0 0],'b')
+title('Log Firing Rate vs Z 1')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'lograteVsz1msn','-dpdf','-r0')
 
 %now try linear regression
 
@@ -751,13 +914,6 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,'BaselineVsAUCTerminal','-dpdf','-r0')
 
-%look at post big bin and post first bin
-for i = 1:placeHolder-1
-    postZeroZ(i) = (store.PostZeroBin(i)-store.BaselineRate(i))/store.BaselineSTD(i);
-    postBigZ(i) = (store.PostBigBin(i)-store.BaselineRate(i))/store.BaselineSTD(i);
-    postThreeZ(i) =(store.PostThree(i)-store.BaselineRate(i))/store.BaselineSTD(i);
-    postFourZ(i) = (store.PostFour(i)-store.BaselineRate(i))/store.BaselineSTD(i);
-end
 
 hFig = figure
 hist(postZeroZ,100)
@@ -894,6 +1050,60 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,'HeatMapSmoothZHistTerminal','-djpeg','-r0')
 % in zscored see some pretty long lasting inhibition in the fast spiking
 % cells. Could just be an artifact of the laser stimulation?
+
+%also create alternative sorting based on spikes per 1 second after laser
+[B zSort1] = sort(postBigZ);
+[B zSort2] = sort(postFourZ);
+
+[B zSort1msn] = sort(postBigZ(msnData));
+[B zSort2msn] = sort(postFourZ(msnData));
+
+[B zSort1pv] = sort(postBigZ(pvData));
+[B zSort2pv] = sort(postFourZ(pvData));
+
+hFig = figure
+imagesc(smoothZ(:,msnData(zSort1msn))',[-0.5 0.5])
+colorbar
+set(gca,'XTick',[0:20:200])
+set(gca,'XTickLabel',[-4:1:6])
+title('Z-Score MSN Responses Sorted by Response in First Sec')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'HeatMapSmoothZHistmsnOrder1','-djpeg','-r0')
+
+hFig = figure
+imagesc(smoothZ(:,msnData(zSort2msn))',[-0.5 0.5])
+colorbar
+set(gca,'XTick',[0:20:200])
+set(gca,'XTickLabel',[-4:1:6])
+title('Z-Score MSN Responses Sorted by Response in First Four')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'HeatMapSmoothZHistmsnOrder2','-djpeg','-r0')
+
+hFig = figure
+imagesc(smoothZ(:,pvData(zSort1pv))',[-0.5 0.5])
+colorbar
+set(gca,'XTick',[0:20:200])
+set(gca,'XTickLabel',[-4:1:6])
+title('Z-Score PV Responses Sorted by Response in First Sec')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'HeatMapSmoothZHistpvOrder1','-djpeg','-r0')
+
+hFig = figure
+imagesc(smoothZ(:,pvData(zSort2pv))',[-0.5 0.5])
+colorbar
+set(gca,'XTick',[0:20:200])
+set(gca,'XTickLabel',[-4:1:6])
+title('Z-Score PV Responses Sorted by Response in First Four')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'HeatMapSmoothZHistpvOrder2','-djpeg','-r0')
 
 %okay, now lets get at the running. DO we see preference for running or
 %stopping?
