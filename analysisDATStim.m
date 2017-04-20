@@ -130,6 +130,7 @@ D1FileName = D1FileName{1};
 %pulls out DIO up state onsets.
 [dioTimes,dioTimeDiff] = functionBasicDIOCheck(DIOData,s.Parameters.trodesFS);
 totalTrialNum = length(dioTimes);
+s.AlignTimes = dioTimes;
 
 %% Extract data from rotary encoder.
 [s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
@@ -404,11 +405,13 @@ title({strcat(fileName,desigNames{i});'Normalized Velocity (b) and Firing (r)'},
 %plot out heatmaps of peak normalized firing rates
 subplot(3,3,5)
 imagesc(s.SumPlot.SmoothNormHist(I,:))
+colormap(parula)
 set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
 set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
 title('Normalized Histograms Ordered by Firing Rate')
 subplot(3,3,8)
 imagesc(s.SumPlot.SmoothZHist(I,:),cLims)
+colormap(parula)
 colorbar
 set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
 set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
@@ -483,6 +486,7 @@ for i = 1:numUnits
     %plot heatmap of firing
     subplot(4,2,3)
     imagesc(s.(desigNames{i}).IndividualHistograms')
+    colormap(parula)
     set(gca,'XTick',[1:(1/s.Parameters.histBin):(size(s.(desigNames{i}).IndividualHistograms,2))]);
     set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)]);
     colorbar
@@ -491,6 +495,7 @@ for i = 1:numUnits
     %plot heatmap of locomotion
     subplot(4,2,5)
     imagesc((velRaster'))
+    colormap(parula)
     colorbar
     set(gca,'XTick',velDispIndex);
     set(gca,'XTickLabel',velDispVector);

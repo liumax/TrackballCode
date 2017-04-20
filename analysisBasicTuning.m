@@ -491,6 +491,7 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         %Plot binned response during tone period
         subplot(4,3,4)
         imagesc(s.(desigNames{i}).BinTone')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -500,6 +501,7 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         %Plot binned response during general period
         subplot(4,3,7)
         imagesc(s.(desigNames{i}).BinGen')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -509,6 +511,7 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         %Plot peak response during general period
         subplot(4,3,10)
         imagesc(s.(desigNames{i}).PeakMap')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -530,6 +533,7 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         %plot probability of response (tone)
         subplot(4,3,9)
         imagesc(s.(desigNames{i}).ProbTone')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -539,6 +543,7 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         %plot probability of response (gen)
         subplot(4,3,12)
         imagesc(s.(desigNames{i}).ProbGen')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -580,6 +585,7 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         %plot heatmap organized by frequency
         subplot(3,3,8)
         imagesc(s.(desigNames{i}).FrequencyHistograms(:,:))
+        colormap(parula)
         colorbar
         set(gca,'YTick',octaveRange(:,2));
         set(gca,'YTickLabel',octaveRange(:,1));
@@ -681,6 +687,7 @@ else %in the case you dont want to do tuning selection, default to normal system
         %Plot binned response during tone period
         subplot(4,3,4)
         imagesc(s.(desigNames{i}).BinTone')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -690,6 +697,7 @@ else %in the case you dont want to do tuning selection, default to normal system
         %Plot binned response during general period
         subplot(4,3,7)
         imagesc(s.(desigNames{i}).BinGen')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -699,6 +707,7 @@ else %in the case you dont want to do tuning selection, default to normal system
         %Plot peak response during general period
         subplot(4,3,10)
         imagesc(s.(desigNames{i}).PeakMap')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -720,6 +729,7 @@ else %in the case you dont want to do tuning selection, default to normal system
         %plot probability of response (tone)
         subplot(4,3,9)
         imagesc(s.(desigNames{i}).ProbTone')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -729,6 +739,7 @@ else %in the case you dont want to do tuning selection, default to normal system
         %plot probability of response (gen)
         subplot(4,3,12)
         imagesc(s.(desigNames{i}).ProbGen')
+        colormap(parula)
         colorbar
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -770,6 +781,7 @@ else %in the case you dont want to do tuning selection, default to normal system
         %plot heatmap organized by frequency
         subplot(3,3,8)
         imagesc(s.(desigNames{i}).FrequencyHistograms(:,:))
+        colormap(parula)
         colorbar
         set(gca,'YTick',octaveRange(:,2));
         set(gca,'YTickLabel',octaveRange(:,1));
