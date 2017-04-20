@@ -25,7 +25,7 @@ function [s] = analysisDATStim(fileName);
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROC = 1; %toggle for tuning on/off ROC analysis
+toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. NOT SCALED
 s.Parameters.ToneWindow = [0 0.5];
@@ -44,6 +44,7 @@ elseif s.Parameters.PrePost > abs(s.Parameters.RasterWindow(1))
     disp('Resetting Pre/Post Window Based on Rasters')
     s.Parameters.PrePost = abs(s.Parameters.RasterWindow(1));
 end
+s.Parameters.PVLim = 0.0005;
 
 %for duplicate elimination
 s.Parameters.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
@@ -68,7 +69,8 @@ s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display w
 
 %for summary figure
 s.Parameters.SumGraphSmooth = 0.200; %smoothing window in seconds
-cLims = [-1,1]; %limits for color range for heatmap of z-scored firing rates
+s.Parameters.LateWindow = 4; %seconds you want to look at 
+cLims = [-0.5,0.5]; %limits for color range for heatmap of z-scored firing rates
 %other settings
 format short
 
@@ -123,6 +125,8 @@ histBinVector = [s.Parameters.RasterWindow(1)+s.Parameters.histBin/2:s.Parameter
 %find DIO folder and D1 file for analysis
 [D1FileName] = functionFileFinder(subFoldersCell,'DIO','D1');
 D1FileName = D1FileName{1};
+[D2FileName] = functionFileFinder(subFoldersCell,'DIO','D2');
+D2FileName = D2FileName{1};
 
 %extracts DIO stuffs! this code is written to extract inputs for d1
 [DIOData] = readTrodesExtractedDataFile(D1FileName);
@@ -132,6 +136,22 @@ D1FileName = D1FileName{1};
 totalTrialNum = length(dioTimes);
 s.AlignTimes = dioTimes;
 
+%now pull the off times and extract finish of laser times from this
+[DIO2Data] = readTrodesExtractedDataFile(D2FileName);
+dioState = DIO2Data.fields(2).data;
+lowState = find(dioState == 0);
+lowTimes = double(DIO2Data.fields(1).data(lowState))/s.Parameters.trodesFS;
+lowTimes(1) = []; %eliminate first value since this always initializes as 0
+%calculate pulses per trigger
+s.PulsePerTrig = length(lowTimes) / length(dioTimes);
+if s.PulsePerTrig > 1
+    lowTimesEnd = lowTimes(s.PulsePerTrig:s.PulsePerTrig:end);
+elseif s.PulsePerTrig == 1
+    lowTimesEnd = lowTimes;
+end
+
+s.LowDur = mean(lowTimesEnd-dioTimes);
+    
 %% Extract data from rotary encoder.
 [s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
 
@@ -341,6 +361,15 @@ s.SumPlot.HistBinVector = histBinVector;
 %calculate the smoothing factor based on histogram bin size
 smoothFact = round(s.Parameters.SumGraphSmooth/s.Parameters.histBin);
 
+laserStart = find(histBinVector>0,1,'first');
+laserEnd = find(histBinVector > s.LowDur,1,'first');
+try
+    postEnd = find(histBinVector > s.LowDur + s.Parameters.LateWindow,1,'first');
+catch
+    postEnd = length(histBinVector);
+    disp('Post Laser Going Till End of Histogram')
+end
+
 for i = 1:numUnits
     %get baseline firing rate
     s.SumPlot.BaselineRates(i) = s.(desigNames{i}).AverageRate;
@@ -360,12 +389,25 @@ for i = 1:numUnits
     histMax = max(s.(desigNames{i}).AllHistograms);
     s.SumPlot.AllHists(i,:) = s.(desigNames{i}).AllHistograms;
     s.SumPlot.SmoothNormHist(i,:) = smooth((s.(desigNames{i}).AllHistograms - histMin)/(histMax-histMin),smoothFact);
-    s.SumPlot.SmoothZHist(i,:) = smooth(zscore(s.(desigNames{i}).AllHistograms),smoothFact);
+    s.SumPlot.ZHist(i,:) = ((s.(desigNames{i}).AllHistograms)-s.(desigNames{i}).AverageRate)/s.(desigNames{i}).AverageSTD;
+    s.SumPlot.SmoothZHist(i,:) = smooth(((s.(desigNames{i}).AllHistograms)-s.(desigNames{i}).AverageRate)/s.(desigNames{i}).AverageSTD,smoothFact);
+    s.SumPlot.LaserPeriod(i) = mean(s.(desigNames{i}).AllHistograms(laserStart:laserEnd));
+    s.SumPlot.PostLaserPeriod(i) = mean(s.(desigNames{i}).AllHistograms(laserEnd:postEnd));
+    s.SumPlot.BaselineZ(i) = mean(s.SumPlot.ZHist(i,1:laserStart));
+    s.SumPlot.LaserPeriodZ(i) = mean(s.SumPlot.ZHist(i,laserStart:laserEnd));
+    s.SumPlot.PostLaserPeriodZ(i) = mean(s.SumPlot.ZHist(i,laserEnd:postEnd));
+    [maxVal findMaxWave] = max(max(s.(desigNames{i}).AverageWaveForms));
+    s.SumPlot.Wave(:,i) = interp1([1:1:40],s.(desigNames{i}).AverageWaveForms(:,findMaxWave),[1:0.1:40],'spline');
+    [maxVal findMax] = max(s.SumPlot.Wave(:,i));
+    [minVal peakTroughFind] = min(s.SumPlot.Wave(findMax:end,i));
+    s.SumPlot.WavePeakTrough(i) = peakTroughFind/3*(10^(-5));
+    halfMaxVal = maxVal/2;
+    pointFirst = find(s.SumPlot.Wave(:,i)>halfMaxVal,1,'first');
+    s.SumPlot.WaveHalfMax(i) = find(s.SumPlot.Wave(pointFirst:end,i)<halfMaxVal,1,'first')/3*(10^(-5));
 end
-s.SumPlot.AverageFiringAllUnits = mean(s.SumPlot.AllHists);
-s.SumPlot.AverageSTDAllUnits = std(s.SumPlot.AllHists);
-[B,I] = sort(s.SumPlot.BaselineRates);
-
+s.SumPlot.AverageZFiringAllUnits = mean(s.SumPlot.SmoothZHist);
+[B,Ibase] = sort(s.SumPlot.BaselineRates);
+zComb = [s.SumPlot.BaselineZ;s.SumPlot.LaserPeriodZ;s.SumPlot.PostLaserPeriodZ];
 
 %calculate and plot LFP information
 % [lfpStruct] = functionLFPaverage(master, s.Parameters.LFPWindow, s,homeFolder,fileName, 1, 1, 1, 1);
@@ -376,13 +418,10 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01])
 %first plot summary figure
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
-%plot histogram of baseline rates
-subplot(3,3,1)
-hist(s.SumPlot.BaselineRates,50)
-title('Histogram of Baseline Firing Rates')
+
 %if there is auc, plot AUC vs firing rates
 if toggleROC == 1
-    subplot(3,3,4)
+    subplot(3,3,1)
     plot(s.SumPlot.BaselineRates,s.SumPlot.AUC,'k.')
     %plot significant points
     hold on
@@ -391,31 +430,66 @@ if toggleROC == 1
     title('Scatter Plot of Baseline Rate vs AUC')
 end
 %plot normalized average velocity and average firing rate
+subplot(3,3,4)
+hold on
+%plot normalized velocity
+plot(s.SumPlot.AveVelVector,(s.SumPlot.AveVel-min(s.SumPlot.AveVel))/(max(s.SumPlot.AveVel)-min(s.SumPlot.AveVel)),'b','LineWidth',2)
+%plot out average firing rate in the same manner
+plot(s.SumPlot.HistBinVector,(s.SumPlot.AverageZFiringAllUnits-min(s.SumPlot.AverageZFiringAllUnits))/(max(s.SumPlot.AverageZFiringAllUnits)-min(s.SumPlot.AverageZFiringAllUnits)),'r','LineWidth',2)
+plot([0 0],[0 1],'k')
+plot([s.LowDur s.LowDur],[0 1],'k')
+title('Normalized Velocity (b) and Firing (r)')
+%plot out firing rate vs peak trough
+subplot(3,3,7)
+hold on
+plot(s.SumPlot.WavePeakTrough,s.SumPlot.BaselineRates,'k.')
+plot([s.Parameters.PVLim s.Parameters.PVLim],[min(s.SumPlot.BaselineRates) max(s.SumPlot.BaselineRates)],'r')
+xlabel('Peak Trough in Seconds')
+ylabel('Firing Rate (Hz)')
+title('PeakTrough vs Firing Rate showing cutoff')
+
+%Plot out all z scored rates overlaid with average
 subplot(3,3,2)
 hold on
-%plot normalized velocity with error lines
-plot(s.SumPlot.AveVelVector,(s.SumPlot.AveVel-min(s.SumPlot.AveVel))/(max(s.SumPlot.AveVel)-min(s.SumPlot.AveVel)),'b','LineWidth',2)
-plot(s.SumPlot.AveVelVector,(s.SumPlot.AveVel-s.SumPlot.AveVelSTD-min(s.SumPlot.AveVel))/(max(s.SumPlot.AveVel)-min(s.SumPlot.AveVel)),'b','LineWidth',1)
-plot(s.SumPlot.AveVelVector,(s.SumPlot.AveVel+s.SumPlot.AveVelSTD-min(s.SumPlot.AveVel))/(max(s.SumPlot.AveVel)-min(s.SumPlot.AveVel)),'b','LineWidth',1)
-%plot out average firing rate in the same manner
-plot(s.SumPlot.HistBinVector,(s.SumPlot.AverageFiringAllUnits-min(s.SumPlot.AverageFiringAllUnits))/(max(s.SumPlot.AverageFiringAllUnits)-min(s.SumPlot.AverageFiringAllUnits)),'r','LineWidth',2)
-plot(s.SumPlot.HistBinVector,(s.SumPlot.AverageFiringAllUnits-s.SumPlot.AverageSTDAllUnits-min(s.SumPlot.AverageFiringAllUnits))/(max(s.SumPlot.AverageFiringAllUnits)-min(s.SumPlot.AverageFiringAllUnits)),'r','LineWidth',1)
-plot(s.SumPlot.HistBinVector,(s.SumPlot.AverageFiringAllUnits+s.SumPlot.AverageSTDAllUnits-min(s.SumPlot.AverageFiringAllUnits))/(max(s.SumPlot.AverageFiringAllUnits)-min(s.SumPlot.AverageFiringAllUnits)),'r','LineWidth',1)
-title({strcat(fileName,desigNames{i});'Normalized Velocity (b) and Firing (r)'},'interpreter','none')
-%plot out heatmaps of peak normalized firing rates
+
+for i = 1:size(s.SumPlot.SmoothZHist,1)
+    plot(s.SumPlot.HistBinVector,s.SumPlot.SmoothZHist(i,:),'Color',[0.5,0.5,0.5])
+end
+plot(s.SumPlot.HistBinVector,s.SumPlot.AverageZFiringAllUnits,'k','LineWidth',2)
+title({strcat(fileName,desigNames{i});'All Firing Rates'},'interpreter','none')
+
+%plot out z scored firing rates
 subplot(3,3,5)
-imagesc(s.SumPlot.SmoothNormHist(I,:))
-colormap(parula)
-set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
-set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
-title('Normalized Histograms Ordered by Firing Rate')
-subplot(3,3,8)
-imagesc(s.SumPlot.SmoothZHist(I,:),cLims)
+imagesc(s.SumPlot.SmoothZHist(Ibase,:),cLims)
 colormap(parula)
 colorbar
 set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
 set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
 title('Z Histograms Ordered by Firing Rate')
+
+%Plot binned differences
+subplot(3,3,3)
+hold on
+plot(s.SumPlot.BaselineRates,s.SumPlot.LaserPeriod,'b.')
+plot(s.SumPlot.BaselineRates,s.SumPlot.PostLaserPeriod,'r.')
+plot([0 max(s.SumPlot.BaselineRates)],[0 max(s.SumPlot.BaselineRates)],'b')
+pbaspect([1 1 1])
+title('Mean Firing Rate During Laser (Blue) and Post (Red)')
+
+subplot(3,3,6)
+hold on
+plot(log(s.SumPlot.BaselineRates),s.SumPlot.LaserPeriodZ,'b.')
+plot(log(s.SumPlot.BaselineRates),s.SumPlot.PostLaserPeriodZ,'r.')
+plot([min(log(s.SumPlot.BaselineRates)) max(log(s.SumPlot.BaselineRates))],[0 0],'b')
+pbaspect([1 1 1])
+title('LogBaseline Vs Z During Laser (Blue) and Post (Red)')
+
+subplot(3,3,9)
+hist(zComb',10)
+title('Histogram of Z Scores Pre(b) Laser(g) Post(y)')
+
+%plot out mean difference for different periods following stimulation
+
 spikeGraphName = strcat(fileName,'DATStimSummaryFigure');
 savefig(hFig,spikeGraphName);
 
