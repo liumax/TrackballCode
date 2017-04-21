@@ -6,8 +6,9 @@
 %This code must start in the mother directory with the folders of the data
 %I want to analyze
 
-load('FullTuningAnalysis170420RemovedCellsWithRepeats.mat')
+% load('FullTuningAnalysis170420RemovedCellsWithRepeats.mat')
 fieldNames = fields(fullMaster);
+masterDir = pwd;
 
 spikeLim = [-0.0009 0.0009];
 
@@ -18,15 +19,16 @@ for i = 1:length(fieldNames)
     mFolderName = strcat(recordName,'.matclust'); %this is the name for the targeted matclust folder name
     numUnits = length(recordData.DesignationName);
     desigNames = recordData.DesignationName;
+    %move to the targeted folder
+    cd (folderName)
+    cd (mFolderName)
     for j = 1:length(desigNames)
         disp(desigNames{j})
         unitData = recordData.(desigNames{j}).SpikeTimes;
         clustFind = strfind(desigNames{j},'cluster');
         paramName = strcat('param_',desigNames{j}(1:clustFind-1),'.mat');
         waveName = strcat('waves_',desigNames{j}(1:clustFind-1),'.mat');
-        %move to the targeted folder
-        cd (folderName)
-        cd (mFolderName)
+        
         %open target params file
         load((paramName))
         paramSpikes = filedata.params(:,1); %this should be the time column
@@ -62,20 +64,20 @@ for i = 1:length(fieldNames)
             findWarn = find(waveWarn == 1);
             for k = 1:length(remainWaves)
                 newLim = spikeLim; %use this as a placeholder so I can adjust the limits
-                whileTrigger = 1
-                while whileTrigger = 1;
+                whileTrigger = 1;
+                while whileTrigger == 1;
                     waveDiff = paramSpikes - remainWaves(k);
                     diffFind = find(waveDiff > newLim(1) & waveDiff < newLim(2));
                     if isempty(diffFind) %if no spikes found, want to expand window
                         newLim(1) = newLim(1) - 0.0001;
                         newLim(2) = newLim(2) + 0.0001;
                     else %in the case where you do find spikes in the window
-                        if length(diffFind == 1) %only one spike. Accept this spike
+                        if length(diffFind)==1 %only one spike. Accept this spike
                             waveWarn(findWarn(k)) = waveDiff(diffFind); %update waveWarn
                             ia(end+1) = diffFind;
                             newLim = spikeLim;  %reset newLim
                             whileTrigger = 0; %exit while loop
-                        elseif length(diffFind > 1) %more than one spike in the window! take the closest spike
+                        elseif length(diffFind)>1 %more than one spike in the window! take the closest spike
                             absDiff = abs(waveDiff(diffFind));
                             [minVal minInd] = min(absDiff);
                             waveWarn(findWarn(k)) = waveDiff(diffFind(minInd)); %update waveWarn
@@ -101,4 +103,6 @@ for i = 1:length(fieldNames)
             clear 'waves'
         end
     end
+    %return to master folder
+    cd (masterDir)
 end
