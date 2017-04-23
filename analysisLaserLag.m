@@ -24,7 +24,7 @@ function [s] = analysisLaserLag(fileName);
 
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
+toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 
 
@@ -65,7 +65,7 @@ s.Parameters.BaselineCutoff = 95;
 s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
 
 %for duplicate elimination
-s.Parameters.DownSampFactor = 3; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
+s.Parameters.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
 s.Parameters.corrSlide = 0.05; % window in seconds for xcorr
 s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
@@ -103,7 +103,7 @@ if toggleDuplicateElimination ==1
     if length(s.DesignationName) > 1
         disp('Now Selecting Based on xCORR')
         [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
-            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS);
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow);
     end
 else
     disp('NOT EXECUTING DUPLICATE ELIMINATION')
