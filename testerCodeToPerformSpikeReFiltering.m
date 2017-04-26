@@ -71,6 +71,10 @@ for i = 1:length(fieldNames)
                     if isempty(diffFind) %if no spikes found, want to expand window
                         newLim(1) = newLim(1) - 0.0001;
                         newLim(2) = newLim(2) + 0.0001;
+                        if newLim(2) >=0.001 %sets limits for how far to search. This should introduce less noise
+                            waveWarn(findWarn(k)) = 100;
+                            whileTrigger = 0;
+                        end
                     else %in the case where you do find spikes in the window
                         if length(diffFind)==1 %only one spike. Accept this spike
                             waveWarn(findWarn(k)) = waveDiff(diffFind); %update waveWarn
@@ -90,7 +94,11 @@ for i = 1:length(fieldNames)
                 end
             end
             %now we've completed the finding of the waves! yay. 
-            disp('Remaining Waves Found')
+            
+            notFound = length(find(waveWarn == 100));
+            notFoundPrct = notFound/length(unitData)*100;
+            
+            disp(strcat('Remaining Waves Found, ',num2str(notFoundPrct),'% Missing'))
             ia = sort(ia);%need to re-order ia so that things are appropriately listed in order. 
             
             load((waveName))
