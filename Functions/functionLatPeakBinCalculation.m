@@ -112,8 +112,10 @@ latBinVector = [fullWindow(1)+ latBins/2:latBins:fullWindow(2) - latBins/2];
 latHist = smooth(hist(alignedSpikes(:,1),latBinVector),3); %smooth over three bins to reduce craziness
 
 %recalculate indices for windows I care about
-[~,genStart] = min(abs((latBinVector - generalWindow(1))));
-[~,genEnd] = min(abs((latBinVector - generalWindow(2))));
+genStart = find(latBinVector > generalWindow(1),1,'first');
+genEnd = find(latBinVector < generalWindow(2),1,'last');
+% [~,genStart] = min(abs((latBinVector - generalWindow(1))));
+% [~,genEnd] = min(abs((latBinVector - generalWindow(2))));
 
 
 %calculate percentile cutoffs

@@ -22,50 +22,36 @@
 
 function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
-%lets set some switches to toggle things on and off.
+%TOGGLES FOR ENABLING/DISABLING FEATURES
 s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
-%parameters for data analysis
+%PARAMETERS FOR BASIC ARRANGEMENT OF DATA
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
 s.Parameters.ToneWindow = [0 1];
-s.Parameters.GenWindow = [0 3];
+s.Parameters.GenWindow = [0 2];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.005; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
-% s.Parameters.DefaultBins = 0.001;% bin size for calculating significant responses
-% s.Parameters.SmoothingBins = [0.01 0.001];%bins for smoothing
-% s.Parameters.CalcWindow = [0 2]; %window for calculating significant responses
-s.Parameters.zLimit = 3; %zlimit for calculating significant responses
-% s.Parameters.FirstSpikeWindow = [0 0.5 1 1.5]; %ratios! need to be multiplied by tone duration.
-s.Parameters.FirstSpikeWindow = [0 1];
-% s.Parameters.ChosenSpikeBin = 1; %delineates which spike window I will graph.
-s.Parameters.BaselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
 s.Parameters.LFPWindow = [-1 3];
 
 %stuff for significance
 s.Parameters.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
 s.Parameters.zLimit = [0.05 0.01 0.001];
-s.Parameters.numShuffle = 1000;
-% s.Parameters.firstSpikeWindow = [0 1];%defines period for looking for first spike, based on toneDur
-% s.Parameters.chosenSpikeBin = 1; %spike bin selected in binSpike (in the event of multiple spike bins)
-s.Parameters.minSpikes = 100; %minimum number of spikes to do spike shuffling
-s.Parameters.minSigSpikes = 2; %minimum number of significant points to record a significant response.
-s.Parameters.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
-s.Parameters.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
-s.Parameters.PercentCutoff = 99.9;
-s.Parameters.BaselineCutoff = 95;
-s.Parameters.latBin = 0.001;
-s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
+s.Parameters.minSpikes = 100; %minimum number of spikes in baseline, if lower, triggers a warning
+s.Parameters.minSigSpikes = 5; %minimum number of significant points to record a significant response.
+s.Parameters.PercentCutoff = 99.9; %for significance in latency calculations
+s.Parameters.BaselineCutoff = 95; %for the onset in latency calculations
+s.Parameters.latBin = 0.001; %histogram bins for latency and significance calculations
+s.Parameters.SigSmoothWindow = 11; %window of smoothing for calculations of significance
 
 %for duplicate elimination
 s.Parameters.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
 s.Parameters.corrSlide = 0.05; % window in seconds for xcorr
 s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
-
 
 %for rotary encoder:
 s.Parameters.InterpolationStepRotary = 0.01; %interpolation steps in seconds.
@@ -81,7 +67,7 @@ s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display w
 
 %set other things
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
-format short
+% format short
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
@@ -138,6 +124,7 @@ uniqueFreqs = unique(soundData.Frequencies);
 uniqueDBs = unique(soundData.dBs);
 numFreqs = length(uniqueFreqs);
 numDBs = length(uniqueDBs);
+
 %store these in structured array
 s.SoundData.UniqueFrequencies = uniqueFreqs;
 s.SoundData.UniqueDBs = uniqueDBs;
@@ -152,8 +139,6 @@ totalTrialNum = length(soundData.Frequencies);
 s.Parameters.RasterWindow = s.Parameters.RasterWindow * toneDur;
 s.Parameters.ToneWindow = s.Parameters.ToneWindow * toneDur;
 s.Parameters.GenWindow = s.Parameters.GenWindow * toneDur;
-s.Parameters.FirstSpikeWindow = s.Parameters.FirstSpikeWindow * toneDur;
-s.Parameters.BaselineBin = s.Parameters.BaselineBin * toneDur;
 calcWindow = s.Parameters.calcWindow*toneDur;
 rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
 histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin;
@@ -331,21 +316,6 @@ end
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
 for i = 1:numUnits
-    %allocate a bunch of empty arrays.
-    fullHistData = zeros(histBinNum,1);
-    
-    organizedRasters = cell(numFreqs,numDBs,1); %allocates cell array for rasters
-    organizedHist = zeros(numFreqs,numDBs,histBinNum,1);
-    
-    freqSpecHist = zeros(numFreqs,histBinNum,1);
-    
-    firstSpikeTimeHolder = cell(numFreqs,numDBs,1);
-    firstSpikeStatsHolder = zeros(numFreqs,numDBs,4,size(s.Parameters.FirstSpikeWindow,2)-1);
-    
-    binSpikeHolder = cell(numFreqs,numDBs,1);
-    binSpikeStatsHolder = zeros(numFreqs,numDBs,2,size(s.Parameters.FirstSpikeWindow,2)-1);
-    
-    averageSpikeHolder = zeros(totalTrialNum,1);
     
     %pulls spike times and times for alignment
     spikeTimes = s.(desigNames{i}).SpikeTimes;
@@ -355,18 +325,20 @@ for i = 1:numUnits
     sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
     sessionFiring(end) = 0; %this is to compensate for problems with spikes coming after the period
     sessionFiring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
+    
     %calculates rasters based on spike information. 
     [rasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.RasterWindow);
     rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
     fullRasterData = rasters;
+    
     %pulls all spikes from a specific trial in the baseline period, holds
     %the number of these spikes for calculation of average rate and std.
+    averageSpikeHolder = zeros(totalTrialNum,1);
     for k = 1:totalTrialNum
-        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > s.Parameters.BaselineBin(1) & rasters(:,1) < s.Parameters.BaselineBin(2)),1);
+        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > s.Parameters.RasterWindow(1) & rasters(:,1) < 0),1);
     end
-    
-    averageRate = mean(averageSpikeHolder/(s.Parameters.BaselineBin(2)-s.Parameters.BaselineBin(1)));
-    averageSTD = std(averageSpikeHolder/(s.Parameters.BaselineBin(2)-s.Parameters.BaselineBin(1)));
+    averageRate = mean(averageSpikeHolder/(-s.Parameters.RasterWindow(1)));
+    averageSTD = std(averageSpikeHolder/(-s.Parameters.RasterWindow(1)));
     averageSTE = averageSTD/(sqrt(totalTrialNum-1));
     
     %calculates histograms of every single trial. 
@@ -386,8 +358,10 @@ for i = 1:numUnits
     
     %calculate significant response for combined histogram of all responses
     %to all sounds.    
-    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master));
-
+%     [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master));
+    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master),...
+        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
+    
     disp(strcat('Baseline Spikes:',num2str(generalResponseHist.SpikeNumber),' Unit:',(desigNames{i})))
     s.BaselineSpikes = generalResponseHist.SpikeNumber;
     if generalResponseHist.Warning == 0 & generalResponseHist.SigSpike == 1
@@ -406,7 +380,7 @@ for i = 1:numUnits
     binStoreGen = zeros(numFreqs,numDBs);
     probStoreTone = zeros(numFreqs,numDBs);
     probStoreGen = zeros(numFreqs,numDBs);
-    
+    freqSpecHist = zeros(numFreqs,histBinNum,1);
     
     for k = 1:numFreqs
         for l = 1:numDBs
@@ -428,7 +402,9 @@ for i = 1:numUnits
             probStoreTone(k,l) = latPeakBinOut.ProbSpikeTone;
             probStoreGen(k,l) = latPeakBinOut.ProbSpikeGen;
             latPeakBinOut = [];
-            [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
+%             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
+            [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes(targetTrials),toneReps,...
+        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
             responseHistHolder{k,l} = responseHist;
         end
         freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
