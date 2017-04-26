@@ -26,137 +26,137 @@ for i = 1:length(fieldNames)
     %store type
     fieldData{i,5} = nameHold(spaceFind(4)+1:end);    
 end
-
-%next, go through and hunt for duplicates or overlap.
-depthLim = 200;
-
-whileTrig = 0;
-searchInd = 1;
-searchLim = length(fieldNames);
-while whileTrig == 0
-    disp(strcat('Looking at File #',num2str(searchInd)))
-    %reset search limits
-    searchLim = length(fieldNames);
-    
-    if searchInd == searchLim - 1;
-        whileTrig = 1;
-    end
-    %first see if dates are the same
-    dateComp = strcmp(fieldData{searchInd,1},fieldData{searchInd+1,1});
-    if dateComp == 1
-        %then compare mouse ID
-        nameComp = strcmp(fieldData{searchInd,2},fieldData{searchInd+1,2});
-        if nameComp == 1
-            %then compare side
-            sideComp = strcmp(fieldData{searchInd,3},fieldData{searchInd+1,3});
-            if sideComp == 1
-                %compare depths
-                
-                depth1 = str2double(fieldData{searchInd,4});
-                depth2 = str2double(fieldData{searchInd+1,4});
-                depthDiff = abs(depth1 - depth2);
-                if depthDiff < depthLim
-                    %initiate text to eliminate one of the options
-                    disp('Overlap Detected with Files')
-                    disp(strcat(fieldNames{searchInd},' or ',fieldNames{searchInd+1}))
-                    whileCounter = 0; %this is the counter that gets updated to exit the loop
-
-                    while whileCounter == 0
-                        try
-                            prompt = 'Decide on Units: k: keep both f: keep first s: keep second';
-                            str = input(prompt,'s');
-                            if str~='k' & str~='f' & str~='s'
-                                error
-                            else
-                                whileCounter = 1;
-                            end
-                        catch
-                        end
-                    end
-                    if strfind(str,'k')
-                        disp('Keep Both Units')
-                        searchInd = searchInd + 1;
-                    elseif strfind(str,'f')
-                        disp('Keeping First, Deleting Second')
-                        %delete the row below search index
-                        fieldData(searchInd + 1,:) = [];
-                        fieldNames(searchInd + 1) = [];
-                        %advance searchInd
-                        searchInd = searchInd + 1;
-                    elseif strfind(str,'s')
-                        disp('Keeping Second, Deleting First')
-                        %delete the row below search index
-                        fieldData(searchInd,:) = [];
-                        fieldNames(searchInd) = [];
-                        %advance searchInd
-                        searchInd = searchInd + 1;
-                    end
-                else
-                    searchInd = searchInd + 1;
-                end
-            else
-                searchInd = searchInd + 1;
-            end
-        else
-            searchInd = searchInd + 1;
-        end
-    else
-        searchInd = searchInd + 1;
-    end
-end
-
-%Now, we should have an annotated list of the files we want to pull from
-%fullMaster. 
-
-%using these, lets go through a couple of big for loops and extract relevant details
-
-for i = 1:length(fieldNames)
-    disp(strcat('Analyzing Locomotion For ',fieldNames{i}))
-    %load data from the correct field
-    testData = fullMaster.(fieldNames{i});
-    desigNames = testData.DesignationName;
-    %first, check if there is locomotor data for ROC analysis, and see if
-    %this analysis has been performed. If not, execute the ROC analysis
-    locoCheck = length(testData.RotaryData.LocoStarts);
-    if locoCheck > 0
-        disp('Locomotion Data Found, checking for ROC analysis')
-        rocCheck = isfield(testData.(desigNames{1}),'TrueAUC');
-        if rocCheck == 0
-            disp('Performing ROC analysis of Locomotion/Firing Rate')
-            for j = 1:length(desigNames)
-                [testData] = functionLocomotionROC(testData,desigNames{j});
-                fullMaster.(fieldNames{i}) = testData;
-            end
-            
-        elseif rocCheck == 1
-            disp('ROC Data Detected, no further analysis needed')
-        end
-    elseif locoCheck == 0
-        disp('No locomotor data, not checking for ROC')
-    end
-end
-disp('Locomotor Repairs Finished')
-
-%next, lets try and determine whether there is finer tuning related
-%information in the files. if it doesnt exist, then execute finer tuning.
-
-for i = 1:length(fieldNames)
-    disp(strcat('Analyzing Tuning Responses For ',fieldNames{i}))
-    %load data
-    testData = fullMaster.(fieldNames{i});
-    desigNames = testData.DesignationName;
-    %check if there is analysis for type of tuning
-    tuneCheck = isfield(testData,'TuningType');
-    if tuneCheck == 0;
-        disp('Tuning Type Analysis Not Performed, Initiating')
-        [decisionTuning,tuningType] = functionTuningSelectionTool(testData,fieldNames{i});
-        fullMaster.(fieldNames{i}).TuningDecision = decisionTuning;
-        fullMaster.(fieldNames{i}).TuningType = tuningType;
-    else
-        disp('Tuning Type Analysis Already Done')
-    end
-end
-disp('Tuning Repairs Finished')
+% 
+% %next, go through and hunt for duplicates or overlap.
+% depthLim = 200;
+% 
+% whileTrig = 0;
+% searchInd = 1;
+% searchLim = length(fieldNames);
+% while whileTrig == 0
+%     disp(strcat('Looking at File #',num2str(searchInd)))
+%     %reset search limits
+%     searchLim = length(fieldNames);
+%     
+%     if searchInd == searchLim - 1;
+%         whileTrig = 1;
+%     end
+%     %first see if dates are the same
+%     dateComp = strcmp(fieldData{searchInd,1},fieldData{searchInd+1,1});
+%     if dateComp == 1
+%         %then compare mouse ID
+%         nameComp = strcmp(fieldData{searchInd,2},fieldData{searchInd+1,2});
+%         if nameComp == 1
+%             %then compare side
+%             sideComp = strcmp(fieldData{searchInd,3},fieldData{searchInd+1,3});
+%             if sideComp == 1
+%                 %compare depths
+%                 
+%                 depth1 = str2double(fieldData{searchInd,4});
+%                 depth2 = str2double(fieldData{searchInd+1,4});
+%                 depthDiff = abs(depth1 - depth2);
+%                 if depthDiff < depthLim
+%                     %initiate text to eliminate one of the options
+%                     disp('Overlap Detected with Files')
+%                     disp(strcat(fieldNames{searchInd},' or ',fieldNames{searchInd+1}))
+%                     whileCounter = 0; %this is the counter that gets updated to exit the loop
+% 
+%                     while whileCounter == 0
+%                         try
+%                             prompt = 'Decide on Units: k: keep both f: keep first s: keep second';
+%                             str = input(prompt,'s');
+%                             if str~='k' & str~='f' & str~='s'
+%                                 error
+%                             else
+%                                 whileCounter = 1;
+%                             end
+%                         catch
+%                         end
+%                     end
+%                     if strfind(str,'k')
+%                         disp('Keep Both Units')
+%                         searchInd = searchInd + 1;
+%                     elseif strfind(str,'f')
+%                         disp('Keeping First, Deleting Second')
+%                         %delete the row below search index
+%                         fieldData(searchInd + 1,:) = [];
+%                         fieldNames(searchInd + 1) = [];
+%                         %advance searchInd
+%                         searchInd = searchInd + 1;
+%                     elseif strfind(str,'s')
+%                         disp('Keeping Second, Deleting First')
+%                         %delete the row below search index
+%                         fieldData(searchInd,:) = [];
+%                         fieldNames(searchInd) = [];
+%                         %advance searchInd
+%                         searchInd = searchInd + 1;
+%                     end
+%                 else
+%                     searchInd = searchInd + 1;
+%                 end
+%             else
+%                 searchInd = searchInd + 1;
+%             end
+%         else
+%             searchInd = searchInd + 1;
+%         end
+%     else
+%         searchInd = searchInd + 1;
+%     end
+% end
+% 
+% %Now, we should have an annotated list of the files we want to pull from
+% %fullMaster. 
+% 
+% %using these, lets go through a couple of big for loops and extract relevant details
+% 
+% for i = 1:length(fieldNames)
+%     disp(strcat('Analyzing Locomotion For ',fieldNames{i}))
+%     %load data from the correct field
+%     testData = fullMaster.(fieldNames{i});
+%     desigNames = testData.DesignationName;
+%     %first, check if there is locomotor data for ROC analysis, and see if
+%     %this analysis has been performed. If not, execute the ROC analysis
+%     locoCheck = length(testData.RotaryData.LocoStarts);
+%     if locoCheck > 0
+%         disp('Locomotion Data Found, checking for ROC analysis')
+%         rocCheck = isfield(testData.(desigNames{1}),'TrueAUC');
+%         if rocCheck == 0
+%             disp('Performing ROC analysis of Locomotion/Firing Rate')
+%             for j = 1:length(desigNames)
+%                 [testData] = functionLocomotionROC(testData,desigNames{j});
+%                 fullMaster.(fieldNames{i}) = testData;
+%             end
+%             
+%         elseif rocCheck == 1
+%             disp('ROC Data Detected, no further analysis needed')
+%         end
+%     elseif locoCheck == 0
+%         disp('No locomotor data, not checking for ROC')
+%     end
+% end
+% disp('Locomotor Repairs Finished')
+% 
+% %next, lets try and determine whether there is finer tuning related
+% %information in the files. if it doesnt exist, then execute finer tuning.
+% 
+% for i = 1:length(fieldNames)
+%     disp(strcat('Analyzing Tuning Responses For ',fieldNames{i}))
+%     %load data
+%     testData = fullMaster.(fieldNames{i});
+%     desigNames = testData.DesignationName;
+%     %check if there is analysis for type of tuning
+%     tuneCheck = isfield(testData,'TuningType');
+%     if tuneCheck == 0;
+%         disp('Tuning Type Analysis Not Performed, Initiating')
+%         [decisionTuning,tuningType] = functionTuningSelectionTool(testData,fieldNames{i});
+%         fullMaster.(fieldNames{i}).TuningDecision = decisionTuning;
+%         fullMaster.(fieldNames{i}).TuningType = tuningType;
+%     else
+%         disp('Tuning Type Analysis Already Done')
+%     end
+% end
+% disp('Tuning Repairs Finished')
 
 %next, lets go through the dataset and pull out information we care about
 
@@ -169,6 +169,7 @@ store.TrueAUC = zeros(100,1);
 store.ShuffleAUC = zeros(100,2);
 store.MinLat = zeros(100,1);
 store.Waves = zeros(40,4,100);
+% store.LatMaps = cell;
 
 placeHolder = 1;
 
@@ -193,7 +194,7 @@ for i = 1:length(fieldNames)
             store.ShuffleAUC(placeHolder - 1 + j,1) = prctile(testData.(desigNames{j}).ShuffleAUC,0.5);
             store.ShuffleAUC(placeHolder - 1 + j,2) = prctile(testData.(desigNames{j}).ShuffleAUC,99.5);
         end
-        
+        store.LatMaps{placeHolder - 1 + j} = testData.(desigNames{j}).LatencyMap;
         %store waveform
         store.Waves(:,:,placeHolder - 1 + j) = testData.(desigNames{j}).AverageWaveForms;
         
@@ -206,7 +207,7 @@ end
 
 %as a first pass, lets go through all the shits and select the peak wave as
 %the model
-sortedWaves = zeros(40,size(store.Waves,3));
+% sortedWaves = zeros(40,size(store.Waves,3));
 sortedPeaks = zeros(size(store.Waves,3),1);
 sortedPeakTroughs = zeros(size(store.Waves,3),1);
 sortedPeakWidth = zeros(size(store.Waves,3),1);
@@ -216,22 +217,328 @@ for i = 1:size(store.Waves,3);
     targetWaves = squeeze(store.Waves(:,:,i));
     [maxVal maxFind] = max(max(targetWaves));
     sortedPeakValues(i) = maxVal;
-    sortedWaves(:,i) = targetWaves(:,maxFind);
+    sortedWaves(:,i) = interp1([1:1:40],targetWaves(:,maxFind),[1:0.1:40],'spline');
     %turns out this seems to work fairly well. now lets pull peaks and
     %troughs
     %the peak should be the biggest point in the whole thing. Lets pull
     %that out
-    [mVal,sortedPeaks(i)] = max(targetWaves(:,maxFind));
+    [mVal,sortedPeaks(i)] = max(sortedWaves(:,i));
     %the trough should be the opposite
-    [minVal,sortedPeakTroughs(i)] = min(targetWaves(sortedPeaks(i):end,maxFind));
+    [minVal,sortedPeakTroughs(i)] = min(sortedWaves(sortedPeaks(i):end,i));
+    sortedPeakTroughs(i) = sortedPeakTroughs(i)/300000;
     %find peak width
-    startVal = find(targetWaves(:,maxFind) >= maxVal/2,1,'first');
-    endVal = find(targetWaves(sortedPeaks(i):end,maxFind) <= maxVal/2,1,'first');
-    sortedPeakWidth(i) = endVal + sortedPeaks(i) - startVal;
+    startVal = find(sortedWaves(:,i) >= maxVal/2,1,'first');
+    endVal = find(sortedWaves(sortedPeaks(i):end,i) <= maxVal/2,1,'first');
+    sortedPeakWidth(i) = (endVal + sortedPeaks(i) - startVal)/300000;
 end
+
+
+tester = intersect(find(sortedPeakTroughs<0.00046),find(sortedPeakWidth<0.00014));
+tester2 = intersect(find(sortedPeakTroughs<0.00046),find(sortedPeakWidth<0.0002 & sortedPeakWidth>0.00014));
+tester3 = [1:1:length(sortedPeakWidth)];
+selUnique = unique([tester;tester2]);
+tester3(selUnique) = [];
 
 figure
 hist(sortedPeakValues,100)
+
+figure
+plot(store.BaselineRate,sortedPeakTroughs,'k.')
+
+
+hFig = figure;
+hold on
+plot(sortedPeakWidth,sortedPeakTroughs,'k.')
+% plot(sortedPeakWidth(tester),sortedPeakTroughs(tester),'r.')
+% plot(sortedPeakWidth(tester2),sortedPeakTroughs(tester2),'g.')
+title('Peak Half-Width vs Peak Trough')
+xlabel('Peak Half-Width, seconds')
+ylabel('Peak-Trough, seconds')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'PeakHalfWidthvsPeakTroughNoColor','-dpdf','-r0')
+
+hFig = figure;
+hold on
+plot(store.BaselineRate,sortedPeakTroughs,'k.')
+plot(store.BaselineRate(tester),sortedPeakTroughs(tester),'r.')
+plot(store.BaselineRate(tester2),sortedPeakTroughs(tester2),'g.')
+title('Firing Rate vs Peak Trough')
+xlabel('Firing Rate (Hz)')
+ylabel('Peak-Trough, seconds')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'BaselineRatevsPeakTrough','-dpdf','-r0')
+
+hFig = figure
+hold on
+stem3(sortedPeakWidth(tester3),sortedPeakTroughs(tester3),store.BaselineRate(tester3),'k','filled')
+stem3(sortedPeakWidth(tester),sortedPeakTroughs(tester),store.BaselineRate(tester),'r','filled')
+stem3(sortedPeakWidth(tester2),sortedPeakTroughs(tester2),store.BaselineRate(tester2),'g','filled')
+xlabel('FWHM (sec)')
+ylabel('Peak-Trough (sec)')
+zlabel('Baseline Rate (Hz)')
+grid on
+
+%% lets try and pull out latencies
+
+latStore = zeros(100,1);
+counter = 1;
+for i = 1:length(store.FileName)
+    testMap = store.LatMaps{i};
+    findLat = find(testMap);
+    latVals = testMap(findLat);
+    latStore(counter:counter+length(latVals)-1) = latVals;
+    counter = counter + length(latVals);
+end
+
+figure
+hist(latStore(latStore<0.15),[0:0.001:0.15])
+
+%lets try only for tuned neurons
+latStoreSel = zeros(100,1);
+counter = 1;
+tuneFind = find(store.DecisionTuning);
+for i = 1:length(tuneFind)
+    testMap = store.LatMaps{tuneFind(i)};
+    findLat = find(testMap);
+    latVals = testMap(findLat);
+    latStoreSel(counter:counter+length(latVals)-1) = latVals;
+    counter = counter + length(latVals);
+end
+
+figure
+hist(latStoreSel(latStoreSel<0.15),[0:0.001:0.15])
+
+%This overall looks fairly reasonable. I'm seeing most things with above 6
+%ms latency, and some shit with short latency, which is somewhat expected
+%based on how I calculate things. 
+
+%Now lets go through the data and get the tuning information from each unit
+%so I can get a sense of tuning bandwidths.
+
+placeHolder = 1;
+latStore = struct;
+for i = 1:length(fieldNames)
+    %load data
+    testData = fullMaster.(fieldNames{i});
+    desigNames = testData.DesignationName;
+    %pull tuning data
+    DecisionTuning = find(testData.TuningDecision);
+    %go into individual tuned units to pull data
+    for j = 1:length(DecisionTuning)
+        latStore(placeHolder).LatMap = testData.(desigNames{DecisionTuning(j)}).LatencyMap;
+        latStore(placeHolder).Freqs = testData.SoundData.UniqueFrequencies;
+        latStore(placeHolder).DBs = testData.SoundData.UniqueDBs;
+        latStore(placeHolder).MaxAmp = find(testData.(desigNames{DecisionTuning(j)}).LatencyMap(:,end));
+        placeHolder = placeHolder + 1;
+    end
+end
+
+%% Testing extraction of responses to given frequencies
+
+
+%now pull all units and frequencies to get sense of how many cells were
+%presented with specific frequencies
+placeHolder = 1;
+for i = 1:length(fieldNames)
+    %load data
+    testData = fullMaster.(fieldNames{i});
+    desigNames = testData.DesignationName;
+    %pull tuning data
+    
+    %go into individual tuned units to pull data
+    for j = 1:length(desigNames)
+        freqStore(placeHolder:placeHolder - 1 + length(testData.SoundData.UniqueFrequencies)) = testData.SoundData.UniqueFrequencies;
+        placeHolder = placeHolder + length(testData.SoundData.UniqueFrequencies);
+    end
+end
+
+[fullFreqSet ia ic] = unique(freqStore);
+%find abundance of each thing!
+for i = 1:length(fullFreqSet)
+    fullFreqAb(i) = length(find(ic == i));
+end
+
+%turns out there is a bit of a bug with the frequencies. Round, eliminate,
+%and group
+fullFreqSet = round(fullFreqSet);
+[fullFreqSet ia ic] = unique(fullFreqSet);
+newFreqAb = zeros(length(fullFreqSet),1);
+for i = 1:length(ic)
+    newFreqAb(ic(i)) = newFreqAb(ic(i))+ fullFreqAb(i);
+end
+
+
+%lets just get readout of frequencies represented with responses at peak
+%amp
+counter = 1;
+for i = 1:length(latStore)
+    targetFreqs = latStore(i).Freqs(latStore(i).MaxAmp);
+    if length(targetFreqs > 0)
+        respFreqs(counter:counter + length(targetFreqs) - 1) = targetFreqs;
+        counter = counter + length(targetFreqs);
+    end
+end
+
+[respFreqSet ia ic] = unique(respFreqs);
+
+for i = 1:length(respFreqSet)
+    respFreqAb(i) = length(find(ic == i));
+end
+
+%turns out there is a bit of a bug with the frequencies. Round, eliminate,
+%and group
+respFreqSet = round(respFreqSet);
+[respFreqSet ia ic] = unique(respFreqSet);
+newRespFreqAb = zeros(length(respFreqSet),1);
+for i = 1:length(ic)
+    newRespFreqAb(ic(i)) = newRespFreqAb(ic(i))+ respFreqAb(i);
+end
+
+respRatio = newRespFreqAb ./ newFreqAb; %this plots the ratio of the responses vs presentations relative to number of cells
+
+figure
+semilogx(respFreqSet,respRatio)
+
+%% this more or less works! Lets try to do it in a for loop to figure things
+%out. 
+
+%okay, what we are going to do is as follows: pull all frequencies, pull
+%all decibels, and then determine the total range. This will allow me to
+%generate a big array of m x n, with decibels and frequencies. Then I can
+%go through the dataset and pull individual sets and use those to fill one
+%array for occurrence and one array for responses
+freqCounter = 1;
+dbCounter = 1;
+% allFreqs = zeros(100,1);
+% allDBS = zeros(100,1);
+for i = 1:length(latStore)
+    targetFreqs = latStore(i).Freqs;
+    targetDBs = latStore(i).DBs;
+    allFreqs(freqCounter:freqCounter + length(targetFreqs) - 1) = targetFreqs;
+    allDBs(dbCounter:dbCounter + length(targetDBs) - 1) = targetDBs;
+    freqCounter = freqCounter + length(targetFreqs);
+    dbCounter = dbCounter + length(targetDBs);
+end
+
+allFreqs = unique(round(allFreqs));
+allDBs = unique(round(allDBs));
+
+%based on these, we can generate an array of dbs x freqs
+
+incidenceArray = zeros(length(allDBs),length(allFreqs));
+responseArray = zeros(length(allDBs),length(allFreqs));
+
+for i = 1:length(latStore)
+    %pull freqs and dbs
+    targetFreqs = round(latStore(i).Freqs);
+    targetDBs = round(latStore(i).DBs);
+    %match to overall lists
+    [Cf,ia,ib] = intersect(allFreqs,targetFreqs);
+    [Cd,ic,id] = intersect(allDBs,targetDBs);
+    %fill incidence array.
+    for j = 1:length(ic)
+        for k = 1:length(ia)
+            incidenceArray(ic(j),ia(k)) = incidenceArray(ic(j),ia(k)) + 1;
+        end
+    end
+    incidenceArray(ic,ia) = incidenceArray(ic,ia) + 1;
+    %now need to fill out response array
+    latFind = find(latStore(i).LatMap);
+    %now I need to find the coordinates
+    coordFreq = rem(latFind,length(targetFreqs));
+    coordFreq(coordFreq == 0) = length(targetFreqs);
+    coordDB = fix((latFind-1)/length(targetFreqs))+1;
+    coordDB(coordDB<1) = 1;
+    for j = 1:length(coordDB)
+        responseArray(ic(coordDB(j)),ia(coordFreq(j))) = responseArray(ic(coordDB(j)),ia(coordFreq(j))) + 1;
+    end
+end
+
+perRespArray = responseArray ./ incidenceArray;
+
+hFig = figure
+set(hFig, 'Position', [10 80 1240 850])
+imagesc(perRespArray)
+colormap('parula')
+colorbar
+set(gca,'XTick',[1:1:17])
+set(gca,'XTickLabel',allFreqs)
+set(gca,'YTick',[1:1:6])
+set(gca,'YTickLabel',allDBs)
+title('Heatmap Of Percent Responses Relative To Amp/Freq')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'heatmapResponsePercentage','-dpdf','-r0')
+
+%% Now that we've done that, lets try something a bit more complex: lets use the same code to pull out the relevant response latencies
+
+incidenceArray = zeros(length(allDBs),length(allFreqs));
+responseArray = ones(length(allDBs),length(allFreqs));
+responseLatStore = cell(length(allDBs),length(allFreqs));
+for i = 1:length(latStore)
+    %pull freqs and dbs
+    targetFreqs = round(latStore(i).Freqs);
+    targetDBs = round(latStore(i).DBs);
+    %match to overall lists
+    [Cf,ia,ib] = intersect(allFreqs,targetFreqs);
+    [Cd,ic,id] = intersect(allDBs,targetDBs);
+    %fill incidence array.
+    for j = 1:length(ic)
+        for k = 1:length(ia)
+            incidenceArray(ic(j),ia(k)) = incidenceArray(ic(j),ia(k)) + 1;
+        end
+    end
+    incidenceArray(ic,ia) = incidenceArray(ic,ia) + 1;
+    %now need to fill out response array
+    latFind = find(latStore(i).LatMap);
+    %now I need to find the coordinates
+    coordFreq = rem(latFind,length(targetFreqs));
+    coordFreq(coordFreq == 0) = length(targetFreqs);
+    coordDB = fix((latFind-1)/length(targetFreqs))+1;
+    coordDB(coordDB<1) = 1;
+    for j = 1:length(coordDB)
+        responseLatStore{ic(coordDB(j)),ia(coordFreq(j))}(responseArray(ic(coordDB(j)),ia(coordFreq(j)))) = latStore(i).LatMap(latFind(j));
+        responseArray(ic(coordDB(j)),ia(coordFreq(j))) = responseArray(ic(coordDB(j)),ia(coordFreq(j))) + 1;
+    end
+end
+
+%lets pull the averages
+responseLatAverage = zeros(length(allDBs),length(allFreqs));
+for i = 1:length(allDBs)
+    for j = 1:length(allFreqs)
+        responseLatAverage(i,j) = mean(responseLatStore{i,j});
+    end
+end
+
+figure
+imagesc(responseLatAverage,[0 0.05])
+colormap('parula')
+colorbar
+
+%% plot out average waveforms
+
+testWaves = store.Waves(:,:,tester);
+testWaves2 = store.Waves(:,:,tester2);
+testWaves3 = store.Waves(:,:,tester3);
+% 
+% figure
+% plot(squeeze(mean(testWaves,2)))
+% figure
+% plot(squeeze(mean(testWaves2,2)))
+% figure
+% plot(squeeze(mean(testWaves3,2)))
+
+figure
+hold on
+plot(squeeze(mean(squeeze(mean(testWaves,2)),2)),'r','LineWidth',2)
+plot(squeeze(mean(squeeze(mean(testWaves2,2)),2)),'g','LineWidth',2)
+plot(squeeze(mean(squeeze(mean(testWaves3,2)),2)),'k','LineWidth',2)
+title('Average Waveform Per Grouping (PV (R),UNK (G), MSN (K)')
 
 %lets look at mean rates
 baseRateUntuned = store.BaselineRate(store.DecisionTuning == 0);
