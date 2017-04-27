@@ -88,12 +88,14 @@ for i = 1:length(fieldNames)
         unitStore(counter).UnitID = desigNames{j};
         unitStore(counter).TrialNumber = size(tempData.(desigNames{j}).IndividualHistograms,2);
         unitStore(counter).AverageWaves = tempData.(desigNames{j}).AverageWaveForms;
-        unitStore(counter).AverageHistogram = tempData.(desigNames{j}).AllHistograms;
+        unitStore(counter).AverageHistogram = hist(tempData.(desigNames{j}).AllRasters(:,1),tempData.(desigNames{j}).HistBinVector)/unitStore(counter).TrialNumber/tempData.Parameters.histBin;
         unitStore(counter).HistogramVector = tempData.(desigNames{j}).HistBinVector;
         unitStore(counter).Rasters = tempData.(desigNames{j}).AllRasters;
+        unitStore(counter).RasterWindow = tempData.Parameters.RasterWindow;
         unitStore(counter).AllSpikes = tempData.(desigNames{j}).SpikeTimes;
         unitStore(counter).AUCScore = tempData.(desigNames{j}).TrueAUC;
         unitStore(counter).AUCRange = [prctile(tempData.(desigNames{j}).ShuffleAUC,0.05),prctile(tempData.(desigNames{j}).ShuffleAUC,9.95)];
+        
         
         %lets pick out laser times!
         laserOn = tempData.LaserData.LaserStartTimes;
@@ -107,6 +109,35 @@ for i = 1:length(fieldNames)
         infoStruct(counter).TrialNumber = unitStore(counter).TrialNumber;
         infoStruct(counter).LaserPulses = pulsePerTrial;
         infoStruct(counter).LaserDuration = laserDur;
+        aveLaserDur = mean(unitStore(counter).LaserEnds - unitStore(counter).LaserStarts);
+        
+        %lets do some calculations!
+        %first, calculate baseline firing rate using the baseline period
+        %of rasterWindow(1) : 0 from raster data
+        for k = 1: unitStore(counter).TrialNumber
+            %see if any spikes in this trial
+            spikeFinder = length(find(unitStore(counter).Rasters(:,2) == k & unitStore(counter).Rasters(:,1) <0));
+            %calculate baseline rate
+            baseRate(k) = spikeFinder/(-1*unitStore(counter).RasterWindow(1));
+            %now find spikes in the laser period
+            spikeFinder = length(find(unitStore(counter).Rasters(:,2) == k & unitStore(counter).Rasters(:,1) <= aveLaserDur & unitStore(counter).Rasters(:,1) > 0));
+            laserRate(k) = spikeFinder/(aveLaserDur);
+            %now find spikes in the postlaser period
+            spikeFinder = length(find(unitStore(counter).Rasters(:,2) == k & unitStore(counter).Rasters(:,1) <= aveLaserDur + 3 & unitStore(counter).Rasters(:,1) > aveLaserDur));
+            postLaserRate(k) = spikeFinder/(3);
+        end
+        unitStore(counter).BaselineRate = mean(baseRate);
+        unitStore(counter).BaselineSTD = std(baseRate);
+        %now lets make a z-scored histogram
+        unitStore(counter).zHist = (unitStore(counter).AverageHistogram - unitStore(counter).BaselineRate)/unitStore(counter).BaselineSTD;
+        %lets also make z-scores of different periods
+        unitStore(counter).zLaserMean = (mean(laserRate)- unitStore(counter).BaselineRate)/unitStore(counter).BaselineSTD;
+        unitStore(counter).zPostLaserMean = (mean(postLaserRate)- unitStore(counter).BaselineRate)/unitStore(counter).BaselineSTD;
+        %also store raw values
+        unitStore(counter).BaselineCounts = baseRate;
+        unitStore(counter).LaserCounts = laserRate;
+        unitStore(counter).PostLaserCounts = postLaserRate;
+        clear 'baseRate' 'laserRate' 'postLaserRate'
         
         %lets do some analysis of waveform to classify
         targetWaves = unitStore(counter).AverageWaves;
@@ -124,10 +155,10 @@ for i = 1:length(fieldNames)
         unitStore(counter).PeakTrough = sortedPeakTroughs;
         unitStore(counter).OverallRate = tempData.(desigNames{j}).OverallFiringRate;
         %classify based on this value
-        if sortedPeakTroughs > 0.0005
+        if sortedPeakTroughs > 0.0008
             recordNames(counter,3) = 1;
             infoStruct(counter).CellClass = 'MSN';
-        elseif sortedPeakTroughs < 0.0005 && tempData.(desigNames{j}).OverallFiringRate > 2
+        elseif sortedPeakTroughs < 0.0008 && tempData.(desigNames{j}).OverallFiringRate > 2
             recordNames(counter,3) = 2;
             infoStruct(counter).CellClass = 'PV';
         else
