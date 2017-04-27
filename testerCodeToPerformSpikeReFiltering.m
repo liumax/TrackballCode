@@ -11,7 +11,7 @@ fieldNames = fields(fullMaster);
 masterDir = pwd;
 
 spikeLim = [-0.0009 0.0009];
-
+counter = 1;
 for i = 1:length(fieldNames)
     recordData = fullMaster.(fieldNames{i});
     recordName = fieldNames{i}(2:end) %this is the name for the file
@@ -97,7 +97,8 @@ for i = 1:length(fieldNames)
             
             notFound = length(find(waveWarn == 100));
             notFoundPrct = notFound/length(unitData)*100;
-            
+            prctStore(counter) = notFoundPrct;
+            counter = counter + 1;
             disp(strcat('Remaining Waves Found, ',num2str(notFoundPrct),'% Missing'))
             ia = sort(ia);%need to re-order ia so that things are appropriately listed in order. 
             
@@ -111,6 +112,8 @@ for i = 1:length(fieldNames)
             clear 'waves'
         end
     end
+    clf
+    hist(prctStore,[0:1:100])
     %return to master folder
     cd (masterDir)
 end
