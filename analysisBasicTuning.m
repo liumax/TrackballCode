@@ -23,10 +23,10 @@
 function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 %TOGGLES FOR ENABLING/DISABLING FEATURES
-s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
-toggleROC = 0; %toggle for tuning on/off ROC analysis
+s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+toggleROC = 1; %toggle for tuning on/off ROC analysis
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -232,7 +232,7 @@ end
 
 
 
-%Extract data from rotary encoder.
+%% Extract data from rotary encoder.
 [s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
 
 %rasterize this data
@@ -250,6 +250,12 @@ end
 averageVel = mean(velRaster,2);
 velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
 velZero = find(velVector >= 0,1,'first');
+
+%Change toggle for ROC analysis if insufficient running is found
+if s.RotaryData.RawDistance(end,2) < 10;
+    toggleROC = 0;
+    disp('Resetting ROC Toggle Due to Lack of Movement')
+end
 
 
 figure
