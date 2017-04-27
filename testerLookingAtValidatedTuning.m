@@ -249,8 +249,8 @@ plot(store.BaselineRate,sortedPeakTroughs,'k.')
 hFig = figure;
 hold on
 plot(sortedPeakWidth,sortedPeakTroughs,'k.')
-% plot(sortedPeakWidth(tester),sortedPeakTroughs(tester),'r.')
-% plot(sortedPeakWidth(tester2),sortedPeakTroughs(tester2),'g.')
+plot(sortedPeakWidth(tester),sortedPeakTroughs(tester),'r.')
+plot(sortedPeakWidth(tester2),sortedPeakTroughs(tester2),'g.')
 title('Peak Half-Width vs Peak Trough')
 xlabel('Peak Half-Width, seconds')
 ylabel('Peak-Trough, seconds')
