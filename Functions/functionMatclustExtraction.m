@@ -4,7 +4,7 @@
 %Addendum 170105 Adding code to eliminate duplicate units.
 
 function [s, truncatedNames] = functionMatclustExtraction(rpvTime,...
-    matclustFiles,s,clusterWindow);
+    matclustFiles,s,clusterWindow,subFoldersCell);
 
 %Parameters for selection of duplicates
 dupSelectLim = 0.20;
@@ -31,6 +31,9 @@ else
         disp('TOGGLE DETECTED, NOT ELIMINATING UNITS')
     end
 end
+
+%pull names for parameter files
+[paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
 
 %first, lets see if there was any laser playback. If there was, this
 %initiates code for looking at laser alignment. 
@@ -198,6 +201,7 @@ for clusterCount = 1:numTrodes
                 waveHolder = waveLoader.waves(:,:,clusterSpikes);
                 %pull out average and standard error
                 averageWaveHolder = mean(waveHolder,3);
+                nTrodeWidth(desigCounter) = size(averageWaveHolder,2);
                 %store into structured array!
                 s.(desigNames{desigCounter}) = [];
                 s.(desigNames{desigCounter}).ISIGraph = selectedSpikes;
@@ -216,50 +220,101 @@ for clusterCount = 1:numTrodes
     end
 end
 
-% %now that things are all squared away, lets eliminate duplicates!
-% c = nchoosek([1:length(desigNames)],2);
-% compHolder = zeros(length(c),3);
-% 
-% for clusterCounter = 1:length(c)
-%     compHolder(clusterCounter,1) = length(intersect(spikeHolder{c(clusterCounter,1)},spikeHolder{c(clusterCounter,2)}));
-%     compHolder(clusterCounter,2) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,1)});
-%     compHolder(clusterCounter,3) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,2)});
-% end
-% 
-% %find duplicates with cutoff set above. 
-% dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
-% 
-% %find the true indices of the units, choose which to eliminate.
-% while length(dupTargets)>0
-%     targetInds = c(dupTargets(1),:);
-%     waves1 = mean(max(s.(desigNames{targetInds(1)}).AverageWaveForms));
-%     waves2 = mean(max(s.(desigNames{targetInds(2)}).AverageWaveForms));
-%     if waves1 > waves2
-%         disp(strcat(desigNames{targetInds(1)},'>',desigNames{targetInds(2)},'Saving Former'))
-%         s = rmfield(s,desigNames{targetInds(2)});
-%         desigNames(targetInds(2)) = [];
-%         desigArray(targetInds(2),:) = [];
-%     elseif waves2 > waves1
-%         disp(strcat(desigNames{targetInds(1)},'<',desigNames{targetInds(2)},'Saving Latter'))
-%         s = rmfield(s,desigNames{targetInds(1)});
-%         desigNames(targetInds(1)) = [];
-%         desigArray(targetInds(1),:) = [];
-%     else
-%         disp(strcat(desigNames{targetInds(1)},' and_',desigNames{targetInds(2)},'Equal, Saving Both'))
-%     end
-%     
-%     c = nchoosek([1:length(desigNames)],2);
-%     compHolder = zeros(length(c),3);
-%     for clusterCounter = 1:length(c)
-%         compHolder(clusterCounter,1) = length(intersect(spikeHolder{c(clusterCounter,1)},spikeHolder{c(clusterCounter,2)}));
-%         compHolder(clusterCounter,2) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,1)});
-%         compHolder(clusterCounter,3) = compHolder(clusterCounter,1)/length(spikeHolder{c(clusterCounter,2)});
-%     end
-%     %find duplicates with cutoff set above. 
-%     dupTargets = find(compHolder(:,2) > dupSelectLim & compHolder(:,3) > dupSelectLim);
-%     
-% end
+%% Now lets put in some code to determine shanks etc. 
+% first determine number of total nTrodes.
+numberTrodes = length(paramFiles)-length(matclustFiles);
 
+trueWidth = round(mean(nTrodeWidth));
+
+if ~ismember(numberTrodes,[4,8,16,32]);
+    disp(strcat('WARNING: UNCONVENTIONAL NUMBER OF nTRODES DETECTED',num2str(numberTrodes)))
+    %extract params file names
+    testParams = paramFiles(length(matclustFiles)+1:end);
+    %extract numbers from these names
+    for i = 1:length(testParams)
+        nameHold = testParams{i};
+        ntFind = strfind(nameHold,'nt');
+        dotFind = strfind(nameHold,'.');
+        numParam(i) = str2num(nameHold(ntFind+2:dotFind-1));
+    end
+    %find maximum value
+    paramMax = max(numParam);
+    if ismember(paramMax,[4,8,16,32]);
+        disp('Exact Match for Parameter Files')
+        numberTrodes = paramMax;
+    else
+        disp('No Exact Match for Parameter Files')
+        numSub = [4,8,16,32];
+        testSub = numSub - paramMax;
+        findBig = find(testSub > 0,1,'first');
+        numberTrodes = numSub(findBig);
+    end
+end
+
+
+%since I can assume tetrode configurations, I want to generate a map of the
+%electrodes. These should be standard.
+
+%16 channel map
+chanMap16 = zeros(16,3);
+chanMap16(:,1) = [1:1:16];
+chanMap16(:,2) = floor((chanMap16(:,1)-1)/4)+1;
+chanMap16(:,3) = 1;
+
+%32 channel map
+chanMap32 = zeros(32,3);
+chanMap32(:,1) = [1:1:32];
+chanMap32(:,2) = floor((chanMap32(:,1)-1)/4)+1;
+chanMap32(:,3) = floor((chanMap32(:,1)-1)/16)+1;
+
+%64 channel map
+chanMap64 = zeros(64,3);
+chanMap64(:,1) = [1:1:64];
+chanMap64(:,2) = floor((chanMap64(:,1)-1)/4)+1;
+chanMap64(:,3) = floor((chanMap64(:,1)-1)/32)+1;
+
+if trueWidth == 4 %tetrodes
+    disp('TETRODE CONFIGURATION')
+    if numberTrodes == 4;
+        %this means i'm on the 16 channel single shank
+        shanks = 1;
+        probeMap = chanMap16;
+    elseif numberTrodes == 8;
+        %this means i'm on the 32 channel double shank
+        shanks = 2;
+        probeMap = chanMap32;
+    elseif numberTrodes == 16;
+        %this means i'm on the 64 channel double shank
+        shanks = 2;
+        probeMap = chanMap64;
+    end
+else trueWidth == 1 %singles
+    disp('SINGLE ELECTRODE CONFIGURATION')
+    if numberTrodes == 16;
+        %this means i'm on the 16 channel single shank
+        shanks = 1;
+        probeMap = chanMap16;
+        probeMap(:,2) = [1:1:16];
+    elseif numberTrodes == 32;
+        %this means i'm on the 32 channel double shank
+        shanks = 2;
+        probeMap = chanMap32;
+        probeMap(:,2) = [1:1:32];
+    elseif numberTrodes == 64;
+        %this means i'm on the 64 channel double shank
+        shanks = 2;
+        probeMap = chanMap64;
+        probeMap(:,2) = [1:1:64];
+    end
+end
+
+%generate shank designation for duplicate elimination
+shankDesig = zeros(numberTrodes/shanks,shanks);
+holderShank = 1;
+for shnkInd = 1:shanks
+    shankDesig(:,shnkInd) = [holderShank:holderShank+numberTrodes/shanks-1];
+    holderShank = holderShank + numberTrodes/shanks;
+end
 
 
 s.DesignationArray = desigArray;
@@ -267,6 +322,10 @@ s.DesignationName = desigNames;
 firstPoint = min(timeFilterHolder(:,1));
 lastPoint = max(timeFilterHolder(:,2));
 s.TimeFilterRange = [firstPoint lastPoint];
+s.ShankMap = probeMap;
+s.ShankDesignation = shankDesig;
+s.Shanks = shanks;
+
 
 
 end

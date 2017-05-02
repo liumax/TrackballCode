@@ -2,7 +2,8 @@
 
 
 
-function [s] = functionDuplicateElimination(s,downSampFactor,corrSlide,threshComp,samplingRate,rpvTime,clusterWindow);
+function [s] = functionDuplicateElimination(s,downSampFactor,corrSlide,threshComp,...
+    samplingRate,rpvTime,clusterWindow,shankDesig,shankMap,shanks);
 
 %pull parameters
 % downSampFactor = s.Parameters.DownSampFactor;
@@ -26,32 +27,6 @@ tmp = struct;
 for tmpCount = 1:numUnits
     %also create a temporally downsampled list of spike times
     tmp.(s.DesignationName{tmpCount}).SpikeTimes = round((s.(s.DesignationName{tmpCount}).SpikeTimes-firstPoint)*30000/downSampFactor);
-end
-
-%figure out what kind of probe I'm using!
-numTrodes = s.NumberTrodes;
-if numTrodes == 4;
-    %this means i'm on the 16 channel single shank
-    shanks = 1;
-elseif numTrodes == 8;
-    %this means i'm on the 32 channel double shank
-    shanks = 2;
-elseif numTrodes == 16;
-    %this means i'm on the 64 channel double shank
-    shanks = 2;
-elseif numTrodes == 32;
-    %this likely means I am on an old designation
-    shanks = 2;
-else
-    %find the number that is closest to 
-end
-
-%this generates an array for the shanks.
-shankDesig = zeros(numTrodes/shanks,shanks);
-holderShank = 1;
-for shnkInd = 1:shanks
-    shankDesig(:,shnkInd) = [holderShank:holderShank+numTrodes/shanks-1];
-    holderShank = holderShank + numTrodes/shanks;
 end
 
 %set subplot settings!
