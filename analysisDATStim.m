@@ -86,27 +86,44 @@ addpath(subFolders)
 subFoldersCell = strsplit(subFolders,';')';
 
 %% Find and ID Matclust Files for Subsequent Analysis. Generates Structured Array for Data Storage
+%This part of the code is also responsible for trying to figure out the
+%number of shanks based on the designation of ntrodes.
+
 %pull matclust file names
 [matclustFiles] = functionFileFinder(subFoldersCell,'matclust','matclust');
 [paramFiles] = functionFileFinder(subFoldersCell,'matclust','param');
-% s.NumberTrodes = length(paramFiles)-length(matclustFiles);
-s.NumberTrodes = 8;
+
 %generate placeholder structure
 % s = struct;
 %% Fill structure with correct substructures (units, not clusters/trodes) and then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(s.Parameters.RPVTime,...
-    matclustFiles,s,s.Parameters.ClusterWindow);
+    matclustFiles,s,s.Parameters.ClusterWindow,subFoldersCell);
 
 %% Execute duplicate elimination code. 
 if toggleDuplicateElimination ==1
     if length(s.DesignationName) > 1
         disp('Now Selecting Based on xCORR')
         [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
-            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow);
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow,...
+            s.ShankDesignation,s.ShankMap,s.Shanks);
     end
 else
     disp('NOT EXECUTING DUPLICATE ELIMINATION')
 end
+
+
+%% produce indices so that we always have them
+for reInd = 1:length(s.DesignationName) %go through every unit
+    %extract information about tetrode
+    testTet = s.DesignationArray(reInd,1);
+    %extract biggest waveform
+    [bigVal bigInd] = max(max(s.(s.DesignationName{reInd}).AverageWaveForms));
+    %calculate overall index
+    overInd(reInd) = (testTet - 1)*4 + bigInd;
+end
+
+s.PeakWaveIndex = overInd;
+[s.SortedPeakWaveIndex s.SortedPeakWaveOrder] = sort(overInd);
 
 
 %% Pull variables from parameters for easier looking code.
@@ -409,6 +426,88 @@ s.SumPlot.AverageZFiringAllUnits = mean(s.SumPlot.SmoothZHist);
 [B,Ibase] = sort(s.SumPlot.BaselineRates);
 zComb = [s.SumPlot.BaselineZ;s.SumPlot.LaserPeriodZ;s.SumPlot.PostLaserPeriodZ];
 
+%now lets make a zscored plot for heatmaps that takes into account all
+%empty channels
+%find the most common number, and how many there are.
+%%This system worked, but generated a ton of empty spaces. A similarly
+%%arranged system, oriented by trodes and still in geometrical order,
+%%produces less empty space by allocating space based on the maximal number
+%%of units in a single nTrode, rather than by individual electrodes. 
+% [M,F] = mode(s.PeakWaveIndex);
+% newMap = zeros(length(s.ShankMap)/2*F,size(s.SumPlot.SmoothZHist,2));
+% 
+% for shankInd = 1:2
+%     shankMap{shankInd} = newMap;
+%     shankCounter = 1;
+%     corrInds = [(length(s.ShankMap)/2)*(shankInd-1)+1:length(s.ShankMap)/2*shankInd];
+%     for probeInd = 1:size(newMap,1)/F
+%         %look for the targeted designation
+%         disp(num2str(probeInd))
+%         indFinder = find(s.SortedPeakWaveIndex == corrInds(probeInd));
+%         if isempty(indFinder) %if no units on this channel
+%             shankMap{shankInd}([shankCounter:shankCounter + F - 1],:) = NaN;
+%             disp('NoUnits')
+%             shankCounter = shankCounter + F;
+%         elseif length(indFinder) == F %if maximum number of units on this channel
+%             disp('FullMatch')
+%             shankMap{shankInd}([shankCounter:shankCounter + F - 1],:) = s.SumPlot.SmoothZHist(s.SortedPeakWaveOrder(indFinder),:);
+%             shankCounter = shankCounter + F;
+%         else %if partial number of units on this channel
+%             disp('PartialMatch')
+%             shankMap{shankInd}([shankCounter:shankCounter + length(indFinder) - 1],:) = s.SumPlot.SmoothZHist(s.SortedPeakWaveOrder(indFinder),:);
+%             shankCounter = shankCounter + length(indFinder);
+%             disp('FillingZeros')
+%             %fill the remainder with zeros
+%             shankMap{shankInd}([shankCounter:shankCounter + F - length(indFinder) - 1],:) = NaN;
+%             shankCounter = shankCounter + F - length(indFinder);
+%         end
+%     end
+% end
+
+%use data that I have to figure out which trode the individual electrodes
+%belong to.
+for trodeInd = 1:length(s.SortedPeakWaveIndex)
+    trodeFinder(trodeInd) = find(s.ShankMap(:,1) == s.SortedPeakWaveIndex(trodeInd));
+    trodeFinder(trodeInd) = s.ShankMap(trodeFinder(trodeInd),2);
+end
+[M,F] = mode(trodeFinder);
+
+%make index!
+for makeInd = 1:length(s.ShankDesignation)
+    s.ShankAxis(makeInd,1) = makeInd;
+    s.ShankAxis(makeInd,2) = (makeInd-1)*(F) + (F+1)/2;
+end
+
+newMap = zeros(length(s.ShankDesignation)*F,size(s.SumPlot.SmoothZHist,2));
+for shankInd = 1:2
+    s.ShankHeat{shankInd} = newMap;
+    shankCounter = 1;
+    corrInds = [(length(s.ShankDesignation))*(shankInd-1)+1:length(s.ShankDesignation)*shankInd];
+    for trodeInd = 1:length(s.ShankDesignation)
+        %look for the targeted designation
+%         disp(num2str(trodeInd))
+        indFinder = find(trodeFinder == corrInds(trodeInd));
+        if isempty(indFinder) %if no units on this channel
+            s.ShankHeat{shankInd}([shankCounter:shankCounter + F - 1],:) = NaN;
+%             disp('NoUnits')
+            shankCounter = shankCounter + F;
+        elseif length(indFinder) == F %if maximum number of units on this channel
+%             disp('FullMatch')
+            s.ShankHeat{shankInd}([shankCounter:shankCounter + F - 1],:) = s.SumPlot.SmoothZHist(s.SortedPeakWaveOrder(indFinder),:);
+            shankCounter = shankCounter + F;
+        else %if partial number of units on this channel
+%             disp('PartialMatch')
+            s.ShankHeat{shankInd}([shankCounter:shankCounter + length(indFinder) - 1],:) = s.SumPlot.SmoothZHist(s.SortedPeakWaveOrder(indFinder),:);
+            shankCounter = shankCounter + length(indFinder);
+%             disp('FillingZeros')
+            %fill the remainder with zeros
+            s.ShankHeat{shankInd}([shankCounter:shankCounter + F - length(indFinder) - 1],:) = NaN;
+            shankCounter = shankCounter + F - length(indFinder);
+        end
+    end
+end
+
+
 %calculate and plot LFP information
 % [lfpStruct] = functionLFPaverage(master, s.Parameters.LFPWindow, s,homeFolder,fileName, 1, 1, 1, 1);
 % s.LFP = lfpStruct;
@@ -438,7 +537,7 @@ plot(s.SumPlot.AveVelVector,(s.SumPlot.AveVel-min(s.SumPlot.AveVel))/(max(s.SumP
 plot(s.SumPlot.HistBinVector,(s.SumPlot.AverageZFiringAllUnits-min(s.SumPlot.AverageZFiringAllUnits))/(max(s.SumPlot.AverageZFiringAllUnits)-min(s.SumPlot.AverageZFiringAllUnits)),'r','LineWidth',2)
 plot([0 0],[0 1],'k')
 plot([s.LowDur s.LowDur],[0 1],'k')
-title('Normalized Velocity (b) and Firing (r)')
+title('Normalized Speed (b) and Firing (r)')
 %plot out firing rate vs peak trough
 subplot(3,3,7)
 hold on
@@ -448,15 +547,24 @@ xlabel('Peak Trough in Seconds')
 ylabel('Firing Rate (Hz)')
 title('PeakTrough vs Firing Rate showing cutoff')
 
-%Plot out all z scored rates overlaid with average
+%plot heatmap organized by firing rate?
 subplot(3,3,2)
-hold on
+imagesc(s.SumPlot.SmoothZHist(Ibase,:),cLims)
+colormap(parula)
+colorbar
+set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
+set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
+title({strcat(fileName,desigNames{i});'Z Histograms By Baseline Rate'},'interpreter','none')
 
-for i = 1:size(s.SumPlot.SmoothZHist,1)
-    plot(s.SumPlot.HistBinVector,s.SumPlot.SmoothZHist(i,:),'Color',[0.5,0.5,0.5])
-end
-plot(s.SumPlot.HistBinVector,s.SumPlot.AverageZFiringAllUnits,'k','LineWidth',2)
-title({strcat(fileName,desigNames{i});'All Firing Rates'},'interpreter','none')
+% %Plot out all z scored rates overlaid with average
+% subplot(3,3,2)
+% hold on
+% 
+% for i = 1:size(s.SumPlot.SmoothZHist,1)
+%     plot(s.SumPlot.HistBinVector,s.SumPlot.SmoothZHist(i,:),'Color',[0.5,0.5,0.5])
+% end
+% plot(s.SumPlot.HistBinVector,s.SumPlot.AverageZFiringAllUnits,'k','LineWidth',2)
+% title({strcat(fileName,desigNames{i});'All Firing Rates'},'interpreter','none')
 
 %plot out z scored firing rates
 subplot(3,3,5)
@@ -466,6 +574,27 @@ colorbar
 set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
 set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
 title('Z Histograms Ordered by Firing Rate')
+
+%organize this by distance from the top!
+subplot(3,6,9)
+imagesc(s.ShankHeat{1},cLims)
+colormap(parula)
+% colorbar
+set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
+set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
+set(gca,'YTick',s.ShankAxis(:,2));
+set(gca,'YTickLabel',s.ShankAxis(:,1));
+title('Z Histograms Shank 1')
+
+subplot(3,6,10)
+imagesc(s.ShankHeat{2},cLims)
+colormap(parula)
+% colorbar
+set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
+set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
+set(gca,'YTick',s.ShankAxis(:,2));
+set(gca,'YTickLabel',s.ShankAxis(:,1));
+title('Z Histograms Shank 2')
 
 %Plot binned differences
 subplot(3,3,3)
@@ -539,9 +668,9 @@ for i = 1:numUnits
     %fill in laser onset
     plot([0 0],[ylim],'b');
     %if there are locomotion trials, plot these as well.
-    if length(findLoco) > 5
-        plot(histBinVector,mean(s.(desigNames{i}).IndividualHistograms(:,findLoco)'/s.Parameters.histBin),'r')
-    end
+%     if length(findLoco) > 5
+%         plot(histBinVector,mean(s.(desigNames{i}).IndividualHistograms(:,findLoco)'/s.Parameters.histBin),'r')
+%     end
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Histogram')
     
@@ -573,7 +702,7 @@ for i = 1:numUnits
     colorbar
     set(gca,'XTick',velDispIndex);
     set(gca,'XTickLabel',velDispVector);
-    title('Colorized Velocity Trace Per Trial')
+    title('Colorized Speed Trace Per Trial')
     
     %plot scatter of pre vs post bins
     subplot(4,2,7)
