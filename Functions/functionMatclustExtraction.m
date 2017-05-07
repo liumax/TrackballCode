@@ -119,7 +119,7 @@ for clusterCount = 1:numTrodes
     for nameCount = 1:clusterLength
         desigNames{desigCounter} = strcat(truncatedNames{clusterCount},'cluster',num2str(matclustFile.clustattrib.clustersOn(nameCount)));
         
-        desigArray(desigCounter,1) = clusterCount;
+        desigArray(desigCounter,1) = str2double(truncatedNames{clusterCount}(3:end));
         desigArray(desigCounter,2) = nameCount;
         %now I do my conventional stuff for analyzing spike timing
         %pull all spike indices
