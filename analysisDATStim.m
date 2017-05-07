@@ -24,7 +24,7 @@ function [s] = analysisDATStim(fileName);
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. NOT SCALED
@@ -112,7 +112,7 @@ else
 end
 
 
-%% produce indices so that we always have them
+%% Produce Indices for sorting by position on shank
 for reInd = 1:length(s.DesignationName) %go through every unit
     %extract information about tetrode
     testTet = s.DesignationArray(reInd,1);
@@ -341,17 +341,24 @@ for i = 1:numUnits
     %bin spikes within pre/post period for each trial and store
     prepostStore = zeros(totalTrialNum,2);
     preInd = find(histBinVector > -s.Parameters.PrePost,1,'first');
+    preOne = find(histBinVector > -1,1,'first');
     zeroInd = find(histBinVector > 0,1,'first');
-    postInd = find(histBinVector > s.Parameters.PrePost,1,'first');
+    laserInd = find(histBinVector > s.LowDur,1,'first');
+    postInd = find(histBinVector > s.LowDur + s.Parameters.PrePost,1,'first');
     for k = 1:totalTrialNum
-        prePostStore(k,1) = sum(fullHistHolder(preInd:zeroInd,k));
-        prePostStore(k,2) = sum(fullHistHolder(zeroInd:postInd,k));
+        prePostStore(k,1) = sum(fullHistHolder(preInd:zeroInd,k))/(s.Parameters.PrePost);
+        prePostStore(k,2) = sum(fullHistHolder(zeroInd:laserInd,k))/(s.LowDur);
+        prePostStore(k,3) = sum(fullHistHolder(laserInd:postInd,k))/(s.Parameters.PrePost);
+        prePostStore(k,4) = sum(fullHistHolder(preOne:zeroInd,k));
     end
+    
+    zPrePostStore = (prePostStore - averageRate) ./ averageSTD;
     
     [histCounts histCenters] = hist(rasters(:,1),histBinVector);
     fullHistData = histCounts'/totalTrialNum/s.Parameters.histBin;
     
-        disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
+    disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
+    
     s.(desigNames{i}).AllRasters = fullRasterData;
     s.(desigNames{i}).AllHistograms = fullHistData;
     s.(desigNames{i}).IndividualHistograms = fullHistHolder; 
@@ -362,6 +369,8 @@ for i = 1:numUnits
     s.(desigNames{i}).SessionFiring = sessionFiring;
     s.(desigNames{i}).HistBinVector = histBinVector;
     s.(desigNames{i}).PrePostBins = prePostStore;
+    s.(desigNames{i}).zPrePostBins = zPrePostStore;
+    
     if toggleROC == 1
         targetName = desigNames{i};
         [s] = functionLocomotionROC(s,targetName);
@@ -477,42 +486,60 @@ for makeInd = 1:length(s.ShankDesignation)
     s.ShankAxis(makeInd,1) = makeInd;
     s.ShankAxis(makeInd,2) = (makeInd-1)*(F) + (F+1)/2;
 end
+% trodeFinder
 
 newMap = zeros(length(s.ShankDesignation)*F,size(s.SumPlot.SmoothZHist,2));
 for shankInd = 1:2
     s.ShankHeat{shankInd} = newMap;
     shankCounter = 1;
-    corrInds = [(length(s.ShankDesignation))*(shankInd-1)+1:length(s.ShankDesignation)*shankInd];
+    corrInds = [(length(s.ShankDesignation))*(shankInd-1)+1:length(s.ShankDesignation)*shankInd]
     for trodeInd = 1:length(s.ShankDesignation)
         %look for the targeted designation
-%         disp(num2str(trodeInd))
+        disp(num2str(trodeInd))
         indFinder = find(trodeFinder == corrInds(trodeInd));
         if isempty(indFinder) %if no units on this channel
             s.ShankHeat{shankInd}([shankCounter:shankCounter + F - 1],:) = NaN;
 %             disp('NoUnits')
             shankCounter = shankCounter + F;
+            disp(shankCounter)
         elseif length(indFinder) == F %if maximum number of units on this channel
 %             disp('FullMatch')
             s.ShankHeat{shankInd}([shankCounter:shankCounter + F - 1],:) = s.SumPlot.SmoothZHist(s.SortedPeakWaveOrder(indFinder),:);
             shankCounter = shankCounter + F;
+            disp(shankCounter)
         else %if partial number of units on this channel
 %             disp('PartialMatch')
             s.ShankHeat{shankInd}([shankCounter:shankCounter + length(indFinder) - 1],:) = s.SumPlot.SmoothZHist(s.SortedPeakWaveOrder(indFinder),:);
             shankCounter = shankCounter + length(indFinder);
+            disp(shankCounter)
 %             disp('FillingZeros')
             %fill the remainder with zeros
             s.ShankHeat{shankInd}([shankCounter:shankCounter + F - length(indFinder) - 1],:) = NaN;
             shankCounter = shankCounter + F - length(indFinder);
+            disp(shankCounter)
         end
     end
 end
 
+%now lets calculate distance from the top of the probe
+%first, we need to know the number of electrodes total
+electrodeTotal = length(s.ShankMap);
+%now we need to find the designations
+relPos = mod(s.SortedPeakWaveIndex-1,electrodeTotal/2)+1;
+
+if electrodeTotal == 64;
+    relPos = relPos .* 25;
+else
+    relPos = relPos .* 12.5;
+end
+
+s.RelativePosition = relPos;
 
 %calculate and plot LFP information
 % [lfpStruct] = functionLFPaverage(master, s.Parameters.LFPWindow, s,homeFolder,fileName, 1, 1, 1, 1);
 % s.LFP = lfpStruct;
 
-%% Plotting
+%% Summary Plotting
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 %first plot summary figure
 hFig = figure;
@@ -566,14 +593,14 @@ title({strcat(fileName,desigNames{i});'Z Histograms By Baseline Rate'},'interpre
 % plot(s.SumPlot.HistBinVector,s.SumPlot.AverageZFiringAllUnits,'k','LineWidth',2)
 % title({strcat(fileName,desigNames{i});'All Firing Rates'},'interpreter','none')
 
-%plot out z scored firing rates
-subplot(3,3,5)
-imagesc(s.SumPlot.SmoothZHist(Ibase,:),cLims)
-colormap(parula)
-colorbar
-set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
-set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
-title('Z Histograms Ordered by Firing Rate')
+% %plot out z scored firing rates
+% subplot(3,3,5)
+% imagesc(s.SumPlot.SmoothZHist(Ibase,:),cLims)
+% colormap(parula)
+% colorbar
+% set(gca,'XTick',[0:round(length(histBinVector)/(s.Parameters.RasterWindow(2) - s.Parameters.RasterWindow(1))):length(histBinVector)])
+% set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)])
+% title('Z Histograms Ordered by Firing Rate')
 
 %organize this by distance from the top!
 subplot(3,6,9)
@@ -595,6 +622,15 @@ set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2
 set(gca,'YTick',s.ShankAxis(:,2));
 set(gca,'YTickLabel',s.ShankAxis(:,1));
 title('Z Histograms Shank 2')
+
+subplot(3,3,8)
+hold on
+plot(s.SumPlot.BaselineZ(s.SortedPeakWaveOrder),s.RelativePosition,'k.')
+plot(s.SumPlot.LaserPeriodZ(s.SortedPeakWaveOrder),s.RelativePosition,'g.')
+plot(s.SumPlot.PostLaserPeriodZ(s.SortedPeakWaveOrder),s.RelativePosition,'r.')
+ylabel('Position from Top (0) in um')
+xlabel('Z score')
+set(gca,'YDir','Reverse')
 
 %Plot binned differences
 subplot(3,3,3)
@@ -629,7 +665,7 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-%next plot individual units
+%% Individual Plotting
 for i = 1:numUnits
     hFig = figure;
     set(hFig, 'Position', [10 80 1240 850])
@@ -647,20 +683,25 @@ for i = 1:numUnits
     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
     
-    %plot velocity vs firing rate
-    subplot(3,2,2)
+    %plot scatter of pre vs post bins
+    subplot(4,4,3)
     hold on
-    plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
-    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
-    xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
-    ylim([-0.1,1])
-    if toggleROC == 1
-        title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
-    else
-        title('Vel & Firing Rate')
-    end
+    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).PrePostBins(:,2),'g.')
+    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).PrePostBins(:,3),'r*')
+    plotMax = max(max(s.(desigNames{i}).PrePostBins));
+    plot([0 plotMax],[0 plotMax],'b')
+    title('Pre 3 vs laser(green) or post 3(red)')
+    
+    subplot(4,4,4)
+    hold on
+    plot(s.(desigNames{i}).PrePostBins(:,4),s.(desigNames{i}).PrePostBins(:,2),'g.')
+    plot(s.(desigNames{i}).PrePostBins(:,4),s.(desigNames{i}).PrePostBins(:,3),'r*')
+    plotMax = max(max(s.(desigNames{i}).PrePostBins));
+    plot([0 plotMax],[0 plotMax],'b')
+    title('Pre 1 vs laser(green) or post 3(red)')
+    
     % plot histogram.
-    subplot(3,2,4)
+    subplot(4,3,4)
     plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
     hold on
     plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
@@ -675,7 +716,7 @@ for i = 1:numUnits
     title('Histogram')
     
     %plots rasters (chronological)
-    subplot(3,2,6)
+    subplot(4,3,7)
     plot(s.(desigNames{i}).AllRasters(:,1),...
         s.(desigNames{i}).AllRasters(:,2),'k.','markersize',5)
     hold on
@@ -686,17 +727,8 @@ for i = 1:numUnits
     title({fileName;desigNames{i}},'fontweight','bold')
     set(0, 'DefaulttextInterpreter', 'none')
     
-    %plot heatmap of firing
-    subplot(4,2,3)
-    imagesc(s.(desigNames{i}).IndividualHistograms')
-    colormap(parula)
-    set(gca,'XTick',[1:(1/s.Parameters.histBin):(size(s.(desigNames{i}).IndividualHistograms,2))]);
-    set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)]);
-    colorbar
-    title('Colormap of Firing')
-    
     %plot heatmap of locomotion
-    subplot(4,2,5)
+    subplot(4,3,10)
     imagesc((velRaster'))
     colormap(parula)
     colorbar
@@ -704,13 +736,68 @@ for i = 1:numUnits
     set(gca,'XTickLabel',velDispVector);
     title('Colorized Speed Trace Per Trial')
     
-    %plot scatter of pre vs post bins
-    subplot(4,2,7)
-    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).PrePostBins(:,2),'k.')
-    plotMax = max(max(s.(desigNames{i}).PrePostBins));
+    %plot velocity vs firing rate
+    subplot(4,3,5)
     hold on
-    plot([0 plotMax],[0 plotMax],'b')
-    title(strcat('Scatter Plot of Pre (x) and Post (y) Firing for',num2str(s.Parameters.PrePost),'Second Bins'))
+    plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+    xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+    ylim([-0.1,1])
+    if toggleROC == 1
+        title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+    else
+        title('Vel & Firing Rate')
+    end
+    
+    %plot changes over time.
+    subplot(4,3,8)
+    hold on
+    plot((s.(desigNames{i}).PrePostBins(:,1)),'ko')
+    plot(smooth(s.(desigNames{i}).PrePostBins(:,1),10),'k.-')
+    plot((s.(desigNames{i}).PrePostBins(:,2)),'go')
+    plot(smooth(s.(desigNames{i}).PrePostBins(:,2),10),'g.-')
+    plot((s.(desigNames{i}).PrePostBins(:,3)),'ro')
+    plot(smooth(s.(desigNames{i}).PrePostBins(:,3),10),'r.-')
+    title('Pre(k) Dur(g) Post(r) smoothed 10')
+    xlabel('Trials')
+    
+    % PLOT CHANGES IN MODULATION OVER TIME
+    subplot(4,3,11)
+    hold on
+    plot((s.(desigNames{i}).zPrePostBins(:,2) ./ s.(desigNames{i}).zPrePostBins(:,1)),'go')
+    plot(smooth(s.(desigNames{i}).zPrePostBins(:,2) ./ s.(desigNames{i}).zPrePostBins(:,1),10),'g.-')
+    plot((s.(desigNames{i}).zPrePostBins(:,3) ./ s.(desigNames{i}).zPrePostBins(:,1)),'ro')
+    plot(smooth(s.(desigNames{i}).zPrePostBins(:,3) ./ s.(desigNames{i}).zPrePostBins(:,1),10),'r.-')
+    title('Ratio pre3 vs Dur(g) or Post(r) smoothed 10')
+    xlabel('Trials')
+    
+    %plot z scored changes during laser vs pre-firing rate and post
+    subplot(4,3,6)
+    hold on
+    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).zPrePostBins(:,2) - s.(desigNames{i}).zPrePostBins(:,1),'k.')
+    plot([0 max(s.(desigNames{i}).PrePostBins(:,1))],[0 0],'b')
+    xlabel('Trial Based Firing Rate')
+    ylabel('Z-diff between pre and laser')
+    title('zdiff Pre vs Laser')
+    
+    subplot(4,3,9)
+    hold on
+    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).zPrePostBins(:,3) - s.(desigNames{i}).zPrePostBins(:,1),'k.')
+    plot([0 max(s.(desigNames{i}).PrePostBins(:,1))],[0 0],'b')
+    xlabel('Trial Based Firing Rate')
+    ylabel('Z-diff between pre and postlaser')
+    title('zdiff Pre vs postLaser')
+    
+    
+%     %plot heatmap of firing
+%     subplot(4,2,3)
+%     imagesc(s.(desigNames{i}).IndividualHistograms')
+%     colormap(parula)
+%     set(gca,'XTick',[1:(1/s.Parameters.histBin):(size(s.(desigNames{i}).IndividualHistograms,2))]);
+%     set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)]);
+%     colorbar
+%     title('Colormap of Firing')
+    
     %plot edr data, if exists
 %     if edrToggle == 1
 %         subplot(4,2,7)
