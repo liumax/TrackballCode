@@ -115,7 +115,7 @@ end
 %eliminate entire row if there are duplicate values of the same state
 repFinder = find(diff(timeStateArray(:,4))==0);
 if ~isempty(repFinder)
-    timeStateArray(4,:) = [];
+    timeStateArray(repFinder,:) = [];
 end
 %% Process State Data into Distance
 %process state data by converting states into a string, which allows for
@@ -143,7 +143,7 @@ wobble2 = unique([strfind(stateString,'424'),...
     strfind(stateString,'242')]);
 %find all cases of reversal
 revFor2Rev = unique([strfind(stateString,'414'),strfind(stateString,'141')]);
-revRev2For = unique([strfind(stateString,'818'),strfind(stateString,'818')]);
+revRev2For = unique([strfind(stateString,'818'),strfind(stateString,'181')]);
 
 %store these data in an array of size equal to the number of state changes
 %by the types of states available
@@ -218,12 +218,16 @@ if timeMin < catTimes(1)
     %do the same for cumDist
     cumDist(2:end+1) = cumDist(1:end);
     cumDist(1) = cumDist(2);
+    
+    distInc(2:end+1) = distInc(1:end);
+    distInc(1) = 0;
 end
 
 if timeMax > catTimes(end)
     %insert extra value for catTimes and cumDist
     catTimes(end+1) = timeMax;
     cumDist(end+1) = cumDist(end);
+    distInc(end+1) = 0;
 end
 
 %What we want to do now is interpolate onto a new time frame, so that we
@@ -232,14 +236,46 @@ end
 %generate new time frame
 newTimes = [(round(timeMin*(1/interpStep)))*interpStep:interpStep:(round(timeMax*(1/interpStep)))*interpStep];
 
+%first, basically map my current information onto newTimes without
+%interpolation
+fillDist(1) = 0;
+for intInd = 2:length(newTimes)
+    %check to see if distance has changed at all
+    changeFind = find(catTimes >= newTimes(intInd - 1) & catTimes <= newTimes(intInd));
+    if isempty(changeFind)
+        %if the time hasnt passed some actualy change, do nothing
+        fillDist(intInd) = fillDist(intInd-1);
+    else
+        %if there are things that have happened, I need to fill in these
+        %data points. I assume with a 10ms interpolation, any events of
+        %siginificance are going to be things that can be glommed together
+        %into a single event. 
+        totalChange = sum(distInc(changeFind)); 
+        fillDist(intInd) = fillDist(intInd-1) + totalChange;
+    end
+    
+end
+
+% %this is tester code. Based on these tests, I think I'm going to stick with
+% %the 31 smooth window and the lowess method. 
+% smoothDist(:,1) = smooth(fillDist,11);
+% smoothDist(:,2) = smooth(fillDist,11,'lowess');
+% smoothDist(:,3) = smooth(fillDist,31);
+% smoothDist(:,4) = smooth(fillDist,31,'lowess');
+% 
+% testVel(:,1) = diff(smoothDist(:,1));
+% testVel(:,2) = diff(smoothDist(:,2));
+% testVel(:,3) = diff(smoothDist(:,3));
+% testVel(:,4) = diff(smoothDist(:,4));
+
 % Tested various interpolation methods, find that PCHIP seems to produce
 % most believable result out of all possibilities. 
 
 try
-    newDist = interp1(catTimes,cumDist,newTimes,'pchip');
+    newDist = smooth(fillDist,31,'lowess');
     failTrigger = 0;
 catch
-    disp('Distance Interpolation Failed. Suggests there is no movement. Replacing with zeros')
+    disp('Distance Smoothing Failed. Suggests there is no movement. Replacing with zeros')
     cumDist = zeros(length(catTimes),1);
     newDist = zeros(length(newTimes),1);
     %also trigger failure notification for downstream code
