@@ -24,7 +24,7 @@ function [s] = analysisDATStim(fileName);
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. NOT SCALED
@@ -764,11 +764,11 @@ for i = 1:numUnits
     % PLOT CHANGES IN MODULATION OVER TIME
     subplot(4,3,11)
     hold on
-    plot((s.(desigNames{i}).zPrePostBins(:,2) ./ s.(desigNames{i}).zPrePostBins(:,1)),'go')
-    plot(smooth(s.(desigNames{i}).zPrePostBins(:,2) ./ s.(desigNames{i}).zPrePostBins(:,1),10),'g.-')
-    plot((s.(desigNames{i}).zPrePostBins(:,3) ./ s.(desigNames{i}).zPrePostBins(:,1)),'ro')
-    plot(smooth(s.(desigNames{i}).zPrePostBins(:,3) ./ s.(desigNames{i}).zPrePostBins(:,1),10),'r.-')
-    title('Ratio pre3 vs Dur(g) or Post(r) smoothed 10')
+    plot((s.(desigNames{i}).zPrePostBins(:,2) - s.(desigNames{i}).zPrePostBins(:,1)),'go')
+    plot(smooth(s.(desigNames{i}).zPrePostBins(:,2) - s.(desigNames{i}).zPrePostBins(:,1),10),'g.-')
+    plot((s.(desigNames{i}).zPrePostBins(:,3) - s.(desigNames{i}).zPrePostBins(:,1)),'ro')
+    plot(smooth(s.(desigNames{i}).zPrePostBins(:,3) - s.(desigNames{i}).zPrePostBins(:,1),10),'r.-')
+    title('zSub pre3 vs Dur(g) or Post(r) smoothed 10')
     xlabel('Trials')
     
     %plot z scored changes during laser vs pre-firing rate and post
