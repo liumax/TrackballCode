@@ -304,7 +304,7 @@ mouseVel = reshape(mouseVel,[],1);
 %find start times of velocity
 
 locoBinary = zeros(length(mouseVel),1);
-locoBinary(mouseVel>1) = 1; 
+locoBinary(abs(mouseVel)>1) = 1; 
 
 locoStarts = find(diff(locoBinary) == 1)+1;
 locoEnds = find(diff(locoBinary) == -1);
@@ -349,6 +349,7 @@ x.Velocity = [velTimes,mouseVel];
 x.RawDistance = [catTimes,cumDist];
 x.RawData = timeStateArray;
 x.BinaryLocomotion = locoBinary;
+% x.BinaryLocoRev = revBinary;
 x.LocoStarts = velTimes(locoStarts);
 x.LocoEnds = velTimes(locoEnds);
 
