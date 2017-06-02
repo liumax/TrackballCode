@@ -14,6 +14,7 @@ prompt = {'Mouse ID:',...
     'ITI (msec):',...
     'ITI Range (+/-) (msec):',...
     'Percent Laser:',...
+    'Laser Duration:',...
     'sessionID:',...        
     'Notes:'}; %the bracket is to end the prompt     
 dlg_title = 'LickTask:';
@@ -37,6 +38,7 @@ scQtUserData.bigTone = str2num(answer{i});i=i+1;
 scQtUserData.ITI = str2num(answer{i});i=i+1;
 scQtUserData.ITIRange = str2num(answer{i});i=i+1;
 scQtUserData.perLaser = str2num(answer{i});i=i+1;
+scQtUserData.laserDur = str2num(answer{i});i=i+1;
 scQtUserData.sessionID = answer{i};i=i+1;
 scQtUserData.notes = answer{i};i=i+1;
 scQtUserData.taskID = 'oneToneLaserCatchPavlovComputer';
@@ -148,6 +150,7 @@ scQtUserData.lickHist = zeros(80,2); %This is optimized for looking at an 8 seco
 scQtUserData.lickAxes = [-2:0.1:5.9]; %axis for histogram
 %send initial information to the mbed
 sendScQtControlMessage(['lickWind =',num2str(scQtUserData.lickWindow)]);
+sendScQtControlMessage(['laserDur =',num2str(scQtUserData.laserDur)]);
 sendScQtControlMessage(['toneRewDel =',num2str(scQtUserData.rewDelay)]);
 sendScQtControlMessage(['signalDel =3000']); %this is the delay after reward delivery before triggering next thing. 
 sendScQtControlMessage(['disp(''StartSession'')']);
