@@ -13,23 +13,28 @@ int signalDel %delay between reward and triggering matlab again.
 
 int timeDelay %delay to trigger matlab callback later.
 int itiDur
+int trialMode = 0 %is something to lock things so that extraneous signals dont fuck shit up
 
 function 1 %This function merely serves to wait out the ITI
     disp('Initiating trial')
     do in itiDur
-        disp('TriggerSound')
+	trialMode = 1
+	disp('TriggerSound')
     end
 end;
 
-callback portin[] up %tone has been detected
-    disp('Tone Delivered')
-    do in toneRewDel
-        portout[] = 1 %deliver reward
-        do in rewLength
-            portout[] = 0
-        end
-        do in 
-            disp('TriggerMatlab') %start sequence over again!
-        end
-    end
+callback portin[2] up %tone has been detected
+	if trialMode == 1 do in 0
+		trialMode = 0
+		disp('Tone Delivered')
+		do in toneRewDel
+			portout[8] = 1 %deliver reward
+			do in rewLength
+				portout[8] = 0
+		%disp(toneRewDel)
+		%disp(rewLength)
+				disp('TriggerMatlab') %start sequence over again!
+			end
+		end
+	end
 end;

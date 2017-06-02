@@ -25,23 +25,29 @@ end
 if (~isempty(strfind(newLine,'StartSession')))
     scQtUserData.trial = scQtUserData.trial + 1;
     sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
-    sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.Master(scQtUserData.trial,1))]); 
+    sendScQtControlMessage(['itiDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,1)))]);
+    sendScQtControlMessage(['rewLength = ',num2str(round(scQtUserData.Master(scQtUserData.trial,3)))]);  
     sendScQtControlMessage('trigger(1)');
 end
 %This is for all other trials!
 if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
     scQtUserData.trial = scQtUserData.trial + 1;
     sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
-    sendScQtControlMessage(['itiDur = ',num2str(scQtUserData.Master(scQtUserData.trial,1))]); 
+    sendScQtControlMessage(['itiDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,1)))]); 
+    sendScQtControlMessage(['rewLength = ',num2str(round(scQtUserData.Master(scQtUserData.trial,3)))]);  
     sendScQtControlMessage('trigger(1)');
 end
 
 if ~isempty(strfind(newLine,'TriggerSound'))
-    soundID = scQtUserData.Master(scQtUserData.trial,2);
-    if sound ID == 1
+    soundID = scQtUserData.Master(scQtUserData.trial,2)
+    if soundID == 2
+        disp('PlayBig')
         sound(scQtUserData.ToneBig,192000)
-    elseif sound ID == 2
+        disp('FinishBig')
+    elseif soundID == 1
+        disp('PlaySmall')
         sound(scQtUserData.ToneSmall,192000)
+        disp('FinishSmall')
     end
 end
 
