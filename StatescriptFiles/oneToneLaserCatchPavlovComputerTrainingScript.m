@@ -83,7 +83,7 @@ ttlSig = zeros(paddingL,1);
 ttlSig(1:5*fs/1000) = 1;
 %generate the two sounds
 waveBig = (sin(2*pi*(scQtUserData.bigTone/fs)*(1:L))') .* rampProfile;
-waveSmall = (sin(2*pi*(scQtUserData.smallTone/fs)*(1:L))') .* rampProfile;
+
 
 %calculate amplitude
 toneDB = 10^-((100-scQtUserData.soundAmp)/20);
@@ -91,12 +91,9 @@ toneDB = 10^-((100-scQtUserData.soundAmp)/20);
 paddedWave = zeros(paddingL,1);
 paddedWave(1:size(waveBig,1)) = waveBig;
 soundBig = [paddedWave*toneDB,ttlSig];
-paddedWave = zeros(paddingL,1);
-paddedWave(1:size(waveSmall,1)) = waveSmall;
-soundSmall = [paddedWave*toneDB,ttlSig];
+
 
 scQtUserData.ToneBig = soundBig;
-scQtUserData.ToneSmall = soundSmall;
 
 
 %store information about time/date
@@ -113,17 +110,16 @@ pause(0.5);
 sendScQtControlMessage(['disp(''Mouse ID:', scQtUserData.mouseID,''')']);
 sendScQtControlMessage(['disp(''weight:', scQtUserData.weight,''')']);
 sendScQtControlMessage(['disp(''bigReward:', num2str(scQtUserData.bigRew),''')']);
-sendScQtControlMessage(['disp(''smallReward:', num2str(scQtUserData.smallRew),''')']);
 sendScQtControlMessage(['disp(''totalTrials:', num2str(scQtUserData.totalTrials),''')']);
 sendScQtControlMessage(['disp(''soundDur:', num2str(scQtUserData.soundDur),''')']);
 sendScQtControlMessage(['disp(''soundAmp:', num2str(scQtUserData.soundAmp),''')']);
 sendScQtControlMessage(['disp(''rewDelay:', num2str(scQtUserData.rewDelay),''')']);
 sendScQtControlMessage(['disp(''bigTone:', num2str(scQtUserData.bigTone),''')']);
-sendScQtControlMessage(['disp(''smallTone:', num2str(scQtUserData.smallTone),''')']);
 sendScQtControlMessage(['disp(''ITI:', num2str(scQtUserData.ITI),''')']);
 sendScQtControlMessage(['disp(''ITIRange:', num2str(scQtUserData.ITIRange),''')']);
 sendScQtControlMessage(['disp(''lickWindow:', num2str(scQtUserData.lickWindow),''')']);
 sendScQtControlMessage(['disp(''taskID:', scQtUserData.taskID,''')']);
+sendScQtControlMessage(['disp(''LaserPercent:', scQtUserData.perLaser,''')']);
 sendScQtControlMessage(['disp(''date:', scQtUserData.date,''')']);
 sendScQtControlMessage(['disp(''time:', scQtUserData.time,''')']);
 sendScQtControlMessage(['disp(''sessionID:', scQtUserData.sessionID,''')']);
