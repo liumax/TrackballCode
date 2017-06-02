@@ -37,12 +37,12 @@ scQtUserData.ITI = str2num(answer{i});i=i+1;
 scQtUserData.ITIRange = str2num(answer{i});i=i+1;
 scQtUserData.sessionID = answer{i};i=i+1;
 scQtUserData.notes = answer{i};i=i+1;
-scQtUserData.taskID = 'twoTonePavlovComputer';
+scQtUserData.taskID = 'oneTonePavlovComputer';
 
 %% now lets start calculations. 
 %calculate ITIs, use random flat distribution
 scQtUserData.Master(:,1) = ((rand(scQtUserData.totalTrials,1)*scQtUserData.ITIRange)+scQtUserData.ITI); 
-scQtUserData.Master(:,2) = ones(length(scQtUserData.Master(:,1)));
+scQtUserData.Master(:,2) = ones(scQtUserData.totalTrials,1);
 %determine rewSize order
 scQtUserData.Master(:,3) = ones(scQtUserData.totalTrials,1)*scQtUserData.bigRew;
 %the last thing is to have a lick window such that you enforce a no lick
