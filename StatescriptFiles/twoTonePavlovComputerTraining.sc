@@ -15,11 +15,21 @@ int timeDelay %delay to trigger matlab callback later.
 int itiDur
 int trialMode = 0 %is something to lock things so that extraneous signals dont fuck shit up
 
+int laserDur = 0 %initializes laser duration at zero so doesnt throw bug
+
 function 1 %This function merely serves to wait out the ITI
-    disp('Initiating trial')
+    disp('TrialStart')
     do in itiDur
 	trialMode = 1
 	disp('TriggerSound')
+    end
+end;
+
+function 2 %This function will be for triggering the laser
+    disp('LaserTrial')
+    portout[5] = 1
+    do in laserDur
+        portout[5] = 0
     end
 end;
 
