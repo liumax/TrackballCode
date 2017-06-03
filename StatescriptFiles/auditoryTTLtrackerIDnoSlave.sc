@@ -20,6 +20,19 @@ int pulseDur = 10
 int pulseITI = 30
 int pulseCounter = 0
 
+%settings for doing altLaser protocol%
+%int pulseNum = 1
+%int pulseDur = 250
+%int pulseITI = 30
+%int pulseCounter = 0
+
+%settings for shorter DA stim
+%int pulseNum = 10
+%int pulseDur = 10
+%int pulseITI = 30
+%int pulseCounter = 0
+
+
 %This is code for cell ID purposes. Toggle holds whether the trip switch
 %has been changed, also has TTL pulse information.
 int toggle = 0
