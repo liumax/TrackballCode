@@ -1,6 +1,6 @@
 %This is the Matlab Callback
 
-function oneToneLaserCatchPavlovComputerTrainingCallback(newLine)
+function oneTonePavlovComputerCallback(newLine)
 
 global scQtHistory; %multipurpose place to store processed event history
 global scQtControllerOutput; %the text output from the microcontroller 
@@ -10,7 +10,7 @@ global scQtInitiated; %the callback function should set this to 1 once all user 
 global scQtUserData;
 
 if (scQtInitiated == 0)
-    oneToneLaserCatchPavlovComputerTrainingScript;
+    oneTonePavlovComputerScript;
     scQtInitiated = 1;
     newLine = 'start next trial';
 end
@@ -39,14 +39,9 @@ if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
 end
 
 if ~isempty(strfind(newLine,'TriggerSound'))
-    soundID = scQtUserData.Master(scQtUserData.trial,2)
-    if soundID == 2
-        disp('PlayBig')
-        sound(scQtUserData.ToneBig,192000)
-    elseif soundID == 1
-        disp('Play Laser')
-        sendScQtControlMessage('trigger(2)');
-    end
+    disp('PlayBig')
+    sound(scQtUserData.ToneBig,192000)
+    disp('FinishBig')
 end
 
 end
