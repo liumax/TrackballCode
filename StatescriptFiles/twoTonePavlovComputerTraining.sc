@@ -27,20 +27,20 @@ end;
 
 function 2 %This function will be for triggering the laser
     disp('LaserTrial')
-    portout[5] = 1
+    portout[6] = 1
     do in laserDur
-        portout[5] = 0
+        portout[6] = 0
     end
 end;
 
-callback portin[2] up %tone has been detected
+callback portin[1] up %tone has been detected
 	if trialMode == 1 do in 0
 		trialMode = 0
 		disp('Tone Delivered')
 		do in toneRewDel
-			portout[8] = 1 %deliver reward
+			portout[2] = 1 %deliver reward
 			do in rewLength
-				portout[8] = 0
+				portout[2] = 0
 		%disp(toneRewDel)
 		%disp(rewLength)
 				disp('TriggerMatlab') %start sequence over again!
