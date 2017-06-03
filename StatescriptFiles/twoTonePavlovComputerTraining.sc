@@ -30,6 +30,12 @@ function 2 %This function will be for triggering the laser
     portout[6] = 1
     do in laserDur
         portout[6] = 0
+	disp('Laser Delivered')
+	do in toneRewDel
+		do in rewLength
+			disp('TriggerMatlab')
+		end
+	end
     end
 end;
 
