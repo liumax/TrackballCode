@@ -30,7 +30,7 @@ function 1
 end;
 
 
-callback portin[4] up
+callback portin[3] up
     if toggle == 0 do
         toggle = 1
         trigger(1)

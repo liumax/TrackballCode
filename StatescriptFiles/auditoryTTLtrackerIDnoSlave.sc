@@ -42,9 +42,9 @@ int idCounter = 0
 
 function 1
     while pulseCounter < pulseNum do every pulseITI
-        portout[5] = 1
+        portout[6] = 1
         do in pulseDur
-            portout[5] = 0
+            portout[6] = 0
         end
         pulseCounter = pulseCounter + 1
     then do
@@ -54,16 +54,16 @@ end;
 
 function 2
 	while toggle == 1 do every idITI
-		portout[5] = 1
+		portout[6] = 1
 		do in idPulseDur
-			portout[5] = 0
+			portout[6] = 0
 		end
 		idCounter = idCounter + 1
 		disp(idCounter)
 	end
 end;
 
-callback portin[2] up
+callback portin[1] up
 	portout[1] = 1
 	do in 2
 		portout[1] = 0
@@ -77,7 +77,7 @@ callback portin[2] up
     end
 end;
 
-callback portin[4] up
+callback portin[3] up
     if toggle == 0 do
         toggle = 1
         trigger(2)

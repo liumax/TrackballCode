@@ -31,9 +31,9 @@ function 1
             portout[1] = 0
         end
         while pulseCounter < pulseNum do every pulseITI
-            portout[5] = 1
+            portout[6] = 1
             do in pulseDur
-                portout[5] = 0
+                portout[6] = 0
             end
             pulseCounter = pulseCounter + 1
         then do
