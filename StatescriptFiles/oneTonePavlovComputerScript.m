@@ -41,7 +41,7 @@ scQtUserData.taskID = 'oneTonePavlovComputer';
 
 %% now lets start calculations. 
 %calculate ITIs, use random flat distribution
-scQtUserData.Master(:,1) = ((rand(scQtUserData.totalTrials,1)*scQtUserData.ITIRange)+scQtUserData.ITI); 
+scQtUserData.Master(:,1) = ((rand(scQtUserData.totalTrials,1)*scQtUserData.ITIRange)+scQtUserData.ITI)-6; % 170605 adding 6 second fudge factor for things I've added to the code.
 scQtUserData.Master(:,2) = ones(scQtUserData.totalTrials,1);
 %determine rewSize order
 scQtUserData.Master(:,3) = ones(scQtUserData.totalTrials,1)*scQtUserData.bigRew;
@@ -118,7 +118,7 @@ sendScQtControlMessage(['disp(''date:', scQtUserData.date,''')']);
 sendScQtControlMessage(['disp(''time:', scQtUserData.time,''')']);
 sendScQtControlMessage(['disp(''sessionID:', scQtUserData.sessionID,''')']);
 sendScQtControlMessage(['disp(''notes:', scQtUserData.notes,''')']);
-
+sendScQtControlMessage(['disp(''trPhase = 0'')']);
 pause(1) %Need to put all my timings in before this stuff
 
 %% generate space in structure for storage of information that I care about!
@@ -132,8 +132,10 @@ scQtUserData.lickLat = zeros(scQtUserData.totalTrials,1);
 %variables for tracking licking. Each entry here will be a combination of
 %the lick time relative to the sound, the trial number, and the type of
 %trial.
-scQtUserData.licks = zeros(1000,3);
+scQtUserData.licks = zeros(100000,3);
 scQtUserData.lickCounter = 1;
+scQtUserData.cueTime = zeros(scQtUserData.totalTrials,1);
+scQtUserData.firstLick = zeros(scQtUserData.totalTrials,1);
 
 scQtUserData.lickHist = zeros(80,2); %This is optimized for looking at an 8 second window
 %with 2 sec before sound onset, sound, and 3 seconds after. Set for 100 ms
@@ -143,5 +145,6 @@ scQtUserData.lickAxes = [-2:0.1:5.9]; %axis for histogram
 %send initial information to the mbed
 sendScQtControlMessage(['lickWind =',num2str(scQtUserData.lickWindow)]);
 sendScQtControlMessage(['toneRewDel =',num2str(scQtUserData.rewDelay)]);
+sendScQtControlMessage(['trPhase = 0']);
 sendScQtControlMessage(['signalDel =3000']); %this is the delay after reward delivery before triggering next thing. 
 sendScQtControlMessage(['disp(''StartSession'')']);

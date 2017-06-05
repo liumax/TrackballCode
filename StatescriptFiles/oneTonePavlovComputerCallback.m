@@ -18,6 +18,25 @@ end
 %this kills things after the last trial of the session.
 if (~isempty(strfind(newLine,['Trial = ',num2str(scQtUserData.totalTrials)])))
     scQtUserData.tripSwitch = 1;
+    sendScQtControlMessage(['disp(''EndSession'')']);
+end
+
+if(~isempty(strfind(newLine,'Lick Detected')))
+    spaceFinder = find(newLine == ' ');
+    scQtUserData.licks(scQtUserData.lickCounter,1) = str2num(newLine(1:spaceFinder(1)-1))/1000;
+    scQtUserData.licks(scQtUserData.lickCounter,2) = scQtUserData.trial;
+%     scQtUserData.licks(scQtUserData.lickCounter,3) = scQtUserData.trPhase;
+    scQtUserData.lickCounter = scQtUserData.lickCounter + 1;
+end
+
+if(~isempty(strfind(newLine,'Tone Delivered')))
+    spaceFinder = find(newLine == ' ');
+    scQtUserData.cueTime(scQtUserData.trial) = str2num(newLine(1:spaceFinder(1)-1))/1000;
+end
+
+if(~isempty(strfind(newLine,'trPhase')))
+    spaceFinder = find(newLine == ' ');
+    scQtUserData.trPhase = str2num(newLine(spaceFinder(2)+1:end));
 end
 
 %this is for the first trial, which is triggered via the script. This sends
@@ -42,6 +61,51 @@ if ~isempty(strfind(newLine,'TriggerSound'))
     disp('PlayBig')
     sound(scQtUserData.ToneBig,192000)
     disp('FinishBig')
+end
+
+if ~isempty(strfind(newLine,'PlotTime'))
+    if ~isfield(scQtUserData,'updateFig') %This code is just to make sure updateFig has a value.
+        disp('resetting updateFig');
+        scQtUserData.updateFig = -1;
+    end
+    
+    
+    if ~ishandle(scQtUserData.updateFig) %This is to set the basis for all the plots!
+        scQtUserData.updateFig = figure('color','w');
+        scQtUserData.ax1 = subplot(2,1,1,'parent',scQtUserData.updateFig);
+        scQtUserData.ax2 = subplot(2,1,2,'parent',scQtUserData.updateFig);
+        hold(scQtUserData.ax1,'on');
+        hold(scQtUserData.ax2,'on');
+        ylabel(scQtUserData.ax1,'Trial #');
+        xlabel(scQtUserData.ax1,'Time (s)');
+        ylabel(scQtUserData.ax2,'Reaction Time (s)');
+        xlabel(scQtUserData.ax2,'Time (s)');
+    end
+    
+    cla(scQtUserData.ax1);
+    cla(scQtUserData.ax2); %clears ax2
+    
+    %finds first lick and stores
+    firstLick = scQtUserData.licks(:,1) - scQtUserData.cueTime(scQtUserData.trial);
+    firstLick(firstLick <= 0) = [];
+    if numel(firstLick)~= 0
+        scQtUserData.firstLick(scQtUserData.trial) = firstLick(1);
+    else
+        scQtUserData.firstLick(scQtUserData.trial) = 0;
+    end
+    
+    %cleans up raster with the cue time
+    scQtUserData.licks(scQtUserData.licks(:,2) == scQtUserData.trial,1) = scQtUserData.licks(scQtUserData.licks(:,2) == scQtUserData.trial,1) - scQtUserData.cueTime(scQtUserData.trial);
+    
+    %plot things!
+    subplot(2,1,1)
+    plot(scQtUserData.licks(1:scQtUserData.lickCounter,1),scQtUserData.licks(1:scQtUserData.lickCounter,2),'b.',...
+        'parent',scQtUserData.ax1);
+    axis(scQtUserData.ax1,[scQtUserData.lickAxes(1) scQtUserData.lickAxes(end) 0.5 scQtUserData.trial])
+    
+    subplot(2,1,2)
+    plot(scQtUserData.firstLick,'b.','parent',scQtUserData.ax2)
+    
 end
 
 end
