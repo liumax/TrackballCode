@@ -72,14 +72,18 @@ if ~isempty(strfind(newLine,'PlotTime'))
     
     if ~ishandle(scQtUserData.updateFig) %This is to set the basis for all the plots!
         scQtUserData.updateFig = figure('color','w');
-        scQtUserData.ax1 = subplot(2,1,1,'parent',scQtUserData.updateFig);
-        scQtUserData.ax2 = subplot(2,1,2,'parent',scQtUserData.updateFig);
+        scQtUserData.ax1 = subplot(3,1,1,'parent',scQtUserData.updateFig);
+        scQtUserData.ax2 = subplot(3,1,2,'parent',scQtUserData.updateFig);
+        scQtUserData.ax3 = subplot(3,1,3,'parent',scQtUserData.updateFig);
         hold(scQtUserData.ax1,'on');
         hold(scQtUserData.ax2,'on');
+        hold(scQtUserData.ax3,'on');
         ylabel(scQtUserData.ax1,'Trial #');
         xlabel(scQtUserData.ax1,'Time (s)');
         ylabel(scQtUserData.ax2,'Reaction Time (s)');
         xlabel(scQtUserData.ax2,'Time (s)');
+        ylabel(scQtUserData.ax3,'Licks');
+        xlabel(scQtUserData.ax3,'Time (s)');
     end
     
     cla(scQtUserData.ax1);
@@ -98,13 +102,16 @@ if ~isempty(strfind(newLine,'PlotTime'))
     scQtUserData.licks(scQtUserData.licks(:,2) == scQtUserData.trial,1) = scQtUserData.licks(scQtUserData.licks(:,2) == scQtUserData.trial,1) - scQtUserData.cueTime(scQtUserData.trial);
     
     %plot things!
-    subplot(2,1,1)
+    subplot(3,1,1)
     plot(scQtUserData.licks(1:scQtUserData.lickCounter,1),scQtUserData.licks(1:scQtUserData.lickCounter,2),'b.',...
         'parent',scQtUserData.ax1);
     axis(scQtUserData.ax1,[scQtUserData.lickAxes(1) scQtUserData.lickAxes(end) 0.5 scQtUserData.trial])
     
-    subplot(2,1,2)
+    subplot(3,1,2)
     plot(scQtUserData.firstLick,'b.','parent',scQtUserData.ax2)
+    
+    subplot(3,1,3)
+    hist(scQtUserData.licks(1:scQtUserData.lickCounter,1),scQtUserData.lickAxes)
     
 end
 
