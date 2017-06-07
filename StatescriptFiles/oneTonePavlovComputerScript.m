@@ -41,7 +41,7 @@ scQtUserData.taskID = 'oneTonePavlovComputer';
 
 %% now lets start calculations. 
 %calculate ITIs, use random flat distribution
-scQtUserData.Master(:,1) = ((rand(scQtUserData.totalTrials,1)*scQtUserData.ITIRange)+scQtUserData.ITI)-6; % 170605 adding 6 second fudge factor for things I've added to the code.
+scQtUserData.Master(:,1) = ((rand(scQtUserData.totalTrials,1)*scQtUserData.ITIRange)+scQtUserData.ITI)-6000; % 170605 adding 6 second fudge factor for things I've added to the code.
 scQtUserData.Master(:,2) = ones(scQtUserData.totalTrials,1);
 %determine rewSize order
 scQtUserData.Master(:,3) = ones(scQtUserData.totalTrials,1)*scQtUserData.bigRew;
