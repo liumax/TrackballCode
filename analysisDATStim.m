@@ -27,7 +27,7 @@ s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means no
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
-s.Parameters.RasterWindow = [-4 6]; %seconds for raster window. NOT SCALED
+s.Parameters.RasterWindow = [-4 12]; %seconds for raster window. NOT SCALED
 s.Parameters.ToneWindow = [0 0.5];
 s.Parameters.GenWindow = [0 1];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
@@ -339,7 +339,7 @@ for i = 1:numUnits
     histSTE = (std(fullHistHolder'))';
     
     %bin spikes within pre/post period for each trial and store
-    prepostStore = zeros(totalTrialNum,2);
+    prePostStore = zeros(totalTrialNum,2);
     preInd = find(histBinVector > -s.Parameters.PrePost,1,'first');
     preOne = find(histBinVector > -1,1,'first');
     zeroInd = find(histBinVector > 0,1,'first');
@@ -492,31 +492,31 @@ newMap = zeros(length(s.ShankDesignation)*F,size(s.SumPlot.SmoothZHist,2));
 for shankInd = 1:2
     s.ShankHeat{shankInd} = newMap;
     shankCounter = 1;
-    corrInds = [(length(s.ShankDesignation))*(shankInd-1)+1:length(s.ShankDesignation)*shankInd]
+    corrInds = [(length(s.ShankDesignation))*(shankInd-1)+1:length(s.ShankDesignation)*shankInd];
     for trodeInd = 1:length(s.ShankDesignation)
         %look for the targeted designation
-        disp(num2str(trodeInd))
+%         disp(num2str(trodeInd))
         indFinder = find(trodeFinder == corrInds(trodeInd));
         if isempty(indFinder) %if no units on this channel
             s.ShankHeat{shankInd}([shankCounter:shankCounter + F - 1],:) = NaN;
 %             disp('NoUnits')
             shankCounter = shankCounter + F;
-            disp(shankCounter)
+%             disp(shankCounter)
         elseif length(indFinder) == F %if maximum number of units on this channel
 %             disp('FullMatch')
             s.ShankHeat{shankInd}([shankCounter:shankCounter + F - 1],:) = s.SumPlot.SmoothZHist(s.SortedPeakWaveOrder(indFinder),:);
             shankCounter = shankCounter + F;
-            disp(shankCounter)
+%             disp(shankCounter)
         else %if partial number of units on this channel
 %             disp('PartialMatch')
             s.ShankHeat{shankInd}([shankCounter:shankCounter + length(indFinder) - 1],:) = s.SumPlot.SmoothZHist(s.SortedPeakWaveOrder(indFinder),:);
             shankCounter = shankCounter + length(indFinder);
-            disp(shankCounter)
+%             disp(shankCounter)
 %             disp('FillingZeros')
             %fill the remainder with zeros
             s.ShankHeat{shankInd}([shankCounter:shankCounter + F - length(indFinder) - 1],:) = NaN;
             shankCounter = shankCounter + F - length(indFinder);
-            disp(shankCounter)
+%             disp(shankCounter)
         end
     end
 end
