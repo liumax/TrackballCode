@@ -153,6 +153,7 @@ for clusterCount = 1:numTrodes
                 waveHolder = waveLoader.waves(:,:,clusterSpikes);
                 %pull out average and standard error
                 averageWaveHolder = mean(waveHolder,3);
+                nTrodeWidth(desigCounter) = size(averageWaveHolder,2);
                 %store into structured array!
                 s.(desigNames{desigCounter}) = [];
                 s.(desigNames{desigCounter}).ISIGraph = selectedSpikes;

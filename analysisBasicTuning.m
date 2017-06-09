@@ -24,7 +24,7 @@ function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 %TOGGLES FOR ENABLING/DISABLING FEATURES
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
-toggleTuneSelect = 1; %1 means you want to select tuning manually, 0 means no selection.
+toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 1; %toggle for tuning on/off ROC analysis
 
@@ -97,13 +97,14 @@ end
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(s.Parameters.RPVTime,...
-    matclustFiles,s,s.Parameters.ClusterWindow);
+    matclustFiles,s,s.Parameters.ClusterWindow,subFoldersCell);
 
 if toggleDuplicateElimination ==1
     if length(s.DesignationName) > 1
         disp('Now Selecting Based on xCORR')
         [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
-            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow);
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow,...
+            s.ShankDesignation,s.ShankMap,s.Shanks);
     end
 else
     disp('NOT EXECUTING DUPLICATE ELIMINATION')
@@ -220,14 +221,18 @@ D1FileName = D1FileName{1};
 
 %pulls out DIO up state onsets.
 [dioTimes,dioTimeDiff] = functionBasicDIOCheck(DIOData,s.Parameters.trodesFS);
+s.SoundData.ToneTimes = dioTimes;
+s.SoundData.ToneTimeDiff = dioTimeDiff;
 
 %insert to master. check for errors
-if length(dioTimes) ~= length(master)
+if length(dioTimes) == length(master)
+    master(:,1) = dioTimes;
+elseif length(dioTimes) ~= length(master) %error case
+    disp('ERROR IN DIOTIMES vs PROJECTED TONES')
+    
     length(dioTimes)
     length(master)
     error('dioTimes and master mismatched')
-elseif length(dioTimes) == length(master)
-    master(:,1) = dioTimes;
 end
 
 
