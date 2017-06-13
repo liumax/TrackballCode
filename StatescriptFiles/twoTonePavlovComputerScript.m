@@ -14,12 +14,12 @@ prompt = {'Mouse ID:',...
     'Big Tone (Hz):',...       
     'Small Tone (Hz):',...       
     'ITI (msec):',...
-    'ITI Range (+/-) (msec):',...
+    'ITI (Longest) (msec):',...
     'sessionID:',...        
     'Notes:'}; %the bracket is to end the prompt     
 dlg_title = 'LickTask:';
 num_lines=1;
-def={'','','200','50','200','500','100','3000','','','15000','5000','1',''};
+def={'','','200','50','200','500','100','3000','','','10000','50000','1',''};
 answer = inputdlg(prompt,dlg_title,num_lines,def);
 pause(2); % need to pause for microcontroller or things break!
 
@@ -44,8 +44,12 @@ scQtUserData.notes = answer{i};i=i+1;
 scQtUserData.taskID = 'twoTonePavlovComputer';
 
 %% now lets start calculations. 
-%calculate ITIs, use random flat distribution
-scQtUserData.Master(:,1) = ((rand(scQtUserData.totalTrials,1)*scQtUserData.ITIRange)+scQtUserData.ITI); 
+%calculate ITIs, use exponential distribution
+k = 2.5;
+p = (1-exp(-k))*rand(scQtUserData.totalTrials,1);
+tau = (scQtUserData.ITIRange-scQtUserData.ITI)/k;
+x = round(scQtUserData.ITI-6000 + (-log(1-p))*tau); 
+scQtUserData.Master(:,1) = x;
 %determine when to present tones!
 randInd = randperm(scQtUserData.totalTrials);
 randInd(randInd<=scQtUserData.totalTrials/2) = 1; %1 will represent small rewards
@@ -120,8 +124,8 @@ sendScQtControlMessage(['disp(''soundAmp:', num2str(scQtUserData.soundAmp),''')'
 sendScQtControlMessage(['disp(''rewDelay:', num2str(scQtUserData.rewDelay),''')']);
 sendScQtControlMessage(['disp(''bigTone:', num2str(scQtUserData.bigTone),''')']);
 sendScQtControlMessage(['disp(''smallTone:', num2str(scQtUserData.smallTone),''')']);
-sendScQtControlMessage(['disp(''ITI:', num2str(scQtUserData.ITI),''')']);
-sendScQtControlMessage(['disp(''ITIRange:', num2str(scQtUserData.ITIRange),''')']);
+sendScQtControlMessage(['disp(''ITIShort:', num2str(scQtUserData.ITI),''')']);
+sendScQtControlMessage(['disp(''ITILong:', num2str(scQtUserData.ITIRange),''')']);
 sendScQtControlMessage(['disp(''lickWindow:', num2str(scQtUserData.lickWindow),''')']);
 sendScQtControlMessage(['disp(''taskID:', scQtUserData.taskID,''')']);
 sendScQtControlMessage(['disp(''date:', scQtUserData.date,''')']);
@@ -142,7 +146,7 @@ scQtUserData.lickLat = zeros(scQtUserData.totalTrials,1);
 %variables for tracking licking. Each entry here will be a combination of
 %the lick time relative to the sound, the trial number, and the type of
 %trial.
-scQtUserData.licks = zeros(1000,3);
+scQtUserData.licks = zeros(1000,4);
 scQtUserData.lickCounter = 1;
 
 scQtUserData.lickHist = zeros(80,2); %This is optimized for looking at an 8 second window
@@ -153,5 +157,6 @@ scQtUserData.lickAxes = [-2:0.1:5.9]; %axis for histogram
 %send initial information to the mbed
 sendScQtControlMessage(['lickWind =',num2str(scQtUserData.lickWindow)]);
 sendScQtControlMessage(['toneRewDel =',num2str(scQtUserData.rewDelay)]);
+sendScQtControlMessage(['trPhase = 0']);
 sendScQtControlMessage(['signalDel =3000']); %this is the delay after reward delivery before triggering next thing. 
 sendScQtControlMessage(['disp(''StartSession'')']);

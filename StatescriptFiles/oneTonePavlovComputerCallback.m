@@ -60,7 +60,6 @@ end
 if ~isempty(strfind(newLine,'TriggerSound'))
     disp('PlayBig')
     sound(scQtUserData.ToneBig,192000)
-    disp('FinishBig')
 end
 
 if ~isempty(strfind(newLine,'PlotTime'))
