@@ -88,6 +88,7 @@ if ~isempty(strfind(newLine,'PlotTime'))
     
     cla(scQtUserData.ax1);
     cla(scQtUserData.ax2); %clears ax2
+    cla(scQtUserData.ax3);
     
     %finds first lick and stores
     firstLick = scQtUserData.licks(:,1) - scQtUserData.cueTime(scQtUserData.trial);
@@ -111,7 +112,11 @@ if ~isempty(strfind(newLine,'PlotTime'))
     plot(scQtUserData.firstLick,'b.','parent',scQtUserData.ax2)
     
     subplot(3,1,3)
-    hist(scQtUserData.licks(1:scQtUserData.lickCounter,1),scQtUserData.lickAxes)
+    %process histogram data
+    histData = scQtUserData.licks(1:scQtUserData.lickCounter,1);
+    histData(histData > scQtUserData.lickAxes(end)) = [];
+    histData(histData < scQtUserData.lickAxes(1)) = [];
+    hist(histData,scQtUserData.lickAxes)
     
 end
 

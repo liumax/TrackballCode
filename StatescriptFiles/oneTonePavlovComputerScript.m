@@ -12,12 +12,12 @@ prompt = {'Mouse ID:',...
     'Reward Delay (msec):',...
     'Tone (Hz):',...            
     'ITI (msec):',...
-    'ITI Range (+/-) (msec):',...
+    'ITI (Longest) (msec):',...
     'sessionID:',...        
     'Notes:'}; %the bracket is to end the prompt     
 dlg_title = 'LickTask:';
 num_lines=1;
-def={'','','200','200','500','100','3000','','15000','5000','1',''};
+def={'','','200','200','500','100','3000','','10000','50000','1',''};
 answer = inputdlg(prompt,dlg_title,num_lines,def);
 pause(2); % need to pause for microcontroller or things break!
 
@@ -40,8 +40,13 @@ scQtUserData.notes = answer{i};i=i+1;
 scQtUserData.taskID = 'oneTonePavlovComputer';
 
 %% now lets start calculations. 
-%calculate ITIs, use random flat distribution
-scQtUserData.Master(:,1) = ((rand(scQtUserData.totalTrials,1)*scQtUserData.ITIRange)+scQtUserData.ITI)-6000; % 170605 adding 6 second fudge factor for things I've added to the code.
+%calculate ITIs, use exponential distribution
+k = 2.5;
+p = (1-exp(-k))*rand(scQtUserData.totalTrials,1);
+tau = (scQtUserData.ITIRange-scQtUserData.ITI)/k;
+x = round(scQtUserData.ITI-6000 + (-log(1-p))*tau); 
+
+scQtUserData.Master(:,1) = x;
 scQtUserData.Master(:,2) = ones(scQtUserData.totalTrials,1);
 %determine rewSize order
 scQtUserData.Master(:,3) = ones(scQtUserData.totalTrials,1)*scQtUserData.bigRew;
@@ -110,8 +115,8 @@ sendScQtControlMessage(['disp(''soundAmp:', num2str(scQtUserData.soundAmp),''')'
 sendScQtControlMessage(['disp(''rewDelay:', num2str(scQtUserData.rewDelay),''')']);
 sendScQtControlMessage(['disp(''bigTone:', num2str(scQtUserData.bigTone),''')']);
 % sendScQtControlMessage(['disp(''smallTone:', num2str(scQtUserData.smallTone),''')']);
-sendScQtControlMessage(['disp(''ITI:', num2str(scQtUserData.ITI),''')']);
-sendScQtControlMessage(['disp(''ITIRange:', num2str(scQtUserData.ITIRange),''')']);
+sendScQtControlMessage(['disp(''ITIShort:', num2str(scQtUserData.ITI),''')']);
+sendScQtControlMessage(['disp(''ITILong:', num2str(scQtUserData.ITIRange),''')']);
 sendScQtControlMessage(['disp(''lickWindow:', num2str(scQtUserData.lickWindow),''')']);
 sendScQtControlMessage(['disp(''taskID:', scQtUserData.taskID,''')']);
 sendScQtControlMessage(['disp(''date:', scQtUserData.date,''')']);
