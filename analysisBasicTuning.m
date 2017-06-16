@@ -23,10 +23,10 @@
 function [s] = analysisBasicTuning(fileName);
 %% Constants and things you might want to tweak
 %TOGGLES FOR ENABLING/DISABLING FEATURES
-s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROC = 1; %toggle for tuning on/off ROC analysis
+toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
+toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -188,27 +188,7 @@ end
 s.Parameters.OctaveRange = octaveRange;
 s.Parameters.DBRange = dbRange;
 
-%Sets up master array so that we have a size comparison for DIO
-%information. 
-master = zeros(size(soundFile.soundData.Frequencies,1),5);
 
-%master(:,1) is reserved for actual input times
-%master(:,2) is frequency
-master(:,2) = soundData.Frequencies;
-%master(:,3) is dB
-master(:,3) = soundData.dBs;
-%master(:,4) is trial number (chronological)
-master(:,4) = 1:1:totalTrialNum;
-%master(:,5) is trial num, arranging trials in order from small dB to large
-%dB, and low freq to high freq. frequency is larger category.
-sortingCounter = 1;
-for i = 1:numFreqs
-    for j = 1:numDBs
-        sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == uniqueDBs(j));
-        master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
-        sortingCounter = sortingCounter + size(sortingFinder,1);
-    end
-end
 
 %% Extract DIO information. Tuning curve should rely on just one DIO output, DIO1.
 
@@ -225,14 +205,142 @@ s.SoundData.ToneTimes = dioTimes;
 s.SoundData.ToneTimeDiff = dioTimeDiff;
 
 %insert to master. check for errors
-if length(dioTimes) == length(master)
+if length(dioTimes) == length(soundData.Frequencies)
+    %Sets up master array so that we have a size comparison for DIO
+    %information. 
+    master = zeros(size(soundFile.soundData.Frequencies,1),5);
+
     master(:,1) = dioTimes;
-elseif length(dioTimes) ~= length(master) %error case
-    disp('ERROR IN DIOTIMES vs PROJECTED TONES')
+    %master(:,2) is frequency
+    master(:,2) = s.SoundData.Frequencies;
+    %master(:,3) is dB
+    master(:,3) = s.SoundData.dBs;
+    %master(:,4) is trial number (chronological)
+    master(:,4) = 1:1:totalTrialNum;
+    %master(:,5) is trial num, arranging trials in order from small dB to large
+    %dB, and low freq to high freq. frequency is larger category.
+    sortingCounter = 1;
+    for i = 1:numFreqs
+        for j = 1:numDBs
+            sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == uniqueDBs(j));
+            master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
+            sortingCounter = sortingCounter + size(sortingFinder,1);
+        end
+    end
     
-    length(dioTimes)
-    length(master)
-    error('dioTimes and master mismatched')
+    repArray = ones(numFreqs,numDBs);
+    repArray = repArray * toneReps;
+elseif length(dioTimes) ~= length(s.SoundData.Frequencies) %error case
+    disp('ERROR IN DIOTIMES vs PROJECTED TONES')
+    %the below code is optimized for single errors, and assumes that the
+    %first TTL is correct. This code may need to be rewritten in the
+    %future to account for failures of the first TTL. 
+    predTimes = s.SoundData.Delays;
+    minPred = min(predTimes);
+    
+    repArray  = zeros(numFreqs,numDBs); %make array of zeros!
+    alertArray = zeros(numFreqs,numDBs);
+    %assume that the first TTL is fine
+    try
+        freqFind = find(uniqueFreqs == s.SoundData.TrialMatrix(1,2));
+        dbFind = find(uniqueDBs == s.SoundData.TrialMatrix(1,3));
+    catch
+        freqFind = find(uniqueFreqs == s.SoundData.Frequencies(1));
+        dbFind = find(uniqueDBs == s.SoundData.dBs(1));
+    end
+    repArray(freqFind,dbFind) = repArray(freqFind,dbFind) + 1;
+    whileTrig = 1;
+    whileCounter = 1;
+    alertCounter = 1;
+    while whileTrig == 1
+        %first see if I've exceeded the bounds
+        if whileCounter > length(predTimes) %if hit bound of predicted times]
+            disp('Went through all predicted times')
+            break
+            
+        elseif whileCounter > length(dioTimeDiff) %if hit bound of received times
+            disp('Went through all received times')
+            totalTrialNum = whileCounter;
+            break
+            
+        else
+            %check the difference between the current values. If exceeds
+            %threshold, flag. Otherwise, need to record the tuning
+            %information so I get accurate representation of repetitions
+            diffCheck = dioTimeDiff(whileCounter) - predTimes(whileCounter);
+            if diffCheck < minPred & diffCheck > 0
+                %now lets fill in rep numbers
+                try
+                    freqFind = find(uniqueFreqs == s.SoundData.TrialMatrix(whileCounter + 1,2));
+                    dbFind = find(uniqueDBs == s.SoundData.TrialMatrix(whileCounter + 1,3));
+                catch
+                    freqFind = find(uniqueFreqs == s.SoundData.Frequencies(1));
+                    dbFind = find(uniqueDBs == s.SoundData.dBs(1));
+                end
+                repArray(freqFind,dbFind) = repArray(freqFind,dbFind) + 1;
+                whileCounter = whileCounter + 1;
+            elseif diffCheck >= minPred
+                disp('Error Found! Insufficient DIO')
+                try
+                    freqFind = find(uniqueFreqs == s.SoundData.TrialMatrix(whileCounter + 1,2));
+                    dbFind = find(uniqueDBs == s.SoundData.TrialMatrix(whileCounter + 1,3));
+                catch
+                    freqFind = find(uniqueFreqs == s.SoundData.Frequencies(1));
+                    dbFind = find(uniqueDBs == s.SoundData.dBs(1));
+                end
+                %store information about the failed DIO
+                alertArray(freqFind,dbFind) = alertArray(freqFind,dbFind) + 1;
+                alertDesig(alertCounter) = whileCounter;
+                %first fix predicted times
+                predTimes(whileCounter+1) = predTimes(whileCounter+1) + predTimes(whileCounter);
+                predTimes(whileCounter) = [];
+                try
+                    s.SoundData.TrialMatrix(whileCounter,:) = [];
+                    s.SoundData.Frequencies(whileCounter) = [];
+                    s.SoundData.dBs(whileCounter) = [];
+                catch
+                    s.SoundData.Frequencies(whileCounter) = [];
+                    s.SoundData.dBs(whileCounter) = [];
+                end
+                %dont need to update whileCounter, since this will cycle
+                %through again.
+            elseif diffCheck < 0 %this seems to work more or less!
+                disp('Error Found! Excess DIO')
+                try
+                    freqFind = find(uniqueFreqs == s.SoundData.TrialMatrix(whileCounter + 1,2));
+                    dbFind = find(uniqueDBs == s.SoundData.TrialMatrix(whileCounter + 1,3));
+                catch
+                    freqFind = find(uniqueFreqs == s.SoundData.Frequencies(1));
+                    dbFind = find(uniqueDBs == s.SoundData.dBs(1));
+                end
+                %delete the excess DIO
+                dioTimes(whileCounter + 1) = [];
+                dioTimeDiff = diff(dioTimes);
+            else
+                error('Code Failure In DIO Repair')
+            end
+        end
+    end
+    master = zeros(totalTrialNum,5);
+
+    master(:,1) = dioTimes;
+    %master(:,2) is frequency
+    master(:,2) = s.SoundData.Frequencies(1:totalTrialNum);
+    %master(:,3) is dB
+    master(:,3) = s.SoundData.dBs(1:totalTrialNum);
+    %master(:,4) is trial number (chronological)
+    master(:,4) = 1:1:totalTrialNum;
+    %master(:,5) is trial num, arranging trials in order from small dB to large
+    %dB, and low freq to high freq. frequency is larger category.
+    sortingCounter = 1;
+    for i = 1:numFreqs
+        for j = 1:numDBs
+            sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == uniqueDBs(j));
+            master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
+            sortingCounter = sortingCounter + size(sortingFinder,1);
+        end
+    end
+    
 end
 
 
@@ -370,7 +478,7 @@ for i = 1:numUnits
     %calculate significant response for combined histogram of all responses
     %to all sounds.    
 %     [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master));
-    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master),...
+    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,totalTrialNum,...
         s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
     
     disp(strcat('Baseline Spikes:',num2str(generalResponseHist.SpikeNumber),' Unit:',(desigNames{i})))
@@ -414,7 +522,7 @@ for i = 1:numUnits
             probStoreGen(k,l) = latPeakBinOut.ProbSpikeGen;
             latPeakBinOut = [];
 %             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
-            [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes(targetTrials),toneReps,...
+            [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes(targetTrials),length(targetTrials),...
         s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
             responseHistHolder{k,l} = responseHist;
         end
@@ -753,7 +861,7 @@ else %in the case you dont want to do tuning selection, default to normal system
         plot([0 0],[ylim],'b');
         plot([toneDur toneDur],[ylim],'b');
         rasterFreqLines = zeros(numFreqs,2);
-        rasterFreqLines(:,1) = toneReps*size(uniqueDBs,1)/2:toneReps*size(uniqueDBs,1):totalTrialNum;
+        rasterFreqLines(:,1) = cumsum(sum(repArray'));
         rasterFreqLines(:,2) = uniqueFreqs;
         %this generates green lines separating by Frequency
         for k = 1:size(uniqueFreqs,1)
