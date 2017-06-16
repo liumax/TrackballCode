@@ -24,13 +24,16 @@ interval = [0.05 5];
 idealF = idealfilter(testSampleTS,interval,'pass');
 filtTime = idealF.Time;
 filtSig = idealF.Data;
-[pks locs] = findpeaks(double(filtSig));
+[locs] = findpeaks(double(filtSig));
+pks = double(filtSig(locs.loc));
+locs = locs.loc;
 
 
 % find minimums:
 sigInv = 1.01*max(filtSig) - filtSig;
-[pksMn locsMn] = findpeaks(double(sigInv));
-
+[locsMn] = findpeaks(double(sigInv));
+pksMn = double(filtSig(locsMn.loc));
+locsMn = locsMn.loc;
 
 % % Find derivative of filtered signal and only positive derivative:
 % filtDerivSig = [0; diff(filtSig)];

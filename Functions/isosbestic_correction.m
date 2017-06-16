@@ -22,5 +22,5 @@ iso_rm = isoSig; iso_rm(rmIdx) = [];
 b = glmfit(iso_rm,caSig_rm);
 iso_scaled = b(1) + isoSig*b(2);
 photoSig = (uncorrSig-iso_scaled)./iso_scaled;
-photoSig(rmIdx) = 0; % Replace outliers with 0
+% photoSig(rmIdx) = 0; % Replace outliers with 0
 
