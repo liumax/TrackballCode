@@ -75,7 +75,7 @@ traceTiming = [0:1/data.streams.x70G.fs:(1/data.streams.x70G.fs)*(length(data.st
 %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
 %additional functionality for peak finding.
 
-[peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
+% [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
 
 %pull jittered signal
 traceJitt = data.epocs.PtE1.onset;
