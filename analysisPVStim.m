@@ -50,7 +50,7 @@ s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
 %for rotary encoder:
 s.Parameters.InterpolationStepRotary = 0.01;
-laserPeriod = [0 1.5]; %time window in seconds around laser onset that I want to analyze. This is if I want to select for trials with locomotion at a specifc time
+laserPeriod = [0 1]; %time window in seconds around laser onset that I want to analyze. This is if I want to select for trials with locomotion at a specifc time
 locoThresh = 0.9; %threshold for time points in which the locomotion is active for trial to be considered locomotion trial
 windowPref = [0 1.5]; %preference window in seconds. This is the period over which I determine whether locomotor starts are more or less common than expected by random chance
 prefReps = 1000; %repetitions for bootstrapping to determine if locomotor starts are more common during stimulation
@@ -213,6 +213,9 @@ for i = 1:totalTrialNum
 end
 
 findLoco = find(locoTrial == 1);
+
+%now lets find locomotion based on average from the trial
+avLoco = mean(velRaster);
 
 %% Find if there is a preference for locomotion start/stop during laser
 %now see if there is a preference for locomotion during laser periods. Do
