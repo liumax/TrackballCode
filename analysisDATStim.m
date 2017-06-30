@@ -27,9 +27,9 @@ s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means no
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
-s.Parameters.RasterWindow = [-4 12]; %seconds for raster window. NOT SCALED
-s.Parameters.ToneWindow = [0 0.5];
-s.Parameters.GenWindow = [0 1];
+s.Parameters.RasterWindow = [-5 10]; %seconds for raster window. NOT SCALED
+% s.Parameters.ToneWindow = [0 0.5];
+% s.Parameters.GenWindow = [0 1];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.05; %histogram bin size in seconds
