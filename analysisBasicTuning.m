@@ -189,7 +189,6 @@ s.Parameters.OctaveRange = octaveRange;
 s.Parameters.DBRange = dbRange;
 
 
-
 %% Extract DIO information. Tuning curve should rely on just one DIO output, DIO1.
 
 %find DIO folder and D1 file for analysis
@@ -342,7 +341,6 @@ elseif length(dioTimes) ~= length(s.SoundData.Frequencies) %error case
     end
     
 end
-
 
 
 %% Extract data from rotary encoder.
