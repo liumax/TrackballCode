@@ -54,6 +54,7 @@ laserPeriod = [0 1]; %time window in seconds around laser onset that I want to a
 locoThresh = 0.9; %threshold for time points in which the locomotion is active for trial to be considered locomotion trial
 windowPref = [0 1.5]; %preference window in seconds. This is the period over which I determine whether locomotor starts are more or less common than expected by random chance
 prefReps = 1000; %repetitions for bootstrapping to determine if locomotor starts are more common during stimulation
+avLocoThresh = 0.1; %minimum speed for a trial to be considered a locomotion trial.
 
 %for edr
 s.Parameters.EDRdownsamp = 20; %number of samples to downsample by. Smoothing is likely unnecessary
@@ -216,6 +217,8 @@ findLoco = find(locoTrial == 1);
 
 %now lets find locomotion based on average from the trial
 avLoco = mean(velRaster);
+avLocoPos = find(avLoco>avLocoThresh);
+avLocoNeg = find(avLoco<=avLocoThresh);
 
 %% Find if there is a preference for locomotion start/stop during laser
 %now see if there is a preference for locomotion during laser periods. Do
@@ -377,6 +380,8 @@ for i = 1:numUnits
     s.(desigNames{i}).HistBinVector = histBinVector;
     s.(desigNames{i}).PrePostBins = prePostStore;
     s.(desigNames{i}).zPrePostBins = zPrePostStore;
+    s.(desigNames{i}).PrePostBinsLocoPos = prePostStore(avLocoPos,:);
+    s.(desigNames{i}).PrePostBinsLocoNeg = prePostStore(avLocoNeg,:);
     
     if toggleROCLoco == 1
         targetName = desigNames{i};
@@ -442,6 +447,10 @@ for i = 1:numUnits
     halfMaxVal = maxVal/2;
     pointFirst = find(s.SumPlot.Wave(:,i)>halfMaxVal,1,'first');
     s.SumPlot.WaveHalfMax(i) = find(s.SumPlot.Wave(pointFirst:end,i)<halfMaxVal,1,'first')/3*(10^(-5));
+    
+    %pull out loco related baseline and laser
+    s.SumPlot.LocoPosPrePost(i,:) = mean(s.(desigNames{i}).PrePostBinsLocoPos);
+    s.SumPlot.LocoNegPrePost(i,:) = mean(s.(desigNames{i}).PrePostBinsLocoNeg);
 end
 s.SumPlot.AverageZFiringAllUnits = mean(s.SumPlot.SmoothZHist);
 [B,Ibase] = sort(s.SumPlot.BaselineRates);
@@ -639,13 +648,21 @@ hist((s.SumPlot.LaserPeriod-s.SumPlot.BaselineRates)./(s.SumPlot.LaserPeriod+s.S
 xlim([-1 1])
 title('Modulation Index (Masmanidis Method)')
 
+% subplot(3,3,9)
+% hist(zComb',10)
+% title('Histogram of Z Scores Pre(b) Laser(g) Post(y)')
 subplot(3,3,9)
-hist(zComb',10)
-title('Histogram of Z Scores Pre(b) Laser(g) Post(y)')
+hold on
+plot(s.SumPlot.BaselineRates,s.SumPlot.LocoPosPrePost(:,2),'b.')
+plot(s.SumPlot.BaselineRates,s.SumPlot.LocoNegPrePost(:,2),'c.')
+plot([0 max([max(max(s.SumPlot.LocoPosPrePost(:,[1:2]))),max(max(s.SumPlot.LocoNegPrePost(:,[1:2])))])],...
+    [0 max([max(max(s.SumPlot.LocoPosPrePost(:,[1:2]))),max(max(s.SumPlot.LocoNegPrePost(:,[1:2])))])],'b')
+pbaspect([1 1 1])
+title({'Loco Trials:',num2str(length(avLocoPos))},'interpreter','none')
 
 %plot out mean difference for different periods following stimulation
 
-spikeGraphName = strcat(fileName,'DATStimSummaryFigure');
+spikeGraphName = strcat(fileName,'PVStimSummaryFigure');
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -656,129 +673,131 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 %% Individual Plotting
-% for i = 1:numUnits
-%     hFig = figure;
-%     set(hFig, 'Position', [10 80 1240 850])
+for i = 1:numUnits
+    hFig = figure;
+    set(hFig, 'Position', [10 80 1240 850])
 %     plots average waveform
-%     subplot(4,4,1)
-%     hold on
-%     plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
-%     title({fileName;desigNames{i};strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate))})
+    subplot(4,4,1)
+    hold on
+    plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
+    title({fileName;desigNames{i};strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate))})
 %     plots ISI
-%     subplot(4,4,2)
-%     hist(s.(desigNames{i}).ISIGraph,1000)
-%     histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
-%     line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-%     xlim(s.Parameters.ClusterWindow)
-%     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
-%         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-%     
+    subplot(4,4,2)
+    hist(s.(desigNames{i}).ISIGraph,1000)
+    histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
+    line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+    xlim(s.Parameters.ClusterWindow)
+    title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+        strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
+    
 %     plot scatter of pre vs post bins
-%     subplot(4,4,3)
-%     hold on
-%     plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).PrePostBins(:,2),'g.')
-%     plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).PrePostBins(:,3),'r*')
-%     plotMax = max(max(s.(desigNames{i}).PrePostBins));
-%     plot([0 plotMax],[0 plotMax],'b')
-%     title('Pre 3 vs laser(green) or post 3(red)')
-%     
-%     subplot(4,4,4)
-%     hold on
-%     plot(s.(desigNames{i}).PrePostBins(:,4),s.(desigNames{i}).PrePostBins(:,2),'g.')
-%     plot(s.(desigNames{i}).PrePostBins(:,4),s.(desigNames{i}).PrePostBins(:,3),'r*')
-%     plotMax = max(max(s.(desigNames{i}).PrePostBins));
-%     plot([0 plotMax],[0 plotMax],'b')
-%     title('Pre 1 vs laser(green) or post 3(red)')
-%     
+    subplot(4,4,3)
+    hold on
+    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).PrePostBins(:,2),'g.')
+    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).PrePostBins(:,3),'r*')
+    plotMax = max(max(s.(desigNames{i}).PrePostBins));
+    plot([0 plotMax],[0 plotMax],'b')
+    title('Pre 3 vs laser(green) or post 3(red)')
+    
+    subplot(4,4,4)
+    hold on
+    plot(s.(desigNames{i}).PrePostBins(:,4),s.(desigNames{i}).PrePostBins(:,2),'g.')
+    plot(s.(desigNames{i}).PrePostBins(:,4),s.(desigNames{i}).PrePostBins(:,3),'r*')
+    plotMax = max(max(s.(desigNames{i}).PrePostBins));
+    plot([0 plotMax],[0 plotMax],'b')
+    title('Pre 1 vs laser(green) or post 3(red)')
+    
 %     plot histogram.
-%     subplot(4,3,4)
-%     plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
-%     hold on
-%     plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
-%     plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+    subplot(4,3,4)
+    plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
+    hold on
+    plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+    plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
 %     fill in laser onset
-%     plot([0 0],[ylim],'b');
+    plot([0 0],[ylim],'b');
 %     if there are locomotion trials, plot these as well.
-%     if length(findLoco) > 5
-%         plot(histBinVector,mean(s.(desigNames{i}).IndividualHistograms(:,findLoco)'/s.Parameters.histBin),'r')
-%     end
-%     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-%     title('Histogram')
-%     
+    if length(findLoco) > 5
+        plot(histBinVector,mean(s.(desigNames{i}).IndividualHistograms(:,findLoco)'/s.Parameters.histBin),'r')
+    end
+    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+    title('Histogram')
+    
 %     plots rasters (chronological)
-%     subplot(4,3,7)
-%     plot(s.(desigNames{i}).AllRasters(:,1),...
-%         s.(desigNames{i}).AllRasters(:,2),'k.','markersize',5)
-%     hold on
-%     ylim([0 totalTrialNum])
-%     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-%     set(gca,'Ydir','reverse')
-%     plot([0 0],[ylim],'b');
-%     title({fileName;desigNames{i}},'fontweight','bold')
-%     set(0, 'DefaulttextInterpreter', 'none')
-%     
+    subplot(4,3,7)
+    plot(s.(desigNames{i}).AllRasters(:,1),...
+        s.(desigNames{i}).AllRasters(:,2),'k.','markersize',5)
+    hold on
+    ylim([0 totalTrialNum])
+    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+    set(gca,'Ydir','reverse')
+    plot([0 0],[ylim],'b');
+    title({fileName;desigNames{i}},'fontweight','bold')
+    set(0, 'DefaulttextInterpreter', 'none')
+    
 %     plot heatmap of locomotion
-%     subplot(4,3,10)
-%     imagesc((velRaster'))
-%     colormap(parula)
-%     colorbar
-%     set(gca,'XTick',velDispIndex);
-%     set(gca,'XTickLabel',velDispVector);
-%     title('Colorized Speed Trace Per Trial')
-%     
+    subplot(4,3,10)
+    imagesc((velRaster'))
+    colormap(parula)
+    colorbar
+    set(gca,'XTick',velDispIndex);
+    set(gca,'XTickLabel',velDispVector);
+    title('Colorized Speed Trace Per Trial')
+    
 %     plot velocity vs firing rate
-%     subplot(4,3,5)
-%     hold on
-%     plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
-%     plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
-%     xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
-%     ylim([-0.1,1])
-%     if toggleROCLoco == 1
-%         title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
-%     else
-%         title('Vel & Firing Rate')
-%     end
-%     
+    subplot(4,3,5)
+    hold on
+    plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+    xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+    ylim([-0.1,1])
+    if toggleROCLoco == 1
+        title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+    else
+        title('Vel & Firing Rate')
+    end
+    
 %     plot changes over time.
-%     subplot(4,3,8)
-%     hold on
-%     plot((s.(desigNames{i}).PrePostBins(:,1)),'ko')
-%     plot(smooth(s.(desigNames{i}).PrePostBins(:,1),10),'k.-')
-%     plot((s.(desigNames{i}).PrePostBins(:,2)),'go')
-%     plot(smooth(s.(desigNames{i}).PrePostBins(:,2),10),'g.-')
-%     plot((s.(desigNames{i}).PrePostBins(:,3)),'ro')
-%     plot(smooth(s.(desigNames{i}).PrePostBins(:,3),10),'r.-')
-%     title('Pre(k) Dur(g) Post(r) smoothed 10')
-%     xlabel('Trials')
-%     
+    subplot(4,3,8)
+    hold on
+    plot((s.(desigNames{i}).PrePostBins(:,1)),'ko')
+    plot(smooth(s.(desigNames{i}).PrePostBins(:,1),10),'k.-')
+    plot((s.(desigNames{i}).PrePostBins(:,2)),'go')
+    plot(smooth(s.(desigNames{i}).PrePostBins(:,2),10),'g.-')
+    smoothedTrace = smooth(s.(desigNames{i}).PrePostBins(:,2),10);
+    plot(avLocoPos,smoothedTrace(avLocoPos),'bo');
+    plot((s.(desigNames{i}).PrePostBins(:,3)),'ro')
+    plot(smooth(s.(desigNames{i}).PrePostBins(:,3),10),'r.-')
+    title('Pre(k) Dur(g) Post(r) smoothed 10')
+    xlabel('Trials')
+    
 %     PLOT CHANGES IN MODULATION OVER TIME
-%     subplot(4,3,11)
-%     hold on
-%     plot((s.(desigNames{i}).zPrePostBins(:,2) - s.(desigNames{i}).zPrePostBins(:,1)),'go')
-%     plot(smooth(s.(desigNames{i}).zPrePostBins(:,2) - s.(desigNames{i}).zPrePostBins(:,1),10),'g.-')
-%     plot((s.(desigNames{i}).zPrePostBins(:,3) - s.(desigNames{i}).zPrePostBins(:,1)),'ro')
-%     plot(smooth(s.(desigNames{i}).zPrePostBins(:,3) - s.(desigNames{i}).zPrePostBins(:,1),10),'r.-')
-%     title('zSub pre3 vs Dur(g) or Post(r) smoothed 10')
-%     xlabel('Trials')
-%     
+    subplot(4,3,11)
+    hold on
+    plot((s.(desigNames{i}).zPrePostBins(:,2) - s.(desigNames{i}).zPrePostBins(:,1)),'go')
+    plot(smooth(s.(desigNames{i}).zPrePostBins(:,2) - s.(desigNames{i}).zPrePostBins(:,1),10),'g.-')
+    plot((s.(desigNames{i}).zPrePostBins(:,3) - s.(desigNames{i}).zPrePostBins(:,1)),'ro')
+    plot(smooth(s.(desigNames{i}).zPrePostBins(:,3) - s.(desigNames{i}).zPrePostBins(:,1),10),'r.-')
+    title('zSub pre3 vs Dur(g) or Post(r) smoothed 10')
+    xlabel('Trials')
+    
 %     plot z scored changes during laser vs pre-firing rate and post
-%     subplot(4,3,6)
-%     hold on
-%     plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).zPrePostBins(:,2) - s.(desigNames{i}).zPrePostBins(:,1),'k.')
-%     plot([0 max(s.(desigNames{i}).PrePostBins(:,1))],[0 0],'b')
-%     xlabel('Trial Based Firing Rate')
-%     ylabel('Z-diff between pre and laser')
-%     title('zdiff Pre vs Laser')
-%     
-%     subplot(4,3,9)
-%     hold on
-%     plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).zPrePostBins(:,3) - s.(desigNames{i}).zPrePostBins(:,1),'k.')
-%     plot([0 max(s.(desigNames{i}).PrePostBins(:,1))],[0 0],'b')
-%     xlabel('Trial Based Firing Rate')
-%     ylabel('Z-diff between pre and postlaser')
-%     title('zdiff Pre vs postLaser')
-%     
-%     
+    subplot(4,3,6)
+    hold on
+    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).zPrePostBins(:,2) - s.(desigNames{i}).zPrePostBins(:,1),'k.')
+    plot([0 max(s.(desigNames{i}).PrePostBins(:,1))],[0 0],'b')
+    xlabel('Trial Based Firing Rate')
+    ylabel('Z-diff between pre and laser')
+    title('zdiff Pre vs Laser')
+    
+    subplot(4,3,9)
+    hold on
+    plot(s.(desigNames{i}).PrePostBins(:,1),s.(desigNames{i}).zPrePostBins(:,3) - s.(desigNames{i}).zPrePostBins(:,1),'k.')
+    plot([0 max(s.(desigNames{i}).PrePostBins(:,1))],[0 0],'b')
+    xlabel('Trial Based Firing Rate')
+    ylabel('Z-diff between pre and postlaser')
+    title('zdiff Pre vs postLaser')
+    
+    
 %     %plot heatmap of firing
 %     subplot(4,2,3)
 %     imagesc(s.(desigNames{i}).IndividualHistograms')
@@ -787,8 +806,8 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 %     set(gca,'XTickLabel',[s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)]);
 %     colorbar
 %     title('Colormap of Firing')
-%     
-%     plot edr data, if exists
+    
+% %     plot edr data, if exists
 %     if edrToggle == 1
 %         subplot(4,2,7)
 %         hold on
@@ -802,26 +821,26 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 %         set(gca,'YTickLabel',[totalTrialNum:-10:1])
 %         title('Colorized Piezo Data')
 %     else
-% %         subplot(4,2,7)
-% %         hold on
-% %         memFinder = ismember(s.(desigNames{i}).AllRasters(:,2),findLoco);
-% %         memFinder = s.(desigNames{i}).AllRasters(memFinder,1);
-% %         hist(memFinder,[s.Parameters.RasterWindow(1):0.1:s.Parameters.RasterWindow(2)])
-% %         title('Histogram of Responses During Locomotion Trials')
+%         subplot(4,2,7)
+%         hold on
+%         memFinder = ismember(s.(desigNames{i}).AllRasters(:,2),findLoco);
+%         memFinder = s.(desigNames{i}).AllRasters(memFinder,1);
+%         hist(memFinder,[s.Parameters.RasterWindow(1):0.1:s.Parameters.RasterWindow(2)])
+%         title('Histogram of Responses During Locomotion Trials')
 %     end
-%     
-%     
-%     
-%     hold off
-%     spikeGraphName = strcat(fileName,desigNames{i},'PVStimAnalysis');
-%     savefig(hFig,spikeGraphName);
-% 
+    
+    
+    
+    hold off
+    spikeGraphName = strcat(fileName,desigNames{i},'PVStimAnalysis');
+    savefig(hFig,spikeGraphName);
+
 %     save as PDF with correct name
-%     set(hFig,'Units','Inches');
-%     pos = get(hFig,'Position');
-%     set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-%     print(hFig,spikeGraphName,'-dpdf','-r0')
-% end
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
+end
 %% Saving
 save(fullfile(pname,fname),'s');
 

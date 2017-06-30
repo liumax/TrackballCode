@@ -7,37 +7,46 @@ s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means no
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 
-s.Parameters.RasterWindow = [-1 3]; %seconds for raster window. 
-s.Parameters.ToneWindow = [0 0.5];
-s.Parameters.GenWindow = [0 1];
+s.Parameters.RasterWindow = [-2 3]; %seconds for raster window. 
+% s.Parameters.ToneWindow = [0 0.5];
+% s.Parameters.GenWindow = [0 1];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
-s.Parameters.histBin = 0.005; %histogram bin size in seconds
+s.Parameters.histBin = 0.05; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
-s.Parameters.zLimit = 3; %zlimit for calculating significant responses
-s.Parameters.FirstSpikeWindow = [0 1];
-s.Parameters.BaselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
+% s.Parameters.zLimit = 3; %zlimit for calculating significant responses
+% s.Parameters.FirstSpikeWindow = [0 1];
+% s.Parameters.BaselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
 s.Parameters.LFPWindow = [-1 1];
 
 %stuff for significance
 s.Parameters.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
 s.Parameters.zLimit = [0.05 0.01 0.001];
-s.Parameters.numShuffle = 1000;
-s.Parameters.minSpikes = 100; %minimum number of spikes to do spike shuffling
-s.Parameters.minSigSpikes = 2; %minimum number of significant points to record a significant response.
-s.Parameters.BaselineWindow = [-0.4 0]; %window for counting baseline spikes, in SECONDS. NOTE THIS IS DIFFERENT FROM RASTER WINDOW
-s.Parameters.BaselineCalcBins = 1; %bin size in seconds if there are insufficient baseline spikes to calculate a baseline rate.
-s.Parameters.PercentCutoff = 99.9;
-s.Parameters.BaselineCutoff = 95;
-s.Parameters.latBin = 0.001;
-s.Parameters.ThresholdHz = 4; %minimum response in Hz to be counted as significant.
+s.Parameters.minSpikes = 100; %minimum number of spikes in baseline, if lower, triggers a warning
+s.Parameters.minSigSpikes = 5; %minimum number of significant points to record a significant response.
+s.Parameters.PercentCutoff = 99.9; %for significance in latency calculations
+s.Parameters.BaselineCutoff = 95; %for the onset in latency calculations
+s.Parameters.latBin = 0.001; %histogram bins for latency and significance calculations
+s.Parameters.SigSmoothWindow = 11; %window of smoothing for calculations of significance
 
 %for duplicate elimination
 s.Parameters.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
 s.Parameters.corrSlide = 0.05; % window in seconds for xcorr
 s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 
+%for rotary encoder:
+s.Parameters.InterpolationStepRotary = 0.01;
+laserPeriod = [0 1]; %time window in seconds around laser onset that I want to analyze. This is if I want to select for trials with locomotion at a specifc time
+locoThresh = 0.9; %threshold for time points in which the locomotion is active for trial to be considered locomotion trial
+windowPref = [0 1.5]; %preference window in seconds. This is the period over which I determine whether locomotor starts are more or less common than expected by random chance
+prefReps = 1000; %repetitions for bootstrapping to determine if locomotor starts are more common during stimulation
+avLocoThresh = 0.1; %minimum speed for a trial to be considered a locomotion trial.
 
+%for plotting speed vs firing
+s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
+
+%for selecting MSNs vs PV
+s.Parameters.PVLim = 0.0005;
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
@@ -61,13 +70,14 @@ s.NumberTrodes = length(paramFiles)-length(matclustFiles);
 %fill structure with correct substructures (units, not clusters/trodes) and
 %then extract waveform and spike data.
 [s, truncatedNames] = functionMatclustExtraction(s.Parameters.RPVTime,...
-    matclustFiles,s,s.Parameters.ClusterWindow);
+    matclustFiles,s,s.Parameters.ClusterWindow,subFoldersCell);
 
 if toggleDuplicateElimination ==1
     if length(s.DesignationName) > 1
         disp('Now Selecting Based on xCORR')
         [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
-            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow);
+            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow,...
+            s.ShankDesignation,s.ShankMap,s.Shanks);
     end
 else
     disp('NOT EXECUTING DUPLICATE ELIMINATION')
@@ -95,9 +105,6 @@ toneDur = soundData.ToneDuration;
 toneReps = soundData.ToneRepetitions;
 laserLag = min(soundData.LaserLag);
 
-%recalculate some things!
-
-
 %% Extract DIO information. Tuning curve should rely on just one DIO output, DIO1.
 
 %find DIO folder and D1 file for analysis
@@ -112,93 +119,95 @@ D1FileName = D1FileName{1};
 
 %need to separate by trial type!
 shortDIO = find(dioTimeDiff < laserLag*0.8);
-shortDIODel = unique([shortDIO,shortDIO+1,shortDIO+2]);
-toneDIO = dioTimes;
-toneDIO(shortDIODel) = [];
+shortDIODel = unique([shortDIO,shortDIO+1]);
+dioTone = dioTimes;
+dioTone(shortDIODel) = [];
 %this isolates tones!
 %now figure out which ones are laser
-toneLaserDIO = dioTimes(shortDIO+2);
-laserDIO = dioTimes(shortDIO);
-allToneDIO = unique([toneDIO,toneLaserDIO]);
+dioLaser = dioTimes(shortDIO);
 
-%check to see if numbers match up
-if length(laserDIO) ~= length(toneLaserDIO)
-    error('Laser and Tone Laser DIO mismatch')
-elseif length(laserDIO) ~= length(toneDIO);
-    error('Mismatch of Tones and Laser Presentations')
-end
+%now find the tone laser DIO
+medDIO = find(dioTimeDiff > laserLag * 0.8 & dioTimeDiff < laserLag * 1.2);
+dioToneLaser1 = dioTimes(medDIO+1);
+dioToneLaser2 = dioTimes(medDIO-1);
 
-totalTrialNum = 2*toneReps;
+%now lets isolate tone only dio.
+[C,ia,ib] = intersect(dioTone,dioToneLaser1);
+dioToneOnly = dioTone;
+dioToneOnly(ia) = [];
+
+[C,ia,ib] = intersect(dioLaser,dioToneLaser2);
+dioLaserOnly = dioLaser;
+dioLaserOnly(ia) = [];
+
+dioLaserOnlyFake = dioLaserOnly + laserLag; %This is a fake time point to generate rasters that are aligned to same times as tones.
+
+%get a common time for all starts
+
+
+totalTrialNum = 3*toneReps;
+
+
+%% Extract data from rotary encoder.
+[s] = functionRotaryExtraction(s,s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
+% 
+% %rasterize this data
+% jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
+% jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
+% velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
+% for i = 1:totalTrialNum
+%     %find the time from the velocity trace closest to the actual stim time
+%     targetInd = find(s.RotaryData.Velocity(:,1)-dioTimes(i) > 0,1,'first');
+%     %pull appropriate velocity data
+%     velRaster(:,i) = s.RotaryData.BinaryLocomotion([targetInd+jumpsBack:targetInd+jumpsForward]);
+% end
+% 
+% %make average trace:
+% averageVel = mean(velRaster,2);
+% velSTD = std(velRaster,0,2);
+% velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
+% velDispVector = [s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)];
+% velDispIndex = [1:round(1/s.Parameters.InterpolationStepRotary):(jumpsForward-jumpsBack+1)];
+% velZero = find(velVector >= 0,1,'first');
+% 
+% 
+% %now lets find locomotion based on average from the trial
+% avLoco = mean(velRaster);
+% avLocoPos = find(avLoco>avLocoThresh);
+% avLocoNeg = find(avLoco<=avLocoThresh);
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
 for i = 1:numUnits
     %allocate a bunch of empty arrays.
     fullHistTone = zeros(histBinNum,1);
     fullHistLaserTone = zeros(histBinNum,1);
+    fullHistLaser = zeros(histBinNum,1);
     
     averageSpikeHolder = zeros(totalTrialNum,1);
     
     %pulls spike times and times for alignment
     spikeTimes = s.(desigNames{i}).SpikeTimes;
     
-    %calculates rasters based on spike information. 
-    [rasters] = functionBasicRaster(spikeTimes,allToneDIO,s.Parameters.RasterWindow);
-    %pulls all spikes from a specific trial in the baseline period, holds
-    %the number of these spikes for calculation of average rate and std.
-    for k = 1:totalTrialNum
-        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > s.Parameters.BaselineBin(1) & rasters(:,1) < s.Parameters.BaselineBin(2)),1);
-    end
-
-    averageRate = mean(averageSpikeHolder/(s.Parameters.BaselineBin(2)-s.Parameters.BaselineBin(1)));
-    averageSTD = std(averageSpikeHolder/(s.Parameters.BaselineBin(2)-s.Parameters.BaselineBin(1)));
-    averageSTE = averageSTD/(sqrt(totalTrialNum-1));
-        
-    [rasters] = functionBasicRaster(spikeTimes,toneDIO,s.Parameters.RasterWindow);
-    fullRasterDataTone = rasters;
+    %now calculate rasters for each case
+    [rastersTone] = functionBasicRaster(spikeTimes,dioToneOnly,s.Parameters.RasterWindow);
+    [rastersLaser] = functionBasicRaster(spikeTimes,dioLaserOnlyFake,s.Parameters.RasterWindow);
+    [rastersToneLaser] = functionBasicRaster(spikeTimes,dioToneLaser1,s.Parameters.RasterWindow);
     
-    [rasters] = functionBasicRaster(spikeTimes,toneLaserDIO,s.Parameters.RasterWindow);
-    fullRasterDataToneLaser = rasters;
+    %store data into structured array
+    s.(desigNames{i}).RasterToneOnly = rastersTone;
+    s.(desigNames{i}).RasterLaserOnly = rastersLaser;
+    s.(desigNames{i}).RasterToneLaser = rastersToneLaser;
     
-    %calculates histograms of every single trial. 
-    fullHistHolderTone = zeros(length(histBinVector),toneReps);
-    for k =1:toneReps
-        if size(fullRasterDataTone(fullRasterDataTone(:,2) == k,:),1) > 0
-            [counts centers] = hist(fullRasterDataTone(fullRasterDataTone(:,2) == k,1),histBinVector);
-            fullHistHolderTone(:,k) = counts;
-        end
-    end
+    %generate histograms and store.
+    [counts centers] = hist(rastersTone(:,1),histBinVector);
+    s.(desigNames{i}).HistogramToneOnly = counts/length(dioToneOnly)/s.Parameters.histBin;
     
-    fullHistHolderToneLaser = zeros(length(histBinVector),toneReps);
-    for k =1:toneReps
-        if size(fullRasterDataToneLaser(fullRasterDataToneLaser(:,2) == k,:),1) > 0
-            [counts centers] = hist(fullRasterDataToneLaser(fullRasterDataToneLaser(:,2) == k,1),histBinVector);
-            fullHistHolderToneLaser(:,k) = counts;
-        end
-    end
+    [counts centers] = hist(rastersLaser(:,1),histBinVector);
+    s.(desigNames{i}).HistogramLaserOnly = counts/length(dioLaserOnlyFake)/s.Parameters.histBin;
     
-    %calculate standard deviation for each bin
-    histSTETone = (std(fullHistHolderTone'))';
-    histSTEToneLaser = (std(fullHistHolderToneLaser'))';
+    [counts centers] = hist(rastersToneLaser(:,1),histBinVector);
+    s.(desigNames{i}).HistogramToneLaser = counts/length(dioToneLaser1)/s.Parameters.histBin;
     
-    [histCounts histCenters] = hist(fullRasterDataTone(:,1),histBinVector);
-    overallHistTone = histCounts'/toneReps/s.Parameters.histBin;
-    
-    [histCounts histCenters] = hist(fullRasterDataToneLaser(:,1),histBinVector);
-    overallHistToneLaser = histCounts'/toneReps/s.Parameters.histBin;
-
-    disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
-    s.(desigNames{i}).ToneRasters = fullRasterDataTone;
-    s.(desigNames{i}).ToneLaserRasters = fullRasterDataToneLaser;
-    s.(desigNames{i}).OverallHistTone = overallHistTone;
-    s.(desigNames{i}).OverallHistToneLaser = overallHistToneLaser;
-    s.(desigNames{i}).IndividualHistogramsTone = fullHistHolderTone; 
-    s.(desigNames{i}).IndividualHistogramsToneLaser = fullHistHolderToneLaser; 
-    s.(desigNames{i}).HistogramStandardDeviationTone = histSTETone;
-    s.(desigNames{i}).HistogramStandardDeviationToneLaser = histSTEToneLaser;
-    s.(desigNames{i}).AverageRate = averageRate;
-    s.(desigNames{i}).AverageSTD = averageSTD;
-    s.(desigNames{i}).AverageSTE = averageSTE;
-    s.(desigNames{i}).HistBinVector = histBinVector;
 end
 
 %calculate and plot LFP information
@@ -215,7 +224,7 @@ for i = 1:numUnits
     subplot(4,6,1)
     hold on
     plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
-    title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
+    title(strcat('OverallRate:',num2str(s.(desigNames{i}).OverallFiringRate)))
     %plots ISI
     subplot(4,6,2)
     hist(s.(desigNames{i}).ISIGraph,1000)
@@ -226,44 +235,53 @@ for i = 1:numUnits
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
     %plot histograms
     subplot(3,3,2)
-    plot(histBinVector,s.(desigNames{i}).OverallHistTone,'k','LineWidth',1)
     hold on
-    plot(histBinVector,s.(desigNames{i}).OverallHistTone - s.(desigNames{i}).HistogramStandardDeviationTone,'b','LineWidth',1)
-    plot(histBinVector,s.(desigNames{i}).OverallHistTone + s.(desigNames{i}).HistogramStandardDeviationTone,'b','LineWidth',1)
+    plot(histBinVector,s.(desigNames{i}).HistogramToneOnly,'k','LineWidth',2)
+%     hold on
+%     plot(histBinVector,s.(desigNames{i}).HistogramToneOnly - s.(desigNames{i}).HistogramStandardDeviationTone,'k','LineWidth',1)
+%     plot(histBinVector,s.(desigNames{i}).HistogramToneOnly + s.(desigNames{i}).HistogramStandardDeviationTone,'k','LineWidth',1)
     
-    plot(histBinVector,s.(desigNames{i}).OverallHistToneLaser,'r','LineWidth',1)
-    plot(histBinVector,s.(desigNames{i}).OverallHistToneLaser - s.(desigNames{i}).HistogramStandardDeviationToneLaser,'m','LineWidth',1)
-    plot(histBinVector,s.(desigNames{i}).OverallHistToneLaser + s.(desigNames{i}).HistogramStandardDeviationToneLaser,'m','LineWidth',1)
-    
+    plot(histBinVector,s.(desigNames{i}).HistogramToneLaser,'g','LineWidth',2)
+    plot(histBinVector,s.(desigNames{i}).HistogramLaserOnly,'b','LineWidth',2)
+%     plot(histBinVector,s.(desigNames{i}).OverallHistToneLaser - s.(desigNames{i}).HistogramStandardDeviationToneLaser,'g','LineWidth',1)
+%     plot(histBinVector,s.(desigNames{i}).OverallHistToneLaser + s.(desigNames{i}).HistogramStandardDeviationToneLaser,'g','LineWidth',1)
+   
     plot([0 0],[ylim],'b');
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-    title('Histogram of Tone Response')
+    title({fileName;desigNames{i}})
+    set(0, 'DefaulttextInterpreter', 'none')
     
     %plots rasters (chronological)
-    subplot(3,3,5)
-    plot(s.(desigNames{i}).ToneRasters(:,1),...
-        s.(desigNames{i}).ToneRasters(:,2),'k.','markersize',5)
+    subplot(3,3,3)
+    plot(s.(desigNames{i}).RasterLaserOnly(:,1),...
+        s.(desigNames{i}).RasterLaserOnly(:,2),'k.','markersize',5)
+    hold on
+    ylim([0 toneReps])
+    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+    plot([0 0],[ylim],'b');
+    title('Laser Response')
+    
+    
+    subplot(3,3,6)
+    plot(s.(desigNames{i}).RasterToneOnly(:,1),...
+        s.(desigNames{i}).RasterToneOnly(:,2),'k.','markersize',5)
     hold on
     ylim([0 toneReps])
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     plot([0 0],[ylim],'b');
     title('Tone Response')
     
-    subplot(3,3,6)
-    plot(s.(desigNames{i}).ToneLaserRasters(:,1),...
-        s.(desigNames{i}).ToneLaserRasters(:,2),'k.','markersize',5)
+    subplot(3,3,9)
+    plot(s.(desigNames{i}).RasterToneLaser(:,1),...
+        s.(desigNames{i}).RasterToneLaser(:,2),'k.','markersize',5)
     hold on
     ylim([0 toneReps])
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     plot([0 0],[ylim],'b');
-    title('Tone Response With Laser')
-    
-    subplot(3,3,8)
-    title({fileName;desigNames{i}},'fontweight','bold')
-    set(0, 'DefaulttextInterpreter', 'none')
+    title('Tone Laser Response')
     
     hold off
-    spikeGraphName = strcat(fileName,desigNames{i},'LightAnalysis');
+    spikeGraphName = strcat(fileName,desigNames{i},'threepeatAnalysis');
     savefig(hFig,spikeGraphName);
 
     %save as PDF with correct name
