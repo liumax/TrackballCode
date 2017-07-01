@@ -7,27 +7,11 @@ s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means no
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 
-s.Parameters.RasterWindow = [-2 3]; %seconds for raster window. 
-% s.Parameters.ToneWindow = [0 0.5];
-% s.Parameters.GenWindow = [0 1];
+s.Parameters.RasterWindow = [-4 5]; %seconds for raster window. 
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.05; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
-% s.Parameters.zLimit = 3; %zlimit for calculating significant responses
-% s.Parameters.FirstSpikeWindow = [0 1];
-% s.Parameters.BaselineBin = [-1 0]; %ratio for bin from which baseline firing rate will be calculated
-s.Parameters.LFPWindow = [-1 1];
-
-%stuff for significance
-s.Parameters.calcWindow = [0 2]; %defines period for looking for responses, based on toneDur
-s.Parameters.zLimit = [0.05 0.01 0.001];
-s.Parameters.minSpikes = 100; %minimum number of spikes in baseline, if lower, triggers a warning
-s.Parameters.minSigSpikes = 5; %minimum number of significant points to record a significant response.
-s.Parameters.PercentCutoff = 99.9; %for significance in latency calculations
-s.Parameters.BaselineCutoff = 95; %for the onset in latency calculations
-s.Parameters.latBin = 0.001; %histogram bins for latency and significance calculations
-s.Parameters.SigSmoothWindow = 11; %window of smoothing for calculations of significance
 
 %for duplicate elimination
 s.Parameters.DownSampFactor = 10; % how much i want to downsample trodes sampling rate. 3 means sampling every third trodes time point
@@ -89,8 +73,7 @@ desigNames = s.DesignationName;
 desigArray = s.DesignationArray;
 
 %calculate window sizes and binning
-calcWindow = s.Parameters.calcWindow;
-rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
+
 histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin;
 histBinVector = [s.Parameters.RasterWindow(1)+s.Parameters.histBin/2:s.Parameters.histBin:s.Parameters.RasterWindow(2)-s.Parameters.histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
