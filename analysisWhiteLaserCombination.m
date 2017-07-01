@@ -18,7 +18,7 @@ s.Parameters.trodesFS = 30000;%trodes sampling rate
 %bins of interest
 % s.Parameters.CalcBins = [-4,-1;-1,0;-1,2;0,0.2;2,5];
 s.Parameters.PreBin = [-4,-1];
-s.Parameter.PreToneLaserBin = [-1,0];
+s.Parameters.PreToneLaserBin = [-1,0];
 s.Parameters.PostBin = [2,5];
 s.Parameters.LaserBin = [-1,2];
 s.Parameters.ToneBin = [0,0.2];
@@ -118,6 +118,40 @@ end
 
 s.PeakWaveIndex = overInd;
 [s.SortedPeakWaveIndex s.SortedPeakWaveOrder] = sort(overInd);
+s.ShankLength = max(s.ShankMap(:,1)/s.Shanks);
+%now lets try and map this onto real space. We will have to do something to
+%allow things that are on the same electrode to map out separately. 
+
+%Go through each electrode and find matching sites. if exist, then store.
+%if extras, then figure out spacing. 
+cellCount = 1;
+posArray = zeros(numUnits,2);
+for i = 1:length(s.ShankMap)
+    %see if there are cells centered on given electrode
+    cellFind = find(s.SortedPeakWaveIndex == s.ShankMap(i,1));
+    if length(cellFind) == 0
+        disp(strcat('No Cells For Electrode',num2str(s.ShankMap(i,1))))
+    elseif length(cellFind) == 1
+        disp(strcat('Single Cell For Electrode',num2str(s.ShankMap(i,1))))
+        posArray(cellCount,1) = s.ShankMap(i,1);
+        posArray(cellCount,2) = s.ShankMap(i,3);
+        cellCount = cellCount + 1;
+    elseif length(cellFind) > 1
+        disp(strcat('Multiple Cells For Electrode',num2str(s.ShankMap(i,1))))
+        incAmount = 1/length(cellFind); %amount to increment different cells by
+        for incInd = 1:length(cellFind)
+            posArray(cellCount,1) = s.ShankMap(i,1) + (incInd-1)*incAmount;
+            posArray(cellCount,2) = s.ShankMap(i,3);
+            cellCount = cellCount + 1;
+        end
+    end
+end
+%make things negative so they plot out correctly
+posArray(:,1) = -1*posArray(:,1);
+posArray(posArray(:,2) == 2,1) = posArray(posArray(:,2) == 2,1)+s.ShankLength;
+
+s.ElectrodePositionDisplayArray = posArray;
+
 
 %% Pull data from sound file
 soundName = strcat(fileName,'.mat');
@@ -231,6 +265,11 @@ for i = 1:numUnits
     %pulls spike times and times for alignment
     spikeTimes = s.(desigNames{i}).SpikeTimes;
     
+    %make a plot of firing rate over time. 
+    sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
+    sessionFiring(end) = 0; %this is to compensate for problems with spikes coming after the period
+    sessionFiring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
+    s.(desigNames{i}).SessionFiring = sessionFiring;
     
     %I'm still keeping this separate individual code for pulling specific
     %trial types because it does make for a simple plotting of the rasters,
@@ -409,54 +448,116 @@ end
 ylim([0 numUnits+1])
 title('Modulation Index Sorted By Unit')
 
+%plot out by position, do one shank at a time. 
+subplot(3,3,6)
+hold on
+plot([0 0],[0 -s.ShankLength],'k')
+firstFind = find(posArray(:,2) == 1); %find units belonging to first shank
+firstArray = posArray(firstFind,:);
+for i = 1:length(firstFind)
+    findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
+    plot([0 modInd1(findOrder)],[firstArray(i,1) firstArray(i,1)],'b')
+    plot(modInd1(findOrder),firstArray(i,1),'b.')
+    plot([0 modInd2(findOrder)],[firstArray(i,1) firstArray(i,1)],'g')
+    plot(modInd2(findOrder),firstArray(i,1),'g.')
+end
+xlim([-1 1])
+title('Shank 1 Sorted By Position')
 
-averageVelTone = mean(velRasterTone,2);
-averageVelLaser = mean(velRasterLaser,2);
-averageVelToneLaser = mean(velRasterToneLaser,2);
-velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
-velDispVector = [s.Parameters.RasterWindow(1):1:s.Parameters.RasterWindow(2)];
-velDispIndex = [1:round(1/s.Parameters.InterpolationStepRotary):(jumpsForward-jumpsBack+1)];
-velZero = find(velVector >= 0,1,'first');
-%calculate and plot LFP information
-% [lfpStruct] = functionLFPaverage(master, s.Parameters.LFPWindow, s,homeFolder,fileName, 1, 1, 1, 1);
-% s.LFP = lfpStruct;
 
-%% Plotting
+subplot(3,3,9)
+hold on
+plot([0 0],[0 -s.ShankLength],'k')
+secondFind = find(posArray(:,2) == 2); %find units belonging to first shank
+secondArray = posArray(secondFind,:);
+for i = 1:length(secondFind)
+    findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
+    plot([0 modInd1(findOrder)],[secondArray(i,1) secondArray(i,1)],'b')
+    plot(modInd1(findOrder),secondArray(i,1),'b.')
+    plot([0 modInd2(findOrder)],[secondArray(i,1) secondArray(i,1)],'g')
+    plot(modInd2(findOrder),secondArray(i,1),'g.')
+end
+xlim([-1 1])
+
+title('Shank 2 Sorted By Position')
+
+
+%% Now we need to plot out individual traces!
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
 for i = 1:numUnits
     hFig = figure;
     set(hFig, 'Position', [10 80 1240 850])
     %plots average waveform
-    subplot(4,6,1)
+    subplot(3,6,1)
     hold on
     plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
     title(strcat('OverallRate:',num2str(s.(desigNames{i}).OverallFiringRate)))
     %plots ISI
-    subplot(4,6,2)
+    subplot(3,6,2)
     hist(s.(desigNames{i}).ISIGraph,1000)
     histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
     line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
     xlim(s.Parameters.ClusterWindow)
     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
+    
+    %plot velocity and firing rate
+    subplot(3,3,4)
+    hold on
+    plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+    xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+    ylim([-0.1,1])
+    title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'-99.9%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+    
+    
     %plot histograms
-    subplot(3,3,2)
+    subplot(3,3,7)
     hold on
     plot(histBinVector,s.(desigNames{i}).HistogramToneOnly,'k','LineWidth',2)
-%     hold on
-%     plot(histBinVector,s.(desigNames{i}).HistogramToneOnly - s.(desigNames{i}).HistogramStandardDeviationTone,'k','LineWidth',1)
-%     plot(histBinVector,s.(desigNames{i}).HistogramToneOnly + s.(desigNames{i}).HistogramStandardDeviationTone,'k','LineWidth',1)
-    
     plot(histBinVector,s.(desigNames{i}).HistogramToneLaser,'g','LineWidth',2)
     plot(histBinVector,s.(desigNames{i}).HistogramLaserOnly,'b','LineWidth',2)
-%     plot(histBinVector,s.(desigNames{i}).OverallHistToneLaser - s.(desigNames{i}).HistogramStandardDeviationToneLaser,'g','LineWidth',1)
-%     plot(histBinVector,s.(desigNames{i}).OverallHistToneLaser + s.(desigNames{i}).HistogramStandardDeviationToneLaser,'g','LineWidth',1)
-   
+
     plot([0 0],[ylim],'b');
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+%     title({fileName;desigNames{i}})
+    title('Histograms Tone(k) Laser(b) ToneLaser(bg)')
+    set(0, 'DefaulttextInterpreter', 'none')
+    
+    subplot(3,3,2)
     title({fileName;desigNames{i}})
     set(0, 'DefaulttextInterpreter', 'none')
+    %plot out changes to response over time to laser only
+    subplot(3,3,5)
+    hold on
+    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,1),'ko')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,1),11),'k.-')
+    
+    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,3),'go')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,3),11),'g.-')
+    smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,3),11);
+    %now we need to remap avLocoPos onto just the dioIndLaserOnly
+    [C ia ib] = intersect(dioIndLaserOnly,avLocoPos); %want ia here.
+    plot(ia,smoothTrace(ia),'bo')
+    
+    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,2),'ro')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,2),11),'r.-')
+    title('TimeCourse Of Response to Laser Only Pre(k) Laser(g) Post(r)')
+    
+    %plot out changes over time for tone
+    subplot(3,3,8)
+    hold on
+    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneOnly,4),'ko')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneOnly,4),11),'k.-')
+    
+    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneLaser,4),'go')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneLaser,4),11),'g.-')
+    smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneLaser,4),11);
+    %now we need to remap avLocoPos onto just the dioIndLaserOnly
+    [C ia ib] = intersect(dioIndLaserOnly,avLocoPos); %want ia here.
+    plot(ia,smoothTrace(ia),'bo')
+    title('TimeCourse of Response to Tone noLaser(k) and laser(g)')
     
     %plots rasters (chronological)
     subplot(3,3,3)
@@ -467,7 +568,6 @@ for i = 1:numUnits
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     plot([0 0],[ylim],'b');
     title('Laser Response')
-    
     
     subplot(3,3,6)
     plot(s.(desigNames{i}).RasterToneOnly(:,1),...
