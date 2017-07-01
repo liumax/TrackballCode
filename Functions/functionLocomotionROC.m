@@ -4,20 +4,19 @@
 %generate a baseline distribution to compare the AUC value against. 
 
 %Inputs: 
-%s: structured array that already has rotary data processed, as well as
-%individual units.
-%targetName: designation name for the target unit for analysis (ex:
-%'nt1cluster4')
+%spikeTimes: spike times you want to shuffle
+%velTrace: velocity trace in the same time system. Two column vector with
+%first column being time, second column being reported velocity.
 
 %Outputs:
 %s: just outputs things into s.
 
 
 
-function [s] = functionLocomotionROC(s,targetName);
+function [funcOut] = functionLocomotionROC(spikeTimes,velTrace);
 
 %important parameters
-threshVel = 1; %threshold for calculating a locomotion.
+threshVel = 1; %threshold for binary designation for locomotion.
 smoothTime = 0.5; %time in seconds for smoothing
 rateInc = 20; %increments for going through the firing rates to use as criterion!
 velDownSamp = 5; %factor to downsample velocity. Baseline is at 10ms bins.
@@ -28,12 +27,11 @@ shuffleReps = 1000; %repetitions of spike shuffling
 %create store for AUC values
 aucStore = zeros(shuffleReps,1);
 
-%get spike times and differences in time
-spikeTimes = s.(targetName).SpikeTimes;
+%get differences in spike times
 spikeTimeDiff = diff(spikeTimes);
 
 %generate smoothed velocity
-smoothVel = smooth(s.RotaryData.Velocity(:,2),round(smoothTime/mean(diff(s.RotaryData.Velocity(:,1)))));
+smoothVel = smooth(velTrace(:,2),round(smoothTime/mean(diff(velTrace(:,1)))));
 smoothVel = downsample(smoothVel,velDownSamp);
 
 
@@ -53,14 +51,14 @@ for shuffInd = 1:shuffleReps
     shuffSpikeTimes(1) = spikeTimes(1)+rand;
     shuffSpikeTimes(2:end) = cumsum(shuffleTimes)+shuffSpikeTimes(1);
 
-    fireRate = hist(shuffSpikeTimes,[s.RotaryData.Velocity(1,1):mean(diff(s.RotaryData.Velocity(:,1))):s.RotaryData.Velocity(end,1)])/mean(diff(s.RotaryData.Velocity(:,1)));
+    fireRate = hist(shuffSpikeTimes,[velTrace(1,1):mean(diff(velTrace(:,1))):velTrace(end,1)])/mean(diff(velTrace(:,1)));
     fireRate = downsample(fireRate,velDownSamp);
     %remove first and last bins to eliminate hist errors.
     fireRate(1) = 0;
     fireRate(end) = 0;
     %smooth over the same period
 
-    smoothRate = smooth(fireRate,round(smoothTime/mean(diff(s.RotaryData.Velocity(:,1)))));
+    smoothRate = smooth(fireRate,round(smoothTime/mean(diff(velTrace(:,1)))));
     %find min and max rates!
     minRate = (min(smoothRate));
     maxRate = (max(smoothRate));
@@ -109,14 +107,14 @@ end
 %now calculate actual ROC!
 
 
-fireRate = hist(spikeTimes,[s.RotaryData.Velocity(1,1):mean(diff(s.RotaryData.Velocity(:,1))):s.RotaryData.Velocity(end,1)])/mean(diff(s.RotaryData.Velocity(:,1)));
+fireRate = hist(spikeTimes,[velTrace(1,1):mean(diff(velTrace(:,1))):velTrace(end,1)])/mean(diff(velTrace(:,1)));
 fireRate = downsample(fireRate,velDownSamp);
 %remove first and last bins to eliminate hist errors.
 fireRate(1) = 0;
 fireRate(end) = 0;
 %smooth over the same period
 
-smoothRate = smooth(fireRate,round(smoothTime/mean(diff(s.RotaryData.Velocity(:,1)))));
+smoothRate = smooth(fireRate,round(smoothTime/mean(diff(velTrace(:,1)))));
 %find min and max rates!
 minRate = (min(smoothRate));
 maxRate = (max(smoothRate));
@@ -157,7 +155,7 @@ falsePos = C;
 %calculate estimate of area under curve. 
 trueAUC= trapz(falsePos,truePos);
 
-s.(targetName).TrueAUC = trueAUC;
-s.(targetName).ShuffleAUC = aucStore;
+funcOut.TrueAUC = trueAUC; %This is the AUC value for the actual spike train
+funcOut.ShuffleAUC = aucStore; %these are shuffled spike train AUC values
 
 end

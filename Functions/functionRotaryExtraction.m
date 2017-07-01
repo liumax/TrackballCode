@@ -1,6 +1,6 @@
 
 
-function [s] = functionRotaryExtraction(s,sampRate,interpStep,subFoldersCell);
+function [funcOut] = functionRotaryExtraction(sampRate,interpStep,subFoldersCell);
 % sampRate = 30000; %trodes sampling rate.
 % interpStep = 0.01; %step size in seconds, for the interpolation. 
 
@@ -300,7 +300,7 @@ newDist = reshape(newDist,[],1);
 
 velTimes = reshape(velTimes,[],1);
 mouseVel = reshape(mouseVel,[],1);
-
+disp('Finished Interpolation And Remapping of Velocity/Distance')
 %find start times of velocity
 
 locoBinary = zeros(length(mouseVel),1);
@@ -308,7 +308,7 @@ locoBinary(abs(mouseVel)>1) = 1;
 
 locoStarts = find(diff(locoBinary) == 1)+1;
 locoEnds = find(diff(locoBinary) == -1);
-
+disp('Finding Locomotion Starts')
 loopTrig = 0;
 if failTrigger == 0
     while loopTrig == 0;
@@ -342,18 +342,17 @@ elseif failTrigger == 1
     iStarts = 0;
     iEnds = 0;
 end
-
-x=struct;
-x.Distance = [newTimes,newDist];
-x.Velocity = [velTimes,mouseVel];
-x.RawDistance = [catTimes,cumDist];
-x.RawData = timeStateArray;
-x.BinaryLocomotion = locoBinary;
+disp('Finished Finding Locomotion Starts')
+funcOut=struct;
+funcOut.Distance = [newTimes,newDist];
+funcOut.Velocity = [velTimes,mouseVel];
+funcOut.RawDistance = [catTimes,cumDist];
+funcOut.RawData = timeStateArray;
+funcOut.BinaryLocomotion = locoBinary;
 % x.BinaryLocoRev = revBinary;
-x.LocoStarts = velTimes(locoStarts);
-x.LocoEnds = velTimes(locoEnds);
+funcOut.LocoStarts = velTimes(locoStarts);
+funcOut.LocoEnds = velTimes(locoEnds);
 
-s.RotaryData = x;
 
 end
 
