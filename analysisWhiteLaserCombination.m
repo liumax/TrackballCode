@@ -44,7 +44,7 @@ s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display w
 s.Parameters.PVLim = 0.0005;
 
 %% sets up file saving stuff
-saveName = strcat(fileName,'FullTuningAnalysis','.mat');
+saveName = strcat(fileName,'WhiteLaserComboAnalysis','.mat');
 fname = saveName;
 pname = pwd;
 
@@ -85,7 +85,7 @@ desigNames = s.DesignationName;
 desigArray = s.DesignationArray;
 
 %generate master array for 2-d storage of important values
-master = zeros(numUnits,20);
+master = zeros(numUnits,10);
 masterHeader = cell(10,1);
 masterInd = 1;
 
@@ -338,8 +338,8 @@ for i = 1:numUnits
     master(i,tempInd) = mean(infoStore(dioIndLaserOnly,3)); masterHeader{tempInd} = 'LaserOnlyAverage'; tempInd = tempInd + 1;
     master(i,tempInd) = mean(infoStore(dioIndToneOnly,4)); masterHeader{tempInd} = 'ToneOnlyAverage'; tempInd = tempInd + 1;
     master(i,tempInd) = mean(infoStore(dioIndToneLaser,4)); masterHeader{tempInd} = 'ToneLaserAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(avLocoPrePos,1)); masterHeader{tempInd} = 'PreAverageRunning'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(avLocoPreNeg,1)); masterHeader{tempInd} = 'PreAverageStationary'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(avLocoPrePos,1)); masterHeader{tempInd} = 'Pre AverageRunning'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(avLocoPreNeg,1)); masterHeader{tempInd} = 'Pre AverageStationary'; tempInd = tempInd + 1;
     
     
     %now measure locomotion ROC if toggle is on
@@ -394,8 +394,8 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01])
 [indLaserOnly] = functionCellStringFind(masterHeader,'LaserOnlyAverage');
 [indToneOnly] = functionCellStringFind(masterHeader,'ToneOnlyAverage');
 [indToneLaser] = functionCellStringFind(masterHeader,'ToneLaserAverage');
-[indPreAverageRunning] = functionCellStringFind(masterHeader,'PreAverageRunning');
-[indPreAverageStationary] = functionCellStringFind(masterHeader,'PreAverageStationary');
+[indPreAverageRunning] = functionCellStringFind(masterHeader,'Pre AverageRunning');
+[indPreAverageStationary] = functionCellStringFind(masterHeader,'Pre AverageStationary');
 [indLocoAUC] = functionCellStringFind(masterHeader,'LocoAUCScore');
 [indLocoSig] = functionCellStringFind(masterHeader,'LocoAUCSignificance');
 
@@ -446,7 +446,7 @@ title('Peak Trough vs Baseline Rate, PV in red')
 %plot modulation index of pre vs laser for laser only trials
 subplot(3,3,5)
 %calculate modulation index, which is (laser - pre)/(pre + laser)
-modInd1 = (master(:,indLaserOnly)-master(:,indPreAverage))./(master(:,indLaserOnly)+master(:,indPreAverage));
+modInd1 = (master(:,indLaserOnly)-master(:,indPreAverage))./(master(:,indLaserOnly) + master(:,indPreAverage));
 hist(modInd1,[-1:0.1:1])
 xlim([-1 1]);
 title('Modulation Index For Laser Only Trials')
