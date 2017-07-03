@@ -86,7 +86,7 @@ desigArray = s.DesignationArray;
 
 %generate master array for 2-d storage of important values
 master = zeros(numUnits,20);
-masterHeader = cell(20,1);
+masterHeader = cell(10,1);
 masterInd = 1;
 
 %determine PV vs MSN
@@ -152,6 +152,9 @@ posArray(posArray(:,2) == 2,1) = posArray(posArray(:,2) == 2,1)+s.ShankLength;
 
 s.ElectrodePositionDisplayArray = posArray;
 
+%store this into master
+master(:,masterInd) = posArray(s.SortedPeakWaveOrder,1); masterHeader{masterInd} = 'Distance from Top of Shank'; masterInd = masterInd + 1;
+master(:,masterInd) = posArray(s.SortedPeakWaveOrder,2); masterHeader{masterInd} = 'Shank Designation'; masterInd = masterInd + 1;
 
 %% Pull data from sound file
 soundName = strcat(fileName,'.mat');
@@ -372,20 +375,38 @@ disp('Finished Extracting Spike Data')
 %update master index
 masterInd = masterInd + indChange;
 
+
+
 s.MasterSheet = master;
 s.MasterDesigs = masterHeader;
 
 %% Prepare summary figure information
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
+%find indices of master that I want for various things
+[indPVMSN] = functionCellStringFind(masterHeader,'PV/MSN Desig');
+[indPkTrough] = functionCellStringFind(masterHeader,'PeakTroughTimeinMS');
+[indOverFire] = functionCellStringFind(masterHeader,'OverallFiringRate');
+[indDistance] = functionCellStringFind(masterHeader,'Distance from Top of Shank');
+[indShankDes] = functionCellStringFind(masterHeader,'Shank Designation');
+[indPreAverage] = functionCellStringFind(masterHeader,'PreAverage');
+[indPostAverage] = functionCellStringFind(masterHeader,'PostAverage');
+[indLaserOnly] = functionCellStringFind(masterHeader,'LaserOnlyAverage');
+[indToneOnly] = functionCellStringFind(masterHeader,'ToneOnlyAverage');
+[indToneLaser] = functionCellStringFind(masterHeader,'ToneLaserAverage');
+[indPreAverageRunning] = functionCellStringFind(masterHeader,'PreAverageRunning');
+[indPreAverageStationary] = functionCellStringFind(masterHeader,'PreAverageStationary');
+[indLocoAUC] = functionCellStringFind(masterHeader,'LocoAUCScore');
+[indLocoSig] = functionCellStringFind(masterHeader,'LocoAUCSignificance');
+
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
 
 %plot AUC vs firing rate
 subplot(3,3,1)
-plot(master(:,11),master(:,4),'k.')
+plot(master(:,indLocoAUC),master(:,indPreAverage),'k.')
 hold on
-plot(master(master(:,12) == 1,11),master(master(:,12) == 1,4),'ro')
+plot(master(master(:,indLocoSig) == 1,indLocoAUC),master(master(:,indLocoSig) == 1,indPreAverage),'ro')
 title('Scatter Plot of Baseline Rate vs LocoAUC')
 
 %plot overall velocity trace. 
@@ -417,22 +438,22 @@ title('Average Velocity for Tone(k) Laser(b) ToneLaser(g)')
 
 %plot firing rate vs peak trough times
 subplot(3,3,2)
-plot(master(:,2),master(:,4),'k.')
+plot(master(:,indPkTrough),master(:,indPreAverage),'k.')
 hold on
-plot(master(master(:,1) == 1,2),master(master(:,1) == 1,4),'ro')
+plot(master(master(:,indPVMSN) == 1,indPkTrough),master(master(:,indPVMSN) == 1,indPreAverage),'ro')
 title('Peak Trough vs Baseline Rate, PV in red')
 
 %plot modulation index of pre vs laser for laser only trials
 subplot(3,3,5)
 %calculate modulation index, which is (laser - pre)/(pre + laser)
-modInd1 = (master(:,6)-master(:,4))./(master(:,6)+master(:,4));
+modInd1 = (master(:,indLaserOnly)-master(:,indPreAverage))./(master(:,indLaserOnly)+master(:,indPreAverage));
 hist(modInd1,[-1:0.1:1])
 xlim([-1 1]);
 title('Modulation Index For Laser Only Trials')
 
 %plot modulation index of tone responses
 subplot(3,3,8)
-modInd2 = (master(:,8)-master(:,7))./(master(:,8)+master(:,7));
+modInd2 = (master(:,indToneLaser)-master(:,indToneOnly))./(master(:,indToneLaser)+master(:,indToneOnly));
 hist(modInd2,[-1:0.1:1])
 xlim([-1 1]);
 title('Modulation Index For Tone Trials')
