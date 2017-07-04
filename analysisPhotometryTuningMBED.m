@@ -13,26 +13,38 @@ thresh = 0.01;
 %we want to look at instates. Port 1 is TDT for photometry, port 2 is
 %NOLDUS
 
-% inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
+inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
 outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
 
 %now eliminate duplicates in photometry inputs
-% whileTrig = 1;
-% whileInd = 2;
-% 
-% while whileTrig == 1;
-%     if whileInd > length(inputPhot)
-%         break
-%     end
-%     prevVal = inputPhot(whileInd-1,2);
-%     currVal = inputPhot(whileInd,2);
-%     if prevVal == currVal
-% %         disp('Duplicate Detected!')
-%         inputPhot(whileInd,:) = [];
-%     else
-%         whileInd = whileInd + 1;
-%     end
-% end
+whileTrig = 1;
+whileInd = 2;
+
+while whileTrig == 1;
+    if whileInd > length(inputPhot)
+        break
+    end
+    prevVal = inputPhot(whileInd-1,2);
+    currVal = inputPhot(whileInd,2);
+    if prevVal == currVal
+%         disp('Duplicate Detected!')
+        inputPhot(whileInd,:) = [];
+    else
+        whileInd = whileInd + 1;
+    end
+end
+
+inputPhotOnset = inputPhot(inputPhot(:,2) == 1,1);
+
+%clean up input signal to remove excess. 
+inputDiff = diff(inputPhotOnset);
+diffFind = find(inputDiff > 1000);
+if length(diffFind) == 1
+    inputPhotOnset(1:diffFind) = [];
+else
+    error('multiple input time periods')
+end
+
 
 %do the same for photometry outputs
 whileTrig = 1;
@@ -80,8 +92,24 @@ traceTiming = [0:1/data.streams.x70G.fs:(1/data.streams.x70G.fs)*(length(data.st
 %pull jittered signal
 traceJitt = data.epocs.PtE1.onset;
 traceJittDiff = diff(traceJitt);
+
+%fix the MBED jittered signal
+if length(inputPhotOnset) > length(traceJitt);
+    disp('More MBED INPUTS IN JITTER, SUBTRACTING')
+    inputPhotOnset(length(traceJitt)+1:end) = [];
+elseif length(inputPhotOnset) < length(traceJitt);
+    error('Fewer MBED INPUTS THAN REPORTED')
+elseif length(inputPhotOnset) == length(traceJitt);
+    disp('Jittered traces matched!')
+end
+
 %pull output timings
-traceMBED = data.epocs.PtC0.onset;
+try
+    traceMBED = data.epocs.PtC0.onset;
+catch
+    disp('No TDT Tone Pulses Detected')
+    traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
+end
 traceMBEDDiff = diff(traceMBED);
 
 %check alignment

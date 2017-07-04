@@ -32,6 +32,9 @@ rewDur = rewOut(find(rewOut(:,2) == 1) + 1,1)-rewOut(rewOut(:,2) == 1,1);
 onsetPhot = outputPhot(outputPhot(:,2) == 1,1);
 onsetPhotDiff = diff(onsetPhot);
 
+inputPhotOnset = inputPhot(inputPhot(:,2) == 1,1);
+inputPhotDiff = diff(inputPhotOnset);
+
 %now lets try and match the trials with rewards
 if length(rewTimes) ~= length(onsetPhot)
     toneRewInd = zeros(length(onsetPhot),2);
@@ -79,8 +82,24 @@ traceTiming = [0:1/data.streams.x70G.fs:(1/data.streams.x70G.fs)*(length(data.st
 %pull jittered signal
 traceJitt = data.epocs.PtE1.onset;
 traceJittDiff = diff(traceJitt);
+
+%fix the MBED jittered signal
+if length(inputPhotOnset) > length(traceJitt);
+    disp('More MBED INPUTS IN JITTER, SUBTRACTING')
+    inputPhotOnset(length(traceJitt)+1:end) = [];
+elseif length(inputPhotOnset) < length(traceJitt);
+    error('Fewer MBED INPUTS THAN REPORTED')
+elseif length(inputPhotOnset) == length(traceJitt);
+    disp('Jittered traces matched!')
+end
+
 %pull output timings
-traceMBED = data.epocs.PtC0.onset;
+try
+    traceMBED = data.epocs.PtC0.onset;
+catch
+    disp('No TDT Tone Pulses Detected')
+    traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
+end
 traceMBEDDiff = diff(traceMBED);
 
 %check alignment
