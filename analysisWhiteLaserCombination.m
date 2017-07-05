@@ -544,6 +544,15 @@ xlim([-1 1])
 title('Shank 2 Sorted By Position')
 
 
+spikeGraphName = strcat(fileName,desigNames{i},'threepeatSummary');
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
 %% Now we need to plot out individual traces!
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
