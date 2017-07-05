@@ -1,7 +1,17 @@
 % testerWrapperWhiteLaser
 
 %pull the analysis files that have already been processed.
-targetFiles = {'170629_ML170621G_R10_2800_3mWLaserWhiteNoiseThreepeatWhiteLaserComboAnalysis.mat'};
+% targetFiles = {'170629_ML170621G_R10_2050_3mWLaserWhiteNoiseThreepeatWhiteLaserComboAnalysis.mat',...
+%     '170629_ML170621G_R10_2300_3mWLaserWhiteNoiseThreepeatWhiteLaserComboAnalysis.mat',...
+%     '170629_ML170621G_R10_2550_3mWLaserWhiteNoiseThreepeatWhiteLaserComboAnalysis.mat',...
+%     '170629_ML170621G_R10_2800_3mWLaserWhiteNoiseThreepeatWhiteLaserComboAnalysis.mat'};
+
+targetFiles = {'170705_ML170621I_L10_2000_3mWLaserWhiteNoiseThreepeatWhiteLaserComboAnalysis.mat',...
+    '170705_ML170621I_L10_2250_3mWLaserWhiteNoiseThreepeatWhiteLaserComboAnalysis.mat',...
+    '170705_ML170621I_L10_2500_3mWLaserWhiteNoiseThreepeatWhiteLaserComboAnalysis.mat'};
+
+% 170705_ML170621I_L10_2000_3mWLaserWhiteNoiseThreepeatWhiteLaserComboAnalysis
+
 
 %get the number of files
 numFiles = length(targetFiles);
@@ -39,7 +49,7 @@ for i = 1:numFiles
     
     %now i need to adjust the depth system. First, add the height of the
     %probe in terms of number of probe sites. then multiply by negative 1 and 12
-    master(:,indDistance) = (master(:,indDistance) + s.ShankLength)*-12.5 + probeDepth;
+    master(:,indDistance) = (master(:,indDistance) + s.ShankLength)*-12.5 + probeDepth(i);
     numUnits = size(master,1);
     fullMaster(masterInd: masterInd + numUnits - 1,:) = master;
     fullMasterHeaders(:,i) = masterHeader;
@@ -47,6 +57,8 @@ for i = 1:numFiles
     
     
 end
+
+
 
 
 
