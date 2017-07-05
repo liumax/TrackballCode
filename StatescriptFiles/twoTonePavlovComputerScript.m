@@ -50,6 +50,14 @@ p = (1-exp(-k))*rand(scQtUserData.totalTrials,1);
 tau = (scQtUserData.ITIRange-scQtUserData.ITI)/k;
 x = round(scQtUserData.ITI-6000 + (-log(1-p))*tau); 
 scQtUserData.Master(:,1) = x;
+
+%calculate lag for reward delivery
+k = 2.5;
+p = (1-exp(-k))*rand(scQtUserData.totalTrials,1);
+tau = (800)/k;
+x = round(scQtUserData.rewDelay + (-log(1-p))*tau); 
+scQtUserData.RewDelayMatrix = x;
+
 %determine when to present tones!
 randInd = randperm(scQtUserData.totalTrials);
 randInd(randInd<=scQtUserData.totalTrials/2) = 1; %1 will represent small rewards
@@ -156,7 +164,7 @@ scQtUserData.lickHist = zeros(80,2); %This is optimized for looking at an 8 seco
 scQtUserData.lickAxes = [-2:0.1:5.9]; %axis for histogram
 %send initial information to the mbed
 sendScQtControlMessage(['lickWind =',num2str(scQtUserData.lickWindow)]);
-sendScQtControlMessage(['toneRewDel =',num2str(scQtUserData.rewDelay)]);
+sendScQtControlMessage(['toneRewDel =',num2str(scQtUserData.RewDelayMatrix(1))]);
 sendScQtControlMessage(['trPhase = 0']);
 sendScQtControlMessage(['signalDel =3000']); %this is the delay after reward delivery before triggering next thing. 
 sendScQtControlMessage(['disp(''StartSession'')']);
