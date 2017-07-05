@@ -40,7 +40,7 @@ if length(rewTimes) ~= length(onsetPhot)
     toneRewInd = zeros(length(onsetPhot),2);
     toneRewInd(:,1) = 1:length(onsetPhot);
     for i = 1:length(onsetPhot)
-        testDiff = abs(rewTimes - onsetPhot(i))
+        testDiff = abs(rewTimes - onsetPhot(i));
         if min(testDiff) < 5000
             [minVal minInd] = min(testDiff);
     %         toneRewInd(i,1) = i;
@@ -63,7 +63,7 @@ end
 %% Now lets pull the photometry inputs
 
 %load file
-data = load(fileName);
+data = load(strcat(fileName,'.mat'));
 data=data.data;
 
 
@@ -83,17 +83,65 @@ traceTiming = [0:1/data.streams.x70G.fs:(1/data.streams.x70G.fs)*(length(data.st
 traceJitt = data.epocs.PtE1.onset;
 traceJittDiff = diff(traceJitt);
 
-%fix the MBED jittered signal
-if length(inputPhotOnset) > length(traceJitt);
-    disp('More MBED INPUTS IN JITTER, SUBTRACTING')
-    inputPhotOnset(length(traceJitt)+1:end) = [];
-elseif length(inputPhotOnset) < length(traceJitt);
-    error('Fewer MBED INPUTS THAN REPORTED')
-elseif length(inputPhotOnset) == length(traceJitt);
-    disp('Jittered traces matched!')
+%clean up the MBED signal. generally there will be excess TTLs at the
+%beginning
+findBig = find(inputPhotDiff > 600);
+bigDiffs = inputPhotDiff(findBig);
+
+%look for huge diffs. These should indicate the start of the actual session
+massDiff = find(bigDiffs > 2000);
+if length(massDiff) == 1
+    disp('One Long difference in jittered trace. adjusting...')
+    inputPhotOnset(1:findBig(massDiff)) = [];
+    inputPhotDiff = diff(inputPhotOnset);
+elseif length(massDiff) == 2
+    disp('Two Long Differences in jittered trace. taking second.')
+    inputPhotOnset(1:findBig(massDiff(2))) = [];
+    inputPhotDiff = diff(inputPhotOnset);
+elseif isempty(massDiff)
+    disp('No Long differences in jittered trace')
+else
+    error('Excessive Large TTL Differences in Jittered Trace')
 end
 
-%pull output timings
+%find big differences
+findBig = find(inputPhotDiff > 600);
+bigDiffs = inputPhotDiff(findBig);
+%approximate the length of the differences by 500. round up. 
+bigDiffDiv = round(bigDiffs/500);
+
+%now replace with fake points. 
+for i = length(bigDiffs):-1:1
+    targetInd = findBig(i)+1;
+    inputPhotOnset(targetInd+(bigDiffDiv-1):end+(bigDiffDiv-1)) = inputPhotOnset(targetInd:end);
+    inputPhotOnset(targetInd) = inputPhotOnset(targetInd-1)+500;
+end
+inputPhotDiff = diff(inputPhotOnset);
+
+%now check with crosscorr
+[xcf,lags,bounds]  = crosscorr(inputPhotDiff,traceJittDiff);
+[xcMax maxInd] = max(xcf);
+xcLag = lags(maxInd);
+
+if xcLag ~= 0
+    error('Jitter Not Aligned')
+elseif xcLag == 0
+    disp('Jitter Signal Properly Aligned')
+end
+%now check lengths
+if length(inputPhotDiff) ~= length(traceJittDiff)
+    disp('Lengths of Jittered traces unequal, attempting removal')
+    inputPhotOnset(end) = [];
+    inputPhotDiff = diff(inputPhotOnset);
+end
+
+if length(inputPhotDiff) ~= length(traceJittDiff)
+    error('Jittered traces still not the right length')
+end
+
+%now lets deal with inputs. This is now designed to try and handle cases in
+%which sound pulses are not delivered. 
+% pull output timings
 try
     traceMBED = data.epocs.PtC0.onset;
 catch
@@ -103,7 +151,7 @@ end
 traceMBEDDiff = diff(traceMBED);
 
 %check alignment
-[xcf,lags,bounds]  = crosscorr(onsetPhotDiff,traceMBEDDiff);
+[xcf,lags,bounds]  = crosscorr(onsetPhotDiff/1000,traceMBEDDiff);
 [xcMax maxInd] = max(xcf);
 xcLag = lags(maxInd);
 
