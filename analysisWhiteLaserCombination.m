@@ -15,6 +15,15 @@ s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV
 s.Parameters.histBin = 0.05; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
 
+s.Parameters.minSpikes = 100; %minimum number of spikes in baseline, if lower, triggers a warning
+s.Parameters.latBin = 0.001; %histogram bins for latency and significance calculations
+s.Parameters.zLimit = [0.001];
+s.Parameters.minSigSpikes = 5; %minimum number of significant points to record a significant response.
+s.Parameters.SigSmoothWindow = 11; %window of smoothing for calculations of significance
+s.Parameters.PercentCutoff = 99.9; %for significance in latency calculations
+s.Parameters.BaselineCutoff = 95; %for the onset in latency calculations
+
+
 %bins of interest
 % s.Parameters.CalcBins = [-4,-1;-1,0;-1,2;0,0.2;2,5];
 s.Parameters.PreBin = [-4,-1];
@@ -297,6 +306,35 @@ for i = 1:numUnits
     [counts centers] = hist(rastersToneLaser(:,1),histBinVector);
     s.(desigNames{i}).HistogramToneLaser = counts/length(dioToneLaser1)/s.Parameters.histBin;
     
+    %compute significance for tone response
+    [sigData] = functionBasicResponseSignificance(s,s.Parameters.ToneBin,spikeTimes,dioToneOnly,length(dioToneOnly),...
+        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
+    [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneBin,s.Parameters.ToneBin,s.Parameters.RasterWindow,...
+                rastersTone,length(dioToneOnly),2,[1:1:length(dioToneOnly)],s.Parameters.latBin,0.005,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
+    s.(desigNames{i}).Significance = sigData;
+    s.(desigNames{i}).LatencyTone = latPeakBinOut;
+    
+    %also store some values into master
+    master(i,tempInd) = sigData.SigSpike; masterHeader{tempInd} = 'SigSpikeToneOnly'; tempInd = tempInd + 1;
+    master(i,tempInd) = latPeakBinOut.PeakRespTone; masterHeader{tempInd} = 'MaxSpikeToneOnly'; tempInd = tempInd + 1;
+    master(i,tempInd) = latPeakBinOut.ResponseLatency; masterHeader{tempInd} = 'LatencyToneOnly'; tempInd = tempInd + 1;
+    master(i,tempInd) = latPeakBinOut.PeakRespToneTime; masterHeader{tempInd} = 'LatencyToPeakToneOnly'; tempInd = tempInd + 1;
+    
+    sigData = [];
+    latPeakBinOut  = [];
+    
+    [sigData] = functionBasicResponseSignificance(s,s.Parameters.ToneBin,spikeTimes,dioToneOnly,length(dioToneLaser1),...
+        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
+    [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneBin,s.Parameters.ToneBin,s.Parameters.RasterWindow,...
+                rastersToneLaser,length(dioToneLaser1),2,[1:1:length(dioToneLaser1)],s.Parameters.latBin,0.005,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
+    s.(desigNames{i}).SignificanceToneLaser = sigData;  
+    s.(desigNames{i}).LatencyToneLaser = latPeakBinOut;        
+    master(i,tempInd) = sigData.SigSpike; masterHeader{tempInd} = 'SigSpikeToneLaser'; tempInd = tempInd + 1;
+    master(i,tempInd) = latPeakBinOut.PeakRespTone; masterHeader{tempInd} = 'MaxSpikeToneLaser'; tempInd = tempInd + 1;
+    master(i,tempInd) = latPeakBinOut.ResponseLatency; masterHeader{tempInd} = 'LatencyToneLaser'; tempInd = tempInd + 1;
+    master(i,tempInd) = latPeakBinOut.PeakRespToneTime; masterHeader{tempInd} = 'LatencyToPeakToneLaser'; tempInd = tempInd + 1;
+    
+    
     
     %now pull rasters for all trials
     [rasters] = functionBasicRaster(spikeTimes,allDIO,s.Parameters.RasterWindow);
@@ -334,6 +372,9 @@ for i = 1:numUnits
     %relative to specific trial types, and store in the master array.
     
     master(i,tempInd) = mean(infoStore(:,1)); masterHeader{tempInd} = 'PreAverage'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(dioIndLaserOnly,1)); masterHeader{tempInd} = 'PreLaser'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(dioIndToneOnly,1)); masterHeader{tempInd} = 'PreTone'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(dioIndToneLaser,1)); masterHeader{tempInd} = 'PreToneLaser'; tempInd = tempInd + 1;
     master(i,tempInd) = mean(infoStore(:,2)); masterHeader{tempInd} = 'PostAverage'; tempInd = tempInd + 1;
     master(i,tempInd) = mean(infoStore(dioIndLaserOnly,3)); masterHeader{tempInd} = 'LaserOnlyAverage'; tempInd = tempInd + 1;
     master(i,tempInd) = mean(infoStore(dioIndToneOnly,4)); masterHeader{tempInd} = 'ToneOnlyAverage'; tempInd = tempInd + 1;
@@ -502,6 +543,15 @@ xlim([-1 1])
 
 title('Shank 2 Sorted By Position')
 
+
+spikeGraphName = strcat(fileName,desigNames{i},'threepeatSummary');
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %% Now we need to plot out individual traces!
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
