@@ -59,6 +59,10 @@ function 2 %This function will be for triggering the laser
 end;
 
 callback portin[1] up %tone has been detected
+	portout[8] = 1
+	do in 5
+		portout[8] = 0
+	end
     disp('RewTrial')
     trPhase = 1
     disp(trPhase)
