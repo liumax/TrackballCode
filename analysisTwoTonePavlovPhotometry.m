@@ -1,6 +1,6 @@
 %This is code that will read and link MBED inputs with photometry, while
 %recording from my big rig. 
-
+function [s] = analysisTwoTonePavlovPhotometry(fileName);
 %% Parameters
 
 rasterWindow = [-3,5]; %raster window in seconds
@@ -528,9 +528,7 @@ pname = pwd;
 save(fullfile(pname,fname),'s');
 
 
-
-
-
+end
 
 
 
