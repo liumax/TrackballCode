@@ -2,6 +2,8 @@
 
 testNames = what;
 testNames = testNames.mat;
+[findString] = functionCellStringFind(testNames,'Analysis');
+testNames(findString) = [];
 
 numFiles = length(testNames);
 
