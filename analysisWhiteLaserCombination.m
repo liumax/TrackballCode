@@ -544,7 +544,7 @@ xlim([-1 1])
 title('Shank 2 Sorted By Position')
 
 
-spikeGraphName = strcat(fileName,desigNames{i},'threepeatSummary');
+spikeGraphName = strcat(fileName,'threepeatSummary');
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
