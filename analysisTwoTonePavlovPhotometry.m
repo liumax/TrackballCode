@@ -209,6 +209,8 @@ for i = 1:length(traceMBED)
     if photoPoint + rasterPhotWindow(2) < length(traceDF)
         photoRaster(:,i) = traceDF(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
     else
+        disp('Rew Rasters: Reached End of Photometry Trace')
+        disp(i)
         break
     end
 end
@@ -223,7 +225,13 @@ if length(rewTimes)>0
         alignTime = rewTimeTDT(i);
         %find the time in the photometry trace
         photoPoint = find(traceTiming - alignTime > 0,1,'first');
-        photoRasterRew(:,i) = traceDF(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
+        if photoPoint + rasterPhotWindow(2) < length(traceDF)
+            photoRasterRew(:,i) = traceDF(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
+        else
+            disp('Rew Rasters: Reached End of Photometry Trace')
+            disp(i)
+            break
+        end
     end
 else
     photoRasterRew = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,1)
@@ -240,7 +248,13 @@ if length(trialParams.licking)>0
         alignTime = rewTimeTDT(i);
         %find the time in the photometry trace
         photoPoint = find(traceTiming - alignTime > 0,1,'first');
-        photoRasterLick(:,i) = traceDF(photoPoint + lickPhotWindow(1):photoPoint + lickPhotWindow(2));
+        if photoPoint + rasterPhotWindow(2) < length(traceDF)
+            photoRasterLick(:,i) = traceDF(photoPoint + lickPhotWindow(1):photoPoint + lickPhotWindow(2));
+        else
+            disp('LickRasters: Reached End of Photometry Trace')
+            disp(i)
+            break
+        end
     end
 else
     %lets use smaller raster for licking
@@ -296,8 +310,8 @@ for i = 1:length(traceMBED)
         velRaster(:,i) = locoData.Velocity((findTime + velWindow(1)):(findTime + velWindow(2)),2);
     else
         disp('EDGE ISSUE')
-        disp(i)
-        velRaster(:,i) = zeros(length(velRasterAxis),1);
+%         disp(i)
+        velRaster(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
     end
 end
 
@@ -319,8 +333,8 @@ for i = 1:length(rewTimes)
         velRasterRew(:,i) = locoData.Velocity((findTime + velWindow(1)):(findTime + velWindow(2)),2);
     else
         disp('EDGE ISSUE')
-        disp(i)
-        velRasterRew(:,i) = zeros(length(velRasterAxis),1);
+%         disp(i)
+        velRaster(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
     end
 end
 
@@ -492,14 +506,7 @@ plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick')-
 
 lickRastWindow = [-1 1];
 lickPhotWindow = round(lickRastWindow/photoTimeStep);
-
-for i = 1:length(rewTimes)
-    alignTime = rewTimeTDT(i);
-    %find the time in the photometry trace
-    photoPoint = find(traceTiming - alignTime > 0,1,'first');
-    photoRasterLick(:,i) = traceDF(photoPoint + lickPhotWindow(1):photoPoint + lickPhotWindow(2));
-end
-
+title('Photometry Relative to Licks')
 
 %plot out average velocity aligned to reward.
 subplot(4,3,12)
