@@ -1,6 +1,8 @@
 
+function [s] = analysisPVStimAlone(fileName);
 
-function [s] = analysisWhiteLaserCombination(fileName);
+
+
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
@@ -9,28 +11,21 @@ toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROCLoco = 0;
 
 
-s.Parameters.RasterWindow = [-4 5]; %seconds for raster window. 
+s.Parameters.RasterWindow = [-2 4]; %seconds for raster window. 
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.05; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
 
-s.Parameters.minSpikes = 100; %minimum number of spikes in baseline, if lower, triggers a warning
-s.Parameters.latBin = 0.001; %histogram bins for latency and significance calculations
-s.Parameters.zLimit = [0.001];
-s.Parameters.minSigSpikes = 5; %minimum number of significant points to record a significant response.
-s.Parameters.SigSmoothWindow = 11; %window of smoothing for calculations of significance
-s.Parameters.PercentCutoff = 99.9; %for significance in latency calculations
-s.Parameters.BaselineCutoff = 95; %for the onset in latency calculations
-
-
 %bins of interest
-% s.Parameters.CalcBins = [-4,-1;-1,0;-1,2;0,0.2;2,5];
-s.Parameters.PreBin = [-4,-1];
-s.Parameters.PreToneLaserBin = [-1,0];
-s.Parameters.PostBin = [2,5];
-s.Parameters.LaserBin = [-1,2];
-s.Parameters.ToneBin = [0,0.2];
+s.Parameters.PreBin = [-2,-0];
+s.Parameters.PostBin = [2,4];
+s.Parameters.LaserBin = [0,2];
+
+s.Parameters.ResPreBin = [-2,-1];
+s.Parameters.ResPostBin = [3,4];
+s.Parameters.ResLaserBin = [1,2];
+
 
 
 %for duplicate elimination
@@ -165,16 +160,7 @@ s.ElectrodePositionDisplayArray = posArray;
 master(:,masterInd) = posArray(s.SortedPeakWaveOrder,1); masterHeader{masterInd} = 'Distance from Top of Shank'; masterInd = masterInd + 1;
 master(:,masterInd) = posArray(s.SortedPeakWaveOrder,2); masterHeader{masterInd} = 'Shank Designation'; masterInd = masterInd + 1;
 
-%% Pull data from sound file
-soundName = strcat(fileName,'.mat');
-soundFile = open(soundName);
-soundData = soundFile.soundData; %pulls sound data info
-s.SoundData = soundData;
-toneDur = soundData.ToneDuration;
-toneReps = soundData.ToneRepetitions;
-laserLag = min(soundData.LaserLag);
-
-%% Extract DIO information. Tuning curve should rely on just one DIO output, DIO1.
+%% Extract DIO information. We are relying solely on dio1, which should indicate laser timing. 
 
 %find DIO folder and D1 file for analysis
 [D1FileName] = functionFileFinder(subFoldersCell,'DIO','D1');
@@ -186,47 +172,7 @@ D1FileName = D1FileName{1};
 %pulls out DIO up state onsets.
 [dioTimes,dioTimeDiff] = functionBasicDIOCheck(DIOData,s.Parameters.trodesFS);
 
-%need to separate by trial type!
-shortDIO = find(dioTimeDiff < laserLag*0.8);
-shortDIODel = unique([shortDIO,shortDIO+1]);
-dioTone = dioTimes;
-dioTone(shortDIODel) = [];
-%this isolates tones!
-%now figure out which ones are laser
-dioLaser = dioTimes(shortDIO+1);
-
-%now find the tone laser DIO
-medDIO = find(dioTimeDiff > laserLag * 0.8 & dioTimeDiff < laserLag * 1.2);
-dioToneLaser1 = dioTimes(medDIO+1); %This generates times where the tone occurs during the tone laser
-dioToneLaser2 = dioTimes(medDIO); %this pulls the laser time for tone laser trials
-
-
-%now lets isolate tone only dio.
-[C,ia,ib] = intersect(dioTone,dioToneLaser1);
-dioToneOnly = dioTone;
-dioToneOnly(ia) = [];
-
-
-[C,ia,ib] = intersect(dioLaser,dioToneLaser2);
-dioLaserOnly = dioLaser;
-dioLaserOnly(ia) = [];
-
-
-dioLaserOnlyFake = dioLaserOnly + laserLag; %This is a fake time point to generate rasters that are aligned to same times as tones.
-
-%get indices for various things, as well as all the DIO values I care about
-allDIO = unique([dioToneOnly;dioLaserOnly;dioToneLaser1]);
-[C dioIndToneOnly ib] = intersect(allDIO,dioToneOnly);
-[C dioIndLaserOnly ib] = intersect(allDIO,dioLaserOnly);
-[C dioIndToneLaser ib] = intersect(allDIO,dioToneLaser1);
-
-s.Timing.ToneOnly = dioToneOnly;
-s.Timing.LaserOnly = dioLaserOnly;
-s.Timing.ToneLaserTimingTone = dioToneLaser1;
-s.Timing.ToneLaserTimingLaser = dioToneLaser2;
-
-disp('Finished Extracting and Processing DIO data')
-
+s.Timing.LaserTimes = dioTimes;
 
 %% Extract data from rotary encoder.
 [funcOut] = functionRotaryExtraction(s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
@@ -236,22 +182,15 @@ disp('Velocity Data Extracted')
 jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
 jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
 
-velRaster = zeros(jumpsForward-jumpsBack+1,length(allDIO));
-for i = 1:length(allDIO)
+velRaster = zeros(jumpsForward-jumpsBack+1,length(dioTimes));
+for i = 1:length(dioTimes)
     %find the time from the velocity trace closest to the actual stim time
-    targetInd = find(s.RotaryData.Velocity(:,1)-allDIO(i) > 0,1,'first');
+    targetInd = find(s.RotaryData.Velocity(:,1)-dioTimes(i) > 0,1,'first');
     %pull appropriate velocity data
     velRaster(:,i) = s.RotaryData.Velocity([targetInd+jumpsBack:targetInd+jumpsForward],2);
 end
 
-velRasterTone = velRaster(:,dioIndToneOnly);
-velRasterLaser = velRaster(:,dioIndLaserOnly);
-velRasterToneLaser = velRaster(:,dioIndToneLaser);
-
-%make average traces
-averageVelTone = mean(velRasterTone,2);
-averageVelLaser = mean(velRasterLaser,2);
-averageVelToneLaser = mean(velRasterToneLaser,2);
+averageVel = mean(velRaster,2);
 
 %generate vectors for plotting things out later. 
 velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
@@ -263,15 +202,8 @@ velZero = find(velVector >= 0,1,'first');
 avLoco = mean(velRaster);
 avLocoPos = find(avLoco>avLocoThresh);
 avLocoNeg = find(avLoco<=avLocoThresh);
-
-avLocoPre = mean(velRaster(1:(s.Parameters.PreBin(2) - s.Parameters.RasterWindow(1))/s.Parameters.InterpolationStepRotary,:));
-avLocoPrePos = find(avLocoPre>avLocoThresh);
-avLocoPreNeg = find(avLocoPre<=avLocoThresh);
-
-avLocoPost = mean(velRaster((s.Parameters.RasterWindow(2)-s.Parameters.PostBin(1))/s.Parameters.InterpolationStepRotary:end,:));
-avLocoPostPos = find(avLocoPost>avLocoThresh);
-avLocoPostNeg = find(avLocoPost<=avLocoThresh);
 disp('Velocity Rasters and Averages Calculated')
+
 
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
@@ -292,63 +224,21 @@ for i = 1:numUnits
     %trial types because it does make for a simple plotting of the rasters,
     %since I dont have to map the trial number in some funny way. 
     %now calculate rasters for each case
-    [rastersTone] = functionBasicRaster(spikeTimes,dioToneOnly,s.Parameters.RasterWindow);
-    [rastersLaser] = functionBasicRaster(spikeTimes,dioLaserOnlyFake,s.Parameters.RasterWindow);
-    [rastersToneLaser] = functionBasicRaster(spikeTimes,dioToneLaser1,s.Parameters.RasterWindow);
-    
+    [rastersLaser] = functionBasicRaster(spikeTimes,dioTimes,s.Parameters.RasterWindow);
+
     %store data into structured array
-    s.(desigNames{i}).RasterToneOnly = rastersTone;
-    s.(desigNames{i}).RasterLaserOnly = rastersLaser;
-    s.(desigNames{i}).RasterToneLaser = rastersToneLaser;
-    
+    s.(desigNames{i}).RasterLaser = rastersLaser;
+
     %generate histograms and store.
-    [counts centers] = hist(rastersTone(:,1),histBinVector);
-    s.(desigNames{i}).HistogramToneOnly = counts/length(dioToneOnly)/s.Parameters.histBin;
-    
     [counts centers] = hist(rastersLaser(:,1),histBinVector);
-    s.(desigNames{i}).HistogramLaserOnly = counts/length(dioLaserOnlyFake)/s.Parameters.histBin;
+    s.(desigNames{i}).HistogramLaser = counts/length(dioTimes)/s.Parameters.histBin;
     
-    [counts centers] = hist(rastersToneLaser(:,1),histBinVector);
-    s.(desigNames{i}).HistogramToneLaser = counts/length(dioToneLaser1)/s.Parameters.histBin;
-    
-    %compute significance for tone response
-    [sigData] = functionBasicResponseSignificance(s,s.Parameters.ToneBin,spikeTimes,dioToneOnly,length(dioToneOnly),...
-        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
-    [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneBin,s.Parameters.ToneBin,s.Parameters.RasterWindow,...
-                rastersTone,length(dioToneOnly),2,[1:1:length(dioToneOnly)],s.Parameters.latBin,0.005,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
-    s.(desigNames{i}).Significance = sigData;
-    s.(desigNames{i}).LatencyTone = latPeakBinOut;
-    
-    %also store some values into master
-    master(i,tempInd) = sigData.SigSpike; masterHeader{tempInd} = 'SigSpikeToneOnly'; tempInd = tempInd + 1;
-    master(i,tempInd) = latPeakBinOut.PeakRespTone; masterHeader{tempInd} = 'MaxSpikeToneOnly'; tempInd = tempInd + 1;
-    master(i,tempInd) = latPeakBinOut.ResponseLatency; masterHeader{tempInd} = 'LatencyToneOnly'; tempInd = tempInd + 1;
-    master(i,tempInd) = latPeakBinOut.PeakRespToneTime; masterHeader{tempInd} = 'LatencyToPeakToneOnly'; tempInd = tempInd + 1;
-    
-    sigData = [];
-    latPeakBinOut  = [];
-    
-    [sigData] = functionBasicResponseSignificance(s,s.Parameters.ToneBin,spikeTimes,dioToneOnly,length(dioToneLaser1),...
-        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
-    [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneBin,s.Parameters.ToneBin,s.Parameters.RasterWindow,...
-                rastersToneLaser,length(dioToneLaser1),2,[1:1:length(dioToneLaser1)],s.Parameters.latBin,0.005,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
-    s.(desigNames{i}).SignificanceToneLaser = sigData;  
-    s.(desigNames{i}).LatencyToneLaser = latPeakBinOut;        
-    master(i,tempInd) = sigData.SigSpike; masterHeader{tempInd} = 'SigSpikeToneLaser'; tempInd = tempInd + 1;
-    master(i,tempInd) = latPeakBinOut.PeakRespTone; masterHeader{tempInd} = 'MaxSpikeToneLaser'; tempInd = tempInd + 1;
-    master(i,tempInd) = latPeakBinOut.ResponseLatency; masterHeader{tempInd} = 'LatencyToneLaser'; tempInd = tempInd + 1;
-    master(i,tempInd) = latPeakBinOut.PeakRespToneTime; masterHeader{tempInd} = 'LatencyToPeakToneLaser'; tempInd = tempInd + 1;
-    
-    
-    
-    %now pull rasters for all trials
-    [rasters] = functionBasicRaster(spikeTimes,allDIO,s.Parameters.RasterWindow);
     %go through one by one and pull out values that I care about
-    infoStore = zeros(length(allDIO),5);
-    histStore = zeros(length(histBinVector),length(allDIO));
-    for j = 1:length(allDIO)
+    infoStore = zeros(length(dioTimes),5);
+    histStore = zeros(length(histBinVector),length(dioTimes));
+    for j = 1:length(dioTimes)
         %find the spikes linked to the target trial
-        selSpikes = rasters(rasters(:,2) == j,1);
+        selSpikes = rastersLaser(rastersLaser(:,2) == j,1);
         %first generate histogram and store!
         [counts centers] = hist(selSpikes,histBinVector);
         histStore(:,j) = counts;
@@ -362,14 +252,35 @@ for i = 1:numUnits
             %find laser spikes
             findSpikes = find(selSpikes > s.Parameters.LaserBin(1) & selSpikes < s.Parameters.LaserBin(2));
             infoStore(j,3) = length(findSpikes)/(s.Parameters.LaserBin(2)-s.Parameters.LaserBin(1));
-            %find tone spikes
-            findSpikes = find(selSpikes > s.Parameters.ToneBin(1) & selSpikes < s.Parameters.ToneBin(2));
-            infoStore(j,4) = length(findSpikes)/(s.Parameters.ToneBin(2)-s.Parameters.ToneBin(1));
-            %find preToneLaser bins
-            findSpikes = find(selSpikes > s.Parameters.PreToneLaserBin(1) & selSpikes < s.Parameters.PreToneLaserBin(2));
-            infoStore(j,5) = length(findSpikes)/(s.Parameters.PreToneLaserBin(2)-s.Parameters.PreToneLaserBin(1));
+            
+            %now look at restricted bins (which cuts out the first second
+            %from each bin)
+            
+            %find pre spikes
+            findSpikes = find(selSpikes > s.Parameters.ResPreBin(1) & selSpikes < s.Parameters.ResPreBin(2));
+            infoStore(j,4) = length(findSpikes)/(s.Parameters.ResPreBin(2)-s.Parameters.ResPreBin(1));
+            %find post spikes
+            findSpikes = find(selSpikes > s.Parameters.ResPostBin(1) & selSpikes < s.Parameters.ResPostBin(2));
+            infoStore(j,5) = length(findSpikes)/(s.Parameters.ResPostBin(2)-s.Parameters.ResPostBin(1));
+            %find laser spikes
+            findSpikes = find(selSpikes > s.Parameters.ResLaserBin(1) & selSpikes < s.Parameters.ResLaserBin(2));
+            infoStore(j,6) = length(findSpikes)/(s.Parameters.ResLaserBin(2)-s.Parameters.ResLaserBin(1));
         end
     end
+    
+    %now do some basic stats. lets pull a signRank (because data is
+    %paired) on all the times!
+
+    %first with the normal bins
+    pPreLaser = signrank(infoStore(:,1),infoStore(:,3));
+    pPostLaser = signrank(infoStore(:,2),infoStore(:,3));
+    pPrePost = signrank(infoStore(:,1),infoStore(:,2));
+
+    %now with the restricted bins
+    pResPreLaser = signrank(infoStore(:,4),infoStore(:,6));
+    pResPostLaser = signrank(infoStore(:,5),infoStore(:,6));
+    pResPrePost = signrank(infoStore(:,4),infoStore(:,5));
+    
     
     s.(desigNames{i}).TrialBinnedSpikes = infoStore;
     
@@ -377,16 +288,19 @@ for i = 1:numUnits
     %relative to specific trial types, and store in the master array.
     
     master(i,tempInd) = mean(infoStore(:,1)); masterHeader{tempInd} = 'PreAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(dioIndLaserOnly,1)); masterHeader{tempInd} = 'PreLaser'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(dioIndToneOnly,1)); masterHeader{tempInd} = 'PreTone'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(dioIndToneLaser,1)); masterHeader{tempInd} = 'PreToneLaser'; tempInd = tempInd + 1;
     master(i,tempInd) = mean(infoStore(:,2)); masterHeader{tempInd} = 'PostAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(dioIndLaserOnly,3)); masterHeader{tempInd} = 'LaserOnlyAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(dioIndToneOnly,4)); masterHeader{tempInd} = 'ToneOnlyAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(dioIndToneLaser,4)); masterHeader{tempInd} = 'ToneLaserAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(avLocoPrePos,1)); masterHeader{tempInd} = 'Pre AverageRunning'; tempInd = tempInd + 1;
-    master(i,tempInd) = mean(infoStore(avLocoPreNeg,1)); masterHeader{tempInd} = 'Pre AverageStationary'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(:,3)); masterHeader{tempInd} = 'LaserAverage'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(:,4)); masterHeader{tempInd} = 'PreResAverage'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(:,5)); masterHeader{tempInd} = 'PostResAverage'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(:,6)); masterHeader{tempInd} = 'LaserResAverage'; tempInd = tempInd + 1;
     
+    %store pValues
+    master(i,tempInd) = pPreLaser; masterHeader{tempInd} = 'pValPreLaser'; tempInd = tempInd + 1;
+    master(i,tempInd) = pPostLaser; masterHeader{tempInd} = 'pValPostLaser'; tempInd = tempInd + 1;
+    master(i,tempInd) = pPrePost; masterHeader{tempInd} = 'pValPrePost'; tempInd = tempInd + 1;
+    master(i,tempInd) = pResPreLaser; masterHeader{tempInd} = 'pValResPreLaser'; tempInd = tempInd + 1;
+    master(i,tempInd) = pResPostLaser; masterHeader{tempInd} = 'pValResPostLaser'; tempInd = tempInd + 1;
+    master(i,tempInd) = pResPrePost; masterHeader{tempInd} = 'pValResPrePost'; tempInd = tempInd + 1;
     
     %now measure locomotion ROC if toggle is on
     if toggleROCLoco == 1
@@ -423,11 +337,13 @@ masterInd = masterInd + indChange;
 
 
 
+
 s.MasterSheet = master;
 s.MasterDesigs = masterHeader;
 
 %% Prepare summary figure information
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+
 
 %find indices of master that I want for various things
 [indPVMSN] = functionCellStringFind(masterHeader,'PV/MSN Desig');
@@ -437,13 +353,18 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01])
 [indShankDes] = functionCellStringFind(masterHeader,'Shank Designation');
 [indPreAverage] = functionCellStringFind(masterHeader,'PreAverage');
 [indPostAverage] = functionCellStringFind(masterHeader,'PostAverage');
-[indLaserOnly] = functionCellStringFind(masterHeader,'LaserOnlyAverage');
-[indToneOnly] = functionCellStringFind(masterHeader,'ToneOnlyAverage');
-[indToneLaser] = functionCellStringFind(masterHeader,'ToneLaserAverage');
-[indPreAverageRunning] = functionCellStringFind(masterHeader,'Pre AverageRunning');
-[indPreAverageStationary] = functionCellStringFind(masterHeader,'Pre AverageStationary');
+[indLaserAverage] = functionCellStringFind(masterHeader,'LaserAverage');
+[indResPre] = functionCellStringFind(masterHeader,'PreResAverage');
+[indResPost] = functionCellStringFind(masterHeader,'PostResAverage');
+[indResLaser] = functionCellStringFind(masterHeader,'LaserResAverage');
 [indLocoAUC] = functionCellStringFind(masterHeader,'LocoAUCScore');
 [indLocoSig] = functionCellStringFind(masterHeader,'LocoAUCSignificance');
+[indPValPreLaser] = functionCellStringFind(masterHeader,'pValPreLaser');
+[indPValPostLaser] = functionCellStringFind(masterHeader,'pValPostLaser');
+[indPValPrePost] = functionCellStringFind(masterHeader,'pValPrePost');
+[indPValResPreLaser] = functionCellStringFind(masterHeader,'pValResPreLaser');
+[indPValResPostLaser] = functionCellStringFind(masterHeader,'pValResPostLaser');
+[indPValResPrePost] = functionCellStringFind(masterHeader,'pValResPrePost');
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
@@ -460,27 +381,18 @@ subplot(3,3,4)
 hold on
 plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2),'r')
 maxVals = max(s.RotaryData.Velocity(:,2));
-% for i = 1:length(dioIndToneOnly)
-%     plot([allDIO(dioIndToneOnly(i)) allDIO(dioIndToneOnly(i))],[0 maxVals],'k')
-% end
-% for i = 1:length(dioIndLaserOnly)
-%     plot([allDIO(dioIndLaserOnly(i)) allDIO(dioIndLaserOnly(i))],[0 maxVals],'b')
-% end
-% for i = 1:length(dioIndToneLaser)
-%     plot([allDIO(dioIndToneLaser(i)) allDIO(dioIndToneLaser(i))],[0 maxVals],'g')
-% end
 xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
 % title('Overall Vel With Tone(k) Laser(b) and ToneLaser(g) Times')
 title('Overall Velocity Trace')
 
+
 %plot rasterized velocities
 subplot(3,3,7)
 hold on
-plot(velVector,averageVelTone,'k')
-plot(velVector,averageVelLaser,'b')
-plot(velVector,averageVelToneLaser,'g')
+plot(velVector,averageVel,'k')
 xlim([velVector(1) velVector(end)]);
 title('Average Velocity for Tone(k) Laser(b) ToneLaser(g)')
+
 
 %plot firing rate vs peak trough times
 subplot(3,3,2)
@@ -489,20 +401,36 @@ hold on
 plot(master(master(:,indPVMSN) == 1,indPkTrough),master(master(:,indPVMSN) == 1,indPreAverage),'ro')
 title('Peak Trough vs Baseline Rate, PV in red')
 
+
 %plot modulation index of pre vs laser for laser only trials
 subplot(3,3,5)
 %calculate modulation index, which is (laser - pre)/(pre + laser)
-modInd1 = (master(:,indLaserOnly)-master(:,indPreAverage))./(master(:,indLaserOnly) + master(:,indPreAverage));
+modInd1 = (master(:,indLaserAverage)-master(:,indPreAverage))./(master(:,indLaserAverage) + master(:,indPreAverage));
 hist(modInd1,[-1:0.1:1])
 xlim([-1 1]);
 title('Modulation Index For Laser Only Trials')
 
-%plot modulation index of tone responses
-subplot(3,3,8)
-modInd2 = (master(:,indToneLaser)-master(:,indToneOnly))./(master(:,indToneLaser)+master(:,indToneOnly));
-hist(modInd2,[-1:0.1:1])
-xlim([-1 1]);
-title('Modulation Index For Tone Trials')
+%plot p values!
+%First for normal bins
+subplot(3,6,15)
+hold on
+for i = 1:numUnits
+    plot(master(i,indPValPreLaser:indPValPrePost),'b.-')
+end
+set(gca,'XTick',[1:3]);
+set(gca,'XTickLabel',{'PreLaser','PostLaser','PrePost'});
+title('P Values for Comparisons of Timing')
+
+
+%now for restricted bins
+subplot(3,6,16)
+hold on
+for i = 1:numUnits
+    plot(master(i,indPValResPreLaser:indPValResPrePost),'b.-')
+end
+set(gca,'XTick',[1:3]);
+set(gca,'XTickLabel',{'PreLaser','PostLaser','PrePost'});
+title('P Values for Comparisons of Restricted Timing')
 
 %plot out modulation indices by unit
 subplot(3,3,3)
@@ -510,10 +438,10 @@ hold on
 plot([0 0],[0 numUnits],'k')
 for i = 1:numUnits
     plot([0 modInd1(i)],[i i],'b','LineWidth',2)
-    plot([0 modInd2(i)],[i+0.2 i+0.2],'g','LineWidth',2)
 end
 ylim([0 numUnits+1])
 title('Modulation Index Sorted By Unit')
+
 
 %plot out by position, do one shank at a time. 
 subplot(3,3,6)
@@ -525,8 +453,6 @@ for i = 1:length(firstFind)
     findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
     plot([0 modInd1(findOrder)],[firstArray(i,1) firstArray(i,1)],'b')
     plot(modInd1(findOrder),firstArray(i,1),'b.')
-    plot([0 modInd2(findOrder)],[firstArray(i,1) firstArray(i,1)],'g')
-    plot(modInd2(findOrder),firstArray(i,1),'g.')
 end
 xlim([-1 1])
 title('Shank 1 Sorted By Position')
@@ -541,15 +467,12 @@ for i = 1:length(secondFind)
     findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
     plot([0 modInd1(findOrder)],[secondArray(i,1) secondArray(i,1)],'b')
     plot(modInd1(findOrder),secondArray(i,1),'b.')
-    plot([0 modInd2(findOrder)],[secondArray(i,1) secondArray(i,1)],'g')
-    plot(modInd2(findOrder),secondArray(i,1),'g.')
 end
 xlim([-1 1])
-
 title('Shank 2 Sorted By Position')
 
 
-spikeGraphName = strcat(fileName,'threepeatSummary');
+spikeGraphName = strcat(fileName,'LaserStimSummary');
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -557,6 +480,8 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
 
 %% Now we need to plot out individual traces!
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
@@ -591,10 +516,7 @@ for i = 1:numUnits
     %plot histograms
     subplot(3,3,7)
     hold on
-    plot(histBinVector,s.(desigNames{i}).HistogramToneOnly,'k','LineWidth',2)
-    plot(histBinVector,s.(desigNames{i}).HistogramToneLaser,'g','LineWidth',2)
-    plot(histBinVector,s.(desigNames{i}).HistogramLaserOnly,'b','LineWidth',2)
-
+    plot(histBinVector,s.(desigNames{i}).HistogramLaser,'k','LineWidth',2)
     plot([0 0],[ylim],'b');
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
 %     title({fileName;desigNames{i}})
@@ -607,61 +529,48 @@ for i = 1:numUnits
     %plot out changes to response over time to laser only
     subplot(3,3,5)
     hold on
-    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,1),'ko')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,1),11),'k.-')
+    plot(s.(desigNames{i}).TrialBinnedSpikes(:,1),'ko')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,1),11),'k.-')
     
-    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,3),'go')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,3),11),'g.-')
-    smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,3),11);
-    %now we need to remap avLocoPos onto just the dioIndLaserOnly
-    [C ia ib] = intersect(dioIndLaserOnly,avLocoPos); %want ia here.
-    plot(ia,smoothTrace(ia),'bo')
+    plot(s.(desigNames{i}).TrialBinnedSpikes(:,2),'bo')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,2),11),'b.-')
     
-    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,2),'ro')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndLaserOnly,2),11),'r.-')
+    plot(s.(desigNames{i}).TrialBinnedSpikes(:,3),'go')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,3),11),'g.-')
+    smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(:,3),11);
+    plot(avLocoPos,smoothTrace(avLocoPos),'bo')
+    
+    xlim([0 length(dioTimes)])
+
     title('TimeCourse Of Response to Laser Only Pre(k) Laser(g) Post(r)')
     
-    %plot out changes over time for tone
+    %plot out changes over time for restricted time bins
     subplot(3,3,8)
     hold on
-    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneOnly,4),'ko')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneOnly,4),11),'k.-')
+    plot(s.(desigNames{i}).TrialBinnedSpikes(:,4),'ko')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,4),11),'k.-')
     
-    plot(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneLaser,4),'go')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneLaser,4),11),'g.-')
-    smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(dioIndToneLaser,4),11);
-    %now we need to remap avLocoPos onto just the dioIndLaserOnly
-    [C ia ib] = intersect(dioIndLaserOnly,avLocoPos); %want ia here.
-    plot(ia,smoothTrace(ia),'bo')
-    title('TimeCourse of Response to Tone noLaser(k) and laser(g)')
+    plot(s.(desigNames{i}).TrialBinnedSpikes(:,5),'bo')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,5),11),'b.-')
+    
+    plot(s.(desigNames{i}).TrialBinnedSpikes(:,6),'go')
+    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,6),11),'g.-')
+    smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(:,6),11);
+    plot(avLocoPos,smoothTrace(avLocoPos),'bo')
+    
+    xlim([0 length(dioTimes)])
+    
+    title('TimeCourse of Restricted Response to Tone noLaser(k) and laser(g)')
     
     %plots rasters (chronological)
     subplot(3,3,3)
-    plot(s.(desigNames{i}).RasterLaserOnly(:,1),...
-        s.(desigNames{i}).RasterLaserOnly(:,2),'k.','markersize',5)
+    plot(s.(desigNames{i}).RasterLaser(:,1),...
+        s.(desigNames{i}).RasterLaser(:,2),'k.','markersize',5)
     hold on
-    ylim([0 toneReps])
+    ylim([0 length(dioTimes)])
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     plot([0 0],[ylim],'b');
     title('Laser Response')
-    
-    subplot(3,3,6)
-    plot(s.(desigNames{i}).RasterToneOnly(:,1),...
-        s.(desigNames{i}).RasterToneOnly(:,2),'k.','markersize',5)
-    hold on
-    ylim([0 toneReps])
-    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-    plot([0 0],[ylim],'b');
-    title('Tone Response')
-    
-    subplot(3,3,9)
-    plot(s.(desigNames{i}).RasterToneLaser(:,1),...
-        s.(desigNames{i}).RasterToneLaser(:,2),'k.','markersize',5)
-    hold on
-    ylim([0 toneReps])
-    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-    plot([0 0],[ylim],'b');
-    title('Tone Laser Response')
     
     hold off
     spikeGraphName = strcat(fileName,desigNames{i},'threepeatAnalysis');
@@ -677,3 +586,26 @@ end
 save(fullfile(pname,fname),'s');
 
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -112,11 +112,24 @@ traceJittDiff = diff(traceJitt);
 %clean up the MBED signal. generally there will be excess TTLs at the
 %beginning
 findBig = find(inputPhotDiff > 600);
+%now we need to screen the big differences.
+for i = 1:length(findBig)
+    bigSize = findBig(i);
+    if bigSize > length(inputPhotOnset)/2 %in the case of something coming near the end
+        disp('Late Big Diff, deleting')
+        inputPhotOnset(bigSize:end) = [];
+        inputPhotDiff = diff(inputPhotOnset);
+        findBig = find(inputPhotDiff > 600);
+    else
+        disp('Early Big Difference in Jitter')
+    end
+end
+
 bigDiffs = inputPhotDiff(findBig);
 
 %look for huge diffs. These should indicate the start of the actual session
 massDiff = find(bigDiffs > 2000);
-if length(massDiff) <=3
+if length(massDiff) <=3 & length(massDiff)>0
     disp('Long Differences in jittered trace. taking last.')
     inputPhotOnset(1:findBig(massDiff(end))) = [];
     inputPhotDiff = diff(inputPhotOnset);
@@ -146,6 +159,10 @@ inputPhotDiff = diff(inputPhotOnset);
 xcLag = lags(maxInd);
 
 if xcLag ~= 0
+    disp('CorrLag')
+    disp(xcLag)
+    disp('MaxCorr')
+    disp(xcMax)
     error('Jitter Not Aligned')
 elseif xcLag == 0
     disp('Jitter Signal Properly Aligned')
