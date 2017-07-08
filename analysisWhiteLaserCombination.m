@@ -220,6 +220,11 @@ allDIO = unique([dioToneOnly;dioLaserOnly;dioToneLaser1]);
 [C dioIndLaserOnly ib] = intersect(allDIO,dioLaserOnly);
 [C dioIndToneLaser ib] = intersect(allDIO,dioToneLaser1);
 
+s.Timing.ToneOnly = dioToneOnly;
+s.Timing.LaserOnly = dioLaserOnly;
+s.Timing.ToneLaserTimingTone = dioToneLaser1;
+s.Timing.ToneLaserTimingLaser = dioToneLaser2;
+
 disp('Finished Extracting and Processing DIO data')
 
 
