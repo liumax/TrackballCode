@@ -48,7 +48,7 @@ s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display w
 s.Parameters.PVLim = 0.0005;
 
 %% sets up file saving stuff
-saveName = strcat(fileName,'WhiteLaserComboAnalysis','.mat');
+saveName = strcat(fileName,'LaserStimAnalysis','.mat');
 fname = saveName;
 pname = pwd;
 
@@ -440,6 +440,7 @@ for i = 1:numUnits
     plot([0 modInd1(i)],[i i],'b','LineWidth',2)
 end
 ylim([0 numUnits+1])
+xlim([-1 1])
 title('Modulation Index Sorted By Unit')
 
 
@@ -573,7 +574,7 @@ for i = 1:numUnits
     title('Laser Response')
     
     hold off
-    spikeGraphName = strcat(fileName,desigNames{i},'threepeatAnalysis');
+    spikeGraphName = strcat(fileName,desigNames{i},'LaserStimAnalysis');
     savefig(hFig,spikeGraphName);
 
     %save as PDF with correct name

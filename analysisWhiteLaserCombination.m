@@ -513,6 +513,7 @@ for i = 1:numUnits
     plot([0 modInd2(i)],[i+0.2 i+0.2],'g','LineWidth',2)
 end
 ylim([0 numUnits+1])
+xlim([-1 1])
 title('Modulation Index Sorted By Unit')
 
 %plot out by position, do one shank at a time. 
