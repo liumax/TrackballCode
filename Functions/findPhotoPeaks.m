@@ -53,6 +53,7 @@ for i = 1:length(pks)
     if ~any(mnIdx)
         continue;
     end
+    
     if filtTime(locsMn(mnIdx)) + mnPkDst < filtTime(locs(i))
         rmPkCnt = rmPkCnt+1;
 %         disp(['Peak ', num2str(i), ...
@@ -68,6 +69,10 @@ for i = 1:length(pks)
     
     [pkRise,pkRiseInd] = max(diff(diff(filtSig(locsMn(mnIdx):rIdx)))); % 2nd derivative (trough to rise)
     r2Idx = locsMn(mnIdx) + pkRiseInd;
+    
+    if ~any(r2Idx)
+        continue;
+    end
     
     % Store only peaks that exceed a threshold
     if (pks(i)-filtSig(locsMn(mnIdx))) > thresh
