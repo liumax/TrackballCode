@@ -15,48 +15,23 @@ int intWindow = 10 %this is the window over which counts are integrated
 
 %These are variables for tone triggered TTLs. names describe function.
 %These variables are for dopamine pulsing
-int pulseNum = 1
-int pulseDur = 2000
-int pulseITI = 30
-int pulseCounter = 0
+
+int pulseDur = 3000
+
+
 
 %This is code for cell ID purposes. Toggle holds whether the trip switch
 %has been changed, also has TTL pulse information.
 int toggle = 0
-int longITI = 50000
+int idITI = 200
+int idPulseDur = 3
 int idCounter = 0
 
 function 1
-    while toggle == 1 do every longITI
-	idCounter = idCounter + 1
-	
-	portout[1] = 1
-	do in pulseDur
-		portout[1] = 0
-	end
-   	while pulseCounter < pulseNum do every pulseITI
-        	portout[6] = 1
-       	 do in pulseDur
-            		portout[6] = 0
-        	end
-       	 pulseCounter = pulseCounter + 1
-   	 then do
-        	pulseCounter = 0
-		disp(idCounter)
-    	 end
-	disp(idCounter)
-   end
-end;
-
-callback portin[3] up
-    if toggle == 0 do
-        toggle = 1
-        trigger(1)
-    else do
-        toggle = 0
-	idCounter = 0
-	disp('Stop ID')
-    end
+        portout[6] = 1
+        do in pulseDur
+            portout[6] = 0
+        end
 end;
 
 callback portin[1] up
@@ -64,5 +39,14 @@ callback portin[1] up
 	do in 2
 		portout[1] = 0
 	end
+    ttlCount = ttlCount + 1
+    if ttlCount > 1 do
+        trigger(1)
+    end
+    do in intWindow
+        ttlCount = ttlCount - 1
+    end
 end;
+
+
 

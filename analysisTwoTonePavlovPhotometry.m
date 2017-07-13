@@ -93,8 +93,17 @@ s.Photo.dFTime = traceTiming;
 
 %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
 %additional functionality for peak finding.
+try
+    [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
+catch
+    peakInfo = [];
+    riseInfo = [];
+    troughInfo = [];
+end
 
-[peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
+s.Photo.Peaks.Peak = peakInfo;
+s.Photo.Peaks.Rise = riseInfo;
+s.Photo.Peaks.Trough = troughInfo;
 
 %pull jittered signal
 traceJitt = data.epocs.PtE1.onset;
