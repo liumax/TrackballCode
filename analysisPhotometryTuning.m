@@ -8,6 +8,7 @@ function [s] = analysisPhotometryTuning(fileName);
 rasterWindow = [-3,5]; %raster window in seconds
 thresh = 0.01;
 locoTimeStep = 0.1;
+photoToggle = 0;
 
 
 %store things in a big structure
@@ -29,7 +30,12 @@ inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
 outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
 
 %eliminate duplicate values!
-[inputPhot] = functionSignalDuplicateElim(inputPhot,2);
+try
+    [inputPhot] = functionSignalDuplicateElim(inputPhot,2);
+catch
+    disp('NO INPUTS, SWITCH TO USING PHOTOMETRY')
+    photoToggle = 1;
+end
 [outputPhot] = functionSignalDuplicateElim(outputPhot,2);
 
 
@@ -37,8 +43,14 @@ outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
 onsetPhot = outputPhot(outputPhot(:,2) == 1,1);
 onsetPhotDiff = diff(onsetPhot);
 
-inputPhotOnset = inputPhot(inputPhot(:,2) == 1,1);
-inputPhotDiff = diff(inputPhotOnset);
+
+try
+    inputPhotOnset = inputPhot(inputPhot(:,2) == 1,1);
+    inputPhotDiff = diff(inputPhotOnset);
+catch
+    disp('NO INPUTS, CANT PULL ONSETS')
+end
+
 
 s.MBED.ToneDelivery = onsetPhot;
 
@@ -83,13 +95,40 @@ s.Photo.Peaks.Trough = troughInfo;
 traceJitt = data.epocs.PtE1.onset;
 traceJittDiff = diff(traceJitt);
 
+if photoToggle == 1
+    disp('Generating Fake Jitter Based on MBED Tone Pulses')
+    traceMBED = data.epocs.PtC0.onset;
+    traceMBEDDiff = diff(traceMBED);
+
+    %check alignment
+    [xcf,lags,bounds]  = crosscorr(onsetPhotDiff/1000,traceMBEDDiff);
+    [xcMax maxInd] = max(xcf);
+    xcLag = lags(maxInd);
+
+    if xcLag ~= 0
+        error('Tones Not Aligned')
+    elseif length(onsetPhot) ~= length(traceMBED)
+        error('Mismatch in Number of Tone Pulses')
+    end
+    
+    %generate input times off of interpolation
+    inputPhotOnset = interp1(traceMBED,onsetPhot,traceJitt);
+    disp('Fake Jitter Constructed...')
+    tester = find(isnan(inputPhotOnset));
+    traceJitt(tester) = [];
+    inputPhotOnset(tester) = [];
+    disp('Deleting NaN values')
+    traceJittDiff = diff(traceJitt);
+    inputPhotDiff = diff(inputPhotOnset);
+end
 
 %clean up the MBED signal. generally there will be excess TTLs at the
 %beginning
 findBig = find(inputPhotDiff > 600);
 %now we need to screen the big differences.
-for i = 1:length(findBig)
-    bigSize = findBig(i);
+whileCounter = 1;
+while length(findBig) >= whileCounter;
+    bigSize = findBig(whileCounter);
     if bigSize > length(inputPhotOnset)/2 %in the case of something coming near the end
         disp('Late Big Diff, deleting')
         inputPhotOnset(bigSize:end) = [];
@@ -98,13 +137,14 @@ for i = 1:length(findBig)
     else
         disp('Early Big Difference in Jitter')
     end
+    whileCounter = whileCounter + 1;
 end
 
 bigDiffs = inputPhotDiff(findBig);
 
 %look for huge diffs. These should indicate the start of the actual session
 massDiff = find(bigDiffs > 2000);
-if length(massDiff) <=3 & length(massDiff)>0
+if length(massDiff) <=20 & length(massDiff)>0
     disp('Long Differences in jittered trace. taking last.')
     inputPhotOnset(1:findBig(massDiff(end))) = [];
     inputPhotDiff = diff(inputPhotOnset);
@@ -121,8 +161,8 @@ bigDiffs = inputPhotDiff(findBig);
 bigDiffDiv = round(bigDiffs/500);
 
 %now replace with fake points. 
-for i = length(bigDiffs):-1:1
-    targetInd = findBig(i)+1;
+for ind = length(bigDiffs):-1:1
+    targetInd = findBig(ind)+1;
     inputPhotOnset(targetInd+(bigDiffDiv-1):end+(bigDiffDiv-1)) = inputPhotOnset(targetInd:end);
     inputPhotOnset(targetInd) = inputPhotOnset(targetInd-1)+500;
 end
@@ -242,32 +282,32 @@ toneDurPhot = round(soundData.ToneDuration/photoTimeStep);
 
 photoRaster = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,length(traceMBED));
 
-for i = 1:length(traceMBED)
-    alignTime = traceMBED(i);
+for ind = 1:length(traceMBED)
+    alignTime = traceMBED(ind);
     %find the time in the photometry trace
     photoPoint = find(traceTiming - alignTime > 0,1,'first');
-    photoRaster(:,i) = traceDF(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
+    photoRaster(:,ind) = traceDF(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
 end
 
 %make simple plot
 simplePlot = photoRaster;
-for i = 1:length(traceMBED)
-    simplePlot(:,i) = simplePlot(:,i)+i*0.5;
+for ind = 1:length(traceMBED)
+    simplePlot(:,ind) = simplePlot(:,ind)+ind*0.5;
 end
 
 %now I need to store different means
 
 photoAverages = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,numFreqs,numDBs);
 photoRasterStore = cell(numFreqs,numDBs);
-for i = 1:numFreqs
+for ind = 1:numFreqs
     for j = 1:numDBs
         %find all trials of the particular setting
-        targetFinder = find(trialMatrix(:,2) == uniqueFreqs(i) & trialMatrix(:,3) == uniqueDBs(j));
+        targetFinder = find(trialMatrix(:,2) == uniqueFreqs(ind) & trialMatrix(:,3) == uniqueDBs(j));
         %pull and average these traces
         tempHolder = photoRaster(:,targetFinder);
-        photoRasterStore{i,j} = tempHolder;
+        photoRasterStore{ind,j} = tempHolder;
         tempHolder = mean(tempHolder');
-        photoAverages(:,i,j) = tempHolder;
+        photoAverages(:,ind,j) = tempHolder;
     end
 end
 
@@ -278,9 +318,9 @@ end
 [riseRasters] = functionBasicRaster((riseInfo.t)',traceMBED,rasterWindow);
 %generate correct order for displaying things by freq/db
 sortingCounter = 1;
-for i = 1:numFreqs
+for ind = 1:numFreqs
     for j = 1:numDBs
-        sortingFinder = find(trialMatrix(:,2) == uniqueFreqs(i) & trialMatrix(:,3) == uniqueDBs(j));
+        sortingFinder = find(trialMatrix(:,2) == uniqueFreqs(ind) & trialMatrix(:,3) == uniqueDBs(j));
         sortIndex(sortingFinder) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
         sortingCounter = sortingCounter + size(sortingFinder,1);
     end
@@ -336,12 +376,12 @@ totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(1)));
 %This then makes an array of the full octave steps I've made
 octaveRange = zeros(totalOctaves + 1,2);
 octaveRange(1,1) = uniqueFreqs(1);
-for i = 1:totalOctaves
-    octaveRange (i+1,1) = octaveRange(i,1)*2;
+for ind = 1:totalOctaves
+    octaveRange (ind+1,1) = octaveRange(ind,1)*2;
 end
 %next, I find the positions from uniqueFreqs that match octaveRange
-for i = 1:size(octaveRange,1);
-    octaveRange(i,2) = find(round(uniqueFreqs) == octaveRange(i,1));
+for ind = 1:size(octaveRange,1);
+    octaveRange(ind,2) = find(round(uniqueFreqs) == octaveRange(ind,1));
 end
 %create a set of points for the raster axis
 rasterAxis = zeros(rasterWindow(2)-rasterWindow(1)+1,2);
@@ -358,8 +398,8 @@ rasterLabels(:,2) = [numDBs*soundData.ToneRepetitions:numDBs*soundData.ToneRepet
 rasterLabels(:,3) = [numDBs*soundData.ToneRepetitions/2:numDBs*soundData.ToneRepetitions:length(soundData.TrialMatrix)-numDBs*soundData.ToneRepetitions/2];
 
 rasterTicks = cell(numFreqs,1);
-for i = 1:numFreqs
-    rasterTicks{i} = num2str(rasterLabels(i,1));
+for ind = 1:numFreqs
+    rasterTicks{ind} = num2str(rasterLabels(ind,1));
 end
 
 %MAKE THE FIGURE
@@ -422,8 +462,8 @@ xlim(rasterWindow)
 subplot(3,3,6)
 plot(riseRasters(:,1),riseRasters(:,3),'k.')
 hold on
-for i = 1:numFreqs
-    plot([rasterWindow(1) rasterWindow(2)],[rasterLabels(i,2) rasterLabels(i,2)],'g')
+for ind = 1:numFreqs
+    plot([rasterWindow(1) rasterWindow(2)],[rasterLabels(ind,2) rasterLabels(ind,2)],'g')
 end
 plot([0 0],[1 length(trialMatrix)],'b')
 plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
@@ -446,6 +486,46 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
+% %now make a figure of individual traces!
+% 
+% %first, determine max and min values overall
+% 
+% for i = 1:numFreqs
+%     for j = 1:numDBs
+%         openFile = photoRasterStore{i,j};
+%         minVal(i,j) = min(min(openFile));
+%         maxVal(i,j) = max(max(openFile));
+%     end
+% end
+% 
+% fullMinVal = min(min(minVal));
+% fullMaxVal = max(max(maxVal));
+% 
+% %find the zero point on the raster
+% zeroPoint = find(rasterAxis(:,1) == 0);
+% zeroPoint = rasterAxis(zeroPoint,2);
+% 
+% hFig = figure;
+% 
+% for i = 1:numDBs
+%     subplot(1,numDBs,i)
+%     hold on
+%     for j = 1:numFreqs
+%         plot(photoRasterStore{j,i} + fullMaxVal*j)
+%         bigMax = max(max(photoRasterStore{j,i} + fullMaxVal*j));
+%     end
+%     xlim([0 length(photoRasterStore{j,i})])
+%     set(gca,'XTick',rasterAxis(:,2));
+%     set(gca,'XTickLabel',rasterAxis(:,1));
+%     plot([zeroPoint zeroPoint],[fullMinVal+fullMaxVal bigMax],'LineWidth',2)
+% end
+
+
+saveName = strcat(fileName,'Analysis','.mat');
+fname = saveName;
+pname = pwd;
+
+save(fullfile(pname,fname),'s');
 
 
 
@@ -460,12 +540,6 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
-
-
-
-
-
-
-
+end
 
 
