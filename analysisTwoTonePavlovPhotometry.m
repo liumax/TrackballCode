@@ -113,8 +113,9 @@ traceJittDiff = diff(traceJitt);
 %beginning
 findBig = find(inputPhotDiff > 600);
 %now we need to screen the big differences.
-for i = 1:length(findBig)
-    bigSize = findBig(i);
+whileCounter = 1;
+while length(findBig) >= whileCounter;
+    bigSize = findBig(whileCounter);
     if bigSize > length(inputPhotOnset)/2 %in the case of something coming near the end
         disp('Late Big Diff, deleting')
         inputPhotOnset(bigSize:end) = [];
@@ -123,6 +124,7 @@ for i = 1:length(findBig)
     else
         disp('Early Big Difference in Jitter')
     end
+    whileCounter = whileCounter + 1;
 end
 
 bigDiffs = inputPhotDiff(findBig);
