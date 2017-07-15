@@ -325,10 +325,12 @@ for ind = 1:numFreqs
         sortingCounter = sortingCounter + size(sortingFinder,1);
     end
 end
-
-riseRasters(:,3) = 0;
-riseRasters(:,3) = sortIndex(riseRasters(:,2));
-
+try
+    riseRasters(:,3) = 0;
+    riseRasters(:,3) = sortIndex(riseRasters(:,2));
+catch
+    riseRasters(:,3) = 0;
+end
 % %now lets try and make a gaussian convolution of riseRasters!
 % gaussAverage = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,numFreqs,numDBs);
 % gaussStore = cell(numFreqs,numDBs);
