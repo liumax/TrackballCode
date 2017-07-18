@@ -118,6 +118,7 @@ scQtUserData.tripSwitch = 0;
 
 % my additional fields:
 scQtUserData.trial = 0; % keep track of trial number
+scQtUserData.failTrig = 0; %trigger for failure of the graphing code. 
 
 pause(0.5);
 

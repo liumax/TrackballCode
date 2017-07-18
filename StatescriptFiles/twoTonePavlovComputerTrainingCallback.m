@@ -156,6 +156,12 @@ if ~isempty(strfind(newLine,'PlotTime'))
         plot(scQtUserData.lickAxes,lowHist,'b')
         plot(scQtUserData.lickAxes,hiHist,'r')
     catch
+        subplot(3,1,1)
+        title(num2str(scQtUserData.trial))
+        if scQtUserData.failTrig == 0
+            save('ERRORLOG',scQtUserData.licks,scQtUserData.lickCounter,scQtUserData.cueTime)
+            scQtUserData.failTrig = 1;
+        end
     end
     
 end
