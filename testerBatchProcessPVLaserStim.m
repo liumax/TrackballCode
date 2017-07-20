@@ -14,10 +14,13 @@ for masterCount = 1:numFolders
     %generates text that signifies path to the target folder
     targetPath = strcat(masterFolder,'\',masterFolders{masterCount});
     cd(targetPath)
-    %what lists matlab files in the folder. can extract based on file type.
-    fileName = what;
-    fileName = fileName.mat{1};
-    fileName = fileName(1:end-21)
+    tester = dir;
+    tester = {tester.name};
+    testInd = strfind(tester,'ML');
+    testInd = find(not(cellfun('isempty',testInd)));
+    fileName = tester{testInd(1)};
+    fileName = fileName(1:end-4);
+    
 %     periodFinder = strfind(fileName,'.');
 %     fileName = fileName(1:periodFinder-1);
     [s] = analysisPVStimAlone(fileName);
