@@ -108,7 +108,7 @@ set (gca,'Ydir','reverse')
 xlim([-1 1])
 ylim([min(fullMaster(:,indDistance))-10,max(fullMaster(:,indDistance))+10])
 
-title('PV Mod,Laser(b) Tone(g) by Depth Shank 1')
+title('PV Mod Shank 1')
 
 subplot(4,6,4)
 
@@ -123,7 +123,7 @@ set (gca,'Ydir','reverse')
 xlim([-1 1])
 ylim([min(fullMaster(:,indDistance))-10,max(fullMaster(:,indDistance))+10])
 
-title('PV Mod,Laser(b) Tone(g) by Depth Shank 2')
+title('PV Mod Shank 2')
 
 
 subplot(4,6,9)
@@ -155,7 +155,7 @@ set (gca,'Ydir','reverse')
 xlim([-1 1])
 ylim([min(fullMaster(:,indDistance))-10,max(fullMaster(:,indDistance))+10])
 
-title('MSN Mod,Laser(b) Tone(g) by Depth Shank 1')
+title('MSN Mod Shank 1')
 
 subplot(4,6,6)
 
@@ -170,7 +170,7 @@ set (gca,'Ydir','reverse')
 xlim([-1 1])
 ylim([min(fullMaster(:,indDistance))-10,max(fullMaster(:,indDistance))+10])
 
-title('MSN Mod,Laser(b) Tone(g) by Depth Shank 2')
+title('MSN Mod Shank 2')
 
 
 subplot(4,6,11)
