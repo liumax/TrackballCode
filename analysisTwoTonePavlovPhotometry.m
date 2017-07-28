@@ -90,12 +90,17 @@ traceTiming = [0:1/data.streams.x70G.fs:(1/data.streams.x70G.fs)*(length(data.st
 
 s.Photo.dFTrace = traceDF;
 s.Photo.dFTime = traceTiming;
+s.Photo.x70 = data.streams.x70G.data;
+s.Photo.x05 = data.streams.x05G.data;
+s.Photo.Raw = data.streams.Fi1r.data;
+s.Photo.RawRate = data.streams.Fi1r.fs;
 
 %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
 %additional functionality for peak finding.
 try
     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
 catch
+    disp('Peak Detection Failed')
     peakInfo = [];
     riseInfo = [];
     troughInfo = [];
@@ -188,7 +193,7 @@ if length(inputPhotDiff) ~= length(traceJittDiff)
 end
 
 s.Photo.Jitter = traceJitt;
-s.MBED.Jitter = inputPhot;
+s.MBED.Jitter = inputPhotOnset;
 
 %now lets deal with inputs. This is now designed to try and handle cases in
 %which sound pulses are not delivered. 
@@ -211,6 +216,8 @@ if xcLag ~= 0
 elseif length(onsetPhot) ~= length(traceMBED)
     error('Mismatch in Number of Tone Pulses')
 end
+
+s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
 
 %calculate raster in terms of time steps in photometry
 photoTimeStep = 1/data.streams.x70G.fs;

@@ -65,6 +65,9 @@ s.Locomotion = locoData;
 data = load(strcat(fileName,'.mat'));
 data=data.data;
 
+%store traces.
+s.Photo.x70 = data.streams.x70G.data;
+s.Photo.x05 = data.streams.x05G.data;
 
 %Code from Chris that performs isosbestic correction. 
 traceDF = isosbestic_correction(data);
@@ -232,6 +235,8 @@ end
 photoTimeStep = 1/data.streams.x70G.fs;
 rasterPhotWindow = round(rasterWindow/photoTimeStep);
 
+s.Photo.AlignTimes = traceMBED;
+
 %% Pull sound data!
 
 %extract data into matlab
@@ -239,6 +244,7 @@ soundName = strcat(fileName,'Sound.mat');
 soundFile = open(soundName);
 soundData = soundFile.soundData; %pulls sound data info
 
+s.SoundData = soundData;
 
 %I basically want to just figure out the order of things, since I should
 %have the pulses inside the photometry trace already. This should be found
