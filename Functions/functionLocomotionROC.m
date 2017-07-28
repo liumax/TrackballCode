@@ -65,24 +65,44 @@ for shuffInd = 1:shuffleReps
 
     %rates at which I will threshold as classifier
     rateRange = minRate:(maxRate-minRate)/rateInc:maxRate;
+    if length(rateRange) == 0
+        rocStore = zeros(4,rateInc);
+        for i = 1:rateInc
+            %need to conver i to the targeted rate
+            threshRate = 0;
+            %find all points at which we classify as locomotion
+            classifyInd = (double(smoothRate>=threshRate)+1)*2;
+            %compare by adding to locomotionInd
+            testInd = classifyInd + locomotionInd;
+            %find points with locomotion and classifier(4+1 = 5)
+            rocStore(i,1) = length(find(testInd == 5));
+            %find points with locomotion but no classifier (2+1 = 3)
+            rocStore(i,2) = length(find(testInd == 3));
+            %find points with no locomotion but classifier (4 + 0 = 4)
+            rocStore(i,3) = length(find(testInd == 4));
+            %find points with no locomotion and no classifier (2 + 0 = 2)
+            rocStore(i,4) = length(find(testInd == 2));
+        end
+    else
 
-    rocStore = zeros(4,rateInc);
+        rocStore = zeros(4,rateInc);
 
-    for i = 1:rateInc
-        %need to conver i to the targeted rate
-        threshRate = rateRange(i);
-        %find all points at which we classify as locomotion
-        classifyInd = (double(smoothRate>=threshRate)+1)*2;
-        %compare by adding to locomotionInd
-        testInd = classifyInd + locomotionInd;
-        %find points with locomotion and classifier(4+1 = 5)
-        rocStore(i,1) = length(find(testInd == 5));
-        %find points with locomotion but no classifier (2+1 = 3)
-        rocStore(i,2) = length(find(testInd == 3));
-        %find points with no locomotion but classifier (4 + 0 = 4)
-        rocStore(i,3) = length(find(testInd == 4));
-        %find points with no locomotion and no classifier (2 + 0 = 2)
-        rocStore(i,4) = length(find(testInd == 2));
+        for i = 1:rateInc
+            %need to conver i to the targeted rate
+            threshRate = rateRange(i);
+            %find all points at which we classify as locomotion
+            classifyInd = (double(smoothRate>=threshRate)+1)*2;
+            %compare by adding to locomotionInd
+            testInd = classifyInd + locomotionInd;
+            %find points with locomotion and classifier(4+1 = 5)
+            rocStore(i,1) = length(find(testInd == 5));
+            %find points with locomotion but no classifier (2+1 = 3)
+            rocStore(i,2) = length(find(testInd == 3));
+            %find points with no locomotion but classifier (4 + 0 = 4)
+            rocStore(i,3) = length(find(testInd == 4));
+            %find points with no locomotion and no classifier (2 + 0 = 2)
+            rocStore(i,4) = length(find(testInd == 2));
+        end
     end
 
     %calculate AUC using trapz

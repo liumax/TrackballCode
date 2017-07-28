@@ -44,7 +44,12 @@ addpath(subFolders)
 subFoldersCell = strsplit(subFolders,';')';
 
 %finds DIO folder, extracts D2 specifically
+
 [D2FileName] = functionFileFinder(subFoldersCell,'DIO','D2');
+if length(D2FileName) == 0
+    [D2FileName] = functionFileFinder(subFoldersCell,'DIO','Din2');
+end
+
 D2FileName = D2FileName{1};
 
 %extracts DIO stuffs!

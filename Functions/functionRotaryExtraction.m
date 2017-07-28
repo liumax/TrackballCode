@@ -15,9 +15,15 @@ stepSmall = 0.316;
 %% Data Extraction and Preprocessing: 
 %find the targeted files, extract file names
 [D3FileName] = functionFileFinder(subFoldersCell,'DIO','D3');
+if length(D3FileName) == 0
+    [D3FileName] = functionFileFinder(subFoldersCell,'DIO','Din3');
+end
 D3FileName = D3FileName{1};
 
 [D4FileName] = functionFileFinder(subFoldersCell,'DIO','D4');
+if length(D4FileName) == 0
+    [D4FileName] = functionFileFinder(subFoldersCell,'DIO','Din4');
+end
 D4FileName = D4FileName{1};
 
 %pull data from targeted files.
@@ -27,6 +33,9 @@ D4FileName = D4FileName{1};
 %pull data from DIO1 in case there is no DIO activity for locomotion for
 %extended periods of time. 
 [D1FileName] = functionFileFinder(subFoldersCell,'DIO','D1');
+if length(D1FileName) == 0
+    [D1FileName] = functionFileFinder(subFoldersCell,'DIO','Din1');
+end
 D1FileName = D1FileName{1};
 %pull data from targeted files.
 [DIO1Data] = readTrodesExtractedDataFile(D1FileName);
@@ -51,6 +60,20 @@ timeMax = max([dio1Times;dio3Times;dio4Times])+ 10;
 %help track the direction of the wheel.
 dio3Init = dio3States(1);
 dio4Init = dio4States(1); %NOTE ADJUSTED FROM 2
+
+%170726 Having problem where there is probably overlap of times between
+%dio3 and dio4. Trying to resolve with code that detects the same time
+%across both and deletes extraneous pulses.
+[C,ia,ib] = intersect(dio3Times,dio4Times);
+if length(ia) > 1 | length(ib) >1
+    %delete first value, because this is always the first time point
+    ia(1) = [];
+    ib(1) = [];
+    dio3Times(ia) = [];
+    dio3States(ia) = [];
+    dio4Times(ia) = [];
+    dio4States(ia) = [];
+end
 
 %now, generate a concatenated form of all time points. ia and ic give
 %indices, where catTimes = dioTimes(ia), and dioTimes = catTimes(ic)
@@ -117,6 +140,9 @@ repFinder = find(diff(timeStateArray(:,4))==0);
 if ~isempty(repFinder)
     timeStateArray(repFinder,:) = [];
 end
+
+%update catTimes
+catTimes = timeStateArray(:,1);
 %% Process State Data into Distance
 %process state data by converting states into a string, which allows for
 %easy search via strfind. 

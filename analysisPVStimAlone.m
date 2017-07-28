@@ -8,7 +8,7 @@ function [s] = analysisPVStimAlone(fileName);
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROCLoco = 0;
+toggleROCLoco = 1;
 
 
 s.Parameters.RasterWindow = [-2 4]; %seconds for raster window. 
@@ -164,6 +164,9 @@ master(:,masterInd) = posArray(s.SortedPeakWaveOrder,2); masterHeader{masterInd}
 
 %find DIO folder and D1 file for analysis
 [D1FileName] = functionFileFinder(subFoldersCell,'DIO','D1');
+if length(D1FileName) == 0
+    [D1FileName] = functionFileFinder(subFoldersCell,'DIO','Din1');
+end
 D1FileName = D1FileName{1};
 
 %extracts DIO stuffs! this code is written to extract inputs for d1
