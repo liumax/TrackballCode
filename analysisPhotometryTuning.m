@@ -236,7 +236,7 @@ photoTimeStep = 1/data.streams.x70G.fs;
 rasterPhotWindow = round(rasterWindow/photoTimeStep);
 
 s.Photo.AlignTimes = traceMBED;
-
+                                                        
 %% Pull sound data!
 
 %extract data into matlab

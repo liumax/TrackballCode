@@ -89,6 +89,8 @@ for bigInd = 1:numFiles
     rasterAxis(:,2) = [0:length(minAmpDF)/(rasterWindow(2) - rasterWindow(1)):length(minAmpDF)];
     rasterAxis(1,2) = 1;
     
+    totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(1)));
+    
     octaveRange = zeros(totalOctaves + 1,2);
     octaveRange(1,1) = uniqueFreqs(1);
     for ind = 1:totalOctaves
