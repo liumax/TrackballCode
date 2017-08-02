@@ -106,14 +106,6 @@ if ~isempty(strfind(newLine,'PlotTime'))
         cla(scQtUserData.ax2); %clears ax2
         cla(scQtUserData.ax3);
 
-        %finds first lick and stores
-        firstLick = scQtUserData.licks(:,1) - scQtUserData.cueTime(scQtUserData.trial);
-        firstLick(firstLick <= 0) = [];
-        if numel(firstLick)~= 0
-            scQtUserData.firstLick(scQtUserData.trial) = firstLick(1);
-        else
-            scQtUserData.firstLick(scQtUserData.trial) = 0;
-        end
 
         %cleans up raster with the cue time
         scQtUserData.licks(scQtUserData.licks(:,2) == scQtUserData.trial,1) = scQtUserData.licks(scQtUserData.licks(:,2) == scQtUserData.trial,1) - scQtUserData.cueTime(scQtUserData.trial);
@@ -127,7 +119,7 @@ if ~isempty(strfind(newLine,'PlotTime'))
         plot(lickTrunc(:,1),lickTrunc(:,2),'b.',...
             'parent',scQtUserData.ax1);
         axis(scQtUserData.ax1,[-2 6 0.5 200])
-
+        title(num2str(scQtUserData.trial))
 
 %         plot(lickTrunc(findLow,1),lickTrunc(findLow,2),'b.',...
 %             'parent',scQtUserData.ax1);
@@ -137,7 +129,6 @@ if ~isempty(strfind(newLine,'PlotTime'))
 %         axis(scQtUserData.ax1,[scQtUserData.lickAxes(1) scQtUserData.lickAxes(end) 0.5 scQtUserData.trial])
 
         subplot(3,1,2)
-        plot(scQtUserData.firstLick,'b.','parent',scQtUserData.ax2)
 
         subplot(3,1,3)
         %process histogram data
@@ -158,10 +149,8 @@ if ~isempty(strfind(newLine,'PlotTime'))
     catch
         subplot(3,1,1)
         title(num2str(scQtUserData.trial))
-        if scQtUserData.failTrig == 0
-            save('ERRORLOG',scQtUserData.licks,scQtUserData.lickCounter,scQtUserData.cueTime)
-            scQtUserData.failTrig = 1;
-        end
+        disp(strcat('lengthLicks',num2str(length(scQtUserData.licks))));
+        disp(strcat('lickCounter',num2str(scQtUserData.lickCounter)));
     end
     
 end
