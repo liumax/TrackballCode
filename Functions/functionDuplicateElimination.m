@@ -166,9 +166,9 @@ for shnkInd = 1:shanks
 
                         while whileCounter ~= promptCounter
                             try
-                                prompt = 'Decide on Units: k: keep both f: keep first s: keep second';
+                                prompt = 'Decide on Units: k: keep both f: keep first s: keep second n: discard both';
                                 str = input(prompt,'s');
-                                if str~='k' & str~='f' & str~='s'
+                                if str~='k' & str~='f' & str~='s' & str~='n'
                                     error
                                 else
                                     whileCounter = 1;
@@ -229,6 +229,36 @@ for shnkInd = 1:shanks
                             targetUnits(1)=[];
                             %dont need to advance unitInd since I'm
                             %deleting 
+                        elseif strfind(str,'n')
+                            disp('Deleting Both Units')
+                            %create new variable in s to record units as
+                            %being deleted. 
+                            s.DeletedUnits.(s.DesignationName{uniqueUnits(unitInd)}) = (s.DesignationName{indNeighbor(compFinder(1))});
+                            s.DeletedUnits.(s.DesignationName{indNeighbor(compFinder(1))}) = (s.DesignationName{uniqueUnits(unitInd)});
+                            %deleted data from targeted units
+                            s = rmfield(s,(s.DesignationName{indNeighbor(compFinder(1))}));
+                            s = rmfield(s,(s.DesignationName{uniqueUnits(unitInd)}));
+                            
+                            %remove from s s.DesignationName and designation array
+                            %find the target name
+                            nameInd = find(~cellfun(@isempty,strfind(s.DesignationName,s.DesignationName{indNeighbor(compFinder(1))})));
+                            s.DesignationName(nameInd) = [];
+%                             s.DesignationName(nameInd) = [];
+                            s.DesignationArray(nameInd,:) = [];
+                            
+                            %remove from s s.DesignationName and designation array
+                            nameInd = find(~cellfun(@isempty,strfind(s.DesignationName,s.DesignationName{uniqueUnits(unitInd)})));
+                            s.DesignationName(nameInd) = [];
+%                             s.DesignationName(nameInd) = [];
+                            s.DesignationArray(nameInd,:) = [];
+                            %delete compFinder, since the target of
+                            %comparison has been removed
+                            compFinder = [];
+                            targetUnits(1)=[];
+                            %dont need to advance unitInd since I'm
+                            %deleting 
+                            
+                            
                         end
                     end
                 end
