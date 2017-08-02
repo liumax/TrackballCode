@@ -200,9 +200,11 @@ s.MBED.Jitter = inputPhotOnset;
 % pull output timings
 try
     traceMBED = data.epocs.PtC0.onset;
+    interpTrig = 0;
 catch
     disp('No TDT Tone Pulses Detected')
     traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
+    interpTrig = 1;
 end
 traceMBEDDiff = diff(traceMBED);
 
@@ -214,7 +216,14 @@ xcLag = lags(maxInd);
 if xcLag ~= 0
     error('Tones Not Aligned')
 elseif length(onsetPhot) ~= length(traceMBED)
-    error('Mismatch in Number of Tone Pulses')
+    disp('Mismatch in Number of Tone Pulses')
+    if interpTrig == 1
+        error('Already Using Interpolated Data for Tone Times, ERROR')
+    elseif interpTrig == 0
+        disp('Replacing with Interpolated Data')
+        traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
+    end
+    
 end
 
 s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
