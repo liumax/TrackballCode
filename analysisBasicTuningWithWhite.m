@@ -20,7 +20,7 @@
 %SoundData: all the sound data from the tuning curve, with addition of
 %unique frequencies/dbs and number of frequencies/dbs.
 
-function [s] = analysisBasicTuning(fileName);
+function [s] = analysisBasicTuningWithWhite(fileName);
 %% Constants and things you might want to tweak
 %TOGGLES FOR ENABLING/DISABLING FEATURES
 s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
