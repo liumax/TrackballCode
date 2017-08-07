@@ -25,8 +25,8 @@ function [s] = analysisBasicTuningWithWhite(fileName);
 %TOGGLES FOR ENABLING/DISABLING FEATURES
 s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
-toggleROC = 0; %toggle for tuning on/off ROC analysis
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+toggleROC = 1; %toggle for tuning on/off ROC analysis
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -372,6 +372,14 @@ elseif length(dioTimes) ~= length(s.SoundData.Frequencies) %error case
 end
 disp('DIO data successfully extracted and stored.')
 
+%170807 adding edit to allow for windowing by the time filter
+%We want to remove points beyond the range of the time filter. Do this
+%here.
+
+timeFinder = find(master(:,1) > s.TimeFilterRange(2));
+master(timeFinder,:) = [];
+totalTrialNum = length(master);
+
 %% Extract data from rotary encoder.
 [funcOut] = functionRotaryExtraction(s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
 s.RotaryData = funcOut;
@@ -383,7 +391,7 @@ velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
 length(s.RotaryData.Velocity);
 for i = 1:totalTrialNum
     %find the time from the velocity trace closest to the actual stim time
-    targetInd = find(s.RotaryData.Velocity(:,1)-dioTimes(i) > 0,1,'first');
+    targetInd = find(s.RotaryData.Velocity(:,1)-master(i,1) > 0,1,'first');
     %pull appropriate velocity data
     velRaster(:,i) = s.RotaryData.Velocity([targetInd+jumpsBack:targetInd+jumpsForward],2);
 end
@@ -411,7 +419,7 @@ plot([0 0],[ylim],'b');
 xlim([velVector(1) velVector(end)])
 title('Average Velocity Traces')
 
-%see if EDR data exists
+%% see if EDR data exists
 fileNames = dir(homeFolder);
 fileNames = {fileNames.name};
 targetFileFinder = strfind(fileNames,'.EDR'); %examines names for D1
@@ -581,8 +589,20 @@ for i = 1:numUnits
     s.(desigNames{i}).ProbGen = probStoreGen;
     
     if toggleROC == 1
-        targetName = desigNames{i};
-        [s] = functionLocomotionROC(s,targetName);
+        [velOut] = functionLocomotionROC(spikeTimes,s.RotaryData.Velocity);
+        s.(desigNames{i}).TrueAUC = velOut.TrueAUC;
+        s.(desigNames{i}).ShuffleAUC = velOut.ShuffleAUC;
+    else
+        s.(desigNames{i}).TrueAUC = 0;
+        s.(desigNames{i}).ShuffleAUC = zeros(1000,1);
+    end
+    
+    AUCLims(1) = prctile(s.(desigNames{i}).ShuffleAUC,0.05);
+    AUCLims(2) = prctile(s.(desigNames{i}).ShuffleAUC,99.95);
+    if s.(desigNames{i}).TrueAUC > AUCLims(2) | s.(desigNames{i}).TrueAUC < AUCLims(1)
+        s.(desigNames{i}).AUCSig = 1;
+    else
+        s.(desigNames{i}).AUCSig = 0;
     end
     
 end
