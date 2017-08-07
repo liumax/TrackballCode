@@ -64,6 +64,7 @@ modRes1 = (fullMaster(:,indLaserResAverage)-fullMaster(:,indPreResAverage))./(fu
 scottModRes1 = (fullMaster(:,indLaserResAverage))./(fullMaster(:,indLaserResAverage)+fullMaster(:,indPreResAverage));
 
 hFig = figure
+set(hFig, 'Position', [10 80 1240 850])
 
 %find pvs and msn
 msns = find(fullMaster(:,indPVMSN) ==0);
@@ -200,5 +201,13 @@ ylim([0 1])
 title('Mod Index (x) vs Loco AUC (R = sig)')
 
 
+spikeGraphName = 'LaserStimSummary';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
