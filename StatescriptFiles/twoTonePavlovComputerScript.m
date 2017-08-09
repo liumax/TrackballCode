@@ -54,7 +54,7 @@ scQtUserData.Master(:,1) = x;
 %calculate lag for reward delivery
 k = 2.5;
 p = (1-exp(-k))*rand(scQtUserData.totalTrials,1);
-tau = (800)/k;
+tau = (300)/k; %adjusted 170808 to try and improve behavior. 
 x = round(scQtUserData.rewDelay + (-log(1-p))*tau); 
 scQtUserData.RewDelayMatrix = x;
 

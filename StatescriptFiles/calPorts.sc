@@ -1,22 +1,22 @@
 int openDur
 
 function 1
-    portout[4] = 1
+    portout[2] = 1
     do in openDur
-        portout[4] = 0
+        portout[2] = 0
     end
 end;
 
 function 2
-    portout[5] = 1
+    portout[2] = 1
     do in openDur
-        portout[5] = 0
+        portout[2] = 0
     end
 end;
 
 function 3
-    portout[8] = 1
+    portout[2] = 1
     do in openDur
-        portout[8] = 0
+        portout[2] = 0
     end
 end;
