@@ -184,9 +184,9 @@ end
 % most believable result out of all possibilities. 
 
 try
-    newDist = smooth(fillDist,7,'lowess');
+    newDist = smooth(fillDist,3,'lowess');
 %     newDist = smooth(fillDist,31,'lowess'); %170707 Adjusting to 7. 31 is
-%     unnecessary levels of smoothing...
+%     unnecessary levels of smoothing... 170811 adjusting to 3. 
     failTrigger = 0;
 catch
     disp('Distance Smoothing Failed. Suggests there is no movement. Replacing with zeros')
