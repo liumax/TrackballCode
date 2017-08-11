@@ -67,7 +67,7 @@ s.MBED.RewDur = rewDur;
 s.MBED.ToneDelivery = onsetPhot;
 s.MBED.HiTrials = trialHi;
 s.MBED.LowTrials = trialLow;
-
+s.MBED.Raw = portStates;
 %Now pull locomotor data
 
 [locoData] = functionMBEDrotary(portStates.inStates(:,4),portStates.inStates(:,5),portStates.tStamps/1000,locoTimeStep);
