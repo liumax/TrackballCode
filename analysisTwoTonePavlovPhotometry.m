@@ -81,19 +81,31 @@ data = load(strcat(fileName,'.mat'));
 data=data.data;
 
 
-%Code from Chris that performs isosbestic correction. 
-traceDF = isosbestic_correction(data);
+% %Code from Chris that performs isosbestic correction. 
+% traceDF = isosbestic_correction(data);
+% 
+% 
+% %pull timestamps for fluorescence
+% traceTiming = [0:1/data.streams.x70G.fs:(1/data.streams.x70G.fs)*(length(data.streams.x70G.data)-1)];
+% 
+% s.Photo.dFTrace = traceDF;
+% s.Photo.dFTime = traceTiming;
+% s.Photo.x70 = data.streams.x70G.data;
+% s.Photo.x05 = data.streams.x05G.data;
+% s.Photo.Raw = data.streams.Fi1r.data;
+% s.Photo.RawRate = data.streams.Fi1r.fs;
 
 
-%pull timestamps for fluorescence
-traceTiming = [0:1/data.streams.x70G.fs:(1/data.streams.x70G.fs)*(length(data.streams.x70G.data)-1)];
+%170809 Replacing with scott code
+[filtSig1,filtSig2,traceDF,traceTiming] = functionPhotometryRawExtraction(data);
 
 s.Photo.dFTrace = traceDF;
 s.Photo.dFTime = traceTiming;
-s.Photo.x70 = data.streams.x70G.data;
-s.Photo.x05 = data.streams.x05G.data;
+s.Photo.x70 = filtSig1;
+s.Photo.x05 = filtSig2;
 s.Photo.Raw = data.streams.Fi1r.data;
 s.Photo.RawRate = data.streams.Fi1r.fs;
+
 
 %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
 %additional functionality for peak finding.
@@ -229,7 +241,7 @@ end
 s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
 
 %calculate raster in terms of time steps in photometry
-photoTimeStep = 1/data.streams.x70G.fs;
+photoTimeStep = mean(diff(traceTiming));
 rasterPhotWindow = round(rasterWindow/photoTimeStep);
 
 %% Now lets sort out responses
