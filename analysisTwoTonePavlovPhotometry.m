@@ -389,12 +389,11 @@ s.VelRaster.Axis = velRasterAxis;
 %% Licking Data
 
 lickData = trialParams.licking;
+s.MBED.Licks = lickData(:,1);
 
 if length(lickData)>0
 
     lickTrueTimes = interp1(onsetPhot/1000,traceMBED,lickData(:,1)/1000);
-
-
 
     [lickRasterRew] = functionBasicRaster(lickData(:,1)/1000,rewTimes/1000,rasterWindow);
     [lickRasterTone] = functionBasicRaster(lickData(:,1)/1000,onsetPhot/1000,rasterWindow);
@@ -541,12 +540,12 @@ set(gca,'XTick',rasterAxis(:,2));
 set(gca,'XTickLabel',rasterAxis(:,1));
 title('High Trials')
 
-%plot out photometry to lick
-subplot(4,3,9)
-plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick'),'LineWidth',2)
-hold on
-plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick')+std(photoRasterLick'))
-plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick')-std(photoRasterLick'))
+% %plot out photometry to lick
+% subplot(4,3,9)
+% plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick'),'LineWidth',2)
+% hold on
+% plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick')+std(photoRasterLick'))
+% plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick')-std(photoRasterLick'))
 
 lickRastWindow = [-1 1];
 lickPhotWindow = round(lickRastWindow/photoTimeStep);
