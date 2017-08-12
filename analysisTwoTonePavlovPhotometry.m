@@ -341,18 +341,25 @@ s.PhotoRaster.TimeStep = photoTimeStep;
 %% Velocity Data
 % Here, we will use the photometry as the base, since it is probably more
 % reliable
+if length(locoData.Velocity) > 0
+    velTrueTime = interp1(onsetPhot/1000,traceMBED,locoData.Velocity(:,1));
 
-velTrueTime = interp1(onsetPhot/1000,traceMBED,locoData.Velocity(:,1));
+    %in the current iteration, this has issues because the photometry cant
+    %align without pulses, and i only have output pulses from the MBED when the
+    %sound turns on. Therefore, I will need to crop things out.
 
-%in the current iteration, this has issues because the photometry cant
-%align without pulses, and i only have output pulses from the MBED when the
-%sound turns on. Therefore, I will need to crop things out.
-
-findVelFirst = find(~isnan(velTrueTime),1,'first');
-findVelLast = find(~isnan(velTrueTime),1,'last');
-%find nearest in photometry signal
-findPhotFirst = find(traceTiming - velTrueTime(findVelFirst)>0,1,'first');
-findPhotLast = find(traceTiming - velTrueTime(findVelLast)>0,1,'first');
+    findVelFirst = find(~isnan(velTrueTime),1,'first');
+    findVelLast = find(~isnan(velTrueTime),1,'last');
+    %find nearest in photometry signal
+    findPhotFirst = find(traceTiming - velTrueTime(findVelFirst)>0,1,'first');
+    findPhotLast = find(traceTiming - velTrueTime(findVelLast)>0,1,'first');
+else
+    velTrueTime = [];
+    findVelFirst = [];
+    findVelLast = [];
+    findPhotFirst = 1;
+    findPhotLast = length(traceTiming);
+end
 
 %now lets align the velocity with tone
 %since step size for locomotion is set, lets use that to calculate raster
@@ -366,8 +373,9 @@ for i = 1:length(traceMBED)
         velRaster(:,i) = locoData.Velocity((findTime + velWindow(1)):(findTime + velWindow(2)),2);
     else
         disp('EDGE ISSUE')
-%         disp(i)
+        disp(i)
         velRaster(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
+        break
     end
 end
 
@@ -389,8 +397,9 @@ for i = 1:length(rewTimes)
         velRasterRew(:,i) = locoData.Velocity((findTime + velWindow(1)):(findTime + velWindow(2)),2);
     else
         disp('EDGE ISSUE')
-%         disp(i)
-        velRaster(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
+        disp(i)
+        velRasterRew(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
+        break
     end
 end
 
@@ -470,9 +479,14 @@ set(hFig, 'Position', [10 80 1240 850])
 %plot overall photometry trace and locomotion trace
 subplot(4,3,1)
 hold on
-plot(velTrueTime(findVelFirst:findVelLast),(locoData.Velocity(findVelFirst:findVelLast,2)-min(locoData.Velocity(findVelFirst:findVelLast,2)))/(max(locoData.Velocity(findVelFirst:findVelLast,2))-min(locoData.Velocity(findVelFirst:findVelLast,2))))
-plot(traceTiming(findPhotFirst:1000:findPhotLast),(traceDF(findPhotFirst:1000:findPhotLast)-min(traceDF(findPhotFirst:findPhotLast)))/(max(traceDF(findPhotFirst:findPhotLast))-min(traceDF(findPhotFirst:findPhotLast))),'r')
-xlim([velTrueTime(findVelFirst),velTrueTime(findVelLast)])
+if length(locoData.Velocity > 0)
+    plot(velTrueTime(findVelFirst:findVelLast),(locoData.Velocity(findVelFirst:findVelLast,2)-min(locoData.Velocity(findVelFirst:findVelLast,2)))/(max(locoData.Velocity(findVelFirst:findVelLast,2))-min(locoData.Velocity(findVelFirst:findVelLast,2))))
+    plot(traceTiming(findPhotFirst:1000:findPhotLast),(traceDF(findPhotFirst:1000:findPhotLast)-min(traceDF(findPhotFirst:findPhotLast)))/(max(traceDF(findPhotFirst:findPhotLast))-min(traceDF(findPhotFirst:findPhotLast))),'r')
+    xlim([velTrueTime(findVelFirst),velTrueTime(findVelLast)])
+else
+    plot(traceTiming(findPhotFirst:1000:findPhotLast),(traceDF(findPhotFirst:1000:findPhotLast)-min(traceDF(findPhotFirst:findPhotLast)))/(max(traceDF(findPhotFirst:findPhotLast))-min(traceDF(findPhotFirst:findPhotLast))),'r')
+    xlim([traceTiming(findPhotFirst),traceTiming(findPhotLast)])
+end
 title('Normalized Vel (b) and Photometry (r)')
 
 %plot average hi and low traces for photometry
