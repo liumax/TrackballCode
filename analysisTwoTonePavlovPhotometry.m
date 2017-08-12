@@ -373,9 +373,9 @@ for i = 1:length(traceMBED)
         velRaster(:,i) = locoData.Velocity((findTime + velWindow(1)):(findTime + velWindow(2)),2);
     else
         disp('EDGE ISSUE')
-        disp(i)
+%         disp(i)
         velRaster(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
-        break
+%         break
     end
 end
 
@@ -397,9 +397,9 @@ for i = 1:length(rewTimes)
         velRasterRew(:,i) = locoData.Velocity((findTime + velWindow(1)):(findTime + velWindow(2)),2);
     else
         disp('EDGE ISSUE')
-        disp(i)
+%         disp(i)
         velRasterRew(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
-        break
+%         break
     end
 end
 
