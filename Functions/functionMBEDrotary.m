@@ -200,6 +200,7 @@ end
 if cumDist(end) == 0
     failTrigger = 1;
     disp('No Coherent Movement Detected, Do Have Wobbles')
+    cumDist = 0;
 end
 
 mouseVel = diff(newDist)/interpStep;
