@@ -19,6 +19,7 @@ trialNumStore = zeros(5,2);
 
 
 for bigInd = 1:length(testNames)
+    trialNumStore(bigInd(1),1) = masterInd;
     load(testNames{bigInd})
     %first, lets get all of our time points.
 
@@ -119,7 +120,7 @@ for bigInd = 1:length(testNames)
     plot(licksPostHi)
     title('Licks Post (r = low b = hi)')
     
-    
+    trialNumStore(bigInd(1),2) = masterInd+length(timeHi)-1;
     masterInd = masterInd+length(timeHi);
 end
 
@@ -159,10 +160,12 @@ xlabel('Trials')
 subplot(3,3,5)
 hist(bigMaster(:,2),[1:20])
 title('Histogram of AntiLicks Hi')
+xlim([0 20])
 
 subplot(3,3,6)
 hist(bigMaster(:,5),[1:20])
 title('Histogram of AntiLicks Low')
+xlim([0 20])
 
 subplot(3,3,7)
 plot(bigMaster(:,2) - bigMaster(:,1))
@@ -172,23 +175,85 @@ title('Anticipatory Licks Across Trials')
 ylabel('Licks')
 xlabel('Trials')
 
+subplot(3,3,8)
+hist(bigMaster(:,2) - bigMaster(:,1),[-10:20])
+title('Histogram of AntiLicks Hi BaseSub')
+xlim([-10 20])
+
+subplot(3,3,9)
+hist(bigMaster(:,5) - bigMaster(:,4),[-10:20])
+title('Histogram of AntiLicks Low BaseSub')
+xlim([-10 20])
+
+%lets take day 9 as a test case, since this has the biggest range in terms
+%of some trials in which the no-rew tone produces lick responses, and a
+%bunch of times it doesnt.
+
+figure
+plot(bigMaster(751:850,2))
+hold on
+plot(bigMaster(751:850,5),'r')
 
 
+falseStarts = find(bigMaster(:,5) >= 4);
+
+targetStarts = find(falseStarts >= 751 & falseStarts <= 850);
+
+targetTraces = bigStruct.LowRaster(:,falseStarts(targetStarts));
+
+%find matched number of low licks
+
+noStarts = find(bigMaster(:,5) == 0);
+noStarts = noStarts(noStarts >= 751 & noStarts <= 850);
+selectionInd = randperm(length(noStarts),length(targetStarts));
+noStartTraces = bigStruct.LowRaster(:,noStarts(selectionInd));
+
+meanTarget = mean(targetTraces');
+meanNoTarget = mean(noStartTraces');
+
+figure
+plot(meanTarget)
+hold on
+plot(meanNoTarget,'r')
+
+%hmm, looks like a bit of a difference 
+
+%try plotting out while excluding the first trials
+meanTarget = mean(targetTraces(:,2:end)');
+meanNoTarget = mean(noStartTraces(:,2:end)');
+figure
+plot(meanTarget)
+hold on
+plot(meanNoTarget,'r')
+
+%okay, difference went away. LOL.
+
+%hmm...maybe i should work on the peak detection failures instead...
+
+%doing work on the findphotopeaks code now. 
+
+%okay...so made a function that should do this properly. 
+
+%plot all licking behavior over time
+
+figure
+hold on
+plot(smooth(bigMaster(:,1),21),'b')
+plot(smooth(bigMaster(:,2),21),'r')
+plot(smooth(bigMaster(:,4),21),'k')
+plot(smooth(bigMaster(:,5),21),'g')
 
 
+%plot out velocities
+figure
+imagesc(bigStruct.VelHi')
+colormap('parula')
+figure
+imagesc(bigStruct.VelLow')
+colormap('parula')
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+for i = 1:95
+    averageTraceHi(:,i) = mean(bigStruct.HiRaster(:,(i-1)*10+1:(i*10))');
+    averageTraceLow(:,i) = mean(bigStruct.LowRaster(:,(i-1)*10+1:(i*10))');
+    
+end
