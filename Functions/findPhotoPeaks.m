@@ -104,7 +104,7 @@ end
 % Remove outliers: (get rid of anything >4 std below minimum)
 zthresh = -4;
 [z] = zscore(corrData(troughInfo.sampleNum))';
-rmInds = find(z<zthresh | riseInfo.amp<0);
+rmInds = find((z<zthresh)' | riseInfo.amp<0);
 peakInfo.t(rmInds) = [];
 peakInfo.sampleNum(rmInds) = [];
 peakInfo.amp(rmInds) = [];
@@ -130,7 +130,7 @@ subplot(2,1,1)
 hold on
 plot(t,corrData,'k')
 hold on
-axis([peakInfo.t(1) peakInfo.t(end) -.02 0.3])
+% axis([peakInfo.t(1) peakInfo.t(end) -.02 0.3])
 plot(peakInfo.t,corrData(peakInfo.sampleNum),'b.')
 plot(riseInfo.t,corrData(riseInfo.sampleNum),'g.')
 plot(troughInfo.t,corrData(troughInfo.sampleNum),'r.')
