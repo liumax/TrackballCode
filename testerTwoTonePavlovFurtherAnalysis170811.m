@@ -90,40 +90,42 @@ for bigInd = 1:length(testNames)
 
     %plot out some basic stuff
 
-    figure
-    subplot(3,3,1)
-    hist(diff(timeITI)/1000)
-    title('Histogram of Tone ITIs')
-
-    subplot(3,3,2)
-    hist((timeRew - timeHi)/1000);
-    title('Histogram of Reward Delay')
-    
-    subplot(3,3,3)
-    title(testNames{bigInd})
-
-    subplot(3,3,4)
-    plot(licksPreLow,'r')
-    hold on
-    plot(licksPreHi)
-    title('Licks Pre (r = low b = hi)')
-
-    subplot(3,3,5)
-    plot(licksAntiLow,'r')
-    hold on
-    plot(licksAntiHi)
-    title('Licks Anti (r = low b = hi)')
-
-    subplot(3,3,6)
-    plot(licksPostLow,'r')
-    hold on
-    plot(licksPostHi)
-    title('Licks Post (r = low b = hi)')
+%     figure
+%     subplot(3,3,1)
+%     hist(diff(timeITI)/1000)
+%     title('Histogram of Tone ITIs')
+% 
+%     subplot(3,3,2)
+%     hist((timeRew - timeHi)/1000);
+%     title('Histogram of Reward Delay')
+%     
+%     subplot(3,3,3)
+%     title(testNames{bigInd})
+% 
+%     subplot(3,3,4)
+%     plot(licksPreLow,'r')
+%     hold on
+%     plot(licksPreHi)
+%     title('Licks Pre (r = low b = hi)')
+% 
+%     subplot(3,3,5)
+%     plot(licksAntiLow,'r')
+%     hold on
+%     plot(licksAntiHi)
+%     title('Licks Anti (r = low b = hi)')
+% 
+%     subplot(3,3,6)
+%     plot(licksPostLow,'r')
+%     hold on
+%     plot(licksPostHi)
+%     title('Licks Post (r = low b = hi)')
     
     trialNumStore(bigInd(1),2) = masterInd+length(timeHi)-1;
     masterInd = masterInd+length(timeHi);
 end
 
+
+save('AnalysisResults','bigMaster','bigStruct','trialNumStore','sumMaster')
 
 
 %plot out some basics
@@ -252,8 +254,14 @@ figure
 imagesc(bigStruct.VelLow')
 colormap('parula')
 
-for i = 1:95
-    averageTraceHi(:,i) = mean(bigStruct.HiRaster(:,(i-1)*10+1:(i*10))');
-    averageTraceLow(:,i) = mean(bigStruct.LowRaster(:,(i-1)*10+1:(i*10))');
-    
-end
+% for i = 1:85
+%     averageTraceHi(:,i) = mean(bigStruct.HiRaster(:,(i-1)*10+1:(i*10))');
+%     averageTraceLow(:,i) = mean(bigStruct.LowRaster(:,(i-1)*10+1:(i*10))');
+%     
+% end
+
+
+
+ 
+
+
