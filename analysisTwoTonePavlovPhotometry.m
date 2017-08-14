@@ -110,17 +110,17 @@ s.Photo.RawRate = data.streams.Fi1r.fs;
 %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
 %additional functionality for peak finding.
 try
-    [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
+    [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.01);
+%     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
 catch
     disp('Peak Detection Failed')
-    peakInfo = [];
-    riseInfo = [];
-    troughInfo = [];
+    targetPeaks = [];
+    newSmoothDS = [];
 end
 
-s.Photo.Peaks.Peak = peakInfo;
-s.Photo.Peaks.Rise = riseInfo;
-s.Photo.Peaks.Trough = troughInfo;
+s.Photo.Peaks = targetPeaks;
+s.Photo.Photo.x70dF = newSmoothDS;
+s.Photo.Photo.x70dFTime = t_ds;
 
 %pull jittered signal
 traceJitt = data.epocs.PtE1.onset;
