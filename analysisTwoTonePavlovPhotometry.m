@@ -410,7 +410,7 @@ s.VelRaster.Axis = velRasterAxis;
 %% Licking Data
 
 lickData = trialParams.licking;
-s.MBED.Licks = lickData(:,1);
+s.MBED.Licks = lickData;
 
 if length(lickData)>0
 
