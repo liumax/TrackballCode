@@ -23,10 +23,10 @@
 function [s] = analysisBasicTuningWithWhite(fileName);
 %% Constants and things you might want to tweak
 %TOGGLES FOR ENABLING/DISABLING FEATURES
-s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROC = 1; %toggle for tuning on/off ROC analysis
+toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
 s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
@@ -379,6 +379,22 @@ disp('DIO data successfully extracted and stored.')
 timeFinder = find(master(:,1) > s.TimeFilterRange(2));
 master(timeFinder,:) = [];
 totalTrialNum = length(master);
+disp('Time Filter Applied')
+
+%now we want to determine how many trials were present for each tone. This
+%should be a fairly simple nested for loop.
+
+matrixTrialNum = zeros(numFreqs,numDBs);
+for freqInd = 1:numFreqs
+    for dbInd = 1:numDBs
+        matrixTrialNum(freqInd,dbInd) = length(find(master(:,2) == uniqueFreqs(freqInd) & master(:,3) == uniqueDBs(dbInd)));
+    end
+end
+
+s.TrialMatrix = master;
+
+s.TrialNumbers = matrixTrialNum;
+s.RepArray = repArray;
 
 %% Extract data from rotary encoder.
 [funcOut] = functionRotaryExtraction(s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
@@ -909,11 +925,13 @@ else %in the case you dont want to do tuning selection, default to normal system
         plot([0 0],[ylim],'b');
         plot([toneDur toneDur],[ylim],'b');
         rasterFreqLines = zeros(numFreqs,2);
-        rasterFreqLines(:,1) = cumsum(sum(repArray'));
+        rasterFreqLines(:,1) = cumsum(sum(matrixTrialNum'));
         rasterFreqLines(:,2) = uniqueFreqs;
         %this generates green lines separating by Frequency
+        tempHold = 1;
         for k = 1:size(uniqueFreqs,1)
-            plot(s.Parameters.RasterWindow,[toneReps*numDBs*k toneReps*numDBs*k],'g','LineWidth',1)
+            plot(s.Parameters.RasterWindow,[tempHold+sum(matrixTrialNum(k,:)) tempHold+sum(matrixTrialNum(k,:))],'g','LineWidth',1)
+            tempHold = tempHold + sum(matrixTrialNum(k,:));
         end
         set(gca,'YTick',rasterFreqLines(:,1));
         set(gca,'YTickLabel',rasterFreqLines(:,2));
