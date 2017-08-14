@@ -77,20 +77,8 @@ hold on
 plot(fullMaster(pvs,indPkTrough),fullMaster(pvs,indOverFire),'ro')
 title('PeakTrough(x) vs Spike Rate(y), PV in red')
 
-subplot(4,3,4)
-hist(fullMaster(pvs,indOverFire),100)
-title('Histogram of PV Firing Rate')
 
-subplot(4,3,7)
-hist(fullMaster(msns,indOverFire),100)
-title('Histogram of MSN Firing Rate')
 
-subplot(4,3,10)
-plot(fullMaster(msns,indOverFire),mod1(msns),'b.')
-hold on
-plot([0 max(fullMaster(msns,indOverFire))],[0 0],'k')
-ylim([-1 1])
-title('MSN Firing Rate vs Modulation Index')
 
 %column two
 subplot(4,6,3)
@@ -139,6 +127,17 @@ xlim([-1 1])
 title('MODRestricted')
 
 
+subplot(4,3,8)
+hist(fullMaster(pvs,indOverFire),100)
+title('Histogram of PV Firing Rate')
+
+subplot(4,3,11)
+plot(fullMaster(pvs,indOverFire),mod1(pvs),'b.')
+hold on
+plot([0 max(fullMaster(pvs,indOverFire))],[0 0],'k')
+ylim([-1 1])
+title('PV Firing Rate vs Modulation Index')
+
 %column three
 subplot(4,6,5)
 %find msn neurons on shank 1
@@ -186,9 +185,21 @@ xlim([-1 1])
 title('MODRestricted')
 
 
+subplot(4,3,9)
+hist(fullMaster(msns,indOverFire),100)
+title('Histogram of MSN Firing Rate')
+
+subplot(4,3,12)
+plot(fullMaster(msns,indOverFire),mod1(msns),'b.')
+hold on
+plot([0 max(fullMaster(msns,indOverFire))],[0 0],'k')
+ylim([-1 1])
+title('MSN Firing Rate vs Modulation Index')
+
+
 %plot ROC vs modulation
 
-subplot(2,3,5)
+subplot(2,3,4)
 hold on
 plot(mod1(msns),fullMaster(msns,indLocoAUC),'k.')
 plot([0 0],[0 1])
@@ -210,4 +221,6 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
+
+save('AnalysisResults','fullMaster','fullMasterHeaders')
 
