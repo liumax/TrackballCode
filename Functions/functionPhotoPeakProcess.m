@@ -2,7 +2,7 @@
 %This code is meant to process raw photometry data, smooth, pull peaks, and
 %also remove decay. 
 
-[t_ds,newSmoothDS] = functionPhotoPeakProcess(t,corrData,peakThresh);
+function [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(t,corrData,peakThresh);
 
 
 %so first things first, we want to take the signal and remove the decay
@@ -67,14 +67,14 @@ for crawlInd = 1:length(dSmoothDS)
         %in the case of positive value
     elseif crawlInd >1 & dSmoothDS(crawlInd) > 0
         if pSign == -1
-            disp('Change Detected')
+%             disp('Change Detected')
             shifter(shiftInd,1) = crawlInd;
             shifter(shiftInd,2) = pSign;
             shifter(shiftInd,3) = 1;
             shiftInd = shiftInd + 1;
             pSign = 1;
         elseif pSign == 0
-            disp('Change Detected')
+%             disp('Change Detected')
             shifter(shiftInd,1) = crawlInd;
             shifter(shiftInd,2) = pSign;
             shifter(shiftInd,3) = 1;
@@ -84,14 +84,14 @@ for crawlInd = 1:length(dSmoothDS)
         %in the case of negative value
     elseif crawlInd > 1 & dSmoothDS(crawlInd) < 0
         if pSign == 1
-            disp('Change Detected')
+%             disp('Change Detected')
             shifter(shiftInd,1) = crawlInd;
             shifter(shiftInd,2) = pSign;
             shifter(shiftInd,3) = -1;
             shiftInd = shiftInd + 1;
             pSign = -1;
         elseif pSign == 0
-            disp('Change Detected')
+%             disp('Change Detected')
             shifter(shiftInd,1) = crawlInd;
             shifter(shiftInd,2) = pSign;
             shifter(shiftInd,3) = -1;
@@ -184,20 +184,19 @@ peakVals(:,3) = shifter([1:2:end],1);
 
 % peakThresh = 0.01;
 targetPeaks = peakVals(peakVals(:,1) > peakThresh,:);
-
-figure
-plot(t_ds,newSmoothDS,'k')
-hold on
-plot(t_ds(targetPeaks(:,2)),newSmoothDS(targetPeaks(:,2)),'r*')
-plot(t_ds(targetPeaks(:,3)),newSmoothDS(targetPeaks(:,3)),'g*')
-xlim([t_ds(1) t_ds(end)])
-ylabel('dF/F')
-xlabel('Time (s)')
-title('Peak Selection')
-
-
+% 
+% figure
+% plot(t_ds,newSmoothDS,'k')
+% hold on
+% plot(t_ds(targetPeaks(:,2)),newSmoothDS(targetPeaks(:,2)),'r*')
+% plot(t_ds(targetPeaks(:,3)),newSmoothDS(targetPeaks(:,3)),'g*')
+% xlim([t_ds(1) t_ds(end)])
+% ylabel('dF/F')
+% xlabel('Time (s)')
+% title('Peak Selection')
 
 
+end
 
 
 
