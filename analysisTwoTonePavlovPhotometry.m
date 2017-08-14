@@ -128,7 +128,7 @@ traceJittDiff = diff(traceJitt);
 
 %clean up the MBED signal. generally there will be excess TTLs at the
 %beginning
-findBig = find(inputPhotDiff > 600);
+findBig = find(inputPhotDiff > 2000);
 %now we need to screen the big differences.
 whileCounter = 1;
 while length(findBig) >= whileCounter;
@@ -372,7 +372,8 @@ for i = 1:length(traceMBED)
     if findTime + velWindow(2) < length(velTrueTime) & findTime + velWindow(1) > 0
         velRaster(:,i) = locoData.Velocity((findTime + velWindow(1)):(findTime + velWindow(2)),2);
     else
-        disp('EDGE ISSUE')
+        disp('Velocity EDGE ISSUE: tone alignment')
+        disp(num2str(length(velTrueTime)-(findTime + velWindow(2))))
 %         disp(i)
         velRaster(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
 %         break
@@ -396,7 +397,7 @@ for i = 1:length(rewTimes)
     if findTime + velWindow(2) < length(locoData.Velocity(:,1)) & findTime + velWindow(1) > 0
         velRasterRew(:,i) = locoData.Velocity((findTime + velWindow(1)):(findTime + velWindow(2)),2);
     else
-        disp('EDGE ISSUE')
+        disp('Velocity EDGE ISSUE, Reward Alignment')
 %         disp(i)
         velRasterRew(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
 %         break
