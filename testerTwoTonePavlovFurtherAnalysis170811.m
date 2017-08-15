@@ -9,6 +9,8 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01])
 
 testNames = what;
 testNames = testNames.mat;
+[findString] = functionCellStringFind(testNames,'Analysis');
+testNames = testNames(findString);
 
 bigMaster = zeros(100,10);
 sumMaster = zeros(5,2);
@@ -87,6 +89,21 @@ for bigInd = 1:length(testNames)
     bigStruct.VelHi(:,masterInd:masterInd+length(timeHi)-1) = s.VelRaster.ToneRaster(:,s.MBED.HiTrials);
     bigStruct.VelLow(:,masterInd:masterInd+length(timeHi)-1) = s.VelRaster.ToneRaster(:,s.MBED.LowTrials);
     bigStruct.VelRew(:,masterInd:masterInd+length(timeHi)-1) = s.VelRaster.RewardRaster;
+    
+    bigStruct.Raw470{bigInd} = s.Photo.Photo.x70dF;
+    bigStruct.RawTimes{bigInd} = s.Photo.Photo.x70dFTime;
+    bigStruct.ToneTimes{bigInd} = s.Photo.MBEDSig;
+    bigStruct.RewTimes{bigInd} = interp1(s.MBED.Jitter,s.Photo.Jitter,s.MBED.RewTimes);
+    bigStruct.ToneBig{bigInd} = s.MBED.HiTrials;
+    if length(s.MBED.Licks > 0)
+        bigStruct.Licks{bigInd} = interp1(s.MBED.Jitter,s.Photo.Jitter,s.MBED.Licks);
+        bigStruct.Licks{bigInd}(isnan(bigStruct.Licks{bigInd})) = [];
+    end
+    
+    bigStruct.LicksHi(:,bigInd) = s.Licking.ToneHistHi;
+    bigStruct.LicksLow(:,bigInd) = s.Licking.ToneHistLow;
+    bigStruct.LickTimes(:,bigInd) = s.Licking.Axis;
+    
 
     %plot out some basic stuff
 
@@ -125,7 +142,7 @@ for bigInd = 1:length(testNames)
 end
 
 
-save('AnalysisResults','bigMaster','bigStruct','trialNumStore','sumMaster')
+save('Results','bigMaster','bigStruct','trialNumStore','sumMaster')
 
 
 %plot out some basics
