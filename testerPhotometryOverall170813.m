@@ -22,11 +22,19 @@ for i = 1:4
  dailyTrace(i,:) = (fullSummary(:,2,i)-fullSummary(:,5,i))./(fullSummary(:,2,i)+fullSummary(:,5,i));
 end
 
-figure
+hFig = figure
 plot(dailyTrace(:,2:end)','LineWidth',2)
 xlabel('Days of Training')
-ylabel('Difference in Anticipatory Licks')
+ylabel('Lick Preference')
 title('Learning of Pavlovian Task Over Time')
+legend('D1.1','D1.2','A2A.1','A2A.2','Location','northwest')
+
+savefig(hFig,'LickingPreference');
+    
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'LickingPreference','-dpdf','-r0')
 
 %average across animals, include standard deviationp
 
@@ -38,7 +46,7 @@ plot(meanDaily,'LineWidth',3)
 hold on
 plot(meanDaily + steDaily,'LineWidth',2)
 plot(meanDaily - steDaily,'LineWidth',2)
-plot(dailyTrace(:,2:end)')
+% plot(dailyTrace(:,2:end)')
 xlabel('Days of Training')
 ylabel('Lick Preference')
 title('Lick Preference Over Time')
@@ -50,11 +58,19 @@ for i = 1:4
  baselineTrace(i,:) = fullSummary(:,1,i);
 end
 
-figure
+hFig = figure
 plot(baselineTrace(:,2:end)','LineWidth',2)
 xlabel('Days of Training')
 ylabel('Baseline Licks')
 title('Baseline Licking Over Time')
+legend('D1.1','D1.2','A2A.1','A2A.2','Location','northwest')
+
+savefig(hFig,'BaselineLicks');
+    
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'BaselineLicks','-dpdf','-r0')
 
 meanBase = mean(baselineTrace(:,2:end));
 steBase = std(baselineTrace(:,2:end))/2;
@@ -95,31 +111,42 @@ xlabel('Days of Training')
 ylabel('Anti Licks Wrong')
 % title('Baseline Licking Over Time')
 
-for i = 1:4
- trialTrace(i,:) = smooth(fullMaster(:,2,i)-fullMaster(:,5,i),25);
-end
 
-figure
-plot(trialTrace')
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+hFig = figure
+set(hFig, 'Position', [10 80 1240 850])
+subplot(2,2,1)
+plot(squeeze(sumStore(2:end,2,1)))
 hold on
-plot([50 50],[-2 5],'r')
-plot([150 150],[-2 5],'r')
-plot([250 250],[-2 5],'r')
-plot([350 350],[-2 5],'r')
-plot([450 450],[-2 5],'r')
-plot([550 550],[-2 5],'r')
-plot([650 650],[-2 5],'r')
-plot([750 750],[-2 5],'r')
-plot([850 850],[-2 5],'r')
-
-
-%now lets look at basic data from taskNoRew: what do we see?
-
-
-
-tester = fullStruct.i.HiRaster(:,1:50);
-
-
+plot(squeeze(sumStore(2:end,5,1)),'r')
+ylabel('Anticipatory Licks')
+xlabel('Training Days')
+legend('DS','NS','Location','northwest')
+subplot(2,2,3)
+plot(squeeze(sumStore(2:end,2,2)))
+hold on
+plot(squeeze(sumStore(2:end,5,2)),'r')
+ylabel('Anticipatory Licks')
+xlabel('Training Days')
+legend('DS','NS','Location','northwest')
+subplot(2,2,2)
+plot(squeeze(sumStore(2:end,2,3)))
+hold on
+plot(squeeze(sumStore(2:end,5,3)),'r')
+ylabel('Anticipatory Licks')
+xlabel('Training Days')
+legend('DS','NS','Location','northwest')
+subplot(2,2,4)
+plot(squeeze(sumStore(2:end,2,4)))
+hold on
+plot(squeeze(sumStore(2:end,5,4)),'r')
+ylabel('Anticipatory Licks')
+xlabel('Training Days')
+legend('DS','NS','Location','northwest')
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'anticipatoryLicksOverall','-djpeg90','-r0')
 
 
 
