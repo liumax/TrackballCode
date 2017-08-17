@@ -152,7 +152,7 @@ while whileTrig == 0;
         shifter(whileCounter,:) = [];
         disp('Cutting Duplicate')
     else
-        prevValue = currValue
+        prevValue = currValue;
         whileCounter = whileCounter + 1;
     end
 end
@@ -173,8 +173,8 @@ end
 peakInds = find(shifter(:,4) == 2);
 
 peakVals(:,1) = shifter(peakInds,5) - shifter(peakInds-1,5);
-peakVals(:,2) = shifter([2:2:end],1);
-peakVals(:,3) = shifter([1:2:end],1);
+peakVals(:,2) = shifter(peakInds,5);
+peakVals(:,3) = shifter(peakInds-1,5);
 
 %now, sort peaks by size. 
 [Y I] = sort(peakVals(:,1));
