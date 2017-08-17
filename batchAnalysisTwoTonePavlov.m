@@ -10,5 +10,5 @@ numFiles = length(testNames);
 for bigInd = 1:numFiles
     fileName = testNames{bigInd}(1:end-4);
     [s] = analysisTwoTonePavlovPhotometry(fileName);
-    
+    s = [];
 end
