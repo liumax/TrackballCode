@@ -116,6 +116,7 @@ catch
     disp('Peak Detection Failed')
     targetPeaks = [];
     newSmoothDS = [];
+    t_ds = [];
 end
 
 s.Photo.Peaks = targetPeaks;
@@ -241,7 +242,7 @@ end
 s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
 
 %calculate raster in terms of time steps in photometry
-photoTimeStep = mean(diff(traceTiming));
+photoTimeStep = mean(diff(t_ds));
 rasterPhotWindow = round(rasterWindow/photoTimeStep);
 
 %% Now lets sort out responses
@@ -261,9 +262,9 @@ photoRaster = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,length(traceMBED
 for i = 1:length(traceMBED)
     alignTime = traceMBED(i);
     %find the time in the photometry trace
-    photoPoint = find(traceTiming - alignTime > 0,1,'first');
-    if photoPoint + rasterPhotWindow(2) < length(traceDF)
-        photoRaster(:,i) = traceDF(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
+    photoPoint = find(t_ds - alignTime > 0,1,'first');
+    if photoPoint + rasterPhotWindow(2) < length(newSmoothDS)
+        photoRaster(:,i) = newSmoothDS(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
     else
         disp('Rew Rasters: Reached End of Photometry Trace')
         disp(i)
@@ -280,9 +281,9 @@ if length(rewTimes)>0
     for i = 1:length(rewTimes)
         alignTime = rewTimeTDT(i);
         %find the time in the photometry trace
-        photoPoint = find(traceTiming - alignTime > 0,1,'first');
-        if photoPoint + rasterPhotWindow(2) < length(traceDF)
-            photoRasterRew(:,i) = traceDF(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
+        photoPoint = find(t_ds - alignTime > 0,1,'first');
+        if photoPoint + rasterPhotWindow(2) < length(newSmoothDS)
+            photoRasterRew(:,i) = newSmoothDS(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
         else
             disp('Rew Rasters: Reached End of Photometry Trace')
             disp(i)
@@ -303,9 +304,9 @@ if length(trialParams.licking)>0
     for i = 1:length(rewTimes)
         alignTime = rewTimeTDT(i);
         %find the time in the photometry trace
-        photoPoint = find(traceTiming - alignTime > 0,1,'first');
-        if photoPoint + rasterPhotWindow(2) < length(traceDF)
-            photoRasterLick(:,i) = traceDF(photoPoint + lickPhotWindow(1):photoPoint + lickPhotWindow(2));
+        photoPoint = find(t_ds - alignTime > 0,1,'first');
+        if photoPoint + rasterPhotWindow(2) < length(newSmoothDS)
+            photoRasterLick(:,i) = newSmoothDS(photoPoint + lickPhotWindow(1):photoPoint + lickPhotWindow(2));
         else
             disp('LickRasters: Reached End of Photometry Trace')
             disp(i)
@@ -408,6 +409,9 @@ s.VelRaster.ToneRaster = velRaster;
 s.VelRaster.RewardRaster = velRasterRew;
 s.VelRaster.Axis = velRasterAxis;
 
+%perform ROC analysis
+[funcOut] = functionROCLocoPhoto(s.MBED.Jitter,s.Photo.Jitter,s.Photo.Photo.x70dF,s.Photo.Photo.x70dFTime,s.Locomotion.Velocity);
+s.ROC = funcOut;
 %% Licking Data
 
 lickData = trialParams.licking;
