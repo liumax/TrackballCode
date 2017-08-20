@@ -65,33 +65,31 @@ s.Locomotion = locoData;
 data = load(strcat(fileName,'.mat'));
 data=data.data;
 
-%store traces.
-s.Photo.x70 = data.streams.x70G.data;
-s.Photo.x05 = data.streams.x05G.data;
-
-%Code from Chris that performs isosbestic correction. 
-traceDF = isosbestic_correction(data);
-
-
-%pull timestamps for fluorescence
-traceTiming = [0:1/data.streams.x70G.fs:(1/data.streams.x70G.fs)*(length(data.streams.x70G.data)-1)];
+[filtSig1,filtSig2,traceDF,traceTiming] = functionPhotometryRawExtraction(data);
 
 s.Photo.dFTrace = traceDF;
 s.Photo.dFTime = traceTiming;
+s.Photo.x70 = filtSig1;
+s.Photo.x05 = filtSig2;
+s.Photo.Raw = data.streams.Fi1r.data;
+s.Photo.RawRate = data.streams.Fi1r.fs;
+
 %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
 %additional functionality for peak finding.
 try
-    [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
+    [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.01);
+%     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
 catch
-    disp('FIND PEAKS CODE FAILED')
-    peakInfo = [];
-    riseInfo = [];
-    troughInfo = [];
+    disp('Peak Detection Failed')
+    targetPeaks = [];
+    newSmoothDS = [];
+    t_ds = [];
 end
 
-s.Photo.Peaks.Peak = peakInfo;
-s.Photo.Peaks.Rise = riseInfo;
-s.Photo.Peaks.Trough = troughInfo;
+s.Photo.Peaks = targetPeaks;
+s.Photo.Photo.x70dF = newSmoothDS;
+s.Photo.Photo.x70dFTime = t_ds;
+
 
 
 %pull jittered signal
@@ -125,9 +123,10 @@ if photoToggle == 1
     inputPhotDiff = diff(inputPhotOnset);
 end
 
+
 %clean up the MBED signal. generally there will be excess TTLs at the
 %beginning
-findBig = find(inputPhotDiff > 600);
+findBig = find(inputPhotDiff > 2000);
 %now we need to screen the big differences.
 whileCounter = 1;
 while length(findBig) >= whileCounter;
@@ -147,7 +146,7 @@ bigDiffs = inputPhotDiff(findBig);
 
 %look for huge diffs. These should indicate the start of the actual session
 massDiff = find(bigDiffs > 2000);
-if length(massDiff) <=20 & length(massDiff)>0
+if length(massDiff) <=3 & length(massDiff)>0
     disp('Long Differences in jittered trace. taking last.')
     inputPhotOnset(1:findBig(massDiff(end))) = [];
     inputPhotDiff = diff(inputPhotOnset);
@@ -164,8 +163,8 @@ bigDiffs = inputPhotDiff(findBig);
 bigDiffDiv = round(bigDiffs/500);
 
 %now replace with fake points. 
-for ind = length(bigDiffs):-1:1
-    targetInd = findBig(ind)+1;
+for i = length(bigDiffs):-1:1
+    targetInd = findBig(i)+1;
     inputPhotOnset(targetInd+(bigDiffDiv-1):end+(bigDiffDiv-1)) = inputPhotOnset(targetInd:end);
     inputPhotOnset(targetInd) = inputPhotOnset(targetInd-1)+500;
 end
@@ -201,12 +200,10 @@ end
 
 if length(inputPhotDiff) ~= length(traceJittDiff)
     error('Jittered traces still not the right length')
-elseif length(inputPhotDiff) == length(traceJittDiff)
-    disp('TRACES ARE ALIGNED!')
 end
 
 s.Photo.Jitter = traceJitt;
-s.MBED.Jitter = inputPhot;
+s.MBED.Jitter = inputPhotOnset;
 
 
 %now lets deal with inputs. This is now designed to try and handle cases in
@@ -232,7 +229,11 @@ elseif length(onsetPhot) ~= length(traceMBED)
 end
 
 %calculate raster in terms of time steps in photometry
-photoTimeStep = 1/data.streams.x70G.fs;
+
+s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
+
+%calculate raster in terms of time steps in photometry
+photoTimeStep = mean(diff(t_ds));
 rasterPhotWindow = round(rasterWindow/photoTimeStep);
 
 s.Photo.AlignTimes = traceMBED;
@@ -291,8 +292,15 @@ photoRaster = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,length(traceMBED
 for ind = 1:length(traceMBED)
     alignTime = traceMBED(ind);
     %find the time in the photometry trace
-    photoPoint = find(traceTiming - alignTime > 0,1,'first');
-    photoRaster(:,ind) = traceDF(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
+    photoPoint = find(t_ds - alignTime > 0,1,'first');
+    if photoPoint + rasterPhotWindow(2) < length(newSmoothDS)
+        photoRaster(:,i) = newSmoothDS(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
+    else
+        disp('Tone Rasters: Reached End of Photometry Trace')
+        disp(i)
+        break
+    end
+    
 end
 
 %make simple plot
@@ -321,7 +329,7 @@ end
 %recommendation)
 
 %make basic rasters
-[riseRasters] = functionBasicRaster((riseInfo.t)',traceMBED,rasterWindow);
+[riseRasters] = functionBasicRaster((targetPeaks)',traceMBED,rasterWindow);
 %generate correct order for displaying things by freq/db
 sortingCounter = 1;
 for ind = 1:numFreqs
