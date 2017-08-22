@@ -130,6 +130,7 @@ end
 %pull important sound and trial information
 uniqueFreqs = unique(soundData.Frequencies);
 uniqueDBs = unique(soundData.dBs);
+uniqueDBSteps = unique(soundData.TrialMatrix(soundData.TrialMatrix(:,2)==uniqueFreqs(1),3));
 numFreqs = length(uniqueFreqs);
 numDBs = length(uniqueDBs);
 
@@ -199,12 +200,12 @@ if length(uniqueDBs) == 1
     totalDBs = 1;
     dbRange = [100,1];
 else
-    dbSteps = uniqueDBs(2) - uniqueDBs(1);
-    totalDBs = (uniqueDBs(end) - uniqueDBs(1))/dbSteps;
+    dbSteps = uniqueDBSteps(2) - uniqueDBSteps(1);
+    totalDBs = (uniqueDBSteps(end) - uniqueDBSteps(1))/dbSteps;
     dbRange = zeros(totalDBs + 1,2);
-    dbRange(:,1) = uniqueDBs(1):dbSteps:uniqueDBs(end);
+    dbRange(:,1) = uniqueDBSteps(1):dbSteps:uniqueDBSteps(end);
     for i = 1:size(dbRange,1)
-        dbRange(i,2) = find(uniqueDBs == dbRange(i,1));
+        dbRange(i,2) = find(uniqueDBSteps == dbRange(i,1));
     end
 end
 
