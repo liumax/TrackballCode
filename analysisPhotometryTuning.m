@@ -71,8 +71,8 @@ s.Photo.dFTrace = traceDF;
 s.Photo.dFTime = traceTiming;
 s.Photo.x70 = filtSig1;
 s.Photo.x05 = filtSig2;
-s.Photo.Raw = data.streams.Fi1r.data;
-s.Photo.RawRate = data.streams.Fi1r.fs;
+% s.Photo.Raw = data.streams.Fi1r.data;
+% s.Photo.RawRate = data.streams.Fi1r.fs;
 
 %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
 %additional functionality for peak finding.
