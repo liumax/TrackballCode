@@ -294,10 +294,10 @@ for ind = 1:length(traceMBED)
     %find the time in the photometry trace
     photoPoint = find(t_ds - alignTime > 0,1,'first');
     if photoPoint + rasterPhotWindow(2) < length(newSmoothDS)
-        photoRaster(:,i) = newSmoothDS(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
+        photoRaster(:,ind) = newSmoothDS(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
     else
         disp('Tone Rasters: Reached End of Photometry Trace')
-        disp(i)
+        disp(ind)
         break
     end
     
@@ -329,7 +329,7 @@ end
 %recommendation)
 
 %make basic rasters
-[riseRasters] = functionBasicRaster((targetPeaks)',traceMBED,rasterWindow);
+[riseRasters] = functionBasicRaster((targetPeaks(:,4)),traceMBED,rasterWindow);
 %generate correct order for displaying things by freq/db
 sortingCounter = 1;
 for ind = 1:numFreqs

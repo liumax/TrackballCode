@@ -175,6 +175,7 @@ peakInds = find(shifter(:,4) == 2);
 peakVals(:,1) = shifter(peakInds,5) - shifter(peakInds-1,5);
 peakVals(:,2) = shifter(peakInds,5);
 peakVals(:,3) = shifter(peakInds-1,5);
+peakVals(:,4) = t_ds(shifter(peakInds,1));
 
 %now, sort peaks by size. 
 [Y I] = sort(peakVals(:,1));
