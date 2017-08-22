@@ -112,6 +112,17 @@ counter = 1;
 dbChange = interp1(calibChart(:,1),calibChart(:,2),freqs);
 ampChange = interp1(calibChart(:,1),calibChart(:,3),freqs);
 
+%check for NaNs
+isNanDB = find(isnan(dbChange));
+isFreqDB = find(freqs>0);
+isNanIntersect = intersect(isNanDB,isFreqDB);
+
+for i = 1:length(isNanIntersect)
+    [pks nearFind] = min(abs(calibChart(:,1) - freqs(isNanIntersect(i))));
+    dbChange(isNanIntersect(i)) = calibChart(nearFind,2);
+    ampChange(isNanIntersect(i)) = calibChart(nearFind,3);
+end
+
 for i = 1:length(freqs)
     for j = 1:length(dBs)
         fullList(counter,1) = freqs(i);
