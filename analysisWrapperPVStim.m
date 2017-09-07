@@ -40,12 +40,29 @@ for i = 1:numFiles
     [indLaserResAverage] = functionCellStringFind(masterHeader,'LaserResAverage');
     [indLocoAUC] = functionCellStringFind(masterHeader,'LocoAUCScore');
     [indLocoSig] = functionCellStringFind(masterHeader,'LocoAUCSignificance');
+    masterHeader{end+1} = 'PercentFiring';
+    masterHeader{end+1} = 'NumberStimulations';
+    %170905 need to do some repairs to add percentage of trials with
+    %firing. 
+    numCells = length(s.DesignationName);
+    numStims = length(s.Timing.LaserTimes);
+    laserRasterData = zeros(numCells,1);
+    for j = 1:numCells
+        %pull rasterLaser
+        laserRasterData(j) = length(unique(s.(s.DesignationName{j}).RasterLaser(:,2)));
+    end
+    
+    laserRasterData = laserRasterData/numStims;
+    
+    
     
     %now i need to adjust the depth system. First, add the height of the
     %probe in terms of number of probe sites. then multiply by negative 1 and 12
     master(:,indDistance) = (master(:,indDistance) + s.ShankLength)*-12.5 + probeDepth(i);
     numUnits = size(master,1);
-    fullMaster(masterInd: masterInd + numUnits - 1,:) = master;
+    fullMaster(masterInd: masterInd + numUnits - 1,1:size(master,2)) = master;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+1) = laserRasterData;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+2) = numStims;
     fullMasterHeaders(:,i) = masterHeader;
     masterInd = masterInd + numUnits;
     
@@ -77,6 +94,9 @@ hold on
 plot(fullMaster(pvs,indPkTrough),fullMaster(pvs,indOverFire),'ro')
 title('PeakTrough(x) vs Spike Rate(y), PV in red')
 
+subplot(4,3,4)
+hist(fullMaster(:,end-1),[0:0.01:1])
+title('Histogram of % Spiking Per Trial')
 
 
 
@@ -129,7 +149,7 @@ title('MODRestricted')
 
 subplot(4,3,8)
 hist(fullMaster(pvs,indOverFire),100)
-title('Histogram of PV Firing Rate')
+title(strcat('Histogram of PV Firing Rate',num2str(length(pvs))))
 
 subplot(4,3,11)
 plot(fullMaster(pvs,indOverFire),mod1(pvs),'b.')
@@ -187,7 +207,8 @@ title('MODRestricted')
 
 subplot(4,3,9)
 hist(fullMaster(msns,indOverFire),100)
-title('Histogram of MSN Firing Rate')
+title(strcat('Histogram of MSN Firing Rate',num2str(length(msns))))
+% title('Histogram of MSN Firing Rate')
 
 subplot(4,3,12)
 plot(fullMaster(msns,indOverFire),mod1(msns),'b.')
