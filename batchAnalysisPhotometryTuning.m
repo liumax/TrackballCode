@@ -1,9 +1,6 @@
 
 
 
-
-
-
 %This will be a wrapper function for the photometry analysis code. 
 
 testNames = what;
@@ -13,6 +10,9 @@ testNames(findString) = [];
 
 [findString] = functionCellStringFind(testNames,'Sound');
 testNames(findString) = [];
+
+[findString] = functionCellStringFind(testNames,'Tuning');
+testNames = testNames(findString);
 
 numFiles = length(testNames);
 
