@@ -18,7 +18,7 @@ s.Parameters.histBin = 0.05; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
 
 %bins of interest
-s.Parameters.PreBin = [-2,-0];
+s.Parameters.PreBin = [-2,0];
 s.Parameters.PostBin = [2,4];
 s.Parameters.LaserBin = [0,2];
 

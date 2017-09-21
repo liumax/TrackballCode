@@ -9,6 +9,19 @@
 %     '170714_ML170620C_R10_2250_Second3mW2sOn4sOffLaserStimAnalysis.mat'};
 
 %get the number of files
+
+
+
+
+
+% clear
+targets = what;
+targetFiles = targets.mat;
+
+masterIndex = strfind(targetFiles,'ML');
+masterIndex = find(not(cellfun('isempty', masterIndex)));
+targetFiles = targetFiles(masterIndex);
+
 numFiles = length(targetFiles);
 
 %extract distances
@@ -42,14 +55,48 @@ for i = 1:numFiles
     [indLocoSig] = functionCellStringFind(masterHeader,'LocoAUCSignificance');
     masterHeader{end+1} = 'PercentFiring';
     masterHeader{end+1} = 'NumberStimulations';
+    masterHeader{end+1} = 'SpikeWidth';
+    masterHeader{end+1} = 'signRankSigOfRestricted';
+    masterHeader{end+1} = 'signRankSigOfNorm';
     %170905 need to do some repairs to add percentage of trials with
     %firing. 
     numCells = length(s.DesignationName);
     numStims = length(s.Timing.LaserTimes);
     laserRasterData = zeros(numCells,1);
+    isiRatio = zeros(numCells,1);
+    spikeWidth = zeros(numCells,1);
+    resSig = zeros(numCells,1);
+    normSig = zeros(numCells,1);
     for j = 1:numCells
         %pull rasterLaser
         laserRasterData(j) = length(unique(s.(s.DesignationName{j}).RasterLaser(:,2)));
+        %also pull isi data. 
+        isiTimes = diff(s.(s.DesignationName{j}).SpikeTimes);
+        isiRatio(j) = length(find(isiTimes < 0.033))/length(isiTimes);
+        %now lets try pulling spike width (half max)
+        waves = s.(s.DesignationName{j}).AverageWaveForms;
+        maxWave = max(waves);
+        [maxVal maxInd] = max(maxWave);
+        %chose the big wave, interpolate to fine degree
+        chosenWave = waves(:,maxInd);
+        interpVect = [1:0.1:40];
+        interpWave = interp1(1:40,chosenWave,interpVect,'spline');
+        
+        [pkVal pkInd] = max(interpWave(100:end));
+        pkInd = pkInd + 100 - 1;
+        %now we need to crawl forward and backwards to find the first point
+        %equal to half  the peak value
+        firstHalf = find(interpWave(1:pkInd) <= pkVal/2,1,'last');
+        secondHalf = find(interpWave(pkInd:end) >= pkVal/2,1,'last') + pkInd;
+        spikeWidth(j) = (secondHalf - firstHalf)/300000;
+        %now lets try calculating p value using signed rank.
+        avFire = mean(s.(s.DesignationName{j}).TrialBinnedSpikes(:,[4,5])');
+        laserFire = s.(s.DesignationName{j}).TrialBinnedSpikes(:,6);
+        resSig(j) = signrank(avFire,laserFire);
+        avFire = mean(s.(s.DesignationName{j}).TrialBinnedSpikes(:,[1,2])');
+        laserFire = s.(s.DesignationName{j}).TrialBinnedSpikes(:,3);
+        normSig(j) = signrank(avFire,laserFire);
+        
     end
     
     laserRasterData = laserRasterData/numStims;
@@ -63,6 +110,10 @@ for i = 1:numFiles
     fullMaster(masterInd: masterInd + numUnits - 1,1:size(master,2)) = master;
     fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+1) = laserRasterData;
     fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+2) = numStims;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+3) = isiRatio;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+4) = spikeWidth;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+5) = resSig;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+6) = normSig;
     fullMasterHeaders(:,i) = masterHeader;
     masterInd = masterInd + numUnits;
     
@@ -95,7 +146,7 @@ plot(fullMaster(pvs,indPkTrough),fullMaster(pvs,indOverFire),'ro')
 title('PeakTrough(x) vs Spike Rate(y), PV in red')
 
 subplot(4,3,4)
-hist(fullMaster(:,end-1),[0:0.01:1])
+hist(fullMaster(:,20),[0:0.01:1])
 title('Histogram of % Spiking Per Trial')
 
 
