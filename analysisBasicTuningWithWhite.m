@@ -390,7 +390,7 @@ disp('Time Filter Applied')
 
 matrixTrialNum = zeros(numFreqs,numDBs);
 for freqInd = 1:numFreqs
-    subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(i),3));
+    subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(freqInd),3));
     for dbInd = 1:numDBs
         matrixTrialNum(freqInd,dbInd) = length(find(master(:,2) == uniqueFreqs(freqInd) & master(:,3) == subUniqueDB(dbInd)));
     end
@@ -559,7 +559,7 @@ for i = 1:numUnits
     freqSpecHist = zeros(numFreqs,histBinNum,1);
     
     for k = 1:numFreqs
-        subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(i),3));
+        subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(k),3));
         for l = 1:numDBs
             targetTrials = master(master(:,2) == uniqueFreqs(k) & master(:,3) == subUniqueDB(l),4); %finds the trial number for all trials of given frequency and amplitude
             findMatches = find(ismember(fullRasterData(:,2),targetTrials)); %uses these trial numbers to pull raster index
