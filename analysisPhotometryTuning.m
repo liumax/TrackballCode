@@ -146,7 +146,7 @@ bigDiffs = inputPhotDiff(findBig);
 
 %look for huge diffs. These should indicate the start of the actual session
 massDiff = find(bigDiffs > 2000);
-if length(massDiff) <=3 & length(massDiff)>0
+if length(massDiff) <=10 & length(massDiff)>0
     disp('Long Differences in jittered trace. taking last.')
     inputPhotOnset(1:findBig(massDiff(end))) = [];
     inputPhotDiff = diff(inputPhotOnset);
@@ -254,7 +254,7 @@ s.SoundData = soundData;
 trialMatrix = soundData.TrialMatrix;
 
 uniqueFreqs = unique(trialMatrix(:,2));
-uniqueDBs = unique(trialMatrix(:,3));
+uniqueDBs = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(1),3));
 
 numFreqs = length(uniqueFreqs);
 numDBs = length(uniqueDBs);
@@ -268,8 +268,14 @@ xcLag = lags(maxInd);
 
 if xcLag == 0 & xcMax > 0.90
     disp('Sound File and Actual Lags Aligned!')
-else
-    error('Check if Correct Tuning File was Used!')
+elseif xcLag < 0 & xcMax > 0.9
+    disp('Negative Lag detected in Sound File vs Real Data. Deleting data from OnsetPhot')
+    onsetPhot(1:-xcLag) = [];
+    onsetPhotDiff = diff(onsetPhot);
+    traceMBED(1:-xcLag) = [];
+    s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
+    s.Photo.AlignTimes = traceMBED;
+
 end
 
 %% Now lets sort out tuning curve
@@ -309,14 +315,18 @@ for ind = 1:length(traceMBED)
     simplePlot(:,ind) = simplePlot(:,ind)+ind*0.5;
 end
 
+s.Processed.PhotoRaster = photoRaster;
+
+
 %now I need to store different means
 
 photoAverages = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,numFreqs,numDBs);
 photoRasterStore = cell(numFreqs,numDBs);
 for ind = 1:numFreqs
+    subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(ind),3));
     for j = 1:numDBs
         %find all trials of the particular setting
-        targetFinder = find(trialMatrix(:,2) == uniqueFreqs(ind) & trialMatrix(:,3) == uniqueDBs(j));
+        targetFinder = find(trialMatrix(:,2) == uniqueFreqs(ind) & trialMatrix(:,3) == subUniqueDB(j));
         %pull and average these traces
         tempHolder = photoRaster(:,targetFinder);
         photoRasterStore{ind,j} = tempHolder;
@@ -324,6 +334,9 @@ for ind = 1:numFreqs
         photoAverages(:,ind,j) = tempHolder;
     end
 end
+
+s.Processed.PhotoAverages = photoAverages;
+
 
 %lets make rasters with the peak detection rise times (based on Chris'
 %recommendation)
@@ -333,8 +346,9 @@ end
 %generate correct order for displaying things by freq/db
 sortingCounter = 1;
 for ind = 1:numFreqs
+    subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(ind),3));
     for j = 1:numDBs
-        sortingFinder = find(trialMatrix(:,2) == uniqueFreqs(ind) & trialMatrix(:,3) == uniqueDBs(j));
+        sortingFinder = find(trialMatrix(:,2) == uniqueFreqs(ind) & trialMatrix(:,3) == subUniqueDB(j));
         sortIndex(sortingFinder) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
         sortingCounter = sortingCounter + size(sortingFinder,1);
     end
@@ -345,6 +359,9 @@ try
 catch
     riseRasters(:,3) = 0;
 end
+
+s.Processed.RiseRaster = riseRasters;
+
 % %now lets try and make a gaussian convolution of riseRasters!
 % gaussAverage = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,numFreqs,numDBs);
 % gaussStore = cell(numFreqs,numDBs);
@@ -388,17 +405,53 @@ findPhotLast = find(traceTiming - velTrueTime(findVelLast)>0,1,'first');
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
 % create a set of ticks for labeling any display of octaves
-totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(1)));
-%This then makes an array of the full octave steps I've made
-octaveRange = zeros(totalOctaves + 1,2);
-octaveRange(1,1) = uniqueFreqs(1);
-for ind = 1:totalOctaves
-    octaveRange (ind+1,1) = octaveRange(ind,1)*2;
+if soundData.WhiteNoise
+    if soundData.WhiteNoise == 1
+        totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(2)));
+        
+        %This then makes an array of the full octave steps I've made
+        octaveRange = zeros(totalOctaves + 1,2);
+        octaveRange(1,1) = uniqueFreqs(2);
+        for i = 1:totalOctaves
+            octaveRange (i+1,1) = octaveRange(i,1)*2;
+        end
+        %next, I find the positions from uniqueFreqs that match octaveRange
+        for i = 1:size(octaveRange,1);
+            octaveRange(i,2) = find(round(uniqueFreqs) == octaveRange(i,1));
+        end
+        %add in the white noise
+        octaveRange(2:end+1,:) = octaveRange(1:end,:);
+        octaveRange(1,1) = 0;
+        octaveRange(1,2) = 1;
+    else soundData.WhiteNoise == 0;
+        totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(1)));
+        
+        %This then makes an array of the full octave steps I've made
+        octaveRange = zeros(totalOctaves + 1,2);
+        octaveRange(1,1) = uniqueFreqs(1);
+        for ind = 1:totalOctaves
+            octaveRange (ind+1,1) = octaveRange(ind,1)*2;
+        end
+        %next, I find the positions from uniqueFreqs that match octaveRange
+        for ind = 1:size(octaveRange,1);
+            octaveRange(ind,2) = find(round(uniqueFreqs) == octaveRange(ind,1));
+        end
+    end
+else
+    totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(1)));
+    
+    %This then makes an array of the full octave steps I've made
+    octaveRange = zeros(totalOctaves + 1,2);
+    octaveRange(1,1) = uniqueFreqs(1);
+    for ind = 1:totalOctaves
+        octaveRange (ind+1,1) = octaveRange(ind,1)*2;
+    end
+    %next, I find the positions from uniqueFreqs that match octaveRange
+    for ind = 1:size(octaveRange,1);
+        octaveRange(ind,2) = find(round(uniqueFreqs) == octaveRange(ind,1));
+    end
 end
-%next, I find the positions from uniqueFreqs that match octaveRange
-for ind = 1:size(octaveRange,1);
-    octaveRange(ind,2) = find(round(uniqueFreqs) == octaveRange(ind,1));
-end
+
 %create a set of points for the raster axis
 rasterAxis = zeros(rasterWindow(2)-rasterWindow(1)+1,2);
 rasterAxis(:,1) = [rasterWindow(1):rasterWindow(2)];
