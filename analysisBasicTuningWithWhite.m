@@ -23,9 +23,9 @@
 function [s] = analysisBasicTuningWithWhite(fileName);
 %% Constants and things you might want to tweak
 %TOGGLES FOR ENABLING/DISABLING FEATURES
-s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
+toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
@@ -129,10 +129,11 @@ end
 
 %pull important sound and trial information
 uniqueFreqs = unique(soundData.Frequencies);
-uniqueDBs = unique(soundData.dBs);
+uniqueDBs = unique(soundData.TrialMatrix(soundData.TrialMatrix(:,2)==uniqueFreqs(1),3));
 uniqueDBSteps = unique(soundData.TrialMatrix(soundData.TrialMatrix(:,2)==uniqueFreqs(1),3));
 numFreqs = length(uniqueFreqs);
 numDBs = length(uniqueDBs);
+trialMatrix = soundData.TrialMatrix;
 
 %store these in structured array
 s.SoundData.UniqueFrequencies = uniqueFreqs;
@@ -250,8 +251,9 @@ if length(dioTimes) == length(soundData.Frequencies)
     %dB, and low freq to high freq. frequency is larger category.
     sortingCounter = 1;
     for i = 1:numFreqs
+        subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(i),3));
         for j = 1:numDBs
-            sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == uniqueDBs(j));
+            sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == subUniqueDB(j));
             master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
             sortingCounter = sortingCounter + size(sortingFinder,1);
         end
@@ -363,8 +365,9 @@ elseif length(dioTimes) ~= length(s.SoundData.Frequencies) %error case
     %dB, and low freq to high freq. frequency is larger category.
     sortingCounter = 1;
     for i = 1:numFreqs
+        subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(i),3));
         for j = 1:numDBs
-            sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == uniqueDBs(j));
+            sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == subUniqueDB(j));
             master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
             sortingCounter = sortingCounter + size(sortingFinder,1);
         end
@@ -387,8 +390,9 @@ disp('Time Filter Applied')
 
 matrixTrialNum = zeros(numFreqs,numDBs);
 for freqInd = 1:numFreqs
+    subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(i),3));
     for dbInd = 1:numDBs
-        matrixTrialNum(freqInd,dbInd) = length(find(master(:,2) == uniqueFreqs(freqInd) & master(:,3) == uniqueDBs(dbInd)));
+        matrixTrialNum(freqInd,dbInd) = length(find(master(:,2) == uniqueFreqs(freqInd) & master(:,3) == subUniqueDB(dbInd)));
     end
 end
 
@@ -555,8 +559,9 @@ for i = 1:numUnits
     freqSpecHist = zeros(numFreqs,histBinNum,1);
     
     for k = 1:numFreqs
+        subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(i),3));
         for l = 1:numDBs
-            targetTrials = master(master(:,2) == uniqueFreqs(k) & master(:,3) == uniqueDBs(l),4); %finds the trial number for all trials of given frequency and amplitude
+            targetTrials = master(master(:,2) == uniqueFreqs(k) & master(:,3) == subUniqueDB(l),4); %finds the trial number for all trials of given frequency and amplitude
             findMatches = find(ismember(fullRasterData(:,2),targetTrials)); %uses these trial numbers to pull raster index
             targetRasters = fullRasterData(findMatches,:); %extracts target rasters from all rasters using the above index.
             organizedRasters{k,l} = targetRasters; %saves to organized rasters

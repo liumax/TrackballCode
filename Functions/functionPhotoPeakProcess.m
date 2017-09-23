@@ -170,6 +170,9 @@ for crawlInd = 1:length(shifter)
     shifter(crawlInd,5) = newSmoothDS(shifter(crawlInd,1));
 end
 
+%stores peak information. first column is the height, second column is the
+%value of the peak itself, third column is the value of the trough, final
+%value is the time of the peak. 
 peakInds = find(shifter(:,4) == 2);
 
 peakVals(:,1) = shifter(peakInds,5) - shifter(peakInds-1,5);
