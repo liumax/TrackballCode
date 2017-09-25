@@ -44,12 +44,22 @@ for bigInd = 1:numFiles
 %     bigStore(5,incInd:incInd + length(s.MBED.LowTrials) - 1) = 0;
 %     bigStore(5,s.MBED.HiTrials + incInd - 1) = 1;
     %LETS ALSO PULL LICKS!!!
+    lickLatStore = ones(200,1);
     for i = 1:200
         lickStore(i) = length(find(s.Licking.ToneRaster(:,2) == i & s.Licking.ToneRaster(:,1) >=0 & s.Licking.ToneRaster(:,1) < 1));
+        if find(s.Licking.ToneRaster(:,2) == i & s.Licking.ToneRaster(:,1) >=0,1,'first');
+            lickLatStore(i) = s.Licking.ToneRaster(find(s.Licking.ToneRaster(:,2) == i & s.Licking.ToneRaster(:,1) >=0,1,'first'),1);
+        else
+            lickLatStore(i) = NaN;
+        end
+        
     end
     bigStore(5,incInd:incInd + length(s.MBED.LowTrials) - 1) = lickStore(s.MBED.HiTrials);
     bigStore(6,incInd:incInd + length(s.MBED.LowTrials) - 1) = lickStore(s.MBED.LowTrials);
-
+    %note that these are with 100ms bins?
+    bigStore(7,incInd:incInd + length(s.MBED.LowTrials) - 1) = lickLatStore(s.MBED.HiTrials);
+    bigStore(8,incInd:incInd + length(s.MBED.LowTrials) - 1) = lickLatStore(s.MBED.LowTrials);
+    
     incInd = incInd + length(s.MBED.LowTrials);
     
     
@@ -121,18 +131,24 @@ print(hFig,'dFoF vs Licking','-dpdf','-r0')
 
 %lets try breaking things into 20 trial blocks
 for i = 1:65
-    condensedBig(:,i) = mean(bigStore(:,(i-1)*20+1:(i)*20),2);
+    condensedBig(:,i) = nanmean(bigStore(:,(i-1)*20+1:(i)*20),2);
     condensedSig(1,i) = ranksum(bigStore(1,(i-1)*20+1:(i)*20),bigStore(2,(i-1)*20+1:(i)*20));
     condensedSig(2,i) = ranksum(bigStore(3,(i-1)*20+1:(i)*20),bigStore(4,(i-1)*20+1:(i)*20));
     condensedSig(3,i) = ranksum(bigStore(5,(i-1)*20+1:(i)*20),bigStore(6,(i-1)*20+1:(i)*20));
+%     condensedSig(
 end
 
 for i = 1:13
-    dayBig(:,i) = mean(bigStore(:,(i-1)*100+1:(i)*100),2);
+    dayBig(:,i) = nanmean(bigStore(:,(i-1)*100+1:(i)*100),2);
     daySig(1,i) = ranksum(bigStore(1,(i-1)*100+1:(i)*100),bigStore(2,(i-1)*100+1:(i)*100));
     daySig(2,i) = ranksum(bigStore(3,(i-1)*100+1:(i)*100),bigStore(4,(i-1)*100+1:(i)*100));
     daySig(3,i) = ranksum(bigStore(5,(i-1)*100+1:(i)*100),bigStore(6,(i-1)*100+1:(i)*100));
 end
+
+figure
+plot(condensedBig(7,:),'b.-')
+hold on
+plot(condensedBig(8,:),'r.-')
 
 hFig = figure
 set(hFig, 'Position', [10 80 1240 850])
