@@ -76,6 +76,57 @@ scQtUserData.lickWindow = 2000; %generates a 2 second window for licking. This w
 %FIXED PARAMETERS
 fs = 192000; %sampling frequency in Hz
 
+calibChart = [4000	2	0.7943282347
+4287.09385	0	1
+4594.79342	0.5	0.9440608763
+4924.577653	1	0.8912509381
+5278.031643	1.5	0.8413951416
+5656.854249	1.5	0.8413951416
+6062.866266	2.2	0.7762471166
+6498.019171	1.5	0.8413951416
+6964.404506	2	0.7943282347
+7464.263932	4.5	0.5956621435
+8000	6.2	0.4897788194
+8574.1877	4.3	0.6095368972
+9189.58684	3.6	0.660693448
+9849.155307	6.3	0.4841723676
+10556.06329	5.1	0.5559042573
+11313.7085	3.8	0.645654229
+12125.73253	1.5	0.8413951416
+12996.03834	3.5	0.6683439176
+13928.80901	3.7	0.6531305526
+14928.52786	3.8	0.645654229
+16000	3.5	0.6683439176
+17148.3754	2.5	0.7498942093
+18379.17368	2	0.7943282347
+19698.31061	6.2	0.4897788194
+21112.12657	7.8	0.4073802778
+22627.417	8.75	0.3651741273
+24251.46506	10	0.316227766
+25992.07668	14	0.1995262315
+27857.61803	12	0.2511886432
+29857.05573	13.2	0.2187761624
+32000	15.6	0.1659586907
+34296.7508	16.5	0.1496235656
+36758.34736	18.2	0.1230268771
+39396.62123	20	0.1
+42224.25314	16	0.1584893192
+45254.834	18.7	0.1161448614
+48502.93013	14.2	0.19498446
+51984.15337	15.5	0.1678804018
+55715.23605	11.7	0.2600159563
+59714.11146	11.7	0.2600159563
+64000	10	0.316227766];
+
+bigToneAmp = interp1(calibChart(:,1),calibChart(:,3),scQtUserData.bigTone);
+smallToneAmp = interp1(calibChart(:,1),calibChart(:,3),scQtUserData.smallTone);
+
+if isnan(bigToneAmp)
+    error('bigToneAmp ISNAN')
+elseif isnan(smallToneAmp)
+    error('smallToneAmp ISNAN')
+end
+
 %calculations for tone
 %determine length of file based on sound card sampling rate
 L = scQtUserData.soundDur/1000*fs; %number of samples at correct sampling frequency
@@ -102,10 +153,10 @@ toneDB = 10^-((100-scQtUserData.soundAmp)/20);
 
 paddedWave = zeros(paddingL,1);
 paddedWave(1:size(waveBig,1)) = waveBig;
-soundBig = [paddedWave*toneDB,ttlSig];
+soundBig = [paddedWave*toneDB*bigToneAmp,ttlSig];
 paddedWave = zeros(paddingL,1);
 paddedWave(1:size(waveSmall,1)) = waveSmall;
-soundSmall = [paddedWave*toneDB,ttlSig];
+soundSmall = [paddedWave*toneDB*smallToneAmp,ttlSig];
 
 scQtUserData.ToneBig = soundBig;
 scQtUserData.ToneSmall = soundSmall;
