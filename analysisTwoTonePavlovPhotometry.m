@@ -53,9 +53,50 @@ if length(rewTimes) ~= length(onsetPhot)
             toneRewInd(i,2) = minInd;
         end
     end
-
-    trialLow = find(toneRewInd(:,2) == 0);
-    trialHi = find(toneRewInd(:,2) ~= 0);
+    %check to see if there are duplicates
+    if length(unique(toneRewInd(:,2))) - 1 ~= length(find(toneRewInd(:,2) ~= 0))
+        %scan for anything below 8 seconds.
+        minBar = 8000;
+        minFinder = find(onsetPhotDiff < minBar,1,'first');
+        delInd = 1;
+        if minFinder
+            whileTrig = 0;
+            while whileTrig == 0
+                disp('ERROR TRIAL BELOW 8 SECONDS FOUND, DELETING')
+                onsetPhot(minFinder+1) = [];
+                delMem(delInd) = minFinder + 1;
+                delInd = delInd + 1;
+                onsetPhotDiff = diff(onsetPhot);
+                minFinder = find(onsetPhotDiff < minBar,1,'first');
+                if minFinder
+                    whileTrig = 0;
+                else
+                    whileTrig = 1;
+                end
+            end
+        else
+            error('UNEXPLAINED DIFFERENCE IN TONE DELIVERY VS REWARDS')
+        end
+        %flag this error for downstream processing
+        mbedErrorFlag = 1;
+        toneRewInd = zeros(length(onsetPhot),2);
+        toneRewInd(:,1) = 1:length(onsetPhot);
+        for i = 1:length(onsetPhot)
+            testDiff = abs(rewTimes - onsetPhot(i));
+            if min(testDiff) < 5000
+                [minVal minInd] = min(testDiff);
+        %         toneRewInd(i,1) = i;
+                toneRewInd(i,2) = minInd;
+            end
+        end
+        
+        trialLow = find(toneRewInd(:,2) == 0);
+        trialHi = find(toneRewInd(:,2) ~= 0);
+        
+    else
+        trialLow = find(toneRewInd(:,2) == 0);
+        trialHi = find(toneRewInd(:,2) ~= 0);
+    end
 else
     trialLow = find(rewDur == min(rewDur));
     trialHi = find(rewDur == max(rewDur));
@@ -222,6 +263,15 @@ end
 traceMBEDDiff = diff(traceMBED);
 
 %check alignment
+if mbedErrorFlag == 1
+    disp('Correcting False Signals in TDT MBED SIGNAL')
+    while delMem
+        traceMBED(delMem(1)) = [];
+        delMem(1) = [];
+    end
+end
+traceMBEDDiff = diff(traceMBED);
+
 [xcf,lags,bounds]  = crosscorr(onsetPhotDiff/1000,traceMBEDDiff);
 [xcMax maxInd] = max(xcf);
 xcLag = lags(maxInd);
@@ -236,7 +286,7 @@ elseif length(onsetPhot) ~= length(traceMBED)
         disp('Replacing with Interpolated Data')
         traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
     end
-    
+
 end
 
 s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
@@ -475,7 +525,12 @@ end
 
 %bin pre tones. 
 %first, find minimum tone reward latency
-toneRewLag = (onsetPhot(trialHi)) - rewTimes;
+try
+    toneRewLag = min((onsetPhot(trialHi)) - rewTimes);
+catch
+    length(rewTimes)
+    length(trialHi)
+end
 %now find tones by trial
 binLick = zeros(length(onsetPhot),1);
 for i = 1:length(onsetPhot)
@@ -600,17 +655,18 @@ plot(lickRasterToneLow(:,1),lickRasterToneLow(:,2),'r.')
 % set(gca,'XTickLabel',rasterAxis(:,1));
 % title('High Trials'
 
-%plot out photometry to lick
+%plot out photoemtry over time as binned
 subplot(4,3,3)
 hold on
 plot(s.Vals(3,:),'b.')
-plot(trialLow,s.Vals(3,trialLow),'r')
+plot(trialLow,s.Vals(3,trialLow),'r.')
 title('Peak Values Across Session: hi(b) low(r)')
 
+%plot out licking over time. 
 subplot(4,3,6)
 hold on
 plot(binLick,'b.')
-plot(trialLow,binLick(trialLow),'r')
+plot(trialLow,binLick(trialLow),'r.')
 title('AntiLicks Values Across Session: hi(b) low(r)')
 
 
