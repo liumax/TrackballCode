@@ -244,6 +244,7 @@ s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on.
 %calculate raster in terms of time steps in photometry
 photoTimeStep = mean(diff(t_ds));
 rasterPhotWindow = round(rasterWindow/photoTimeStep);
+rasterVect = [rasterWindow(1):photoTimeStep:rasterWindow(2)];
 
 %% Now lets sort out responses
 
@@ -266,11 +267,23 @@ for i = 1:length(traceMBED)
     if photoPoint + rasterPhotWindow(2) < length(newSmoothDS)
         photoRaster(:,i) = newSmoothDS(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
     else
-        disp('Rew Rasters: Reached End of Photometry Trace')
+        disp('Tone Rasters: Reached End of Photometry Trace')
         disp(i)
         break
     end
 end
+
+%now lets try and find things!
+zeroPoint = find(rasterVect > 0,1,'first');
+preBin = -10;
+postBin = 20;
+baseVal = min(photoRaster(zeroPoint + preBin:zeroPoint,:));
+peakVal = max(photoRaster(zeroPoint:zeroPoint + postBin,:));
+magVal = peakVal - baseVal;
+
+valStore = [baseVal;peakVal;magVal];
+
+s.Vals = valStore;
 
 if length(rewTimes)>0
     photoRasterRew = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,length(rewTimes));
@@ -410,8 +423,8 @@ s.VelRaster.RewardRaster = velRasterRew;
 s.VelRaster.Axis = velRasterAxis;
 
 %perform ROC analysis
-[funcOut] = functionROCLocoPhoto(s.MBED.Jitter,s.Photo.Jitter,s.Photo.Photo.x70dF,s.Photo.Photo.x70dFTime,s.Locomotion.Velocity);
-s.ROC = funcOut;
+% [funcOut] = functionROCLocoPhoto(s.MBED.Jitter,s.Photo.Jitter,s.Photo.Photo.x70dF,s.Photo.Photo.x70dFTime,s.Locomotion.Velocity);
+% s.ROC = funcOut;
 %% Licking Data
 
 lickData = trialParams.licking;
