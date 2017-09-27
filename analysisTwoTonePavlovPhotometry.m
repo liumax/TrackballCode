@@ -529,6 +529,7 @@ title('Average of Hi (b) vs Low (r) vs Aligned to Rew (k)')
 
 
 
+
 %plot velocity aligned to tone
 subplot(4,3,7)
 hold on
@@ -584,16 +585,13 @@ set(gca,'XTick',rasterAxis(:,2));
 set(gca,'XTickLabel',rasterAxis(:,1));
 title('High Trials')
 
-% %plot out photometry to lick
-% subplot(4,3,9)
-% plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick'),'LineWidth',2)
-% hold on
-% plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick')+std(photoRasterLick'))
-% plot([lickRastWindow(1):photoTimeStep:lickRastWindow(2)],mean(photoRasterLick')-std(photoRasterLick'))
+%plot out photometry to lick
+subplot(4,3,9)
+hold on
+plot(s.Vals(3,:),'b.')
+plot(trialLow,s.Vals(3,trialLow),'r')
+title('Peak Values Across Session: hi(b) low(r)')
 
-lickRastWindow = [-1 1];
-lickPhotWindow = round(lickRastWindow/photoTimeStep);
-title('Photometry Relative to Licks')
 
 %plot out average velocity aligned to reward.
 subplot(4,3,12)
