@@ -473,12 +473,27 @@ else
     histLickAxis = [rasterWindow(1):0.1:rasterWindow(2)];
 end
 
+%bin pre tones. 
+%first, find minimum tone reward latency
+toneRewLag = (onsetPhot(trialHi)) - rewTimes;
+%now find tones by trial
+binLick = zeros(length(onsetPhot),1);
+for i = 1:length(onsetPhot)
+    %find if there is any licks
+    lickFinder = find(lickRasterTone(:,2) == i & lickRasterTone(:,1) > 0 & lickRasterTone(:,1) < toneRewLag/1000);
+    if lickFinder
+        binLick(i) = length(lickFinder);
+    end
+end
+
+
 s.Licking.ToneRaster = lickRasterTone;
 s.Licking.RewardRaster = lickRasterRew;
 s.Licking.ToneHistHi = histLickToneHi;
 s.Licking.ToneHistLow = histLickToneLow;
 s.Licking.ToneHistRew = histLickRewHi;
 s.Licking.Axis = histLickAxis;
+s.LickingToneBin = binLick;
 
         
 %% Plot everything
@@ -570,27 +585,33 @@ plot(lickRasterToneHi(:,1),lickRasterToneHi(:,2),'b.');
 hold on
 plot(lickRasterToneLow(:,1),lickRasterToneLow(:,2),'r.')
 
-%plot out split up photometry response
-subplot(4,3,3)
-imagesc(photoRaster(:,trialLow)')
-colormap('parula')
-set(gca,'XTick',rasterAxis(:,2));
-set(gca,'XTickLabel',rasterAxis(:,1));
-title('Low Trials')
-
-subplot(4,3,6)
-imagesc(photoRaster(:,trialHi)')
-colormap('parula')
-set(gca,'XTick',rasterAxis(:,2));
-set(gca,'XTickLabel',rasterAxis(:,1));
-title('High Trials')
+% %plot out split up photometry response
+% subplot(4,3,3)
+% imagesc(photoRaster(:,trialLow)')
+% colormap('parula')
+% set(gca,'XTick',rasterAxis(:,2));
+% set(gca,'XTickLabel',rasterAxis(:,1));
+% title('Low Trials')
+% 
+% subplot(4,3,6)
+% imagesc(photoRaster(:,trialHi)')
+% colormap('parula')
+% set(gca,'XTick',rasterAxis(:,2));
+% set(gca,'XTickLabel',rasterAxis(:,1));
+% title('High Trials'
 
 %plot out photometry to lick
-subplot(4,3,9)
+subplot(4,3,3)
 hold on
 plot(s.Vals(3,:),'b.')
 plot(trialLow,s.Vals(3,trialLow),'r')
 title('Peak Values Across Session: hi(b) low(r)')
+
+subplot(4,3,6)
+hold on
+plot(binLick,'b.')
+plot(trialLow,binLick(trialLow),'r')
+title('AntiLicks Values Across Session: hi(b) low(r)')
 
 
 %plot out average velocity aligned to reward.
