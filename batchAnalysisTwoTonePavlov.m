@@ -4,6 +4,8 @@ testNames = what;
 testNames = testNames.mat;
 [findString] = functionCellStringFind(testNames,'Analysis');
 testNames(findString) = [];
+[findString] = functionCellStringFind(testNames,'Pavlov');
+testNames = testNames(findString);
 
 numFiles = length(testNames);
 
