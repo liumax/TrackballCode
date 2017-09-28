@@ -41,6 +41,8 @@ onsetPhotDiff = diff(onsetPhot);
 inputPhotOnset = inputPhot(inputPhot(:,2) == 1,1);
 inputPhotDiff = diff(inputPhotOnset);
 
+mbedErrorFlag = 0;
+
 %now lets try and match the trials with rewards
 if length(rewTimes) ~= length(onsetPhot)
     toneRewInd = zeros(length(onsetPhot),2);
@@ -526,7 +528,7 @@ end
 %bin pre tones. 
 %first, find minimum tone reward latency
 try
-    toneRewLag = min((onsetPhot(trialHi)) - rewTimes);
+    toneRewLag = min(rewTimes - (onsetPhot(trialHi)));
 catch
     length(rewTimes)
     length(trialHi)
