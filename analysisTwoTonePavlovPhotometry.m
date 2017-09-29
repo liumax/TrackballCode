@@ -23,12 +23,18 @@ s.Parameters.LocomotionTimeStep = locoTimeStep;
 inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
 outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
 rewOut = [portStates.tStamps',portStates.outStates(:,2)];
+toneIn = [portStates.tStamps',portStates.inStates(:,1)];
 
 %eliminate duplicate values!
-
 [inputPhot] = functionSignalDuplicateElim(inputPhot,2);
 [outputPhot] = functionSignalDuplicateElim(outputPhot,2);
 [rewOut] = functionSignalDuplicateElim(rewOut,2);
+[toneIn] = functionSignalDuplicateElim(toneIn,2);
+
+%check the toneIn, separate out to both onset times and duration
+toneOnset = toneIn(toneIn(:,2) == 1,1);
+toneFirst = find(toneIn(:,2) == 1,1,'first');
+toneDurs = toneIn([toneFirst+1:2:end],1) - toneIn([toneFirst:2:end],1);
 
 %now lets pull some information from the reward outputs. 
 rewTimes = rewOut(rewOut(:,2) == 1,1); %pull times
@@ -36,6 +42,8 @@ rewDur = rewOut(find(rewOut(:,2) == 1) + 1,1)-rewOut(rewOut(:,2) == 1,1);
 
 %pull just the onset times for photometry
 onsetPhot = outputPhot(outputPhot(:,2) == 1,1);
+firstFind = find(outputPhot(:,2) == 1,1,'first');
+outputDur = (outputPhot(firstFind+1:2:end,1))-(outputPhot(firstFind:2:end,1));
 onsetPhotDiff = diff(onsetPhot);
 
 inputPhotOnset = inputPhot(inputPhot(:,2) == 1,1);
@@ -56,7 +64,7 @@ if length(rewTimes) ~= length(onsetPhot)
         end
     end
     %check to see if there are duplicates
-    if length(unique(toneRewInd(:,2))) - 1 ~= length(find(toneRewInd(:,2) ~= 0))
+    if length(unique(toneRewInd(:,2))) - 1 ~= length(find(toneRewInd(:,2) ~= 0)) | length(find(toneRewInd(:,2) ~= 0)) ~= length(find(toneRewInd(:,2) == 0))
         %scan for anything below 8 seconds.
         minBar = 8000;
         minFinder = find(onsetPhotDiff < minBar,1,'first');
@@ -96,10 +104,12 @@ if length(rewTimes) ~= length(onsetPhot)
         trialHi = find(toneRewInd(:,2) ~= 0);
         
     else
+        delMem = [];
         trialLow = find(toneRewInd(:,2) == 0);
         trialHi = find(toneRewInd(:,2) ~= 0);
     end
 else
+    delMem = [];
     trialLow = find(rewDur == min(rewDur));
     trialHi = find(rewDur == max(rewDur));
 end
@@ -263,6 +273,9 @@ catch
     interpTrig = 1;
 end
 traceMBEDDiff = diff(traceMBED);
+
+%stash a copy of deletion indices.
+delBackup = delMem;
 
 %check alignment
 if mbedErrorFlag == 1
@@ -439,6 +452,7 @@ for i = 1:length(traceMBED)
         velRaster(:,i) = locoData.Velocity((findTime + velWindow(1)):(findTime + velWindow(2)),2);
     else
         disp('Velocity EDGE ISSUE: tone alignment')
+        i
         disp(num2str(length(velTrueTime)-(findTime + velWindow(2))))
 %         disp(i)
         velRaster(:,i) = zeros(velWindow(2)-velWindow(1)+1,1);
