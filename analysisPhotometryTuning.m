@@ -394,11 +394,19 @@ velTrueTime = interp1(onsetPhot/1000,traceMBED,locoData.Velocity(:,1));
 % %align without pulses, and i only have output pulses from the MBED when the
 % %sound turns on. Therefore, I will need to crop things out.
 % 
-findVelFirst = find(~isnan(velTrueTime),1,'first');
-findVelLast = find(~isnan(velTrueTime),1,'last');
+
 %find nearest in photometry signal
-findPhotFirst = find(traceTiming - velTrueTime(findVelFirst)>0,1,'first');
-findPhotLast = find(traceTiming - velTrueTime(findVelLast)>0,1,'first');
+if velTrueTime
+    findVelFirst = find(~isnan(velTrueTime),1,'first');
+    findVelLast = find(~isnan(velTrueTime),1,'last');
+    findPhotFirst = find(traceTiming - velTrueTime(findVelFirst)>0,1,'first');
+    findPhotLast = find(traceTiming - velTrueTime(findVelLast)>0,1,'first');
+else
+    findVelFirst = 1;
+    findVelLast = length(traceTiming);
+    findPhotFirst = 1;
+    findPhotLast = length(traceTiming);
+end
 
         
 %% Plot everything
@@ -478,9 +486,12 @@ set(hFig, 'Position', [10 80 1240 850])
 %plot overall photometry trace and locomotion trace
 subplot(3,3,1)
 hold on
-plot(velTrueTime(findVelFirst:findVelLast),(locoData.Velocity(findVelFirst:findVelLast,2)-min(locoData.Velocity(findVelFirst:findVelLast,2)))/(max(locoData.Velocity(findVelFirst:findVelLast,2))-min(locoData.Velocity(findVelFirst:findVelLast,2))))
+if velTrueTime
+    plot(velTrueTime(findVelFirst:findVelLast),(locoData.Velocity(findVelFirst:findVelLast,2)-min(locoData.Velocity(findVelFirst:findVelLast,2)))/(max(locoData.Velocity(findVelFirst:findVelLast,2))-min(locoData.Velocity(findVelFirst:findVelLast,2))))
+    xlim([velTrueTime(findVelFirst),velTrueTime(findVelLast)])
+end
 plot(traceTiming(findPhotFirst:1000:findPhotLast),(traceDF(findPhotFirst:1000:findPhotLast)-min(traceDF(findPhotFirst:findPhotLast)))/(max(traceDF(findPhotFirst:findPhotLast))-min(traceDF(findPhotFirst:findPhotLast))),'r')
-xlim([velTrueTime(findVelFirst),velTrueTime(findVelLast)])
+
 title('Normalized Vel (b) and Photometry (r)')
 
 %Plot heatmaps of photometry response

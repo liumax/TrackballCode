@@ -38,10 +38,20 @@ avgFreqAmps = mean(spectAmpVals,2);
 locs =findpeaks(double(avgFreqAmps),max(avgFreqAmps./10));
 locs = locs.loc;
 
-
-% Calculate signal at each frequency band
-sig1 = mean(abs(spectVals((locs(1)-inclFreqWin):(locs(1)+inclFreqWin),:)),1);
-sig2 = mean(abs(spectVals((locs(2)-inclFreqWin):(locs(2)+inclFreqWin),:)),1);
+if length(locs) > 1;
+    % Calculate signal at each frequency band
+    sig1 = mean(abs(spectVals((locs(1)-inclFreqWin):(locs(1)+inclFreqWin),:)),1);
+    sig2 = mean(abs(spectVals((locs(2)-inclFreqWin):(locs(2)+inclFreqWin),:)),1);
+else
+    %this is in case you shut off a laser for some reason
+    disp('PhotometryRawExtraction: Failed to Extract Two Peaks')
+    freqs = [211 330]; %these are hard coded in. 211 is for 470, 330 for 405
+    [mins locs(1)] = min(abs(spectFreqs - freqs(1)));
+    [mins locs(2)] = min(abs(spectFreqs - freqs(2)));
+    
+    sig1 = mean(abs(spectVals((locs(1)-inclFreqWin):(locs(1)+inclFreqWin),:)),1);
+    sig2 = mean(abs(spectVals((locs(2)-inclFreqWin):(locs(2)+inclFreqWin),:)),1);
+end
 
 % Low pass filter the signals
 filtSig1 = filtfilt(lpFilt,double(sig1));
