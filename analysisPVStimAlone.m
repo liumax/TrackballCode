@@ -237,7 +237,7 @@ for i = 1:numUnits
     s.(desigNames{i}).HistogramLaser = counts/length(dioTimes)/s.Parameters.histBin;
     
     %go through one by one and pull out values that I care about
-    infoStore = zeros(length(dioTimes),5);
+    infoStore = zeros(length(dioTimes),6);
     histStore = zeros(length(histBinVector),length(dioTimes));
     for j = 1:length(dioTimes)
         %find the spikes linked to the target trial
