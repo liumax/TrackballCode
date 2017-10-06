@@ -66,7 +66,7 @@ if length(rewTimes) ~= length(onsetPhot)
     %check to see if there are duplicates
     if length(unique(toneRewInd(:,2))) - 1 ~= length(find(toneRewInd(:,2) ~= 0)) | length(find(toneRewInd(:,2) ~= 0)) ~= length(find(toneRewInd(:,2) == 0))
         %scan for anything below 8 seconds.
-        minBar = 8000;
+        minBar = 7000;
         minFinder = find(onsetPhotDiff < minBar,1,'first');
         delInd = 1;
         if minFinder
@@ -544,6 +544,8 @@ end
 try
     toneRewLag = min(rewTimes - (onsetPhot(trialHi)));
 catch
+    disp('Failure to Find ToneRewLag')
+    toneRewLag = 1300;
     length(rewTimes)
     length(trialHi)
 end
