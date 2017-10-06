@@ -517,6 +517,7 @@ if length(lickData)>0
     for i = 1:length(trialLow)
         %see if there are values that are present
         lickFinder = find(lickRasterTone(:,2) == trialLow(i));
+        lickRasterToneLow = [0 0];
         if length(lickFinder) > 0
             lickRasterToneLow(lickInd:lickInd + length(lickFinder)-1,:) = lickRasterTone(lickFinder,:);
             lickInd = lickInd + length(lickFinder);
