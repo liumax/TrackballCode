@@ -130,7 +130,9 @@ print(hFig,'dFoF vs Licking','-dpdf','-r0')
 
 
 %lets try breaking things into 20 trial blocks
-for i = 1:65
+
+forReps = length(bigStore)/20;
+for i = 1:forReps
     condensedBig(:,i) = nanmean(bigStore(:,(i-1)*20+1:(i)*20),2);
     condensedSig(1,i) = ranksum(bigStore(1,(i-1)*20+1:(i)*20),bigStore(2,(i-1)*20+1:(i)*20));
     condensedSig(2,i) = ranksum(bigStore(3,(i-1)*20+1:(i)*20),bigStore(4,(i-1)*20+1:(i)*20));
@@ -138,7 +140,7 @@ for i = 1:65
 %     condensedSig(
 end
 
-for i = 1:13
+for i = 1:forReps/5
     dayBig(:,i) = nanmean(bigStore(:,(i-1)*100+1:(i)*100),2);
     daySig(1,i) = ranksum(bigStore(1,(i-1)*100+1:(i)*100),bigStore(2,(i-1)*100+1:(i)*100));
     daySig(2,i) = ranksum(bigStore(3,(i-1)*100+1:(i)*100),bigStore(4,(i-1)*100+1:(i)*100));
