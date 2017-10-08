@@ -233,6 +233,31 @@ D1FileName = D1FileName{1};
 s.SoundData.ToneTimes = dioTimes;
 s.SoundData.ToneTimeDiff = dioTimeDiff;
 
+
+
+%pull D2 info (laser ID)
+[D2FileName] = functionFileFinder(subFoldersCell,'DIO','D2');
+if length(D2FileName) == 0
+    [D2FileName] = functionFileFinder(subFoldersCell,'DIO','Din2');
+end
+D2FileName = D2FileName{1};
+%extracts DIO stuffs! this code is written to extract inputs for d1
+[DIO2Data] = readTrodesExtractedDataFile(D2FileName);
+
+%pulls out DIO up state onsets.
+[dio2Times,dio2TimeDiff] = functionBasicDIOCheck(DIO2Data,s.Parameters.trodesFS);
+
+%check for tons of DIO2. if alot this should be an ID tuning.
+if length(dio2Times) > 10
+    idToggle = 1;
+    disp('Laser Pulses Detected: ID Session')
+else
+    idToggle = 0;
+    disp('No Laser Pulses Detected')
+end
+
+%now lets see how many changes there are to DIO2
+
 disp('DIO Data Extracted, Checking for Errors')
 %insert to master. check for errors
 if length(dioTimes) == length(soundData.Frequencies)
@@ -628,6 +653,16 @@ for i = 1:numUnits
     end
     
 end
+
+% if idToggle == 1
+%     for i = 1:numUnits
+%         %pulls spike times and times for alignment
+%         spikeTimes = s.(desigNames{i}).SpikeTimes;
+%         alignTimes = dio2Times;
+%     end
+% else
+%     
+% end
 
 %calculate and plot LFP information
 % [lfpStruct] = functionLFPaverage(master, s.Parameters.LFPWindow, s,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
