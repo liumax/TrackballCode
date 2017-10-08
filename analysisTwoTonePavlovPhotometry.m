@@ -6,6 +6,7 @@ function [s] = analysisTwoTonePavlovPhotometry(fileName);
 rasterWindow = [-3,5]; %raster window in seconds
 thresh = 0.01; %threshold for peak detection
 locoTimeStep = 0.1;
+minBar = 8000; %for clearing out false pulses from speaker card.
 
 %store things in a big structure
 s = struct;
@@ -51,6 +52,9 @@ inputPhotDiff = diff(inputPhotOnset);
 
 mbedErrorFlag = 0;
 
+%use tone times for the time of tone delivery. assign to reward times
+%accordingly. 
+
 %now lets try and match the trials with rewards
 if length(rewTimes) ~= length(onsetPhot)
     toneRewInd = zeros(length(onsetPhot),2);
@@ -66,7 +70,7 @@ if length(rewTimes) ~= length(onsetPhot)
     %check to see if there are duplicates
     if length(unique(toneRewInd(:,2))) - 1 ~= length(find(toneRewInd(:,2) ~= 0)) | length(find(toneRewInd(:,2) ~= 0)) ~= length(find(toneRewInd(:,2) == 0))
         %scan for anything below 8 seconds.
-        minBar = 7000;
+        
         minFinder = find(onsetPhotDiff < minBar,1,'first');
         delInd = 1;
         if minFinder
