@@ -7,7 +7,9 @@ prompt = {'Mouse ID:',...
     'Weight:',...  
     'Big Reward (msec):',...
     'Small Reward (msec):',...       
-    'Trials (even #):',...          
+    'Trials (even #s):',...          
+    'Free Rew Trials (will be big rew):',...
+    'Catch Trials:',...
     'Tone Duration (msec):',...
     'Tone Amplitude (dB, max 100):',...
     'Reward Delay (msec):',...
@@ -19,7 +21,7 @@ prompt = {'Mouse ID:',...
     'Notes:'}; %the bracket is to end the prompt     
 dlg_title = 'LickTask:';
 num_lines=1;
-def={'','','200','50','200','500','100','3000','','','10000','50000','1',''};
+def={'','','400','0','200','0','0','1000','100','1300','','','8000','20000','1',''};
 answer = inputdlg(prompt,dlg_title,num_lines,def);
 pause(2); % need to pause for microcontroller or things break!
 
@@ -31,7 +33,9 @@ scQtUserData.mouseID = answer{i};i=i+1;
 scQtUserData.weight = answer{i};i=i+1;
 scQtUserData.bigRew = str2num(answer{i});i=i+1;
 scQtUserData.smallRew = str2num(answer{i});i=i+1;
-scQtUserData.totalTrials = str2num(answer{i});i=i+1;
+scQtUserData.toneTrials = str2num(answer{i});i=i+1;
+scQtUserData.freeRew = str2num(answer{i});i=i+1;
+scQtUserData.catchTrials = str2num(answer{i});i=i+1;
 scQtUserData.soundDur = str2num(answer{i});i=i+1;
 scQtUserData.soundAmp = str2num(answer{i});i=i+1;
 scQtUserData.rewDelay = str2num(answer{i});i=i+1;
@@ -41,35 +45,73 @@ scQtUserData.ITI = str2num(answer{i});i=i+1;
 scQtUserData.ITIRange = str2num(answer{i});i=i+1;
 scQtUserData.sessionID = answer{i};i=i+1;
 scQtUserData.notes = answer{i};i=i+1;
-scQtUserData.taskID = 'twoTonePavlovComputer';
+scQtUserData.taskID = 'pavTwoTone';
 
 %% now lets start calculations. 
 %calculate ITIs, use exponential distribution
+
+totalTrials = scQtUserData.toneTrials + scQtUserData.freeRew + scQtUserData.catchTrials;
+
 k = 2.5;
-p = (1-exp(-k))*rand(scQtUserData.totalTrials,1);
+p = (1-exp(-k))*rand(totalTrials,1);
 tau = (scQtUserData.ITIRange-scQtUserData.ITI)/k;
 x = round(scQtUserData.ITI-6000 + (-log(1-p))*tau); 
 scQtUserData.Master(:,1) = x;
 
 %calculate lag for reward delivery
 k = 2.5;
-p = (1-exp(-k))*rand(scQtUserData.totalTrials,1);
+p = (1-exp(-k))*rand(totalTrials,1);
 tau = (300)/k; %adjusted 170808 to try and improve behavior. 
 x = round(scQtUserData.rewDelay + (-log(1-p))*tau); 
 scQtUserData.RewDelayMatrix = x;
 
 %determine when to present tones!
-randInd = randperm(scQtUserData.totalTrials);
-randInd(randInd<=scQtUserData.totalTrials/2) = 1; %1 will represent small rewards
-randInd(randInd>scQtUserData.totalTrials/2) = 2; %2 will represent large rewards
-scQtUserData.Master(:,2) = randInd;
+trials = scQtUserData.toneTrials + scQtUserData.freeRew + scQtUserData.catchTrials;
+
+%find greatest common denominators
+gcd1 = gcd(scQtUserData.toneTrials/2,scQtUserData.freeRew);
+gcd2 = gcd(scQtUserData.toneTrials/2,scQtUserData.catchTrials);
+gcd3 = gcd(scQtUserData.freeRew,scQtUserData.freeRew);
+
+%check to make sure these are matched.
+if gcd1 == gcd2 & gcd2 == gcd3
+    divisor = gcd1;
+else
+    error('Unmatchable Trial Numbers')
+end
+
+%determine how many trials per repetition. 
+numIter = trials/divisor;
+
+% trial vector will be 1 = low, 2 = hi, 3= free reward, 4= catch
+desigVect = zeros(numIter,1);
+desigInd = 1;
+desigVect(desigInd:desigInd + (scQtUserData.toneTrials/2/divisor)-1) = 1;desigInd = desigInd + (scQtUserData.toneTrials/2/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.toneTrials/2/divisor)-1) = 2;desigInd = desigInd + (scQtUserData.toneTrials/2/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.freeRew/divisor)-1) = 3;desigInd = desigInd + (scQtUserData.freeRew/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.catchTrials/divisor)-1) = 4;desigInd = desigInd + (scQtUserData.catchTrials/divisor);
+
+trialDesigs = zeros(trials,1);
+trialInd = 1;
+for i = 1:divisor
+    randSet = randperm(numIter);
+    trialSet = desigVect(randSet);
+    trialDesigs(trialInd:trialInd -1 + numIter) = trialSet;
+    trialInd = trialInd + numIter;
+end
+
+
+scQtUserData.Master(:,2) = trialDesigs;
+
 %determine rewSize order
-scQtUserData.Master(:,3) = zeros(scQtUserData.totalTrials,1);
-scQtUserData.Master(randInd == 1,3) = scQtUserData.smallRew;
-scQtUserData.Master(randInd == 2,3) = scQtUserData.bigRew;
+scQtUserData.Master(:,3) = zeros(totalTrials,1);
+scQtUserData.Master(trialDesigs == 1,3) = scQtUserData.smallRew;
+scQtUserData.Master(trialDesigs == 2,3) = scQtUserData.bigRew;
+scQtUserData.Master(trialDesigs == 3,3) = scQtUserData.bigRew;
+scQtUserData.Master(trialDesigs == 4,3) = 0;
+
 %the last thing is to have a lick window such that you enforce a no lick
 %period before the cue delivery. 
-scQtUserData.lickWindow = 2000; %generates a 2 second window for licking. This will only be useful in the full behavior and not in training.
 
 %now I need to do all the prep for the sounds
 
@@ -160,6 +202,8 @@ soundSmall = [paddedWave*toneDB*smallToneAmp,ttlSig];
 
 scQtUserData.ToneBig = soundBig;
 scQtUserData.ToneSmall = soundSmall;
+%now make sounds for free rew and catch trials
+scQtUserData.FreeRew = [zeros(length(ttlSig),1),ttlSig];
 
 
 %store information about time/date
@@ -178,7 +222,11 @@ sendScQtControlMessage(['disp(''Mouse ID:', scQtUserData.mouseID,''')']);
 sendScQtControlMessage(['disp(''weight:', scQtUserData.weight,''')']);
 sendScQtControlMessage(['disp(''bigReward:', num2str(scQtUserData.bigRew),''')']);
 sendScQtControlMessage(['disp(''smallReward:', num2str(scQtUserData.smallRew),''')']);
-sendScQtControlMessage(['disp(''totalTrials:', num2str(scQtUserData.totalTrials),''')']);
+sendScQtControlMessage(['disp(''toneTrials:', num2str(scQtUserData.toneTrials),''')']);
+
+sendScQtControlMessage(['disp(''freeRewTrials:', num2str(scQtUserData.freeRew),''')']);
+sendScQtControlMessage(['disp(''catchTrials:', num2str(scQtUserData.catchTrials),''')']);
+
 sendScQtControlMessage(['disp(''soundDur:', num2str(scQtUserData.soundDur),''')']);
 sendScQtControlMessage(['disp(''soundAmp:', num2str(scQtUserData.soundAmp),''')']);
 sendScQtControlMessage(['disp(''rewDelay:', num2str(scQtUserData.rewDelay),''')']);
@@ -198,9 +246,9 @@ pause(1) %Need to put all my timings in before this stuff
 %% generate space in structure for storage of information that I care about!
 %This is for soundOn times. This allows for calculations of all the other
 %things!
-scQtUserData.soundOn = zeros(scQtUserData.totalTrials,1);
+scQtUserData.soundOn = zeros(scQtUserData.toneTrials,1);
 %this is for licking latency
-scQtUserData.lickLat = zeros(scQtUserData.totalTrials,1);
+scQtUserData.lickLat = zeros(scQtUserData.toneTrials,1);
 
 
 %variables for tracking licking. Each entry here will be a combination of
@@ -215,8 +263,6 @@ scQtUserData.lickHist = zeros(80,2); %This is optimized for looking at an 8 seco
 
 scQtUserData.lickAxes = [-2:0.1:5.9]; %axis for histogram
 %send initial information to the mbed
-sendScQtControlMessage(['lickWind =',num2str(scQtUserData.lickWindow)]);
 sendScQtControlMessage(['toneRewDel =',num2str(scQtUserData.RewDelayMatrix(1))]);
-sendScQtControlMessage(['trPhase = 0']);
 sendScQtControlMessage(['signalDel =3000']); %this is the delay after reward delivery before triggering next thing. 
 sendScQtControlMessage(['disp(''StartSession'')']);

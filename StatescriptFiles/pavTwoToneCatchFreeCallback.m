@@ -28,20 +28,15 @@ if(~isempty(strfind(newLine,'Lick Detected')))
         scQtUserData.licks(scQtUserData.lickCounter,1) = str2num(newLine(1:spaceFinder(1)-1))/1000;
         scQtUserData.licks(scQtUserData.lickCounter,2) = scQtUserData.trial;
         scQtUserData.licks(scQtUserData.lickCounter,4) = scQtUserData.LickDesig;
-    %     scQtUserData.licks(scQtUserData.lickCounter,3) = scQtUserData.trPhase;
         scQtUserData.lickCounter = scQtUserData.lickCounter + 1;
     catch
+        disp('Failure to Capture Lick Data')
     end
 end
 
 if(~isempty(strfind(newLine,'Tone Delivered')))
     spaceFinder = find(newLine == ' ');
     scQtUserData.cueTime(scQtUserData.trial) = str2num(newLine(1:spaceFinder(1)-1))/1000;
-end
-
-if(~isempty(strfind(newLine,'trPhase')))
-    spaceFinder = find(newLine == ' ');
-    scQtUserData.trPhase = str2num(newLine(spaceFinder(2)+1:end));
 end
 
 %this is for the first trial, which is triggered via the script. This sends
@@ -68,12 +63,18 @@ end
 
 if ~isempty(strfind(newLine,'TriggerSound'))
     soundID = scQtUserData.Master(scQtUserData.trial,2)
-    if soundID == 2
-        disp('PlayBig')
-        sound(scQtUserData.ToneBig,192000)
-    elseif soundID == 1
+    if soundID == 1
         disp('PlaySmall')
         sound(scQtUserData.ToneSmall,192000)
+    elseif soundID == 2
+        disp('PlayBig')
+        sound(scQtUserData.ToneBig,192000)
+    elseif
+        disp('PlayFreeRew')
+        sound(scQtUserData.FreeRew,192000)
+    elseif
+        disp('PlayBigCatch')
+        sound(scQtUserData.ToneBig,192000)
     end
 end
 
