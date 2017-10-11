@@ -76,14 +76,21 @@ gcd2 = gcd(scQtUserData.toneTrials/2,scQtUserData.catchTrials);
 gcd3 = gcd(scQtUserData.freeRew,scQtUserData.freeRew);
 
 %check to make sure these are matched.
-if gcd1 == gcd2 & gcd2 == gcd3
-    divisor = gcd1;
+if scQtUserData.catchTrials ~= 0 | scQtUserData.freeRew ~= 0
+    if gcd1 == gcd2 & gcd2 == gcd3
+        divisor = gcd1;
+        %determine how many trials per repetition. 
+        numIter = trials/divisor;
+    else
+        error('Unmatchable Trial Numbers')
+    end
 else
-    error('Unmatchable Trial Numbers')
+    disp('No Test Trials')
+    numIter = 10;
+    divisor = trials/numIter;
 end
 
-%determine how many trials per repetition. 
-numIter = trials/divisor;
+
 
 % trial vector will be 1 = low, 2 = hi, 3= free reward, 4= catch
 desigVect = zeros(numIter,1);
