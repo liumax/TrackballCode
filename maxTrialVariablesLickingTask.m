@@ -154,6 +154,20 @@ while ischar(tline) %repeats loop as long as tline has characters
                     (find(eventStrings{eventLineNum}==':')+1):end);
             end
             
+            %to determine the type of trial. 
+            if ~isempty(strfind(eventStrings{eventLineNum},'PlaySmall'))
+                trialType(trialNum) = 1;
+            end
+            if ~isempty(strfind(eventStrings{eventLineNum},'PlayBig'))
+                trialType(trialNum) = 2;
+            end
+            if ~isempty(strfind(eventStrings{eventLineNum},'PlayFreeRew'))
+                trialType(trialNum) = 3;
+            end
+            if ~isempty(strfind(eventStrings{eventLineNum},'PlayBigCatch'))
+                trialType(trialNum) = 4;
+            end
+            
             %Below code is for portstate changes
         elseif ~isnan(str2double(tline(findSpaces(1)+1))) %this picks up the portstate changes
             portLineNum = portLineNum + 1; %updates port line counter
