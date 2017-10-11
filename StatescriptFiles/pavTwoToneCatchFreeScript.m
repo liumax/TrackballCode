@@ -47,6 +47,8 @@ scQtUserData.sessionID = answer{i};i=i+1;
 scQtUserData.notes = answer{i};i=i+1;
 scQtUserData.taskID = 'pavTwoTone';
 
+saveName = strcat('C:\Users\KreitzerLab\Desktop\',date,scQtUserData.mouseID,'RawFile');
+
 %% now lets start calculations. 
 %calculate ITIs, use exponential distribution
 
@@ -223,10 +225,8 @@ sendScQtControlMessage(['disp(''weight:', scQtUserData.weight,''')']);
 sendScQtControlMessage(['disp(''bigReward:', num2str(scQtUserData.bigRew),''')']);
 sendScQtControlMessage(['disp(''smallReward:', num2str(scQtUserData.smallRew),''')']);
 sendScQtControlMessage(['disp(''toneTrials:', num2str(scQtUserData.toneTrials),''')']);
-
 sendScQtControlMessage(['disp(''freeRewTrials:', num2str(scQtUserData.freeRew),''')']);
 sendScQtControlMessage(['disp(''catchTrials:', num2str(scQtUserData.catchTrials),''')']);
-
 sendScQtControlMessage(['disp(''soundDur:', num2str(scQtUserData.soundDur),''')']);
 sendScQtControlMessage(['disp(''soundAmp:', num2str(scQtUserData.soundAmp),''')']);
 sendScQtControlMessage(['disp(''rewDelay:', num2str(scQtUserData.rewDelay),''')']);
@@ -234,7 +234,6 @@ sendScQtControlMessage(['disp(''bigTone:', num2str(scQtUserData.bigTone),''')'])
 sendScQtControlMessage(['disp(''smallTone:', num2str(scQtUserData.smallTone),''')']);
 sendScQtControlMessage(['disp(''ITIShort:', num2str(scQtUserData.ITI),''')']);
 sendScQtControlMessage(['disp(''ITILong:', num2str(scQtUserData.ITIRange),''')']);
-sendScQtControlMessage(['disp(''lickWindow:', num2str(scQtUserData.lickWindow),''')']);
 sendScQtControlMessage(['disp(''taskID:', scQtUserData.taskID,''')']);
 sendScQtControlMessage(['disp(''date:', scQtUserData.date,''')']);
 sendScQtControlMessage(['disp(''time:', scQtUserData.time,''')']);
@@ -260,6 +259,13 @@ scQtUserData.lickCounter = 1;
 scQtUserData.lickHist = zeros(80,2); %This is optimized for looking at an 8 second window
 %with 2 sec before sound onset, sound, and 3 seconds after. Set for 100 ms
 %bins. First column is for small reward, second column for big rewards.
+
+%toggle for triggering storage of information when plotting fails.
+scQtUserData.PlotToggle = 0;
+
+%save all the input data
+save(saveName,'scQtUserData')
+
 
 scQtUserData.lickAxes = [-2:0.1:5.9]; %axis for histogram
 %send initial information to the mbed

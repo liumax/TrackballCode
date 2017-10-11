@@ -10,13 +10,13 @@ global scQtInitiated; %the callback function should set this to 1 once all user 
 global scQtUserData;
 
 if (scQtInitiated == 0)
-    twoTonePavlovComputerScript;
+    pavTwoToneCatchFreeScript;
     scQtInitiated = 1;
     newLine = 'start next trial';
 end
 
 %this kills things after the last trial of the session.
-if (~isempty(strfind(newLine,['Trial = ',num2str(scQtUserData.totalTrials)])))
+if (~isempty(strfind(newLine,['Trial = ',num2str(scQtUserData.toneTrials + scQtUserData.freeRew + scQtUserData.catchTrials)])))
     scQtUserData.tripSwitch = 1;
     sendScQtControlMessage(['disp(''EndSession'')']);
 end
@@ -64,16 +64,20 @@ end
 if ~isempty(strfind(newLine,'TriggerSound'))
     soundID = scQtUserData.Master(scQtUserData.trial,2)
     if soundID == 1
-        disp('PlaySmall')
+        sendScQtControlMessage(['disp(''PlaySmall'')']);
+%         disp('PlaySmall')
         sound(scQtUserData.ToneSmall,192000)
     elseif soundID == 2
-        disp('PlayBig')
+        sendScQtControlMessage(['disp(''PlayBig'')']);
+%         disp('PlayBig')
         sound(scQtUserData.ToneBig,192000)
-    elseif
-        disp('PlayFreeRew')
+    elseif soundID == 3
+        sendScQtControlMessage(['disp(''PlayFreeRew'')']);
+%         disp('PlayFreeRew')
         sound(scQtUserData.FreeRew,192000)
-    elseif
-        disp('PlayBigCatch')
+    elseif soundID == 4
+        sendScQtControlMessage(['disp(''PlayBigCatch'')']);
+%         disp('PlayBigCatch')
         sound(scQtUserData.ToneBig,192000)
     end
 end
@@ -122,15 +126,6 @@ if ~isempty(strfind(newLine,'PlotTime'))
         axis(scQtUserData.ax1,[-2 6 0.5 200])
         title(num2str(scQtUserData.trial))
 
-%         plot(lickTrunc(findLow,1),lickTrunc(findLow,2),'b.',...
-%             'parent',scQtUserData.ax1);
-%         hold on
-%         plot(lickTrunc(findHi,1),lickTrunc(findHi,2),'r.',...
-%             'parent',scQtUserData.ax1);
-%         axis(scQtUserData.ax1,[scQtUserData.lickAxes(1) scQtUserData.lickAxes(end) 0.5 scQtUserData.trial])
-
-        subplot(3,1,2)
-
         subplot(3,1,3)
         %process histogram data
     %     histData = scQtUserData.licks(1:scQtUserData.lickCounter,1);
@@ -143,11 +138,27 @@ if ~isempty(strfind(newLine,'PlotTime'))
         hiLicks(hiLicks > scQtUserData.lickAxes(end)) = [];
         hiLicks(hiLicks < scQtUserData.lickAxes(1)) = [];
         hiHist = hist(hiLicks,scQtUserData.lickAxes);
+        
+        freeLicks = lickTrunc(lickTrunc(:,4) == 3,1);
+        freeLicks(freeLicks > scQtUserData.lickAxes(end)) = [];
+        freeLicks(freeLicks < scQtUserData.lickAxes(1)) = [];
+        freeHist = hist(freeLicks,scQtUserData.lickAxes);
+        
+        catchLicks = lickTrunc(lickTrunc(:,4) == 4,1);
+        catchLicks(catchLicks > scQtUserData.lickAxes(end)) = [];
+        catchLicks(catchLicks < scQtUserData.lickAxes(1)) = [];
+        catchHist = hist(catchLicks,scQtUserData.lickAxes);
 
         hold on
-        plot(scQtUserData.lickAxes,lowHist,'b')
-        plot(scQtUserData.lickAxes,hiHist,'r')
+        plot(scQtUserData.lickAxes,lowHist,'r')
+        plot(scQtUserData.lickAxes,hiHist,'b')
+        plot(scQtUserData.lickAxes,freeHist,'g.-')
+        plot(scQtUserData.lickAxes,catchHist,'k.-')
     catch
+        if scQtUserData.PlotToggle == 0
+            scQtUserData.PlotToggle = 1;
+            scQtUserData.FailTrial = scQtUserData.trial;
+        end
         subplot(3,1,1)
         title(num2str(scQtUserData.trial))
         disp(strcat('lengthLicks',num2str(length(scQtUserData.licks))));
