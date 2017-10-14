@@ -13,6 +13,8 @@ s = struct;
 s.Parameters.RasterWindow = rasterWindow;
 s.Parameters.PeakThreshold = thresh;
 s.Parameters.LocomotionTimeStep = locoTimeStep;
+
+lickHistBin = 0.1;
 %% First, lets pull the MBED stuff
 
 
@@ -50,81 +52,75 @@ onsetPhotDiff = diff(onsetPhot);
 inputPhotOnset = inputPhot(inputPhot(:,2) == 1,1);
 inputPhotDiff = diff(inputPhotOnset);
 
+%toggle for marking when there are MBED issues with outputs. 
 mbedErrorFlag = 0;
 
-%use trial states to determine the type of trial. 
+%171011, due to experience with this and some reliability issues I've
+%observed, will use the input (toneOnset) rather than the output
+%(outputPhot) for determining tone timing. 
 
-
-%now lets try and match the trials with rewards
-if length(rewTimes) ~= length(onsetPhot)
-    toneRewInd = zeros(length(onsetPhot),2);
-    toneRewInd(:,1) = 1:length(onsetPhot);
-    for i = 1:length(onsetPhot)
-        testDiff = abs(rewTimes - onsetPhot(i));
-        if min(testDiff) < 5000
-            [minVal minInd] = min(testDiff);
-    %         toneRewInd(i,1) = i;
-            toneRewInd(i,2) = minInd;
-        end
-    end
-    %check to see if there are duplicates
-    if length(unique(toneRewInd(:,2))) - 1 ~= length(find(toneRewInd(:,2) ~= 0)) | length(find(toneRewInd(:,2) ~= 0)) ~= length(find(toneRewInd(:,2) == 0))
-        %scan for anything below 8 seconds.
-        
-        minFinder = find(onsetPhotDiff < minBar,1,'first');
-        delInd = 1;
-        if minFinder
-            whileTrig = 0;
-            while whileTrig == 0
-                disp('ERROR TRIAL BELOW 8 SECONDS FOUND, DELETING')
-                onsetPhot(minFinder+1) = [];
-                delMem(delInd) = minFinder + 1;
-                delInd = delInd + 1;
-                onsetPhotDiff = diff(onsetPhot);
-                minFinder = find(onsetPhotDiff < minBar,1,'first');
-                if minFinder
-                    whileTrig = 0;
-                else
-                    whileTrig = 1;
-                end
-            end
-        else
-            error('UNEXPLAINED DIFFERENCE IN TONE DELIVERY VS REWARDS')
-        end
-        %flag this error for downstream processing
-        mbedErrorFlag = 1;
-        toneRewInd = zeros(length(onsetPhot),2);
-        toneRewInd(:,1) = 1:length(onsetPhot);
-        for i = 1:length(onsetPhot)
-            testDiff = abs(rewTimes - onsetPhot(i));
-            if min(testDiff) < 5000
-                [minVal minInd] = min(testDiff);
-        %         toneRewInd(i,1) = i;
-                toneRewInd(i,2) = minInd;
-            end
-        end
-        
-        trialLow = find(toneRewInd(:,2) == 0);
-        trialHi = find(toneRewInd(:,2) ~= 0);
-        
-    else
-        delMem = [];
-        trialLow = find(toneRewInd(:,2) == 0);
-        trialHi = find(toneRewInd(:,2) ~= 0);
-    end
-else
-    delMem = [];
-    trialLow = find(rewDur == min(rewDur));
-    trialHi = find(rewDur == max(rewDur));
+%check for errors by comparing trialStates with actual tone inputs
+if length(trialStates.trialType) ~= length(toneOnset)
+    error('INCORRECT NUMBER OF TRIALS DETECTED. ABORT')
 end
+
+%now check for the different trial types available
+disp(strcat('Low Tone Trials:',num2str(length(find(trialStates.trialType == 1)))))
+disp(strcat('Hi Tone Trials:',num2str(length(find(trialStates.trialType == 2)))))
+disp(strcat('Free Rew Trials:',num2str(length(find(trialStates.trialType == 3)))))
+disp(strcat('Catch Tone Trials:',num2str(length(find(trialStates.trialType == 4)))))
+
+%now save these trial types as variables
+trialLow = find(trialStates.trialType == 1);
+trialHi = find(trialStates.trialType == 2);
+trialFree = find(trialStates.trialType == 3);
+trialCatch = find(trialStates.trialType == 4);
+trialRew = sort([trialHi,trialFree]);
+
+%NOW DETERMINE the difference between the outputs (outputPhot) and the
+%actual inputs
+if length(onsetPhot) == length(toneOnset)
+    disp('Tone Input and Output Numbers Matched, Proceed!')
+    delInds = [];
+else
+    disp('Tone Input and Output Numbers Mismatched, Correcting...')
+    %calculate difference
+    pulseDiff = length(onsetPhot) - length(toneOnset);
+    disp(strcat('Output has ',num2str(pulseDiff),' extra pulses'))
+    %find intersect of the two
+    [C,ia,ib] = intersect(onsetPhot,toneOnset); %ia is the index for onsetPhot. 
+    delInds = [1:length(onsetPhot)];
+    delInds(ia) = [];
+    %check to make sure this is correct!
+    if length(delInds) ~= pulseDiff
+        error('FAILURE TO CORRECT OUTPUT PROPERLY')
+    end
+    onsetPhot(delInds) = [];
+    
+    %confirm that things line up properly!
+    [xcf,lags,bounds]  = crosscorr(onsetPhot,toneOnset);
+    [xcMax maxInd] = max(xcf);
+    xcLag = lags(maxInd);
+    
+    if xcLag ~= 0
+        error('Tone Inputs Not Aligned to Tone Outputs!')
+    end
+    
+end
+
 
 s.MBED.RewTimes = rewTimes;
 s.MBED.RewDur = rewDur;
 % s.MBED.Jitter = inputPhotOnset;
-s.MBED.ToneDelivery = onsetPhot;
+s.MBED.ToneDelivery = toneOnset;
+s.MBED.ToneOutput = onsetPhot;
 s.MBED.HiTrials = trialHi;
 s.MBED.LowTrials = trialLow;
+s.MBED.FreeTrials = trialFree;
+s.MBED.CatchTrials = trialCatch;
+s.MBED.RewTrials = trialRew;
 s.MBED.Raw = portStates;
+s.MBED.ToneOutputFailures = delInds;
 %Now pull locomotor data
 
 [locoData] = functionMBEDrotary(portStates.inStates(:,4),portStates.inStates(:,5),portStates.tStamps/1000,locoTimeStep);
@@ -272,22 +268,19 @@ try
     traceMBED = data.epocs.PtC0.onset;
     interpTrig = 0;
 catch
-    disp('No TDT Tone Pulses Detected')
-    traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
+    disp('No TDT Tone Pulses Detected: Using MBED Tone Times to Interpolate')
+    traceMBED = interp1(inputPhotOnset,traceJitt,toneOnset);
     interpTrig = 1;
 end
 traceMBEDDiff = diff(traceMBED);
 
 %stash a copy of deletion indices.
-delBackup = delMem;
+delBackup = delInds;
 
 %check alignment
 if mbedErrorFlag == 1
     disp('Correcting False Signals in TDT MBED SIGNAL')
-    while delMem
-        traceMBED(delMem(1)) = [];
-        delMem(1) = [];
-    end
+    traceMBED(delInds) = [];
 end
 traceMBEDDiff = diff(traceMBED);
 
@@ -353,7 +346,7 @@ magVal = peakVal - baseVal;
 valStore = [baseVal;peakVal;magVal];
 
 s.Vals = valStore;
-
+%align to reward times
 if length(rewTimes)>0
     photoRasterRew = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,length(rewTimes));
 
@@ -405,18 +398,30 @@ end
 
 
 %store means of different tones
-meanHi = mean(photoRaster(:,trialHi)');
-meanLow = mean(photoRaster(:,trialLow)');
+
+
+
 steHi = std(photoRaster(:,trialHi)')/sqrt(length(trialHi));
-steLow = std(photoRaster(:,trialLow)')/sqrt(length(trialHi));
+steLow = std(photoRaster(:,trialLow)')/sqrt(length(trialLow));
+steFree = std(photoRaster(:,trialFree)')/sqrt(length(trialFree));
+steCatch = std(photoRaster(:,trialCatch)')/sqrt(length(trialCatch));
 steRew = std(photoRasterRew')/sqrt(length(traceMBED));
+
+meanHi = [mean(photoRaster(:,trialHi)');mean(photoRaster(:,trialHi)') - steHi;mean(photoRaster(:,trialHi)') + steHi];
+meanLow = [mean(photoRaster(:,trialLow)');mean(photoRaster(:,trialLow)') - steLow;mean(photoRaster(:,trialLow)') + steLow];
+meanFree = [mean(photoRaster(:,trialFree)');mean(photoRaster(:,trialFree)') - steLow;mean(photoRaster(:,trialFree)') + steFree];
+meanCatch = [mean(photoRaster(:,trialCatch)');mean(photoRaster(:,trialCatch)') - steCatch;mean(photoRaster(:,trialCatch)') + steCatch];
+meanRew = [mean(photoRasterRew');mean(photoRasterRew') - steRew;mean(photoRasterRew') + steRew];
 
 photoZero = (-1*rasterWindow(1))/photoTimeStep;
 
 s.PhotoRaster.ToneRaster = photoRaster;
 s.PhotoRaster.RewardRaster = photoRasterRew;
+s.PhotoRaster.MeanRew = meanRew;
 s.PhotoRaster.MeanHi = meanHi;
 s.PhotoRaster.MeanLow = meanLow;
+s.PhotoRaster.MeanFree = meanFree;
+s.PhotoRaster.MeanCatch = meanCatch;
 s.PhotoRaster.LickRaster = photoRasterLick;
 s.PhotoRaster.TimeStep = photoTimeStep;
 
@@ -472,6 +477,12 @@ velHiSTE = std(velRaster(:,trialHi)')/sqrt(length(trialHi));
 velLowMean = mean(velRaster(:,trialLow)');
 velLowSTE = std(velRaster(:,trialLow)')/sqrt(length(trialLow));
 
+velFreeMean = mean(velRaster(:,trialFree)');
+velFreeSTE = std(velRaster(:,trialFree)')/sqrt(length(trialFree));
+
+velCatchMean = mean(velRaster(:,trialCatch)');
+velCatchSTE = std(velRaster(:,trialCatch)')/sqrt(length(trialCatch));
+
 %now do the same for reward times
 velWindowRew = rasterWindow/locoTimeStep;
 velRasterAxisRew = [rasterWindow(1):locoTimeStep:rasterWindow(2)];
@@ -488,9 +499,17 @@ for i = 1:length(rewTimes)
     end
 end
 
+velRewMean = mean(velRasterRew');
+velRewSTE = std(velRasterRew')/sqrt(length(trialRew));
+
 s.VelRaster.ToneRaster = velRaster;
 s.VelRaster.RewardRaster = velRasterRew;
 s.VelRaster.Axis = velRasterAxis;
+s.VelRaster.MeanRew = [velRewMean;velRewMean-velRewSTE;velRewMean+velRewSTE];
+s.VelRaster.MeanHi = [velHiMean;velHiMean-velHiSTE;velHiMean+velHiSTE];
+s.VelRaster.MeanLow = [velLowMean;velLowMean-velLowSTE;velLowMean+velLowSTE];
+s.VelRaster.MeanFree = [velFreeMean;velFreeMean-velFreeSTE;velFreeMean+velFreeSTE];
+s.VelRaster.MeanCatch = [velCatchMean;velCatchMean-velCatchSTE;velCatchMean+velCatchSTE];
 
 %perform ROC analysis
 % [funcOut] = functionROCLocoPhoto(s.MBED.Jitter,s.Photo.Jitter,s.Photo.Photo.x70dF,s.Photo.Photo.x70dFTime,s.Locomotion.Velocity);
@@ -518,30 +537,60 @@ if length(lickData)>0
     end
 
     lickInd = 1;
+    lickRasterToneLow = [0 0];
     for i = 1:length(trialLow)
         %see if there are values that are present
         lickFinder = find(lickRasterTone(:,2) == trialLow(i));
-        lickRasterToneLow = [0 0];
+        
         if length(lickFinder) > 0
             lickRasterToneLow(lickInd:lickInd + length(lickFinder)-1,:) = lickRasterTone(lickFinder,:);
             lickInd = lickInd + length(lickFinder);
         end
     end
+    
+    lickInd = 1;
+    lickRasterToneFree = [0 0];
+    for i = 1:length(trialFree)
+        %see if there are values that are present
+        lickFinder = find(lickRasterTone(:,2) == trialFree(i));
+        
+        if length(lickFinder) > 0
+            lickRasterToneFree(lickInd:lickInd + length(lickFinder)-1,:) = lickRasterTone(lickFinder,:);
+            lickInd = lickInd + length(lickFinder);
+        end
+    end
+    
+    lickInd = 1;
+    lickRasterToneCatch = [0 0];
+    for i = 1:length(trialCatch)
+        %see if there are values that are present
+        lickFinder = find(lickRasterTone(:,2) == trialCatch(i));
+        
+        if length(lickFinder) > 0
+            lickRasterToneCatch(lickInd:lickInd + length(lickFinder)-1,:) = lickRasterTone(lickFinder,:);
+            lickInd = lickInd + length(lickFinder);
+        end
+    end
 
     %store as histograms
-    histLickToneHi = hist(lickRasterToneHi(:,1),[rasterWindow(1):0.1:rasterWindow(2)]);
-    histLickToneLow = hist(lickRasterToneLow(:,1),[rasterWindow(1):0.1:rasterWindow(2)]);
-    histLickRewHi = hist(lickRasterRew(:,1),[rasterWindow(1):0.1:rasterWindow(2)]);
-    histLickAxis = [rasterWindow(1):0.1:rasterWindow(2)];
+    histLickToneHi = hist(lickRasterToneHi(:,1),[rasterWindow(1):lickHistBin:rasterWindow(2)]);
+    histLickToneLow = hist(lickRasterToneLow(:,1),[rasterWindow(1):lickHistBin:rasterWindow(2)]);
+    histLickToneFree = hist(lickRasterToneFree(:,1),[rasterWindow(1):lickHistBin:rasterWindow(2)]);
+    histLickToneCatch = hist(lickRasterToneCatch(:,1),[rasterWindow(1):lickHistBin:rasterWindow(2)]);
+    
+    histLickRewHi = hist(lickRasterRew(:,1),[rasterWindow(1):lickHistBin:rasterWindow(2)]);
+    histLickAxis = [rasterWindow(1):lickHistBin:rasterWindow(2)];
 else
     lickRasterTone = zeros(1,2);
     lickRasterRew = zeros(1,2);
     lickRasterToneHi = zeros(1,2);
     lickRasterToneLow = zeros(1,2);
-    histLickToneHi = zeros(length([rasterWindow(1):0.1:rasterWindow(2)]),1);
-    histLickToneLow = zeros(length([rasterWindow(1):0.1:rasterWindow(2)]),1);
-    histLickRewHi = zeros(length([rasterWindow(1):0.1:rasterWindow(2)]),1);
-    histLickAxis = [rasterWindow(1):0.1:rasterWindow(2)];
+    histLickToneHi = zeros(length([rasterWindow(1):lickHistBin:rasterWindow(2)]),1);
+    histLickToneLow = zeros(length([rasterWindow(1):lickHistBin:rasterWindow(2)]),1);
+    histLickToneFree = zeros(length([rasterWindow(1):lickHistBin:rasterWindow(2)]),1);
+    histLickToneCatch = zeros(length([rasterWindow(1):lickHistBin:rasterWindow(2)]),1);
+    histLickRewHi = zeros(length([rasterWindow(1):lickHistBin:rasterWindow(2)]),1);
+    histLickAxis = [rasterWindow(1):lickHistBin:rasterWindow(2)];
 end
 
 %bin pre tones. 
@@ -565,11 +614,13 @@ for i = 1:length(onsetPhot)
 end
 
 
-s.Licking.ToneRaster = lickRasterTone;
-s.Licking.RewardRaster = lickRasterRew;
-s.Licking.ToneHistHi = histLickToneHi;
-s.Licking.ToneHistLow = histLickToneLow;
-s.Licking.ToneHistRew = histLickRewHi;
+s.Licking.ToneRaster = lickRasterTone/length(toneOnset)/lickHistBin;
+s.Licking.RewardRaster = lickRasterRew/length(trialRew)/lickHistBin;
+s.Licking.ToneHistHi = histLickToneHi/length(trialHi)/lickHistBin;
+s.Licking.ToneHistLow = histLickToneLow/length(trialLow)/lickHistBin;
+s.Licking.ToneHistRew = histLickRewHi/length(trialRew)/lickHistBin;
+s.Licking.ToneHistFree = histLickToneFree/length(trialFree)/lickHistBin;
+s.Licking.ToneHistCatch = histLickToneCatch/length(trialCatch)/lickHistBin;
 s.Licking.Axis = histLickAxis;
 s.LickingToneBin = binLick;
 
@@ -603,17 +654,22 @@ title('Normalized Vel (b) and Photometry (r)')
 %plot average hi and low traces for photometry
 subplot(4,3,4)
 hold on
-plot(meanHi,'b','LineWidth',2)
-plot(meanHi+steHi,'b','LineWidth',1)
-plot(meanHi-steHi,'b','LineWidth',1)
-plot(meanLow,'r','LineWidth',2)
-plot(meanLow+steLow,'r','LineWidth',1)
-plot(meanLow-steLow,'r','LineWidth',1)
-meanRew = mean(photoRasterRew');
-plot(meanRew,'k','LineWidth',2)
-plot(meanRew + steRew,'k')
-plot(meanRew - steRew,'k')
-plot([photoZero photoZero],[min(min(meanHi,meanLow)) max(max(meanHi,meanLow))],'k')
+plot(meanHi(1,:),'b','LineWidth',2)
+plot(meanHi(2,:),'b','LineWidth',1)
+plot(meanHi(3,:),'b','LineWidth',1)
+plot(meanLow(1,:),'r','LineWidth',2)
+plot(meanLow(2,:),'r','LineWidth',1)
+plot(meanLow(3,:),'r','LineWidth',1)
+plot(meanRew(1,:),'b--','LineWidth',2)
+plot(meanRew(2,:),'b--','LineWidth',1)
+plot(meanRew(3,:),'b--','LineWidth',1)
+plot(meanCatch(1,:),'k','LineWidth',2)
+plot(meanCatch(2,:),'k','LineWidth',1)
+plot(meanCatch(3,:),'k','LineWidth',1)
+plot(meanFree(1,:),'g','LineWidth',2)
+plot(meanFree(2,:),'g','LineWidth',1)
+plot(meanFree(3,:),'g','LineWidth',1)
+% plot([photoZero photoZero],[ylim(1) ylim(2)],'k')
 
 set(gca,'XTick',rasterAxis(:,2));
 set(gca,'XTickLabel',rasterAxis(:,1));
@@ -621,26 +677,34 @@ xlim([rasterAxis(1,2),rasterAxis(end,2)])
 title('Average of Hi (b) vs Low (r) vs Aligned to Rew (k)')
 
 
-
-
 %plot velocity aligned to tone
 subplot(4,3,7)
 hold on
-plot(velRasterAxis,velHiMean,'b','LineWidth',2)
-plot(velRasterAxis,velHiMean+velHiSTE,'b','LineWidth',1)
-plot(velRasterAxis,velHiMean-velHiSTE,'b','LineWidth',1)
-plot(velRasterAxis,velLowMean,'r','LineWidth',2)
-plot(velRasterAxis,velLowMean+velLowSTE,'r','LineWidth',1)
-plot(velRasterAxis,velLowMean-velLowSTE,'r','LineWidth',1)
-
-plot([0 0],[min(min(velHiMean,velLowMean)) max(max(velHiMean,velLowMean))],'k')
-title('Velocity Relative to Tone')
+plot(velRasterAxis,s.VelRaster.MeanHi(1,:),'b','LineWidth',2)
+plot(velRasterAxis,s.VelRaster.MeanHi(2,:),'b','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanHi(3,:),'b','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanLow(1,:),'r','LineWidth',2)
+plot(velRasterAxis,s.VelRaster.MeanLow(2,:),'r','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanLow(3,:),'r','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanFree(1,:),'g','LineWidth',2)
+plot(velRasterAxis,s.VelRaster.MeanFree(2,:),'g','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanFree(3,:),'g','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanCatch(1,:),'k','LineWidth',2)
+plot(velRasterAxis,s.VelRaster.MeanCatch(2,:),'k','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanCatch(3,:),'k','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanRew(1,:),'b--','LineWidth',2)
+plot(velRasterAxis,s.VelRaster.MeanRew(2,:),'b--','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanRew(3,:),'b--','LineWidth',1)
+% plot([0 0],[min(min(velHiMean,velLowMean)) max(max(velHiMean,velLowMean))],'k')
+title('Velocity Relative to Tone/Reward')
 
 %Plot licking aligned to tone
 subplot(4,3,10)
 hold on
-plot(histLickAxis,histLickToneHi,'b','LineWidth',2)
-plot(histLickAxis,histLickToneLow,'r','LineWidth',2)
+plot(histLickAxis,s.Licking.ToneHistHi,'b','LineWidth',2)
+plot(histLickAxis,s.Licking.ToneHistLow,'r','LineWidth',2)
+plot(histLickAxis,s.Licking.ToneHistCatch,'k','LineWidth',2)
+plot(histLickAxis,s.Licking.ToneHistFree,'g','LineWidth',2)
 title('Licking Relative to Tone')
 
 %Plot heatmaps of photometry response
@@ -661,7 +725,12 @@ xlim(rasterWindow)
 subplot(4,3,11)
 plot(lickRasterToneHi(:,1),lickRasterToneHi(:,2),'b.');
 hold on
-plot(lickRasterToneLow(:,1),lickRasterToneLow(:,2),'r.')
+plot(lickRasterToneLow(:,1),lickRasterToneLow(:,2),'r.');
+plot(lickRasterToneCatch(:,1),lickRasterToneCatch(:,2),'k.');
+plot(lickRasterToneFree(:,1),lickRasterToneFree(:,2),'g.');
+
+xlim(rasterWindow)
+title('Lick Rasters to Tone')
 
 % %plot out split up photometry response
 % subplot(4,3,3)
@@ -683,6 +752,9 @@ subplot(4,3,3)
 hold on
 plot(s.Vals(3,:),'b.')
 plot(trialLow,s.Vals(3,trialLow),'r.')
+plot(trialFree,s.Vals(3,trialFree),'g.')
+plot(trialCatch,s.Vals(3,trialCatch),'k.')
+xlim([0 length(toneOnset)])
 title('Peak Values Across Session: hi(b) low(r)')
 
 %plot out licking over time. 
@@ -690,6 +762,9 @@ subplot(4,3,6)
 hold on
 plot(binLick,'b.')
 plot(trialLow,binLick(trialLow),'r.')
+plot(trialFree,binLick(trialFree),'g.')
+plot(trialCatch,binLick(trialCatch),'k.')
+xlim([0 length(toneOnset)])
 title('AntiLicks Values Across Session: hi(b) low(r)')
 
 
