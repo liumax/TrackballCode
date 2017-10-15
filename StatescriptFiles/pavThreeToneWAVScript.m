@@ -61,6 +61,7 @@ saveName = strcat('C:\Users\KreitzerLab\Desktop\',date,scQtUserData.mouseID,'Raw
 %calculate ITIs, use exponential distribution
 
 totalTrials = scQtUserData.trialsBig + scQtUserData.trialsSmall + scQtUserData.trialsPun + scQtUserData.freeRew + scQtUserData.catchRewTrials + scQtUserData.freePun + scQtUserData.catchPunTrials;
+scQtUserData.totalTrials = totalTrials;
 
 k = 2.5;
 p = (1-exp(-k))*rand(totalTrials,1);
@@ -132,7 +133,7 @@ scQtUserData.Master(:,2) = trialDesigs;
 
 
 % trial vector will be 1 = low, 2 = hi, 3 = trials Punishment, 4= free
-% reward, 5= catch rew, 5 = free punish 6 = catch punish
+% reward, 5= catch rew, 6 = free punish 7 = catch punish
 
 %determine rewSize order
 scQtUserData.Master(:,3) = zeros(totalTrials,1);
@@ -203,12 +204,6 @@ sendScQtControlMessage(['disp(''notes:', scQtUserData.notes,''')']);
 pause(1) %Need to put all my timings in before this stuff
 
 %% generate space in structure for storage of information that I care about!
-%This is for soundOn times. This allows for calculations of all the other
-%things!
-scQtUserData.soundOn = zeros(scQtUserData.toneTrials,1);
-%this is for licking latency
-scQtUserData.lickLat = zeros(scQtUserData.toneTrials,1);
-
 
 %variables for tracking licking. Each entry here will be a combination of
 %the lick time relative to the sound, the trial number, and the type of
@@ -229,6 +224,6 @@ save(saveName,'scQtUserData')
 
 scQtUserData.lickAxes = [-2:0.1:5.9]; %axis for histogram
 %send initial information to the mbed
-sendScQtControlMessage(['toneOutDel =',num2str(scQtUserData.RewDelayMatrix(1))]);
+% sendScQtControlMessage(['toneOutDel =',num2str(scQtUserData.RewDelayMatrix(1))]);
 % sendScQtControlMessage(['signalDel =3000']); %this is the delay after reward delivery before triggering next thing. 
 sendScQtControlMessage(['disp(''StartSession'')']);

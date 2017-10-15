@@ -10,7 +10,7 @@ global scQtInitiated; %the callback function should set this to 1 once all user 
 global scQtUserData;
 
 if (scQtInitiated == 0)
-    pavTwoToneScript;
+    pavThreeToneWAVScript;
     scQtInitiated = 1;
     newLine = 'start next trial';
 end
@@ -45,10 +45,26 @@ if (~isempty(strfind(newLine,'StartSession')))
     sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
     sendScQtControlMessage(['itiDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,1)))]);
     sendScQtControlMessage(['outDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,3)))]);  
-    sendScQtControlMessage(['toneOutDel =',num2str(scQtUserData.RewDelayMatrix(scQtUserData.trial))]);
+    sendScQtControlMessage(['toneOutDel =',num2str(scQtUserData.outDelayMatrix(scQtUserData.trial))]);
     sendScQtControlMessage(['outPort = ',num2str(round(scQtUserData.Master(scQtUserData.trial,4)))]);
     sendScQtControlMessage(['soundPort = ',num2str(round(scQtUserData.Master(scQtUserData.trial,5)))]);  
     scQtUserData.LickDesig = scQtUserData.Master(scQtUserData.trial,2);
+    soundID = scQtUserData.Master(scQtUserData.trial,2)
+    if soundID == 1
+        sendScQtControlMessage(['disp(''PlaySmall'')']);
+    elseif soundID == 2
+        sendScQtControlMessage(['disp(''PlayBig'')']);
+    elseif soundID == 3
+        sendScQtControlMessage(['disp(''Play Pun'')']);
+    elseif soundID == 4
+        sendScQtControlMessage(['disp(''PlayFreeRew'')']);
+    elseif soundID == 5
+        sendScQtControlMessage(['disp(''PlayBigCatch'')']);
+    elseif soundID == 6
+        sendScQtControlMessage(['disp(''PlayFreePun'')']);
+    elseif soundID == 7
+        sendScQtControlMessage(['disp(''PlayPunCatch'')']);
+    end
     sendScQtControlMessage('trigger(1)');
 end
 %This is for all other trials!
@@ -58,10 +74,26 @@ if ~isempty(strfind(newLine,'PlotTime')) && scQtUserData.tripSwitch == 0;
     sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
     sendScQtControlMessage(['itiDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,1)))]);
     sendScQtControlMessage(['outDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,3)))]);  
-    sendScQtControlMessage(['toneOutDel =',num2str(scQtUserData.RewDelayMatrix(scQtUserData.trial))]);
+    sendScQtControlMessage(['toneOutDel =',num2str(scQtUserData.outDelayMatrix(scQtUserData.trial))]);
     sendScQtControlMessage(['outPort = ',num2str(round(scQtUserData.Master(scQtUserData.trial,4)))]);
     sendScQtControlMessage(['soundPort = ',num2str(round(scQtUserData.Master(scQtUserData.trial,5)))]);  
     scQtUserData.LickDesig = scQtUserData.Master(scQtUserData.trial,2);
+    soundID = scQtUserData.Master(scQtUserData.trial,2)
+    if soundID == 1
+        sendScQtControlMessage(['disp(''PlaySmall'')']);
+    elseif soundID == 2
+        sendScQtControlMessage(['disp(''PlayBig'')']);
+    elseif soundID == 3
+        sendScQtControlMessage(['disp(''Play Pun'')']);
+    elseif soundID == 4
+        sendScQtControlMessage(['disp(''PlayFreeRew'')']);
+    elseif soundID == 5
+        sendScQtControlMessage(['disp(''PlayBigCatch'')']);
+    elseif soundID == 6
+        sendScQtControlMessage(['disp(''PlayFreePun'')']);
+    elseif soundID == 7
+        sendScQtControlMessage(['disp(''PlayPunCatch'')']);
+    end
     sendScQtControlMessage('trigger(1)');
     
     try
