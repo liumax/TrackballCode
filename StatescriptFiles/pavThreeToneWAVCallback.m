@@ -28,7 +28,6 @@ if(~isempty(strfind(newLine,'Lick Detected')))
         scQtUserData.licks(scQtUserData.lickCounter,1) = str2num(newLine(1:spaceFinder(1)-1))/1000;
         scQtUserData.licks(scQtUserData.lickCounter,2) = scQtUserData.trial;
         scQtUserData.licks(scQtUserData.lickCounter,4) = scQtUserData.LickDesig;
-    %     scQtUserData.licks(scQtUserData.lickCounter,3) = scQtUserData.trPhase;
         scQtUserData.lickCounter = scQtUserData.lickCounter + 1;
     catch
     end
@@ -39,46 +38,32 @@ if(~isempty(strfind(newLine,'Tone Delivered')))
     scQtUserData.cueTime(scQtUserData.trial) = str2num(newLine(1:spaceFinder(1)-1))/1000;
 end
 
-if(~isempty(strfind(newLine,'trPhase')))
-    spaceFinder = find(newLine == ' ');
-    scQtUserData.trPhase = str2num(newLine(spaceFinder(2)+1:end));
-end
-
 %this is for the first trial, which is triggered via the script. This sends
 %information to the mbed for execution. THIS DOES NOT PLAY THE TONE
 if (~isempty(strfind(newLine,'StartSession')))
     scQtUserData.trial = scQtUserData.trial + 1;
     sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
     sendScQtControlMessage(['itiDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,1)))]);
-    sendScQtControlMessage(['rewLength = ',num2str(round(scQtUserData.Master(scQtUserData.trial,3)))]);  
-    sendScQtControlMessage(['toneRewDel =',num2str(scQtUserData.RewDelayMatrix(scQtUserData.trial))]);
+    sendScQtControlMessage(['outDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,3)))]);  
+    sendScQtControlMessage(['toneOutDel =',num2str(scQtUserData.RewDelayMatrix(scQtUserData.trial))]);
+    sendScQtControlMessage(['outPort = ',num2str(round(scQtUserData.Master(scQtUserData.trial,4)))]);
+    sendScQtControlMessage(['soundPort = ',num2str(round(scQtUserData.Master(scQtUserData.trial,5)))]);  
     scQtUserData.LickDesig = scQtUserData.Master(scQtUserData.trial,2);
     sendScQtControlMessage('trigger(1)');
 end
 %This is for all other trials!
-if (~isempty(strfind(newLine,'TriggerMatlab'))) && scQtUserData.tripSwitch == 0;
+
+if ~isempty(strfind(newLine,'PlotTime')) && scQtUserData.tripSwitch == 0;
     scQtUserData.trial = scQtUserData.trial + 1;
     sendScQtControlMessage(['disp(''Trial = ',num2str(scQtUserData.trial),''')']);
-    sendScQtControlMessage(['itiDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,1)))]); 
-    sendScQtControlMessage(['rewLength = ',num2str(round(scQtUserData.Master(scQtUserData.trial,3)))]);  
-    sendScQtControlMessage(['toneRewDel =',num2str(scQtUserData.RewDelayMatrix(scQtUserData.trial))]);
+    sendScQtControlMessage(['itiDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,1)))]);
+    sendScQtControlMessage(['outDur = ',num2str(round(scQtUserData.Master(scQtUserData.trial,3)))]);  
+    sendScQtControlMessage(['toneOutDel =',num2str(scQtUserData.RewDelayMatrix(scQtUserData.trial))]);
+    sendScQtControlMessage(['outPort = ',num2str(round(scQtUserData.Master(scQtUserData.trial,4)))]);
+    sendScQtControlMessage(['soundPort = ',num2str(round(scQtUserData.Master(scQtUserData.trial,5)))]);  
     scQtUserData.LickDesig = scQtUserData.Master(scQtUserData.trial,2);
     sendScQtControlMessage('trigger(1)');
-end
-
-if ~isempty(strfind(newLine,'TriggerSound'))
-    soundID = scQtUserData.Master(scQtUserData.trial,2)
-    if soundID == 2
-        disp('PlayBig')
-        sound(scQtUserData.ToneBig,192000)
-    elseif soundID == 1
-        disp('PlaySmall')
-        sound(scQtUserData.ToneSmall,192000)
-    end
-end
-
-
-if ~isempty(strfind(newLine,'PlotTime'))
+    
     try
         if ~isfield(scQtUserData,'updateFig') %This code is just to make sure updateFig has a value.
             disp('resetting updateFig');
@@ -142,10 +127,22 @@ if ~isempty(strfind(newLine,'PlotTime'))
         hiLicks(hiLicks > scQtUserData.lickAxes(end)) = [];
         hiLicks(hiLicks < scQtUserData.lickAxes(1)) = [];
         hiHist = hist(hiLicks,scQtUserData.lickAxes);
+        
+        freeLicks = lickTrunc(lickTrunc(:,4) == 3,1);
+        freeLicks(freeLicks > scQtUserData.lickAxes(end)) = [];
+        freeLicks(freeLicks < scQtUserData.lickAxes(1)) = [];
+        freeHist = hist(freeLicks,scQtUserData.lickAxes);
+        
+        catchLicks = lickTrunc(lickTrunc(:,4) == 4,1);
+        catchLicks(catchLicks > scQtUserData.lickAxes(end)) = [];
+        catchLicks(catchLicks < scQtUserData.lickAxes(1)) = [];
+        catchHist = hist(catchLicks,scQtUserData.lickAxes);
 
         hold on
-        plot(scQtUserData.lickAxes,lowHist,'b')
-        plot(scQtUserData.lickAxes,hiHist,'r')
+        plot(scQtUserData.lickAxes,lowHist,'r')
+        plot(scQtUserData.lickAxes,hiHist,'b')
+        plot(scQtUserData.lickAxes,freeHist,'g.-')
+        plot(scQtUserData.lickAxes,catchHist,'k.-')
     catch
         subplot(3,1,1)
         title(num2str(scQtUserData.trial))

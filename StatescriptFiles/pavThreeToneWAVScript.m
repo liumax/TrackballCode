@@ -35,9 +35,9 @@ t = clock;
 rand('seed',sum(round(clock)));
 scQtUserData.mouseID = answer{i};i=i+1;
 scQtUserData.weight = answer{i};i=i+1;
-scQtUserData.bigRew = str2num(answer{i});i=i+1;
-scQtUserData.smallRew = str2num(answer{i});i=i+1;
-scQtUserData.pun = str2num(answer{i});i=i+1;
+scQtUserData.bigRewDur = str2num(answer{i});i=i+1;
+scQtUserData.smallRewDur = str2num(answer{i});i=i+1;
+scQtUserData.punDur = str2num(answer{i});i=i+1;
 scQtUserData.trialsBig = str2num(answer{i});i=i+1;
 scQtUserData.trialsSmall = str2num(answer{i});i=i+1;
 scQtUserData.trialsPun = str2num(answer{i});i=i+1;
@@ -76,34 +76,47 @@ x = round(scQtUserData.outDelay + (-log(1-p))*tau);
 scQtUserData.outDelayMatrix = x;
 
 %find greatest common denominators
-gcd1 = gcd(scQtUserData.trialsPer,scQtUserData.freeRew);
-gcd2 = gcd(scQtUserData.trialsPer,scQtUserData.catchRewTrials);
-gcd3 = gcd(scQtUserData.freeRew,scQtUserData.freeRew);
-
-%check to make sure these are matched.
-if scQtUserData.catchTrials ~= 0 | scQtUserData.freeRew ~= 0
-    if gcd1 == gcd2 & gcd2 == gcd3
-        divisor = gcd1;
-        %determine how many trials per repetition. 
-        numIter = totalTrials/divisor;
-    else
-        error('Unmatchable Trial Numbers')
-    end
-else
-    disp('No Test Trials')
-    numIter = 10;
-    divisor = totalTrials/numIter;
+%to do this, we first pull all trial times, and use them to make a nx1
+%vector
+trialNums = [scQtUserData.trialsBig,scQtUserData.trialsSmall,scQtUserData.trialsPun,scQtUserData.freeRew,scQtUserData.catchRewTrials,scQtUserData.freePun,scQtUserData.catchPunTrials;];
+%eliminate zero values, since this will break GCD code. Then recursively
+%calculate GCD. Since GCD will process the GCD from the previous
+%comparison, it will produce the overall GCD. 
+trialNums(trialNums == 0) = [];
+gcdStart = gcd(trialNums(1),trialNums(2));
+for i = 2:length(trialNums)
+    gcdStart = gcd(gcdStart,trialNums(i));
 end
 
+%check for errors! This would be GCD value of 1
+if gcdStart == 1
+    disp('Failure to Find GCD: Going Full Random Instead')
+    gcdFailToggle = 1;
+else
+    disp(strcat('GCD Value Found',num2str(gcdStart)))
+    gcdFailToggle = 0;
+end
 
+%calculate the effective sub-set size (this is the size of the sample we
+%will be using the pseudorandomize within. For example, a 50 trial block
+%within 200 trials total.
 
-% trial vector will be 1 = low, 2 = hi, 3= free reward, 4= catch
+numIter = totalTrials/gcdStart;
+divisor = gcdStart;
+
+% trial vector will be 1 = low, 2 = hi, 3 = trials Punishment, 4= free
+% reward, 5= catch rew, 5 = free punish 6 = catch punish
 desigVect = zeros(numIter,1);
 desigInd = 1;
-desigVect(desigInd:desigInd + (scQtUserData.toneTrials/2/divisor)-1) = 1;desigInd = desigInd + (scQtUserData.toneTrials/2/divisor);
-desigVect(desigInd:desigInd + (scQtUserData.toneTrials/2/divisor)-1) = 2;desigInd = desigInd + (scQtUserData.toneTrials/2/divisor);
-desigVect(desigInd:desigInd + (scQtUserData.freeRew/divisor)-1) = 3;desigInd = desigInd + (scQtUserData.freeRew/divisor);
-desigVect(desigInd:desigInd + (scQtUserData.catchTrials/divisor)-1) = 4;desigInd = desigInd + (scQtUserData.catchTrials/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.trialsBig/divisor)-1) = 1;desigInd = desigInd + (scQtUserData.trialsBig/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.trialsSmall/divisor)-1) = 2;desigInd = desigInd + (scQtUserData.trialsSmall/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.trialsPun/divisor)-1) = 3;desigInd = desigInd + (scQtUserData.trialsPun/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.freeRew/divisor)-1) = 4;desigInd = desigInd + (scQtUserData.freeRew/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.catchRewTrials/divisor)-1) = 5;desigInd = desigInd + (scQtUserData.catchRewTrials/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.freePun/divisor)-1) = 6;desigInd = desigInd + (scQtUserData.freePun/divisor);
+desigVect(desigInd:desigInd + (scQtUserData.catchPunTrials/divisor)-1) = 7;desigInd = desigInd + (scQtUserData.catchPunTrials/divisor);
+
+
 
 trialDesigs = zeros(totalTrials,1);
 trialInd = 1;
@@ -117,108 +130,39 @@ end
 
 scQtUserData.Master(:,2) = trialDesigs;
 
+
+% trial vector will be 1 = low, 2 = hi, 3 = trials Punishment, 4= free
+% reward, 5= catch rew, 5 = free punish 6 = catch punish
+
 %determine rewSize order
 scQtUserData.Master(:,3) = zeros(totalTrials,1);
-scQtUserData.Master(trialDesigs == 1,3) = scQtUserData.smallRew;
-scQtUserData.Master(trialDesigs == 2,3) = scQtUserData.bigRew;
-scQtUserData.Master(trialDesigs == 3,3) = scQtUserData.bigRew;
+scQtUserData.Master(trialDesigs == 1,3) = scQtUserData.smallRewDur;
+scQtUserData.Master(trialDesigs == 2,3) = scQtUserData.bigRewDur;
+scQtUserData.Master(trialDesigs == 3,3) = scQtUserData.punDur;
 scQtUserData.Master(trialDesigs == 4,3) = 0;
+scQtUserData.Master(trialDesigs == 5,3) = scQtUserData.bigRewDur;
+scQtUserData.Master(trialDesigs == 6,3) = 0;
+scQtUserData.Master(trialDesigs == 7,3) = scQtUserData.punDur;
 
-%the last thing is to have a lick window such that you enforce a no lick
-%period before the cue delivery. 
+%determine output port!  2 is the output port for sucrose, 3 is output for
+%air puff
+scQtUserData.Master(:,4) = ones(totalTrials,1);
+scQtUserData.Master(trialDesigs == 1,4) = 2;
+scQtUserData.Master(trialDesigs == 2,4) = 2;
+scQtUserData.Master(trialDesigs == 5,4) = 2;
+scQtUserData.Master(trialDesigs == 3,4) = 3;
+scQtUserData.Master(trialDesigs == 7,4) = 3;
+%since this uses the wavTrigger, i dont need to do any sound preparation! 
 
-%now I need to do all the prep for the sounds
-
-%FIXED PARAMETERS
-fs = 192000; %sampling frequency in Hz
-
-calibChart = [4000	2	0.7943282347
-4287.09385	0	1
-4594.79342	0.5	0.9440608763
-4924.577653	1	0.8912509381
-5278.031643	1.5	0.8413951416
-5656.854249	1.5	0.8413951416
-6062.866266	2.2	0.7762471166
-6498.019171	1.5	0.8413951416
-6964.404506	2	0.7943282347
-7464.263932	4.5	0.5956621435
-8000	6.2	0.4897788194
-8574.1877	4.3	0.6095368972
-9189.58684	3.6	0.660693448
-9849.155307	6.3	0.4841723676
-10556.06329	5.1	0.5559042573
-11313.7085	3.8	0.645654229
-12125.73253	1.5	0.8413951416
-12996.03834	3.5	0.6683439176
-13928.80901	3.7	0.6531305526
-14928.52786	3.8	0.645654229
-16000	3.5	0.6683439176
-17148.3754	2.5	0.7498942093
-18379.17368	2	0.7943282347
-19698.31061	6.2	0.4897788194
-21112.12657	7.8	0.4073802778
-22627.417	8.75	0.3651741273
-24251.46506	10	0.316227766
-25992.07668	14	0.1995262315
-27857.61803	12	0.2511886432
-29857.05573	13.2	0.2187761624
-32000	15.6	0.1659586907
-34296.7508	16.5	0.1496235656
-36758.34736	18.2	0.1230268771
-39396.62123	20	0.1
-42224.25314	16	0.1584893192
-45254.834	18.7	0.1161448614
-48502.93013	14.2	0.19498446
-51984.15337	15.5	0.1678804018
-55715.23605	11.7	0.2600159563
-59714.11146	11.7	0.2600159563
-64000	10	0.316227766];
-
-bigToneAmp = interp1(calibChart(:,1),calibChart(:,3),scQtUserData.bigTone);
-smallToneAmp = interp1(calibChart(:,1),calibChart(:,3),scQtUserData.smallTone);
-
-if isnan(bigToneAmp)
-    error('bigToneAmp ISNAN')
-elseif isnan(smallToneAmp)
-    error('smallToneAmp ISNAN')
-end
-
-%calculations for tone
-%determine length of file based on sound card sampling rate
-L = scQtUserData.soundDur/1000*fs; %number of samples at correct sampling frequency
-paddingL = round(L*1.5); %adds 50% time as buffer
-
-%recalculate ramp times for onset and offset in samples
-onRampDur = 0.005*fs; 
-offRampDur = 0.005*fs;
-remainingPoints = L-onRampDur-offRampDur;
-onRampProfile = (cos((0:1:onRampDur)/onRampDur*pi-pi)+1)/2;
-offRampProfile = (cos((0:1:offRampDur)/offRampDur*pi)+1)/2;
-rampProfile = ones(L,1);
-rampProfile(1:onRampDur+1) = onRampProfile;
-rampProfile(end-offRampDur:end) = offRampProfile;
-%this makes the profile for the TTL signal
-ttlSig = zeros(paddingL,1);
-ttlSig(1:5*fs/1000) = 1;
-%generate the two sounds
-waveBig = (sin(2*pi*(scQtUserData.bigTone/fs)*(1:L))') .* rampProfile;
-waveSmall = (sin(2*pi*(scQtUserData.smallTone/fs)*(1:L))') .* rampProfile;
-
-%calculate amplitude
-toneDB = 10^-((100-scQtUserData.soundAmp)/20);
-
-paddedWave = zeros(paddingL,1);
-paddedWave(1:size(waveBig,1)) = waveBig;
-soundBig = [paddedWave*toneDB*bigToneAmp,ttlSig];
-paddedWave = zeros(paddingL,1);
-paddedWave(1:size(waveSmall,1)) = waveSmall;
-soundSmall = [paddedWave*toneDB*smallToneAmp,ttlSig];
-
-scQtUserData.ToneBig = soundBig;
-scQtUserData.ToneSmall = soundSmall;
-%now make sounds for free rew and catch trials
-scQtUserData.FreeRew = [zeros(length(ttlSig),1),ttlSig];
-
+%determine sound port linkages!
+scQtUserData.Master(:,5) = zeros(totalTrials,1);
+scQtUserData.Master(trialDesigs == 1,5) = scQtUserData.smallTone;
+scQtUserData.Master(trialDesigs == 2,5) = scQtUserData.bigTone;
+scQtUserData.Master(trialDesigs == 3,5) = scQtUserData.punTone;
+scQtUserData.Master(trialDesigs == 4,5) = 1;
+scQtUserData.Master(trialDesigs == 5,5) = scQtUserData.bigTone;
+scQtUserData.Master(trialDesigs == 6,5) = 1;
+scQtUserData.Master(trialDesigs == 7,5) = scQtUserData.punDur;
 
 %store information about time/date
 scQtUserData.date = date;
@@ -234,16 +178,20 @@ pause(0.5);
 %% Display these to statescript log file for storage. 
 sendScQtControlMessage(['disp(''Mouse ID:', scQtUserData.mouseID,''')']);
 sendScQtControlMessage(['disp(''weight:', scQtUserData.weight,''')']);
-sendScQtControlMessage(['disp(''bigReward:', num2str(scQtUserData.bigRew),''')']);
-sendScQtControlMessage(['disp(''smallReward:', num2str(scQtUserData.smallRew),''')']);
-sendScQtControlMessage(['disp(''toneTrials:', num2str(scQtUserData.toneTrials),''')']);
+sendScQtControlMessage(['disp(''bigReward:', num2str(scQtUserData.bigRewDur),''')']);
+sendScQtControlMessage(['disp(''smallReward:', num2str(scQtUserData.smallRewDur),''')']);
+sendScQtControlMessage(['disp(''punDur:', num2str(scQtUserData.punDur),''')']);
+sendScQtControlMessage(['disp(''trialsBig:', num2str(scQtUserData.trialsBig),''')']);
+sendScQtControlMessage(['disp(''trialsSmall:', num2str(scQtUserData.trialsSmall),''')']);
+sendScQtControlMessage(['disp(''trialsPun:', num2str(scQtUserData.trialsPun),''')']);
 sendScQtControlMessage(['disp(''freeRewTrials:', num2str(scQtUserData.freeRew),''')']);
-sendScQtControlMessage(['disp(''catchTrials:', num2str(scQtUserData.catchTrials),''')']);
-sendScQtControlMessage(['disp(''soundDur:', num2str(scQtUserData.soundDur),''')']);
-sendScQtControlMessage(['disp(''soundAmp:', num2str(scQtUserData.soundAmp),''')']);
-sendScQtControlMessage(['disp(''rewDelay:', num2str(scQtUserData.rewDelay),''')']);
+sendScQtControlMessage(['disp(''catchRewTrials:', num2str(scQtUserData.catchRewTrials),''')']);
+sendScQtControlMessage(['disp(''freePunTrials:', num2str(scQtUserData.freePun),''')']);
+sendScQtControlMessage(['disp(''catchPunTrials:', num2str(scQtUserData.catchPunTrials),''')']);
+sendScQtControlMessage(['disp(''outDelay:', num2str(scQtUserData.outDelay),''')']);
 sendScQtControlMessage(['disp(''bigTone:', num2str(scQtUserData.bigTone),''')']);
 sendScQtControlMessage(['disp(''smallTone:', num2str(scQtUserData.smallTone),''')']);
+sendScQtControlMessage(['disp(''punTone:', num2str(scQtUserData.punTone),''')']);
 sendScQtControlMessage(['disp(''ITIShort:', num2str(scQtUserData.ITI),''')']);
 sendScQtControlMessage(['disp(''ITILong:', num2str(scQtUserData.ITIRange),''')']);
 sendScQtControlMessage(['disp(''taskID:', scQtUserData.taskID,''')']);
@@ -281,6 +229,6 @@ save(saveName,'scQtUserData')
 
 scQtUserData.lickAxes = [-2:0.1:5.9]; %axis for histogram
 %send initial information to the mbed
-sendScQtControlMessage(['toneRewDel =',num2str(scQtUserData.RewDelayMatrix(1))]);
-sendScQtControlMessage(['signalDel =3000']); %this is the delay after reward delivery before triggering next thing. 
+sendScQtControlMessage(['toneOutDel =',num2str(scQtUserData.RewDelayMatrix(1))]);
+% sendScQtControlMessage(['signalDel =3000']); %this is the delay after reward delivery before triggering next thing. 
 sendScQtControlMessage(['disp(''StartSession'')']);
