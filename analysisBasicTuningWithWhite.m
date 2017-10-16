@@ -65,6 +65,11 @@ s.Parameters.EDRPiezoCol = 2;
 %for plotting speed vs firing
 s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
 
+%for plotting the laser related stuff
+s.Parameters.LaserWindow = [-0.1 0.1]; %plotting window for rasters
+s.Parameters.LaserBin = 0.001; %histogram bin size
+s.Parameters.LaserLim = 0.015; %maximum lag value for calculation.
+
 %set other things
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 % format short
@@ -654,15 +659,43 @@ for i = 1:numUnits
     
 end
 
-% if idToggle == 1
-%     for i = 1:numUnits
-%         %pulls spike times and times for alignment
-%         spikeTimes = s.(desigNames{i}).SpikeTimes;
-%         alignTimes = dio2Times;
-%     end
-% else
-%     
-% end
+%% Laser Analysis
+
+laserBinVect = [s.Parameters.LaserWindow(1):s.Parameters.LaserBin:s.Parameters.LaserWindow(2)-s.Parameters.LaserBin];
+if idToggle == 1
+    
+    for i = 1:numUnits
+        %pulls spike times and times for alignment
+        spikeTimes = s.(desigNames{i}).SpikeTimes;
+        alignTimes = dio2Times;
+        %now align spikes trial by trial
+        [laserRasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.LaserWindow);
+        %generate overall histogram and compensate
+        [histCounts histCenters] = hist(laserRasters(:,1),laserBinVect);
+        laserHistData = histCounts'/length(alignTimes)/s.Parameters.LaserBin;
+        %now pull trial by trial to see if there are spikes during the
+        %laser period.
+        laserResp = zeros(length(alignTimes),1);
+        for j = 1:length(alignTimes)
+            %find if there are any spikes
+            laseFind = find(laserRasters(:,2) == j & laserRasters(:,1) > 0 & laserRasters(:,1) < s.Parameters.LaserLim);
+            if laseFind
+                laserResp(j) == 1;
+            end
+        end
+        s.(desigNames{i}).LaserRasters = laserRasters;
+        s.(desigNames{i}).LaserHist = laserHistData;
+        s.(desigNames{i}).LaserResps = laserResp/alignTimes;
+        
+    end
+else
+    for i = 1:numUnits
+        s.(desigNames{i}).LaserRasters = [];
+        s.(desigNames{i}).LaserHist = zeros(length(laserBinVect),1);
+        s.(desigNames{i}).LaserResps = laserResp/dio2Times;
+    end
+    
+end
 
 %calculate and plot LFP information
 % [lfpStruct] = functionLFPaverage(master, s.Parameters.LFPWindow, s,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
@@ -926,26 +959,39 @@ else %in the case you dont want to do tuning selection, default to normal system
         else
             title('Vel & Firing Rate')
         end
-        %plot probability of response (tone)
-        subplot(4,3,9)
-        imagesc(s.(desigNames{i}).ProbTone')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Probability of Response (tone)')
-        %plot probability of response (gen)
-        subplot(4,3,12)
-        imagesc(s.(desigNames{i}).ProbGen')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Probability of Response (general)')
+        
+        if idToggle == 0
+            %plot probability of response (tone)
+            subplot(4,3,9)
+            imagesc(s.(desigNames{i}).ProbTone')
+            colormap(parula)
+            colorbar
+            set(gca,'XTick',octaveRange(:,2));
+            set(gca,'XTickLabel',octaveRange(:,1));
+            set(gca,'YTick',dbRange(:,2));
+            set(gca,'YTickLabel',dbRange(:,1));
+            title('Probability of Response (tone)')
+            %plot probability of response (gen)
+            subplot(4,3,12)
+            imagesc(s.(desigNames{i}).ProbGen')
+            colormap(parula)
+            colorbar
+            set(gca,'XTick',octaveRange(:,2));
+            set(gca,'XTickLabel',octaveRange(:,1));
+            set(gca,'YTick',dbRange(:,2));
+            set(gca,'YTickLabel',dbRange(:,1));
+            title('Probability of Response (general)')
+        elseif idToggle == 1
+            %plot laser raster
+            subplot(4,3,9)
+            plot(s.(desigNames{i}).LaserRasters(:,1),s.(desigNames{i}).LaserRasters(:,2),'k.')
+            xlim(s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2))
+            title(strcat('Laser Raster, Response %:',num2str(s.(desigNames{i}).LaserResps)))
+            subplot(4,3,12)
+            plot(laserBinVect,s.(desigNames{i}).LaserHist)
+            xlim(s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2))
+            title('Laser Histogram')
+        end
 
         %plots rasters (chronological)
         subplot(3,3,2)
