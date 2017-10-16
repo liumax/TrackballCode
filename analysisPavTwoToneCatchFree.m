@@ -227,7 +227,7 @@ end
 inputPhotDiff = diff(inputPhotOnset);
 
 %now check with crosscorr
-[xcf,lags,bounds]  = crosscorr(inputPhotDiff,traceJittDiff);
+[xcf,lags,bounds]  = crosscorr(inputPhotDiff,traceJittDiff,300);
 [xcMax maxInd] = max(xcf);
 xcLag = lags(maxInd);
 
@@ -236,10 +236,24 @@ if xcLag ~= 0
     disp(xcLag)
     disp('MaxCorr')
     disp(xcMax)
-    error('Jitter Not Aligned')
+    if xcMax < 0.9
+        error('Jitter Not Aligned')
+    else
+        disp('Trying To Fix Jitter With Corr Value')
+        if xcLag > 0
+            traceJitt(1:xcLag) = [];
+            traceJittDiff = diff(traceJitt);
+        elseif xcLag < 0
+            inputPhotOnset(1:-xcLag) = [];
+            inputPhotDiff = diff(inputPhotOnset);
+        end
+    end
 elseif xcLag == 0
     disp('Jitter Signal Properly Aligned')
 end
+
+
+
 %now check lengths
 if length(inputPhotDiff) ~= length(traceJittDiff)
     disp('Lengths of Jittered traces unequal, attempting removal')
@@ -256,6 +270,8 @@ end
 
 if length(inputPhotDiff) ~= length(traceJittDiff)
     error('Jittered traces still not the right length')
+else
+    disp('Jittered Traces Now Correct Length')
 end
 
 s.Photo.Jitter = traceJitt;
@@ -288,17 +304,35 @@ traceMBEDDiff = diff(traceMBED);
 [xcMax maxInd] = max(xcf);
 xcLag = lags(maxInd);
 
-if xcLag ~= 0
-    error('Tones Not Aligned')
-elseif length(onsetPhot) ~= length(traceMBED)
-    disp('Mismatch in Number of Tone Pulses')
-    if interpTrig == 1
-        error('Already Using Interpolated Data for Tone Times, ERROR')
-    elseif interpTrig == 0
-        disp('Replacing with Interpolated Data')
-        traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
-    end
 
+
+if xcLag ~= 0
+    disp('CorrLag')
+    disp(xcLag)
+    disp('MaxCorr')
+    disp(xcMax)
+    if xcMax < 0.9
+        error('Tones Not Aligned')
+    else
+        disp('Trying To Fix Tone Signal With Corr Value')
+        if xcLag > 0
+            traceMBED(1:xcLag) = [];
+            traceMBEDDiff = diff(traceMBED);
+        elseif xcLag < 0
+            onsetPhot(1:-xcLag) = [];
+            onsetPhotDiff = diff(onsetPhot);
+        end
+    end
+elseif xcLag == 0
+    disp('Tone Signal Properly Aligned')
+end
+
+%now check lengths
+if length(onsetPhotDiff) ~= length(traceMBEDDiff)
+    disp(strcat('OnsetPhot',num2str(length(onsetPhot)),'TraceMBED:',num2str(length(traceMBED))))
+    error('Tone Signal Hasnt Been Corrected')
+elseif length(onsetPhotDiff) == length(traceMBEDDiff)
+    disp('Lengths of Tone Signals Equal! YAY')
 end
 
 s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
