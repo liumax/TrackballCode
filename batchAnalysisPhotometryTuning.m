@@ -11,8 +11,8 @@ testNames(findString) = [];
 [findString] = functionCellStringFind(testNames,'Sound');
 testNames(findString) = [];
 
-[findString] = functionCellStringFind(testNames,'Tuning');
-testNames = testNames(findString);
+% [findString] = functionCellStringFind(testNames,'Tuning');
+% testNames = testNames(findString);
 
 numFiles = length(testNames);
 
