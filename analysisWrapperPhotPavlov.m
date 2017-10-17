@@ -44,8 +44,8 @@ for bigInd = 1:numFiles
 %     bigStore(5,incInd:incInd + length(s.MBED.LowTrials) - 1) = 0;
 %     bigStore(5,s.MBED.HiTrials + incInd - 1) = 1;
     %LETS ALSO PULL LICKS!!!
-    lickLatStore = ones(200,1);
-    for i = 1:200
+    lickLatStore = ones(length(s.MBED.ToneDelivery),1);
+    for i = 1:length(s.MBED.ToneDelivery)
         lickStore(i) = length(find(s.Licking.ToneRaster(:,2) == i & s.Licking.ToneRaster(:,1) >=0 & s.Licking.ToneRaster(:,1) < 1));
         if find(s.Licking.ToneRaster(:,2) == i & s.Licking.ToneRaster(:,1) >=0,1,'first');
             lickLatStore(i) = s.Licking.ToneRaster(find(s.Licking.ToneRaster(:,2) == i & s.Licking.ToneRaster(:,1) >=0,1,'first'),1);
