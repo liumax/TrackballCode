@@ -396,6 +396,7 @@ velTrueTime = interp1(onsetPhot/1000,traceMBED,locoData.Velocity(:,1));
 % 
 
 %find nearest in photometry signal
+velTrueTime(isnan(velTrueTime)) = [];
 if velTrueTime
     findVelFirst = find(~isnan(velTrueTime),1,'first');
     findVelLast = find(~isnan(velTrueTime),1,'last');
