@@ -83,6 +83,7 @@ if length(onsetPhot) == length(toneOnset)
     disp('Tone Input and Output Numbers Matched, Proceed!')
     delInds = [];
 else
+    mbedErrorFlag = 1;
     disp('Tone Input and Output Numbers Mismatched, Correcting...')
     %calculate difference
     pulseDiff = length(onsetPhot) - length(toneOnset);
@@ -96,7 +97,7 @@ else
         error('FAILURE TO CORRECT OUTPUT PROPERLY')
     end
     onsetPhot(delInds) = [];
-    
+    onsetPhotDiff = diff(onsetPhot);
     %confirm that things line up properly!
     [xcf,lags,bounds]  = crosscorr(onsetPhot,toneOnset);
     [xcMax maxInd] = max(xcf);
@@ -648,8 +649,8 @@ for i = 1:length(onsetPhot)
 end
 
 
-s.Licking.ToneRaster = lickRasterTone/length(toneOnset)/lickHistBin;
-s.Licking.RewardRaster = lickRasterRew/length(trialRew)/lickHistBin;
+s.Licking.ToneRaster = lickRasterTone;
+s.Licking.RewardRaster = lickRasterRew;
 s.Licking.ToneHistHi = histLickToneHi/length(trialHi)/lickHistBin;
 s.Licking.ToneHistLow = histLickToneLow/length(trialLow)/lickHistBin;
 s.Licking.ToneHistRew = histLickRewHi/length(trialRew)/lickHistBin;
@@ -741,6 +742,7 @@ plot(histLickAxis,s.Licking.ToneHistCatch,'k','LineWidth',2)
 plot(histLickAxis,s.Licking.ToneHistFree,'g','LineWidth',2)
 title('Licking Relative to Tone')
 
+
 %Plot heatmaps of photometry response
 subplot(2,3,2)
 imagesc(photoRaster')
@@ -755,6 +757,7 @@ subplot(4,3,8)
 plot(lickRasterRew(:,1),lickRasterRew(:,2),'k.')
 title('Lick Raster To Reward (0)')
 xlim(rasterWindow)
+ylim([1 length(rewTimes)]) 
 
 subplot(4,3,11)
 plot(lickRasterToneHi(:,1),lickRasterToneHi(:,2),'b.');
@@ -762,6 +765,7 @@ hold on
 plot(lickRasterToneLow(:,1),lickRasterToneLow(:,2),'r.');
 plot(lickRasterToneCatch(:,1),lickRasterToneCatch(:,2),'k.');
 plot(lickRasterToneFree(:,1),lickRasterToneFree(:,2),'g.');
+ylim([1 length(toneOnset)])
 
 xlim(rasterWindow)
 title('Lick Rasters to Tone')
