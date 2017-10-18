@@ -331,7 +331,21 @@ end
 %now check lengths
 if length(onsetPhotDiff) ~= length(traceMBEDDiff)
     disp(strcat('OnsetPhot',num2str(length(onsetPhot)),'TraceMBED:',num2str(length(traceMBED))))
-    error('Tone Signal Hasnt Been Corrected')
+    disp('Attempting Correction')
+    if length(onsetPhotDiff) < length(traceMBEDDiff)
+        diffFind = length(traceMBED) - length(onsetPhot);
+        traceMBED = traceMBED(1:end-diffFind);
+        traceMBEDDiff = diff(traceMBED);
+        %check for completiong
+        lengthCheck = length(traceMBED) - length(onsetPhot);
+        if lengthCheck == 0
+            disp('Correction Achieved')
+        else
+            error('Correction Faileds')
+        end
+    else
+        error('FEWER TRACES DETECTED IN TRACEMBED')
+    end
 elseif length(onsetPhotDiff) == length(traceMBEDDiff)
     disp('Lengths of Tone Signals Equal! YAY')
 end
