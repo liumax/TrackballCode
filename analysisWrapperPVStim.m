@@ -125,7 +125,7 @@ end
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
 %calculate modulation ind for normal and restricted periods
-mod1 = (fullMaster(:,indLaserAverage)-fullMaster(:,indPreAverage))./(fullMaster(:,indLaserResAverage)+fullMaster(:,indPreAverage));
+mod1 = (fullMaster(:,indLaserAverage)-fullMaster(:,indPreAverage))./(fullMaster(:,indLaserAverage)+fullMaster(:,indPreAverage));
 scottMod1 = (fullMaster(:,indLaserAverage))./(fullMaster(:,indLaserAverage)+fullMaster(:,indPreAverage));
 %find for restricted
 modRes1 = (fullMaster(:,indLaserResAverage)-fullMaster(:,indPreResAverage))./(fullMaster(:,indLaserResAverage)+fullMaster(:,indPreResAverage));
