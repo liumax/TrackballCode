@@ -680,19 +680,19 @@ if idToggle == 1
             %find if there are any spikes
             laseFind = find(laserRasters(:,2) == j & laserRasters(:,1) > 0 & laserRasters(:,1) < s.Parameters.LaserLim);
             if laseFind
-                laserResp(j) == 1;
+                laserResp(j) = 1;
             end
         end
         s.(desigNames{i}).LaserRasters = laserRasters;
         s.(desigNames{i}).LaserHist = laserHistData;
-        s.(desigNames{i}).LaserResps = laserResp/alignTimes;
+        s.(desigNames{i}).LaserResps = laserResp;
         
     end
 else
     for i = 1:numUnits
         s.(desigNames{i}).LaserRasters = [];
         s.(desigNames{i}).LaserHist = zeros(length(laserBinVect),1);
-        s.(desigNames{i}).LaserResps = laserResp/dio2Times;
+        s.(desigNames{i}).LaserResps = zeros(length(dio2Times),1);
     end
     
 end
@@ -985,11 +985,11 @@ else %in the case you dont want to do tuning selection, default to normal system
             %plot laser raster
             subplot(4,3,9)
             plot(s.(desigNames{i}).LaserRasters(:,1),s.(desigNames{i}).LaserRasters(:,2),'k.')
-            xlim(s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2))
-            title(strcat('Laser Raster, Response %:',num2str(s.(desigNames{i}).LaserResps)))
+            xlim([s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2)])
+            title(strcat('Laser Raster, Response %:',num2str(sum(s.(desigNames{i}).LaserResps)/length(dio2Times))))
             subplot(4,3,12)
             plot(laserBinVect,s.(desigNames{i}).LaserHist)
-            xlim(s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2))
+            xlim([s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2)])
             title('Laser Histogram')
         end
 
