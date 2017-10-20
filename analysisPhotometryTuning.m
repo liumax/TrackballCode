@@ -18,25 +18,67 @@ s.Parameters.PeakThreshold = thresh;
 s.Parameters.LocomotionTimeStep = locoTimeStep;
 
 
-%% First, lets pull the MBED stuff
+                                                 
+%% Pull sound data!
+
+%extract data into matlab
+soundName = strcat(fileName,'Sound.mat');
+soundFile = open(soundName);
+soundData = soundFile.soundData; %pulls sound data info
+
+s.SoundData = soundData;
+
+%I basically want to just figure out the order of things, since I should
+%have the pulses inside the photometry trace already. This should be found
+%in trial matrix. 
+
+trialMatrix = soundData.TrialMatrix;
+
+uniqueFreqs = unique(trialMatrix(:,2));
+uniqueDBs = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(1),3));
+
+numFreqs = length(uniqueFreqs);
+numDBs = length(uniqueDBs);
 
 
-[trialStates, portStates, trialParams] = maxTrialVariablesLickingTask(fileName);
+%% Next, lets pull the MBED stuff
 
-%we want to look at instates. Port 1 is TDT for photometry, port 2 is
-%NOLDUS
+%first, look for tmp file! first, we want to pull all files!
+folderFiles = what;
+folderFiles= folderFiles.mat;
+%set TMP name
+tmpName = strcat(fileName,'MBEDTMP.mat');
 
-inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
-outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
+[findString] = functionCellStringFind(folderFiles,tmpName);
+disp('LOOKING FOR MBED TMP FILE')
+if findString %if there is a tmp file!
+    disp('MBED TMP FILE FOUND! LOADING')
+    load(folderFiles{findString})
+else
+    disp('NO MBED TMP FILE, EXTRACTING...')
+    
+    [trialStates, portStates, trialParams] = maxTrialVariablesLickingTask(fileName);
 
-%eliminate duplicate values!
-try
-    [inputPhot] = functionSignalDuplicateElim(inputPhot,2);
-catch
-    disp('NO INPUTS, SWITCH TO USING PHOTOMETRY')
-    photoToggle = 1;
+    %we want to look at instates. Port 1 is TDT for photometry, port 2 is
+    %NOLDUS
+
+    inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
+    outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
+
+    %eliminate duplicate values!
+    try
+        [inputPhot] = functionSignalDuplicateElim(inputPhot,2);
+        disp('Duplicate Elimination for Inputs Successful!')
+    catch
+        disp('NO INPUTS, SWITCH TO USING PHOTOMETRY')
+        photoToggle = 1;
+    end
+    [outputPhot] = functionSignalDuplicateElim(outputPhot,2);
+    %save temporary file so that i can save time later on!
+    
+    save(tmpName,'trialStates','portStates','trialParams','inputPhot','outputPhot');
+    disp('SAVED TMP FILE FOR MBED')
 end
-[outputPhot] = functionSignalDuplicateElim(outputPhot,2);
 
 
 %pull just the onset times for photometry
@@ -52,40 +94,84 @@ catch
 end
 
 
+%now lets also sort out whether this is the right tuning curve. do
+%crosscorr on the delays vs outputs. 
+
+[xcf,lags,bounds]  = crosscorr(onsetPhotDiff,soundData.Delays);
+[xcMax maxInd] = max(xcf);
+xcLag = lags(maxInd);
+
+if xcLag == 0 & xcMax > 0.90
+    disp('Sound File and Actual Lags Aligned!')
+elseif xcLag < 0 & xcMax > 0.9
+    disp('Negative Lag detected in Sound File vs Real Data. Deleting data from OnsetPhot')
+    onsetPhot(1:-xcLag) = [];
+    onsetPhotDiff = diff(onsetPhot);
+    traceMBED(1:-xcLag) = [];
+    s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
+    s.Photo.AlignTimes = traceMBED;
+end
+
+
 s.MBED.ToneDelivery = onsetPhot;
 
-%Now pull locomotor data
-
-[locoData] = functionMBEDrotary(portStates.inStates(:,4),portStates.inStates(:,5),portStates.tStamps/1000,locoTimeStep);
+%Now pull locomotor data, only if no TMP file
+tmpName = strcat(fileName,'LocoTMP.mat');
+[findString] = functionCellStringFind(folderFiles,tmpName);
+disp('LOOKING FOR LOCO TMP FILE')
+if findString %if there is a tmp file!
+    disp('LOCO TMP FILE FOUND! LOADING')
+    load(folderFiles{findString})
+else
+    disp('NO TMP FOR LOCO DATA, EXTRACTING...')
+    [locoData] = functionMBEDrotary(portStates.inStates(:,4),portStates.inStates(:,5),portStates.tStamps/1000,locoTimeStep);
+    save(tmpName,'locoData');
+    disp('LOCODATA SAVED AS TMP')
+end
 
 s.Locomotion = locoData;
 
 %% Now lets pull the photometry inputs
-%load file
-data = load(strcat(fileName,'.mat'));
-data=data.data;
+%Check for tmp file!
+tmpName = strcat(fileName,'TDTTMP.mat');
+[findString] = functionCellStringFind(folderFiles,tmpName);
+disp('LOOKING FOR TDT TMP FILE')
+if findString %if there is a tmp file!
+    disp('TDT TMP FILE FOUND! LOADING')
+    load(folderFiles{findString})
+else
+    disp('NO TMP FOR TDT DATA, EXTRACTING...')
+    [locoData] = functionMBEDrotary(portStates.inStates(:,4),portStates.inStates(:,5),portStates.tStamps/1000,locoTimeStep);
+    save(tmpName,'locoData');
+    
+    %load file
+    data = load(strcat(fileName,'.mat'));
+    data=data.data;
 
-[filtSig1,filtSig2,traceDF,traceTiming] = functionPhotometryRawExtraction(data);
+    [filtSig1,filtSig2,traceDF,traceTiming] = functionPhotometryRawExtraction(data);
+
+    %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
+    %additional functionality for peak finding.
+    try
+        [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.01);
+    %     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
+    catch
+        disp('Peak Detection Failed')
+        targetPeaks = [];
+        newSmoothDS = [];
+        t_ds = [];
+    end
+    tmpName = strcat(fileName,'TDTTMP.mat');
+    save(tmpName,'filtSig1','filtSig2','traceDF','traceTiming','t_ds','newSmoothDS','targetPeaks','data');
+    disp('TDT DATA SAVED AS TMP')
+end
+
+
 
 s.Photo.dFTrace = traceDF;
 s.Photo.dFTime = traceTiming;
 s.Photo.x70 = filtSig1;
 s.Photo.x05 = filtSig2;
-% s.Photo.Raw = data.streams.Fi1r.data;
-% s.Photo.RawRate = data.streams.Fi1r.fs;
-
-%pull peaks 170616 This appears to have problem: built for 2016 matlab, has
-%additional functionality for peak finding.
-try
-    [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.01);
-%     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
-catch
-    disp('Peak Detection Failed')
-    targetPeaks = [];
-    newSmoothDS = [];
-    t_ds = [];
-end
-
 s.Photo.Peaks = targetPeaks;
 s.Photo.Photo.x70dF = newSmoothDS;
 s.Photo.Photo.x70dFTime = t_ds;
@@ -235,48 +321,10 @@ s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on.
 %calculate raster in terms of time steps in photometry
 photoTimeStep = mean(diff(t_ds));
 rasterPhotWindow = round(rasterWindow/photoTimeStep);
+rasterVelWindow = round(rasterWindow/locoTimeStep);
 
 s.Photo.AlignTimes = traceMBED;
-                                                        
-%% Pull sound data!
-
-%extract data into matlab
-soundName = strcat(fileName,'Sound.mat');
-soundFile = open(soundName);
-soundData = soundFile.soundData; %pulls sound data info
-
-s.SoundData = soundData;
-
-%I basically want to just figure out the order of things, since I should
-%have the pulses inside the photometry trace already. This should be found
-%in trial matrix. 
-
-trialMatrix = soundData.TrialMatrix;
-
-uniqueFreqs = unique(trialMatrix(:,2));
-uniqueDBs = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(1),3));
-
-numFreqs = length(uniqueFreqs);
-numDBs = length(uniqueDBs);
-
-%now lets also sort out whether this is the right tuning curve. do
-%crosscorr on the delays vs outputs. 
-
-[xcf,lags,bounds]  = crosscorr(onsetPhotDiff,soundData.Delays);
-[xcMax maxInd] = max(xcf);
-xcLag = lags(maxInd);
-
-if xcLag == 0 & xcMax > 0.90
-    disp('Sound File and Actual Lags Aligned!')
-elseif xcLag < 0 & xcMax > 0.9
-    disp('Negative Lag detected in Sound File vs Real Data. Deleting data from OnsetPhot')
-    onsetPhot(1:-xcLag) = [];
-    onsetPhotDiff = diff(onsetPhot);
-    traceMBED(1:-xcLag) = [];
-    s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
-    s.Photo.AlignTimes = traceMBED;
-
-end
+       
 
 %% Now lets sort out tuning curve
 
@@ -294,7 +342,7 @@ toneDurPhot = round(soundData.ToneDuration/photoTimeStep);
 %first, lets just pull the basic raster
 
 photoRaster = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,length(traceMBED));
-
+velRaster = zeros(rasterVelWindow(2) - rasterVelWindow(1) + 1,length(traceMBED));
 for ind = 1:length(traceMBED)
     alignTime = traceMBED(ind);
     %find the time in the photometry trace
@@ -304,7 +352,13 @@ for ind = 1:length(traceMBED)
     else
         disp('Tone Rasters: Reached End of Photometry Trace')
         disp(ind)
-        break
+    end
+    %find the time in the velocity trace
+    velPoint = find(locoData.Velocity(:,1) - alignTime > 0,1,'first');
+    if velPoint + rasterVelWindow(2) < length(locoData.Velocity(:,1))
+        velRaster(:,ind) = locoData.Velocity(velPoint + rasterVelWindow(1):velPoint + rasterVelWindow(2),2); 
+    else
+        disp('Vel Rasters: Reached End of Trace')
     end
     
 end
@@ -316,12 +370,14 @@ for ind = 1:length(traceMBED)
 end
 
 s.Processed.PhotoRaster = photoRaster;
-
+s.Processed.VelRaster = velRaster;
 
 %now I need to store different means
 
 photoAverages = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,numFreqs,numDBs);
+velAverages = zeros(rasterVelWindow(2) - rasterVelWindow(1) + 1,numFreqs,numDBs);
 photoRasterStore = cell(numFreqs,numDBs);
+velRasterStore = cell(numFreqs,numDBs);
 for ind = 1:numFreqs
     subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(ind),3));
     for j = 1:numDBs
@@ -332,6 +388,12 @@ for ind = 1:numFreqs
         photoRasterStore{ind,j} = tempHolder;
         tempHolder = mean(tempHolder');
         photoAverages(:,ind,j) = tempHolder;
+        %pull velocity traces and do the same
+        tempVel = velRaster(:,targetFinder);
+        velRasterStore{ind,j} = tempVel;
+        tempVel = mean(tempVel');
+        velAverages(:,ind,j) = tempVel;
+        
     end
 end
 
