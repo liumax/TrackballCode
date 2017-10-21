@@ -378,10 +378,11 @@ for ind = 1:length(traceMBED)
     end
     %find the time in the velocity trace
     velPoint = find(locoData.Velocity(:,1) - alignTime > 0,1,'first');
-    if velPoint + rasterVelWindow(2) < length(locoData.Velocity(:,1))
+    if velPoint + rasterVelWindow(2) < length(locoData.Velocity(:,1)) & velPoint + rasterVelWindow(1) >= 1
         velRaster(:,ind) = locoData.Velocity(velPoint + rasterVelWindow(1):velPoint + rasterVelWindow(2),2); 
     else
-        disp('Vel Rasters: Reached End of Trace')
+        disp(ind)
+        disp('Vel Rasters: Not matched up')
     end
     
 end
