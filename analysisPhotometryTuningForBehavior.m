@@ -49,5 +49,8 @@ for bigInd = 1:numFiles
 end
 
 
-
+figure
+plot(magStore(:,4))
+hold on
+plot(magStore(:,9),'r')
 
