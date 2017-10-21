@@ -3,12 +3,17 @@
 
 clear
 
+%set parameters
+behavLim = 0.8;
+
 targets = what;
 targetFiles = targets.mat;
 
 masterIndex = strfind(targetFiles,'ML');
 masterIndex = find(not(cellfun('isempty', masterIndex)));
 targetFiles = targetFiles(masterIndex);
+
+
 
 numFiles = length(targetFiles);
 incInd = 1;
@@ -65,68 +70,6 @@ for bigInd = 1:numFiles
     
     
 end
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
-
-hFig = figure
-set(hFig, 'Position', [10 80 1240 850])
-subplot(2,2,1)
-hold on
-plot(bigStore(1,:),'bo')
-plot(smooth(bigStore(1,:),11,'lowess'),'b.-')
-plot(bigStore(2,:),'ro')
-plot(smooth(bigStore(2,:),11,'lowess'),'r.-')
-for i = 1:(numFiles)
-    plot([i*100 i*100],[0 0.1],'k')
-end
-xlim([0 length(bigStore)])
-title('DS(b) and NS(r) ONSET Plotted by Trial, 11 trial moving average.')
-
-subplot(2,2,3)
-hold on
-plot(bigStore(5,:),'bo')
-plot(smooth(bigStore(5,:),11,'lowess'),'b.-')
-plot(bigStore(6,:),'ro')
-plot(smooth(bigStore(6,:),11,'lowess'),'r.-')
-for i = 1:(numFiles)
-    plot([i*100 i*100],[0 7],'k')
-end
-xlim([0 length(bigStore)])
-title('DS(b) and NS(r) Licking Plotted by Trial, 11 trial moving average.')
-
-%OFFSET
-subplot(2,2,2)
-hold on
-plot(bigStore(3,:),'bo')
-plot(smooth(bigStore(3,:),11,'lowess'),'b.-')
-plot(bigStore(4,:),'ro')
-plot(smooth(bigStore(4,:),11,'lowess'),'r.-')
-for i = 1:(numFiles)
-    plot([i*100 i*100],[0 0.1],'k')
-end
-xlim([0 length(bigStore)])
-title('DS(b) and NS(r) OFFSET Plotted by Trial, 11 trial moving average.')
-
-subplot(2,2,4)
-hold on
-plot(bigStore(5,:),'bo')
-plot(smooth(bigStore(5,:),11,'lowess'),'b.-')
-plot(bigStore(6,:),'ro')
-plot(smooth(bigStore(6,:),11,'lowess'),'r.-')
-for i = 1:(numFiles)
-    plot([i*100 i*100],[0 7],'k')
-end
-xlim([0 length(bigStore)])
-title('DS(b) and NS(r)  Licking Plotted by Trial, 11 trial moving average.')
-
-savefig(hFig,'dFoF vs Licking');
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,'dFoF vs Licking','-dpdf','-r0')
-
-
 
 
 %lets try breaking things into 20 trial blocks
@@ -147,42 +90,119 @@ for i = 1:forReps/5
     daySig(3,i) = ranksum(bigStore(5,(i-1)*100+1:(i)*100),bigStore(6,(i-1)*100+1:(i)*100));
 end
 
-figure
-plot(condensedBig(7,:),'b.-')
-hold on
-plot(condensedBig(8,:),'r.-')
+bigStore(1,bigStore(1,:) <0) = 0;
+bigStore(2,bigStore(2,:) <0) = 0;
+bigStore(9,:) = (bigStore(1,:)-bigStore(2,:))./(bigStore(1,:)+bigStore(2,:));
+%fix NANs from 0/0
+bigStore(9,isnan(bigStore(9,:))) = 0;
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+
+
 
 hFig = figure
 set(hFig, 'Position', [10 80 1240 850])
-subplot(4,1,1)
+subplot(2,2,1)
+hold on
+plot(bigStore(1,:),'bo')
+plot(smooth(bigStore(1,:),11,'lowess'),'b.-')
+plot(bigStore(2,:),'ro')
+plot(smooth(bigStore(2,:),11,'lowess'),'r.-')
+for i = 1:(numFiles)
+    plot([i*100 i*100],[0 0.1],'k')
+end
+xlim([0 length(bigStore)])
+title('DS(b) and NS(r) ONSET Plotted by Trial, 11 trial moving average.')
+
+subplot(2,2,3)
+hold on
+plot(bigStore(9,:),'ko')
+plot(smooth(bigStore(9,:),11,'lowess'),'k.-')
+plot([1 length(bigStore)],[1 1],'g','LineWidth',2)
+for i = 1:(numFiles)
+    plot([(i-1)*100+1 i*100],[mean(bigStore(9,[(i-1)*100+1:i*100])) mean(bigStore(9,[(i-1)*100+1:i*100]))],'r','LineWidth',2)
+    plot([i*100 i*100],[-1 1],'k')
+end
+
+xlim([0 length(bigStore)])
+title('DS(b)/NS(r) Plotted by Trial, 11 trial moving average.')
+
+%licks!
+subplot(2,2,2)
+hold on
+plot(bigStore(5,:),'bo')
+plot(smooth(bigStore(5,:),11,'lowess'),'b.-')
+plot(bigStore(6,:),'ro')
+plot(smooth(bigStore(6,:),11,'lowess'),'r.-')
+
+for i = 1:(numFiles)
+    plot([i*100 i*100],[0 7],'k')
+end
+xlim([0 length(bigStore)])
+title('DS(b) and NS(r) Licking Plotted by Trial, 11 trial moving average.')
+
+
+%PLOT OUT LATENCY
+subplot(2,2,4)
+hold on
+plot(bigStore(7,:),'bo')
+plot(smooth(bigStore(7,:),11,'lowess'),'b.-')
+plot(bigStore(8,:),'ro')
+plot(smooth(bigStore(8,:),11,'lowess'),'r.-')
+for i = 1:(numFiles)
+    plot([i*100 i*100],[0 7],'k')
+end
+
+xlim([0 length(bigStore)])
+ylim([0 2])
+title('DS(b) and NS(r)  Licking Plotted by Trial, 11 trial moving average.')
+
+savefig(hFig,'dFoF vs Licking');
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'dFoF vs Licking','-dpdf','-r0')
+
+
+
+
+
+
+
+
+hFig = figure
+set(hFig, 'Position', [10 80 1240 850])
+subplot(4,2,1)
 hold on
 plot(condensedBig(1,:),'b.-')
 plot(condensedBig(2,:),'r.-')
 findSig = find(condensedSig(1,:) < 0.05);
 plot(findSig,condensedBig(1,findSig),'g*')
-for i = 1:(13)
+for i = 1:(numFiles)
     plot([i*5 i*5],[0 0.1],'k')
 end
 xlim([0 length(condensedBig)])
 title('DS(b) and NS(r) ONSET Plotted by Trial,binned 20trial average')
 
-subplot(4,1,2)
+subplot(4,2,3)
 hold on
 plot(condensedBig(3,:),'b.-')
 plot(condensedBig(4,:),'r.-')
 findSig = find(condensedSig(2,:) < 0.05);
 plot(findSig,condensedBig(3,findSig),'g*')
-for i = 1:(13)
+for i = 1:(numFiles)
     plot([i*5 i*5],[0 0.1],'k')
 end
 xlim([0 length(condensedBig)])
 title('DS(b) and NS(r) OFFSET Plotted by Trial,binned 20trial average')
 
-subplot(4,1,3)
+subplot(4,2,5)
 hold on
 plot(condensedBig(5,:),'b.-')
 plot(condensedBig(6,:),'r.-')
-for i = 1:(13)
+for i = 1:(numFiles)
     plot([i*5 i*5],[0 7],'k')
 end
 xlim([0 length(condensedBig)])
@@ -190,31 +210,22 @@ title('DS(b) and NS(r) Licking Plotted by Trial, binned 20trial average')
 
 prefScore = (condensedBig(5,:) - condensedBig(6,:)) ./ (condensedBig(5,:) + condensedBig(6,:));
 
-subplot(4,1,4)
+subplot(4,2,7)
 hold on
 plot(prefScore,'g.-')
 findSig = find(condensedSig(3,:) < 0.05);
 plot(findSig,prefScore(findSig),'ro')
 plot([0 length(condensedBig)],[0 0],'k')
-for i = 1:(13)
+for i = 1:(numFiles)
     plot([i*5 i*5],[-1 1],'k')
 end
+
+plot([0 length(condensedBig)],[behavLim behavLim],'r')
+ylim([0 1])
 xlim([0 length(condensedBig)])
 title('Licking Preference Plotted by Trial, binned 20trial average')
 
-savefig(hFig,'condensed dFoF vs Licking');
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,'condensed dFoF vs Licking','-dpdf','-r0')
-
-
-%plot by day
-hFig = figure
-set(hFig, 'Position', [10 80 1240 850])
-subplot(4,1,1)
+subplot(4,2,2)
 hold on
 plot(dayBig(1,:),'b.-')
 plot(dayBig(2,:),'r.-')
@@ -224,7 +235,7 @@ plot(findSig,dayBig(1,findSig),'g*')
 xlim([0 length(dayBig)])
 title('DS(b) and NS(r) ONSET Plotted by Trial,binned 20trial average')
 
-subplot(4,1,2)
+subplot(4,2,4)
 hold on
 plot(dayBig(3,:),'b.-')
 plot(dayBig(4,:),'r.-')
@@ -234,7 +245,7 @@ plot(findSig,dayBig(3,findSig),'g*')
 xlim([0 length(dayBig)])
 title('DS(b) and NS(r) OFFSET Plotted by Trial,binned 20trial average')
 
-subplot(4,1,3)
+subplot(4,2,6)
 hold on
 plot(dayBig(5,:),'b.-')
 plot(dayBig(6,:),'r.-')
@@ -244,24 +255,25 @@ title('DS(b) and NS(r) Licking Plotted by Trial, binned 20trial average')
 
 prefScore = (dayBig(5,:) - dayBig(6,:)) ./ (dayBig(5,:) + dayBig(6,:));
 
-subplot(4,1,4)
+subplot(4,2,8)
 hold on
 plot(prefScore,'g.-')
 findSig = find(daySig(3,:) < 0.05);
 plot(findSig,prefScore(findSig),'ro')
 plot([0 length(dayBig)],[0 0],'k')
-ylim([-1 1])
-
+ylim([0 1])
+plot([0 length(dayBig)],[behavLim behavLim],'r')
 xlim([0 length(dayBig)])
 title('Licking Preference Plotted by Trial, binned 20trial average')
 
-savefig(hFig,'byDay dFoF vs Licking');
+savefig(hFig,'dFoF vs Licking');
 
 %save as PDF with correct name
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,'byDay dFoF vs Licking','-dpdf','-r0')
+print(hFig,'condensed dFoF vs Licking','-dpdf','-r0')
+
 
 %try reshaping data to days
 % dailyZeroBig = reshape(dayBig(1,:),5,[]);
