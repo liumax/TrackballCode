@@ -94,6 +94,32 @@ catch
 end
 
 
+
+%now see if number of onsetPhot is correct
+if length(onsetPhot) == length(soundData.Delays);
+    disp('Onset Pulses Equal to Planned Number of Tones, Proceeding')
+else
+    disp('Onset Pulses NOT Equal')
+    disp(strcat('OnsetPhot:',num2str(length(onsetPhot))))
+    disp(strcat('SoundData:',num2str(length(soundData.Delays))))
+    %test of there are delays in onset phot that are huge
+    bigFindOnset = find(onsetPhotDiff>max(soundData.Delays)*1200);
+    if bigFindOnset
+        disp('FOUND EXTRA LONG PULSE, DELETING')
+        onsetPhot(bigFindOnset) = [];
+        onsetPhotDiff = diff(onsetPhot);
+        %check if this fixes length issue
+        if length(onsetPhot) == length(soundData.Delays)
+            disp('LENGTH ERROR FIXED')
+        else
+            error('PROBLEM NOT FIXED')
+        end
+    else
+        error('NO BIG ITIS FOUND...')
+    end
+end
+
+
 %now lets also sort out whether this is the right tuning curve. do
 %crosscorr on the delays vs outputs. 
 
@@ -141,9 +167,6 @@ if findString %if there is a tmp file!
     load(folderFiles{findString})
 else
     disp('NO TMP FOR TDT DATA, EXTRACTING...')
-    [locoData] = functionMBEDrotary(portStates.inStates(:,4),portStates.inStates(:,5),portStates.tStamps/1000,locoTimeStep);
-    save(tmpName,'locoData');
-    
     %load file
     data = load(strcat(fileName,'.mat'));
     data=data.data;
