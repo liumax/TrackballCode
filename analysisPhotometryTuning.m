@@ -422,6 +422,8 @@ end
 
 s.Processed.PhotoAverages = photoAverages;
 s.Processed.PhotoStore = photoRasterStore;
+s.Processed.VelAverages = velAverages;
+s.Processed.VelStore = velRasterStore;
 
 %lets make rasters with the peak detection rise times (based on Chris'
 %recommendation)
