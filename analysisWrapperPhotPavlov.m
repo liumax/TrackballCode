@@ -253,7 +253,8 @@ plot(dayBig(6,:),'r.-')
 xlim([0 length(dayBig)])
 title('DS(b) and NS(r) Licking Plotted by Trial, binned 20trial average')
 
-prefScore = (dayBig(5,:) - dayBig(6,:)) ./ (dayBig(5,:) + dayBig(6,:));
+% prefScore = (dayBig(5,:) - dayBig(6,:)) ./ (dayBig(5,:) + dayBig(6,:));
+prefScore = (dayBig(5,:)) ./ (dayBig(5,:) + dayBig(6,:));
 
 subplot(4,2,8)
 hold on
@@ -275,6 +276,67 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,'condensed dFoF vs Licking','-dpdf','-r0')
 
 
+%now lets extract data from the relevant time points. I want to get all the
+%info at several specific times: day 1, which should be early, the first
+%day of at least two consecutive days in which the animal performs above
+%criterion, and the last day of behavior
+
+%to find the first day above criterion, lets look at hte day to day data. 
+whileTrig = 0;
+setTrig = 0;
+indStart = 1;
+while whileTrig == 0
+    %check at the current index
+    prefVal = prefScore(indStart);
+    if prefVal >= behavLim & setTrig == 0
+        setTrig = 1;
+        disp('First Threshold Crossing')
+        indStart = indStart + 1;
+    elseif prefVal >= behavLim & setTrig == 1
+        disp('TargetFound')
+        targetInd = indStart -1;
+        whileTrig = 1;
+        disp(strcat('DAY ',num2str(targetInd)))
+        break
+    elseif prefVal < behavLim & setTrig == 1
+        disp('Failure To Maintain Behavior')
+        setTrig = 0;
+        indStart = indStart + 1;
+    elseif prefVal < behavLim & setTrig == 0
+        disp('No Threshold Crossing')
+        indStart = indStart + 1;
+    end
+        
+end
+
+keyVals = zeros(3,1);
+
+keyVals(1,1) = prefScore(1);
+keyVals(1,2) = dayBig(1,1);
+keyVals(1,3) = dayBig(2,1);
+keyVals(1,4) = dayBig(5,1);
+keyVals(1,5) = dayBig(6,1);
+
+keyVals(2,1) = prefScore(targetInd);
+keyVals(2,2) = dayBig(1,targetInd);
+keyVals(2,3) = dayBig(2,targetInd);
+keyVals(2,4) = dayBig(5,targetInd);
+keyVals(2,5) = dayBig(6,targetInd);
+
+keyVals(3,1) = prefScore(end);
+keyVals(3,2) = dayBig(1,end);
+keyVals(3,3) = dayBig(2,end);
+keyVals(3,4) = dayBig(5,end);
+keyVals(3,5) = dayBig(6,end);
+
+figure
+hold on
+% plot(keyVals(:,1),'g')
+plot(keyVals(:,2))
+plot(keyVals(:,3),'r')
+
+
+
 %try reshaping data to days
 % dailyZeroBig = reshape(dayBig(1,:),5,[]);
 
@@ -284,4 +346,4 @@ print(hFig,'condensed dFoF vs Licking','-dpdf','-r0')
 
 % prefScore = condensedBig(5,:) ./ (condensedBig(5,:) + condensedBig(6,:));
 
-save('resultingData.mat','bigStore','prefScore','condensedBig','condensedSig');
+save('resultingData.mat','bigStore','prefScore','condensedBig','condensedSig','keyVals');
