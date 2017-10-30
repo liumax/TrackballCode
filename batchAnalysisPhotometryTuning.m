@@ -11,6 +11,9 @@ testNames(findString) = [];
 [findString] = functionCellStringFind(testNames,'Sound');
 testNames(findString) = [];
 
+[findString] = functionCellStringFind(testNames,'TMP');
+testNames(findString) = [];
+
 % [findString] = functionCellStringFind(testNames,'Tuning');
 % testNames = testNames(findString);
 
