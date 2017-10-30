@@ -12,7 +12,9 @@ targetFiles = targets.mat;
 masterIndex = strfind(targetFiles,'ML');
 masterIndex = find(not(cellfun('isempty', masterIndex)));
 targetFiles = targetFiles(masterIndex);
-
+masterIndex = strfind(targetFiles,'Analysis');
+masterIndex = find(not(cellfun('isempty', masterIndex)));
+targetFiles = targetFiles(masterIndex);
 
 
 numFiles = length(targetFiles);
@@ -77,6 +79,7 @@ end
 forReps = length(bigStore)/20;
 for i = 1:forReps
     condensedBig(:,i) = nanmean(bigStore(:,(i-1)*20+1:(i)*20),2);
+    condensedBigVar(:,i) = std(bigStore(:,(i-1)*20+1:(i)*20),0,2);
     condensedSig(1,i) = ranksum(bigStore(1,(i-1)*20+1:(i)*20),bigStore(2,(i-1)*20+1:(i)*20));
     condensedSig(2,i) = ranksum(bigStore(3,(i-1)*20+1:(i)*20),bigStore(4,(i-1)*20+1:(i)*20));
     condensedSig(3,i) = ranksum(bigStore(5,(i-1)*20+1:(i)*20),bigStore(6,(i-1)*20+1:(i)*20));
@@ -85,6 +88,7 @@ end
 
 for i = 1:forReps/5
     dayBig(:,i) = nanmean(bigStore(:,(i-1)*100+1:(i)*100),2);
+    dayVar(:,i) = std(bigStore(:,(i-1)*100+1:(i)*100),0,2);
     daySig(1,i) = ranksum(bigStore(1,(i-1)*100+1:(i)*100),bigStore(2,(i-1)*100+1:(i)*100));
     daySig(2,i) = ranksum(bigStore(3,(i-1)*100+1:(i)*100),bigStore(4,(i-1)*100+1:(i)*100));
     daySig(3,i) = ranksum(bigStore(5,(i-1)*100+1:(i)*100),bigStore(6,(i-1)*100+1:(i)*100));
@@ -188,15 +192,13 @@ title('DS(b) and NS(r) ONSET Plotted by Trial,binned 20trial average')
 
 subplot(4,2,3)
 hold on
-plot(condensedBig(3,:),'b.-')
-plot(condensedBig(4,:),'r.-')
-findSig = find(condensedSig(2,:) < 0.05);
-plot(findSig,condensedBig(3,findSig),'g*')
+plot(condensedBigVar(1,:),'b.-')
+plot(condensedBigVar(2,:),'r.-')
 for i = 1:(numFiles)
     plot([i*5 i*5],[0 0.1],'k')
 end
 xlim([0 length(condensedBig)])
-title('DS(b) and NS(r) OFFSET Plotted by Trial,binned 20trial average')
+title('DS(b) and NS(r) VAR Plotted by Trial,binned 20trial average')
 
 subplot(4,2,5)
 hold on
@@ -233,17 +235,15 @@ findSig = find(daySig(1,:) < 0.05);
 plot(findSig,dayBig(1,findSig),'g*')
 
 xlim([0 length(dayBig)])
-title('DS(b) and NS(r) ONSET Plotted by Trial,binned 20trial average')
+title('DS(b) and NS(r) ONSET Plotted by DAY')
 
 subplot(4,2,4)
 hold on
-plot(dayBig(3,:),'b.-')
-plot(dayBig(4,:),'r.-')
-findSig = find(daySig(2,:) < 0.05);
-plot(findSig,dayBig(3,findSig),'g*')
+plot(dayVar(1,:),'b.-')
+plot(dayVar(2,:),'r.-')
 
 xlim([0 length(dayBig)])
-title('DS(b) and NS(r) OFFSET Plotted by Trial,binned 20trial average')
+title('DS(b) and NS(r) VAR Plotted by DAY')
 
 subplot(4,2,6)
 hold on
@@ -251,7 +251,7 @@ plot(dayBig(5,:),'b.-')
 plot(dayBig(6,:),'r.-')
 
 xlim([0 length(dayBig)])
-title('DS(b) and NS(r) Licking Plotted by Trial, binned 20trial average')
+title('DS(b) and NS(r) Licking Plotted by DAY')
 
 % prefScore = (dayBig(5,:) - dayBig(6,:)) ./ (dayBig(5,:) + dayBig(6,:));
 prefScore = (dayBig(5,:)) ./ (dayBig(5,:) + dayBig(6,:));
@@ -265,7 +265,7 @@ plot([0 length(dayBig)],[0 0],'k')
 ylim([0 1])
 plot([0 length(dayBig)],[behavLim behavLim],'r')
 xlim([0 length(dayBig)])
-title('Licking Preference Plotted by Trial, binned 20trial average')
+title('Licking Preference Plotted by DAY')
 
 savefig(hFig,'dFoF vs Licking');
 
@@ -346,4 +346,6 @@ plot(keyVals(:,3),'r')
 
 % prefScore = condensedBig(5,:) ./ (condensedBig(5,:) + condensedBig(6,:));
 
-save('resultingData.mat','bigStore','prefScore','condensedBig','condensedSig','keyVals');
+newFileName = strcat(targetFiles{1}(1:9),'.mat');
+
+save(newFileName,'bigStore','prefScore','condensedBig','condensedSig','keyVals');
