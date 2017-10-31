@@ -482,7 +482,7 @@ riseRasters(:,6) = dbSort(riseRasters(:,2),3);
 
 s.Processed.RiseRaster = riseRasters;
 s.SoundData.AltMatrix = altMatrix;
-s.SoundData.DBSort = newDBSort;
+s.SoundData.DBSort = dbSort;
 % %now lets try and make a gaussian convolution of riseRasters!
 % gaussAverage = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,numFreqs,numDBs);
 % gaussStore = cell(numFreqs,numDBs);
