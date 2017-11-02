@@ -115,7 +115,28 @@ else
             error('PROBLEM NOT FIXED')
         end
     else
-        error('NO BIG ITIS FOUND...')
+        disp('NO BIG ITIS FOUND...LOOKING FOR MISMATCH')
+        [xcf,lags,bounds]  = crosscorr(onsetPhotDiff/1000,soundData.Delays,300);
+        [xcMax maxInd] = max(xcf);
+        xcLag = lags(maxInd);
+        disp(xcLag)
+        disp(xcMax)
+        if xcMax > 0.9
+            if xcLag < 0
+                onsetPhot(1:-xcLag) = [];
+                onsetPhotDiff = diff(onsetPhot);
+                %check if lengths are right
+                if length(onsetPhot) == length(soundData.Delays)
+                    disp('FIXED THE PROBLEM')
+                else
+                    error('PROBLEM NOT FIXED')
+                end
+            elseif xcLag > 0
+                error('ALIGNMENT IS IN THE POSITIVE DIRECTION...ERROR')
+            elseif xcLag == 0
+                error('TTLS ALIGN WITH DELAYS')
+            end
+        end
     end
 end
 
@@ -535,7 +556,7 @@ end
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
 % create a set of ticks for labeling any display of octaves
-if soundData.WhiteNoise
+if isfield(soundData,'WhiteNoise')
     if soundData.WhiteNoise == 1
         totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(2)));
         
