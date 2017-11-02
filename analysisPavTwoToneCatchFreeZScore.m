@@ -18,19 +18,48 @@ lickHistBin = 0.1;
 %% First, lets pull the MBED stuff
 
 
-[trialStates, portStates, trialParams] = maxTrialVariablesLickingTask(fileName);
+%first, look for tmp file! first, we want to pull all files!
+folderFiles = what;
+folderFiles= folderFiles.mat;
+%set TMP name
+tmpName = strcat(fileName,'MBEDTMP.mat');
 
-%we want to look at instates. Port 1 is TDT for photometry, port 2 is
-%NOLDUS
+[findString] = functionCellStringFind(folderFiles,tmpName);
+disp('LOOKING FOR MBED TMP FILE')
+if findString %if there is a tmp file!
+    disp('MBED TMP FILE FOUND! LOADING')
+    load(folderFiles{findString})
+else
+    disp('NO MBED TMP FILE, EXTRACTING...')
+    
+    [trialStates, portStates, trialParams] = maxTrialVariablesLickingTask(fileName);
 
-inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
-outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
+    %we want to look at instates. Port 1 is TDT for photometry, port 2 is
+    %NOLDUS
+
+    inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
+    outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
+
+    %eliminate duplicate values!
+    try
+        [inputPhot] = functionSignalDuplicateElim(inputPhot,2);
+        disp('Duplicate Elimination for Inputs Successful!')
+    catch
+        disp('NO INPUTS, SWITCH TO USING PHOTOMETRY')
+        photoToggle = 1;
+    end
+    [outputPhot] = functionSignalDuplicateElim(outputPhot,2);
+    %save temporary file so that i can save time later on!
+    
+    save(tmpName,'trialStates','portStates','trialParams','inputPhot','outputPhot');
+    disp('SAVED TMP FILE FOR MBED')
+end
+
+
 rewOut = [portStates.tStamps',portStates.outStates(:,2)];
 toneIn = [portStates.tStamps',portStates.inStates(:,1)];
 
 %eliminate duplicate values!
-[inputPhot] = functionSignalDuplicateElim(inputPhot,2);
-[outputPhot] = functionSignalDuplicateElim(outputPhot,2);
 [rewOut] = functionSignalDuplicateElim(rewOut,2);
 [toneIn] = functionSignalDuplicateElim(toneIn,2);
 
@@ -129,29 +158,35 @@ s.MBED.ToneOutputFailures = delInds;
 s.Locomotion = locoData;
 
 %% Now lets pull the photometry inputs
+tmpName = strcat(fileName,'TDTTMPZ.mat');
+[findString] = functionCellStringFind(folderFiles,tmpName);
+disp('LOOKING FOR TDT TMP FILE')
+if findString %if there is a tmp file!
+    disp('TDT TMP FILE FOUND! LOADING')
+    load(folderFiles{findString})
+else
+    disp('NO TMP FOR TDT DATA, EXTRACTING...')
+    %load file
+    data = load(strcat(fileName,'.mat'));
+    data=data.data;
 
-%load file
-data = load(strcat(fileName,'.mat'));
-data=data.data;
+    [filtSig1,filtSig2,traceDF,traceTiming] = functionPhotometryRawExtraction(data);
 
-
-% %Code from Chris that performs isosbestic correction. 
-% traceDF = isosbestic_correction(data);
-% 
-% 
-% %pull timestamps for fluorescence
-% traceTiming = [0:1/data.streams.x70G.fs:(1/data.streams.x70G.fs)*(length(data.streams.x70G.data)-1)];
-% 
-% s.Photo.dFTrace = traceDF;
-% s.Photo.dFTime = traceTiming;
-% s.Photo.x70 = data.streams.x70G.data;
-% s.Photo.x05 = data.streams.x05G.data;
-% s.Photo.Raw = data.streams.Fi1r.data;
-% s.Photo.RawRate = data.streams.Fi1r.fs;
-
-
-%170809 Replacing with scott code
-[filtSig1,filtSig2,traceDF,traceTiming] = functionPhotometryRawExtraction(data);
+    %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
+    %additional functionality for peak finding.
+    try
+        [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcessZ(traceTiming,(filtSig1-mean(filtSig1))/std(filtSig1),0.1);
+    %     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
+    catch
+        disp('Peak Detection Failed')
+        targetPeaks = [];
+        newSmoothDS = [];
+        t_ds = [];
+    end
+    tmpName = strcat(fileName,'TDTTMPZ.mat');
+    save(tmpName,'filtSig1','filtSig2','traceDF','traceTiming','t_ds','newSmoothDS','targetPeaks','data');
+    disp('TDT DATA SAVED AS TMP')
+end
 
 s.Photo.dFTrace = traceDF;
 s.Photo.dFTime = traceTiming;
@@ -160,21 +195,6 @@ s.Photo.x05 = filtSig2;
 s.Photo.x70Z = (filtSig1-mean(filtSig1))/std(filtSig1);
 s.Photo.Raw = data.streams.Fi1r.data;
 s.Photo.RawRate = data.streams.Fi1r.fs;
-
-
-%pull peaks 170616 This appears to have problem: built for 2016 matlab, has
-%additional functionality for peak finding.
-try
-    [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcessZ(traceTiming,s.Photo.x70Z,0.1);
-%     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
-catch
-    disp('Peak Detection Failed')
-    targetPeaks = [];
-    newSmoothDS = [];
-    t_ds = [];
-end
-
-
 
 s.Photo.Peaks = targetPeaks;
 s.Photo.Photo.x70dF = newSmoothDS;
@@ -571,6 +591,7 @@ s.VelRaster.MeanCatch = [velCatchMean;velCatchMean-velCatchSTE;velCatchMean+velC
 
 lickData = trialParams.licking;
 s.MBED.Licks = lickData;
+disp(length(lickData))
 
 if length(lickData)>0
 
@@ -581,6 +602,7 @@ if length(lickData)>0
     %now match to high/low
     lickInd = 1;
     for i = 1:length(trialHi)
+
         %see if there are values that are present
         lickFinder = find(lickRasterTone(:,2) == trialHi(i));
         if length(lickFinder) > 0
@@ -592,6 +614,7 @@ if length(lickData)>0
     lickInd = 1;
     lickRasterToneLow = [0 0];
     for i = 1:length(trialLow)
+
         %see if there are values that are present
         lickFinder = find(lickRasterTone(:,2) == trialLow(i));
         
