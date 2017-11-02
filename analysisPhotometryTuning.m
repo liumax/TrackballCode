@@ -451,7 +451,7 @@ s.Processed.VelStore = velRasterStore;
 %recommendation)
 
 %make basic rasters
-[riseRasters] = functionBasicRaster((targetPeaks(:,4)),traceMBED,rasterWindow);
+[riseRasters] = functionBasicRaster((targetPeaks(:,5)),traceMBED,rasterWindow);
 %generate correct order for displaying things by freq/db
 sortingCounter = 1;
 for ind = 1:numFreqs
