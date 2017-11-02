@@ -165,17 +165,22 @@ s.Photo.RawRate = data.streams.Fi1r.fs;
 %additional functionality for peak finding.
 try
     [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.01);
+    zTrace = (t_ds-mean(t_ds))/std(t_ds);
 %     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
 catch
     disp('Peak Detection Failed')
     targetPeaks = [];
     newSmoothDS = [];
     t_ds = [];
+    zTrace = [];
 end
+
+
 
 s.Photo.Peaks = targetPeaks;
 s.Photo.Photo.x70dF = newSmoothDS;
 s.Photo.Photo.x70dFTime = t_ds;
+s.Photo.Photo.zTrace = zTrace;
 
 %pull jittered signal
 traceJitt = data.epocs.PtE1.onset;
