@@ -5,6 +5,13 @@
 function [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(t,corrData,peakThresh);
 
 
+%before we fit, lets first trim shitty stuff from ends. Simply cut off the
+%first and last seconds.
+findOne = find(t > 1,1,'first');
+findEnd = find(t < t(end) - 1,1,'last');
+t = t(findOne:findEnd);
+corrData = corrData(findOne:findEnd);
+
 %so first things first, we want to take the signal and remove the decay
 %aspect. Fit a double exponential seems to work using the fit function. 
 
@@ -174,11 +181,12 @@ end
 %value of the peak itself, third column is the value of the trough, final
 %value is the time of the peak. 
 peakInds = find(shifter(:,4) == 2);
-
+troughInds = find(shifter(:,4) == 1);
 peakVals(:,1) = shifter(peakInds,5) - shifter(peakInds-1,5);
 peakVals(:,2) = shifter(peakInds,5);
 peakVals(:,3) = shifter(peakInds-1,5);
 peakVals(:,4) = t_ds(shifter(peakInds,1));
+peakVals(:,5) = t_ds(shifter(troughInds,1));
 
 %now, sort peaks by size. 
 [Y I] = sort(peakVals(:,1));
@@ -194,12 +202,8 @@ targetPeaks = peakVals(peakVals(:,1) > peakThresh,:);
 % figure
 % plot(t_ds,newSmoothDS,'k')
 % hold on
-% plot(t_ds(targetPeaks(:,2)),newSmoothDS(targetPeaks(:,2)),'r*')
-% plot(t_ds(targetPeaks(:,3)),newSmoothDS(targetPeaks(:,3)),'g*')
-% xlim([t_ds(1) t_ds(end)])
-% ylabel('dF/F')
-% xlabel('Time (s)')
-% title('Peak Selection')
+% plot(targetPeaks(:,4),targetPeaks(:,2),'r*')
+% plot(targetPeaks(:,5),targetPeaks(:,3),'g*')
 
 
 end
