@@ -180,7 +180,7 @@ s.Locomotion = locoData;
 
 %% Now lets pull the photometry inputs
 %Check for tmp file!
-tmpName = strcat(fileName,'TDTTMP.mat');
+tmpName = strcat(fileName,'TDTTMPZ.mat');
 [findString] = functionCellStringFind(folderFiles,tmpName);
 disp('LOOKING FOR TDT TMP FILE')
 if findString %if there is a tmp file!
@@ -205,7 +205,7 @@ else
         newSmoothDS = [];
         t_ds = [];
     end
-    tmpName = strcat(fileName,'TDTTMP.mat');
+    tmpName = strcat(fileName,'TDTTMPZ.mat');
     save(tmpName,'filtSig1','filtSig2','traceDF','traceTiming','t_ds','newSmoothDS','targetPeaks','data');
     disp('TDT DATA SAVED AS TMP')
 end
