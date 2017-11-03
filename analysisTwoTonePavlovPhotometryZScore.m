@@ -164,7 +164,7 @@ s.Locomotion = locoData;
 
 %% Now lets pull the photometry inputs
 
-tmpName = strcat(fileName,'TDTTMPZ.mat');
+tmpName = strcat(fileName,'TDTTMP.mat');
 [findString] = functionCellStringFind(folderFiles,tmpName);
 disp('LOOKING FOR TDT TMP FILE')
 if findString %if there is a tmp file!
@@ -184,7 +184,7 @@ else
         [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcessZ(traceTiming,(filtSig1-mean(filtSig1))/std(filtSig1),0.1);
     %     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
     catch
-        disp('Peak Detection Failed')
+        error('Peak Detection Failed')
         targetPeaks = [];
         newSmoothDS = [];
         t_ds = [];
