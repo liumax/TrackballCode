@@ -164,7 +164,7 @@ s.Locomotion = locoData;
 
 %% Now lets pull the photometry inputs
 
-tmpName = strcat(fileName,'TDTTMP.mat');
+tmpName = strcat(fileName,'TDTTMPZ.mat');
 [findString] = functionCellStringFind(folderFiles,tmpName);
 disp('LOOKING FOR TDT TMP FILE')
 if findString %if there is a tmp file!
@@ -545,7 +545,6 @@ if length(lickData)>0
     for i = 1:length(trialLow)
         %see if there are values that are present
         lickFinder = find(lickRasterTone(:,2) == trialLow(i));
-        lickRasterToneLow = [0 0];
         if length(lickFinder) > 0
             lickRasterToneLow(lickInd:lickInd + length(lickFinder)-1,:) = lickRasterTone(lickFinder,:);
             lickInd = lickInd + length(lickFinder);
@@ -737,7 +736,7 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-saveName = strcat(fileName,'Analysis','.mat');
+saveName = strcat(fileName,'AnalysisZ','.mat');
 fname = saveName;
 pname = pwd;
 
