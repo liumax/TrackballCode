@@ -132,6 +132,10 @@ for crawlInd = 1:length(shifter)
     end
 end
 
+
+%now lets just remove all things that arent 1 or 2 (trough or peak)
+shifter(shifter(:,4) == 0,:) = [];
+
 %basically, I want to eliminate any peaks that occur with no negative peak
 %before
 
@@ -168,8 +172,6 @@ while whileTrig == 0;
 end
 
 
-%now lets just remove all things that arent 1 or 2 (trough or peak)
-shifter(shifter(:,4) == 0,:) = [];
 
 
 %now remove the last negative peak, so there is only a positive peak at the
