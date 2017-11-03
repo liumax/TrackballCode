@@ -167,6 +167,11 @@ while whileTrig == 0;
     end
 end
 
+
+%now lets just remove all things that arent 1 or 2 (trough or peak)
+shifter(shifter(:,4) == 0,:) = [];
+
+
 %now remove the last negative peak, so there is only a positive peak at the
 %end
 if shifter(end,4) ~= 2
@@ -185,6 +190,9 @@ end
 %value is the time of the peak. 
 peakInds = find(shifter(:,4) == 2);
 troughInds = find(shifter(:,4) == 1);
+if length(peakInds) ~= length(troughInds)
+    error('PEAKS AND TROUGHS NOT PRODUCING THE SAME NUMBERS')
+end
 
 peakVals(:,1) = shifter(peakInds,5) - shifter(peakInds-1,5);
 peakVals(:,2) = shifter(peakInds,5);
