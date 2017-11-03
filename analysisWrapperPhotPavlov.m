@@ -67,6 +67,8 @@ for bigInd = 1:numFiles
     bigStore(7,incInd:incInd + length(s.MBED.LowTrials) - 1) = lickLatStore(s.MBED.HiTrials);
     bigStore(8,incInd:incInd + length(s.MBED.LowTrials) - 1) = lickLatStore(s.MBED.LowTrials);
     
+    peakValStore{bigInd} = s.Photo.Peaks(:,1);
+    
     incInd = incInd + length(s.MBED.LowTrials);
     
     
