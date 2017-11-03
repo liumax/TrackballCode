@@ -176,7 +176,7 @@ else
     %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
     %additional functionality for peak finding.
     try
-        [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig,0.1);
+        [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.1);
     %     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
     catch
         error('Peak Detection Failed')
