@@ -40,7 +40,10 @@ for bigInd = 1:numFiles
     %find peak values for the twentyfive bins following the stimulus onset
     %(~500ms)
     zeroPeak = max(s.PhotoRaster.ToneRaster(zeroPoint:zeroPoint+ 25,:));
-    endPeak = max(s.PhotoRaster.ToneRaster(zeroPoint:zeroPoint+ 25,:));
+    endPeak = max(s.PhotoRaster.ToneRaster(endPoint:endPoint+ 25,:));
+    %capture average velocity from different time points
+    preVel = mean(s.VelRaster.ToneRaster([19:29],:));
+    zeroVel = mean(s.VelRaster.ToneRaster([30:36],:));
     
     zeroPeakVal = zeroPeak - zeroBase;
     endPeakVal = endPeak-endBase;
@@ -66,8 +69,90 @@ for bigInd = 1:numFiles
     %note that these are with 100ms bins?
     bigStore(7,incInd:incInd + length(s.MBED.LowTrials) - 1) = lickLatStore(s.MBED.HiTrials);
     bigStore(8,incInd:incInd + length(s.MBED.LowTrials) - 1) = lickLatStore(s.MBED.LowTrials);
+    %now store velocity data too
+    bigStore(9,incInd:incInd + length(s.MBED.LowTrials) - 1) = preVel(s.MBED.HiTrials);
+    bigStore(10,incInd:incInd + length(s.MBED.LowTrials) - 1) = preVel(s.MBED.LowTrials);
+    bigStore(11,incInd:incInd + length(s.MBED.LowTrials) - 1) = zeroVel(s.MBED.HiTrials);
+    bigStore(12,incInd:incInd + length(s.MBED.LowTrials) - 1) = zeroVel(s.MBED.LowTrials);
     
     peakValStore{bigInd} = s.Photo.Peaks(:,1);
+    
+    bigVelStore{bigInd} = s.Locomotion.Velocity;
+    photoStore{bigInd} = [s.Photo.Photo.x70dFTime',s.Photo.Photo.x70dF];
+    %now lets also store average photometry traces
+    bigPhotAverage(:,bigInd) = s.PhotoRaster.MeanHi(1,:);
+    smallPhotAverage(:,bigInd) = s.PhotoRaster.MeanLow(1,:);
+    %pull licking histograms
+    if max(s.Licking.ToneHistHi) > 30
+        lickHistHi(:,bigInd) = s.Licking.ToneHistHi/10;
+        lickHistLow(:,bigInd) = s.Licking.ToneHistLow/10;
+    else
+        lickHistHi(:,bigInd) = s.Licking.ToneHistHi;
+        lickHistLow(:,bigInd) = s.Licking.ToneHistLow;
+    end
+    lickHistLow(31,bigInd) = 0;
+    %pull velocities
+    velHistHi(:,bigInd) = mean(s.VelRaster.ToneRaster(:,s.MBED.HiTrials)');
+    velHistLow(:,bigInd) = mean(s.VelRaster.ToneRaster(:,s.MBED.LowTrials)');
+    
+    %calculate locomotiong ROC over whole trace
+    
+    smoothVel = smooth(bigVelStore{1}(:,2),5);
+    velTrueTime = interp1(s.MBED.Jitter/1000,s.Photo.Jitter,bigVelStore{1}(:,1));
+    newVelVector = [velTrueTime,smoothVel];
+    %remove nan values
+    nanFind = find(isnan(newVelVector(:,1)));
+    newVelVector(nanFind,:) = [];
+    %now lets interpolate the photometry signal so they sample at the same rate
+    %as velocity
+    interpPhot = interp1(photoStore{1}(:,1),photoStore{1}(:,2),newVelVector(:,1));
+
+    minPhot = min(interpPhot);
+    maxPhot = max(interpPhot);
+    rateInc = 20;
+
+    locomotionInd = double(newVelVector(:,2)>1);
+    trueLocs = length(find(locomotionInd == 1));
+    truePause = length(find(locomotionInd == 0));
+
+
+    %rates at which I will threshold as classifier
+    rateRange = minPhot:(maxPhot-minPhot)/rateInc:maxPhot;
+
+    rocStore = zeros(4,rateInc);
+
+    for i = 1:rateInc
+        %need to conver i to the targeted rate
+        threshRate = rateRange(i);
+        %find all points at which we classify as locomotion
+        classifyInd = (double(interpPhot>=threshRate)+1)*2;
+        %compare by adding to locomotionInd
+        testInd = classifyInd + locomotionInd;
+        %find points with locomotion and classifier(4+1 = 5)
+        rocStore(i,1) = length(find(testInd == 5));
+        %find points with locomotion but no classifier (2+1 = 3)
+        rocStore(i,2) = length(find(testInd == 3));
+        %find points with no locomotion but classifier (4 + 0 = 4)
+        rocStore(i,3) = length(find(testInd == 4));
+        %find points with no locomotion and no classifier (2 + 0 = 2)
+        rocStore(i,4) = length(find(testInd == 2));
+    end
+
+
+
+    %calculate AUC using trapz
+    falsePos = rocStore(:,3)/truePause;
+    truePos = rocStore(:,1)/trueLocs;
+    %reorder in order of false positive from 0 to 1
+    [B,I] = sort(falsePos);
+    falsePos = B;
+    truePos = truePos(I);
+    %eliminate duplicate values. 
+    [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
+    truePos = truePos(ia);
+    falsePos = C;
+    %calculate estimate of area under curve. 
+    AUCoverall(bigInd)= trapz(falsePos,truePos);
     
     incInd = incInd + length(s.MBED.LowTrials);
     
@@ -104,6 +189,120 @@ bigStore(9,isnan(bigStore(9,:))) = 0;
 
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
+
+zeroPeakVel = zeroPeak - zeroBase;
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1240 850])
+plot(bigStore(1,:),bigStore(11,:)-bigStore(9,:),'b.')
+hold on
+plot(bigStore(2,:),bigStore(12,:)-bigStore(10,:),'r.')
+title('Scatter of Photometry Peak with Mean Velocity')
+xlabel('Photometry Peak Size')
+ylabel('Vel Change Relative to Baseline')
+savefig(hFig,'vel and photScatter');
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'vel and photScatter','-dpdf','-r0')
+
+
+
+%now also plot out average photometry traces
+hFig = figure;
+set(hFig, 'Position', [10 80 1240 850])
+
+photoAxis = [-3:0.021:5.001];
+photMax = max([max(max(bigPhotAverage)),max(max(smallPhotAverage))]);
+photMin = min([min(min(bigPhotAverage)),min(min(smallPhotAverage))]);
+
+lickMax = max([max(max(lickHistHi)),max(max(1))]);
+lickMin = min([min(min(lickHistHi)),min(min(1))]);
+
+velMax = max([max(max(velHistHi)),max(max(velHistLow))]);
+velMin = min([min(min(velHistHi)),min(min(velHistLow))]);
+
+subplot(3,2,1) %plot DS
+hold on
+for i = 1:numFiles
+    plot(photoAxis,bigPhotAverage(:,i),'LineWidth',2,'Color',[i/numFiles 0 0])
+    if i == 1 | i == numFiles
+        plot(photoAxis,bigPhotAverage(:,i),'LineWidth',4,'Color',[i/numFiles 0 0])
+    end
+end
+ylim([photMin photMax])
+xlim([-3 5])
+title('DS Photometry')
+
+subplot(3,2,2) %plot NS
+hold on
+for i = 1:numFiles
+    plot(photoAxis,smallPhotAverage(:,i),'LineWidth',2,'Color',[i/numFiles 0 0])
+    if i == 1 | i == numFiles
+        plot(photoAxis,smallPhotAverage(:,i),'LineWidth',4,'Color',[i/numFiles 0 0])
+    end
+end
+ylim([photMin photMax])
+xlim([-3 5])
+title('NS Photometry')
+
+subplot(3,2,3) %plot DS velocity trace
+hold on
+for i = 1:numFiles
+    plot([-3:0.1:5],velHistHi(:,i),'LineWidth',2,'Color',[i/numFiles 0 0])
+    if i == 1 | i == numFiles
+        plot([-3:0.1:5],velHistHi(:,i),'LineWidth',4,'Color',[i/numFiles 0 0])
+    end
+end
+ylim([velMin velMax])
+xlim([-3 5])
+title('DS VELOCITY')
+
+subplot(3,2,4) %plot NS velocity trace
+hold on
+for i = 1:numFiles
+    plot([-3:0.1:5],velHistLow(:,i),'LineWidth',2,'Color',[i/numFiles 0 0])
+    if i == 1 | i == numFiles
+        plot([-3:0.1:5],velHistLow(:,i),'LineWidth',4,'Color',[i/numFiles 0 0])
+    end
+end
+ylim([velMin velMax])
+xlim([-3 5])
+title('NS VELOCITY')
+
+subplot(3,2,5) %plot DS Licking trace
+hold on
+for i = 1:numFiles
+    plot([-3:0.1:5],lickHistHi(:,i),'LineWidth',2,'Color',[i/numFiles 0 0])
+    if i == 1 | i == numFiles
+        plot([-3:0.1:5],lickHistHi(:,i),'LineWidth',4,'Color',[i/numFiles 0 0])
+    end
+end
+ylim([lickMin lickMax])
+xlim([-3 5])
+title('DS Licking')
+
+subplot(3,2,6) %plot NS licking trace
+hold on
+for i = 1:numFiles
+    plot([-3:0.1:5],lickHistLow(:,i),'LineWidth',2,'Color',[i/numFiles 0 0])
+    if i == 1 | i == numFiles
+        plot([-3:0.1:5],lickHistLow(:,i),'LineWidth',4,'Color',[i/numFiles 0 0])
+    end
+end
+ylim([lickMin lickMax])
+xlim([-3 5])
+title('NS Licking')
+
+savefig(hFig,'photVSlickVSvel');
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'photVSlickVSvel','-dpdf','-r0')
 
 
 hFig = figure
@@ -311,6 +510,71 @@ while whileTrig == 0
         
 end
 
+
+
+
+%now lets try calculation ROC (again Q_Q)
+
+rateInc = 20;
+locomotionInd = repmat([1 0],1,100);
+trueLocs = length(find(locomotionInd == 1));
+truePause = length(find(locomotionInd == 0));
+
+%find peaks from average histograms
+for ind = 1:numFiles
+    smoothRate = reshape(bigStore([1:2],[1+100*(ind-1):100*ind]),1,[]);
+    %find min and max rates!
+    minRate = (min(smoothRate));
+    maxRate = (max(smoothRate));
+
+    %rates at which I will threshold as classifier
+    rateRange = minRate:(maxRate-minRate)/rateInc:maxRate;
+    
+    rocStore = zeros(4,rateInc);
+
+    for i = 1:rateInc
+        %need to conver i to the targeted rate
+        threshRate = rateRange(i);
+        %find all points at which we classify as locomotion
+        classifyInd = (double(smoothRate>=threshRate)+1)*2;
+        %compare by adding to locomotionInd
+        testInd = classifyInd + locomotionInd;
+        %find points with locomotion and classifier(4+1 = 5)
+        rocStore(i,1) = length(find(testInd == 5));
+        %find points with locomotion but no classifier (2+1 = 3)
+        rocStore(i,2) = length(find(testInd == 3));
+        %find points with no locomotion but classifier (4 + 0 = 4)
+        rocStore(i,3) = length(find(testInd == 4));
+        %find points with no locomotion and no classifier (2 + 0 = 2)
+        rocStore(i,4) = length(find(testInd == 2));
+    end
+    
+    %calculate AUC using trapz
+    falsePos = rocStore(:,3)/truePause;
+    truePos = rocStore(:,1)/trueLocs;
+    %reorder in order of false positive from 0 to 1
+    [B,I] = sort(falsePos);
+    falsePos = B;
+    truePos = truePos(I);
+    %eliminate duplicate values. 
+    [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
+    truePos = truePos(ia);
+    falsePos = C;
+    %calculate estimate of area under curve. 
+    trueAUC(ind)= trapz(falsePos,truePos);
+end
+
+%now calculate AUC prediction of velocity relative to photometry
+
+hFig = figure;
+plot(trueAUC,'k')
+hold on
+plot(AUCoverall,'g')
+title('AUC Calculation for Photometry Kphoto Gloco')
+ylabel('AUC Score')
+xlabel('Days')
+
+
 keyVals = zeros(3,1);
 
 keyVals(1,1) = prefScore(1);
@@ -318,24 +582,32 @@ keyVals(1,2) = dayBig(1,1);
 keyVals(1,3) = dayBig(2,1);
 keyVals(1,4) = dayBig(5,1);
 keyVals(1,5) = dayBig(6,1);
+keyVals(1,6) = AUCoverall(1);
+keyVals(1,7) = trueAUC(1);
 
 keyVals(2,1) = prefScore(targetInd);
 keyVals(2,2) = dayBig(1,targetInd);
 keyVals(2,3) = dayBig(2,targetInd);
 keyVals(2,4) = dayBig(5,targetInd);
 keyVals(2,5) = dayBig(6,targetInd);
+keyVals(2,6) = AUCoverall(targetInd);
+keyVals(2,7) = trueAUC(targetInd);
 
 keyVals(3,1) = prefScore(end);
 keyVals(3,2) = dayBig(1,end);
 keyVals(3,3) = dayBig(2,end);
 keyVals(3,4) = dayBig(5,end);
 keyVals(3,5) = dayBig(6,end);
+keyVals(3,6) = AUCoverall(end);
+keyVals(3,7) = trueAUC(end);
 
 figure
 hold on
 % plot(keyVals(:,1),'g')
 plot(keyVals(:,2))
 plot(keyVals(:,3),'r')
+
+
 
 
 
