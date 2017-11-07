@@ -136,6 +136,29 @@ else
             elseif xcLag == 0
                 error('TTLS ALIGN WITH DELAYS')
             end
+        else
+            %time to crawl
+            diffVal = abs(onsetPhotDiff/1000-soundData.Delays);
+            whileTrig = 0;
+            crawlInd = 1;
+            while whileTrig == 0;
+                if diffVal(crawlInd) > 0.6
+                    onsetPhot(crawlInd) = [];
+                    onsetPhotDiff = diff(onsetPhot);
+                    if length(onsetPhot) == length(soundData.Delays)
+                        disp('PROBLEM SOLVED WITH DATA CRAWLER')
+                        crawlStore = crawlInd;
+                        break
+                    else
+                        error('PROBLEM NOT SOLVED WITH DATA CRAWLER, KILLING PROGRAM')
+                    end
+                else
+                    crawlInd = crawlInd + 1;
+                end
+                if crawlInd >= length(diffVal)
+                    break
+                end
+            end
         end
     end
 end
