@@ -26,6 +26,9 @@ expFit = f.a*(exp(f.b*t)) + f.c*(exp(f.d*t));
 %find NaNs and replace with zeros. 
 tester = find(isnan(expFit));
 expFit(tester) = 0;
+if min(expFit) == -Inf | max(expFit) == Inf;
+    expFit = zeros(1,length(t));
+end
 newData = (corrData - expFit);
 
 %now we want to smooth. Since we are using 5ms bins, 21 bin smoothing should
