@@ -585,101 +585,110 @@ rateInc = 20;
 locomotionInd = repmat([1 0],1,100);
 trueLocs = length(find(locomotionInd == 1));
 truePause = length(find(locomotionInd == 0));
+try
+    %find peaks from average histograms
+    for ind = 1:numFiles
+        smoothRate = locoChange(:,[1+200*(ind-1):200*ind]);
+        %find min and max rates!
+        minRate = (min(smoothRate));
+        maxRate = (max(smoothRate));
 
-%find peaks from average histograms
-for ind = 1:numFiles
-    smoothRate = locoChange(:,[1+200*(ind-1):200*ind]);
-    %find min and max rates!
-    minRate = (min(smoothRate));
-    maxRate = (max(smoothRate));
+        %rates at which I will threshold as classifier
+        rateRange = minRate:(maxRate-minRate)/rateInc:maxRate;
 
-    %rates at which I will threshold as classifier
-    rateRange = minRate:(maxRate-minRate)/rateInc:maxRate;
-    
-    rocStore = zeros(4,rateInc);
+        rocStore = zeros(4,rateInc);
 
-    for i = 1:rateInc
-        %need to conver i to the targeted rate
-        threshRate = rateRange(i);
-        %find all points at which we classify as locomotion
-        classifyInd = (double(smoothRate>=threshRate)+1)*2;
-        %compare by adding to locomotionInd
-        testInd = classifyInd + locomotionInd;
-        %find points with locomotion and classifier(4+1 = 5)
-        rocStore(i,1) = length(find(testInd == 5));
-        %find points with locomotion but no classifier (2+1 = 3)
-        rocStore(i,2) = length(find(testInd == 3));
-        %find points with no locomotion but classifier (4 + 0 = 4)
-        rocStore(i,3) = length(find(testInd == 4));
-        %find points with no locomotion and no classifier (2 + 0 = 2)
-        rocStore(i,4) = length(find(testInd == 2));
+        for i = 1:rateInc
+            %need to conver i to the targeted rate
+            threshRate = rateRange(i);
+            %find all points at which we classify as locomotion
+            classifyInd = (double(smoothRate>=threshRate)+1)*2;
+            %compare by adding to locomotionInd
+            testInd = classifyInd + locomotionInd;
+            %find points with locomotion and classifier(4+1 = 5)
+            rocStore(i,1) = length(find(testInd == 5));
+            %find points with locomotion but no classifier (2+1 = 3)
+            rocStore(i,2) = length(find(testInd == 3));
+            %find points with no locomotion but classifier (4 + 0 = 4)
+            rocStore(i,3) = length(find(testInd == 4));
+            %find points with no locomotion and no classifier (2 + 0 = 2)
+            rocStore(i,4) = length(find(testInd == 2));
+        end
+
+        %calculate AUC using trapz
+        falsePos = rocStore(:,3)/truePause;
+        truePos = rocStore(:,1)/trueLocs;
+        %reorder in order of false positive from 0 to 1
+        [B,I] = sort(falsePos);
+        falsePos = B;
+        truePos = truePos(I);
+        %eliminate duplicate values. 
+        [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
+        truePos = truePos(ia);
+        falsePos = C;
+        %calculate estimate of area under curve. 
+        locoChangeAUC(ind)= trapz(falsePos,truePos);
     end
-    
-    %calculate AUC using trapz
-    falsePos = rocStore(:,3)/truePause;
-    truePos = rocStore(:,1)/trueLocs;
-    %reorder in order of false positive from 0 to 1
-    [B,I] = sort(falsePos);
-    falsePos = B;
-    truePos = truePos(I);
-    %eliminate duplicate values. 
-    [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
-    truePos = truePos(ia);
-    falsePos = C;
-    %calculate estimate of area under curve. 
-    locoChangeAUC(ind)= trapz(falsePos,truePos);
+catch
+    locoChangeAUC = zeros(numFiles,1);
+    disp('Loco Change AUC Analysis Failed')
 end
 
-%just use mean values at zero point, try again
-locoChange = reshape(bigStore([11:12],:),1,[]);
+try
+    %just use mean values at zero point, try again
+    locoChange = reshape(bigStore([11:12],:),1,[]);
 
-rateInc = 20;
-locomotionInd = repmat([1 0],1,100);
-trueLocs = length(find(locomotionInd == 1));
-truePause = length(find(locomotionInd == 0));
+    rateInc = 20;
+    locomotionInd = repmat([1 0],1,100);
+    trueLocs = length(find(locomotionInd == 1));
+    truePause = length(find(locomotionInd == 0));
 
-%find peaks from average histograms
-for ind = 1:numFiles
-    smoothRate = locoChange(:,[1+200*(ind-1):200*ind]);
-    %find min and max rates!
-    minRate = (min(smoothRate));
-    maxRate = (max(smoothRate));
+    %find peaks from average histograms
+    for ind = 1:numFiles
+        smoothRate = locoChange(:,[1+200*(ind-1):200*ind]);
+        %find min and max rates!
+        minRate = (min(smoothRate));
+        maxRate = (max(smoothRate));
 
-    %rates at which I will threshold as classifier
-    rateRange = minRate:(maxRate-minRate)/rateInc:maxRate;
-    
-    rocStore = zeros(4,rateInc);
+        %rates at which I will threshold as classifier
+        rateRange = minRate:(maxRate-minRate)/rateInc:maxRate;
 
-    for i = 1:rateInc
-        %need to conver i to the targeted rate
-        threshRate = rateRange(i);
-        %find all points at which we classify as locomotion
-        classifyInd = (double(smoothRate>=threshRate)+1)*2;
-        %compare by adding to locomotionInd
-        testInd = classifyInd + locomotionInd;
-        %find points with locomotion and classifier(4+1 = 5)
-        rocStore(i,1) = length(find(testInd == 5));
-        %find points with locomotion but no classifier (2+1 = 3)
-        rocStore(i,2) = length(find(testInd == 3));
-        %find points with no locomotion but classifier (4 + 0 = 4)
-        rocStore(i,3) = length(find(testInd == 4));
-        %find points with no locomotion and no classifier (2 + 0 = 2)
-        rocStore(i,4) = length(find(testInd == 2));
+        rocStore = zeros(4,rateInc);
+
+        for i = 1:rateInc
+            %need to conver i to the targeted rate
+            threshRate = rateRange(i);
+            %find all points at which we classify as locomotion
+            classifyInd = (double(smoothRate>=threshRate)+1)*2;
+            %compare by adding to locomotionInd
+            testInd = classifyInd + locomotionInd;
+            %find points with locomotion and classifier(4+1 = 5)
+            rocStore(i,1) = length(find(testInd == 5));
+            %find points with locomotion but no classifier (2+1 = 3)
+            rocStore(i,2) = length(find(testInd == 3));
+            %find points with no locomotion but classifier (4 + 0 = 4)
+            rocStore(i,3) = length(find(testInd == 4));
+            %find points with no locomotion and no classifier (2 + 0 = 2)
+            rocStore(i,4) = length(find(testInd == 2));
+        end
+
+        %calculate AUC using trapz
+        falsePos = rocStore(:,3)/truePause;
+        truePos = rocStore(:,1)/trueLocs;
+        %reorder in order of false positive from 0 to 1
+        [B,I] = sort(falsePos);
+        falsePos = B;
+        truePos = truePos(I);
+        %eliminate duplicate values. 
+        [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
+        truePos = truePos(ia);
+        falsePos = C;
+        %calculate estimate of area under curve. 
+        locoValAUC(ind)= trapz(falsePos,truePos);
     end
-    
-    %calculate AUC using trapz
-    falsePos = rocStore(:,3)/truePause;
-    truePos = rocStore(:,1)/trueLocs;
-    %reorder in order of false positive from 0 to 1
-    [B,I] = sort(falsePos);
-    falsePos = B;
-    truePos = truePos(I);
-    %eliminate duplicate values. 
-    [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
-    truePos = truePos(ia);
-    falsePos = C;
-    %calculate estimate of area under curve. 
-    locoValAUC(ind)= trapz(falsePos,truePos);
+catch
+    disp('Loco Mean Analysis Failed')
+    locoValAUC = zeros(numFiles,1);
 end
 %looks like the actual mean velocity value is more helpful as a predictor
 %than the change in velocity?
@@ -693,47 +702,52 @@ trueLocs = length(find(locomotionInd == 1));
 truePause = length(find(locomotionInd == 0));
 
 %find peaks from average histograms
-for ind = 1:numFiles
-    smoothRate = locoChange(:,[1+200*(ind-1):200*ind]);
-    %find min and max rates!
-    minRate = (min(smoothRate));
-    maxRate = (max(smoothRate));
+try
+    for ind = 1:numFiles
+        smoothRate = locoChange(:,[1+200*(ind-1):200*ind]);
+        %find min and max rates!
+        minRate = (min(smoothRate));
+        maxRate = (max(smoothRate));
 
-    %rates at which I will threshold as classifier
-    rateRange = minRate:(maxRate-minRate)/rateInc:maxRate;
-    
-    rocStore = zeros(4,rateInc);
+        %rates at which I will threshold as classifier
+        rateRange = minRate:(maxRate-minRate)/rateInc:maxRate;
 
-    for i = 1:rateInc
-        %need to conver i to the targeted rate
-        threshRate = rateRange(i);
-        %find all points at which we classify as locomotion
-        classifyInd = (double(smoothRate>=threshRate)+1)*2;
-        %compare by adding to locomotionInd
-        testInd = classifyInd + locomotionInd;
-        %find points with locomotion and classifier(4+1 = 5)
-        rocStore(i,1) = length(find(testInd == 5));
-        %find points with locomotion but no classifier (2+1 = 3)
-        rocStore(i,2) = length(find(testInd == 3));
-        %find points with no locomotion but classifier (4 + 0 = 4)
-        rocStore(i,3) = length(find(testInd == 4));
-        %find points with no locomotion and no classifier (2 + 0 = 2)
-        rocStore(i,4) = length(find(testInd == 2));
+        rocStore = zeros(4,rateInc);
+
+        for i = 1:rateInc
+            %need to conver i to the targeted rate
+            threshRate = rateRange(i);
+            %find all points at which we classify as locomotion
+            classifyInd = (double(smoothRate>=threshRate)+1)*2;
+            %compare by adding to locomotionInd
+            testInd = classifyInd + locomotionInd;
+            %find points with locomotion and classifier(4+1 = 5)
+            rocStore(i,1) = length(find(testInd == 5));
+            %find points with locomotion but no classifier (2+1 = 3)
+            rocStore(i,2) = length(find(testInd == 3));
+            %find points with no locomotion but classifier (4 + 0 = 4)
+            rocStore(i,3) = length(find(testInd == 4));
+            %find points with no locomotion and no classifier (2 + 0 = 2)
+            rocStore(i,4) = length(find(testInd == 2));
+        end
+
+        %calculate AUC using trapz
+        falsePos = rocStore(:,3)/truePause;
+        truePos = rocStore(:,1)/trueLocs;
+        %reorder in order of false positive from 0 to 1
+        [B,I] = sort(falsePos);
+        falsePos = B;
+        truePos = truePos(I);
+        %eliminate duplicate values. 
+        [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
+        truePos = truePos(ia);
+        falsePos = C;
+        %calculate estimate of area under curve. 
+        lickAUC(ind)= trapz(falsePos,truePos);
     end
-    
-    %calculate AUC using trapz
-    falsePos = rocStore(:,3)/truePause;
-    truePos = rocStore(:,1)/trueLocs;
-    %reorder in order of false positive from 0 to 1
-    [B,I] = sort(falsePos);
-    falsePos = B;
-    truePos = truePos(I);
-    %eliminate duplicate values. 
-    [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
-    truePos = truePos(ia);
-    falsePos = C;
-    %calculate estimate of area under curve. 
-    lickAUC(ind)= trapz(falsePos,truePos);
+catch
+    lickAUC = zeros(numFiles,1);
+    disp('LICK AUC ANALYSIS FAILED')
 end
 
 hFig = figure;
@@ -751,6 +765,15 @@ legend
 title('AUC Calculation for Photometry Kphoto Gloco')
 ylabel('AUC Score')
 xlabel('Days')
+
+
+auc.trueAUC = trueAUC;
+auc.overallAUC = AUCoverall;
+auc.peaksOverall = peakAUCVal;
+auc.lickAUC = lickAUC;
+auc.locoChangeAUC = locoChangeAUC;
+auc.locoValAUC = locoValAUC;
+
 
 %now lets try for licks
 
@@ -801,4 +824,4 @@ plot(keyVals(:,3),'r')
 
 newFileName = strcat(targetFiles{1}(1:9),'.mat');
 
-save(newFileName,'bigStore','prefScore','condensedBig','condensedSig','keyVals');
+save(newFileName,'bigStore','prefScore','condensedBig','condensedSig','keyVals','auc');
