@@ -170,7 +170,8 @@ for bigInd = 1:numFiles
     
 end
 
-
+store.bigPhotAverage = bigPhotAverage;
+store.smallPhotAverage = smallPhotAverage;
 %lets try breaking things into 20 trial blocks
 
 forReps = length(bigStore)/20;
@@ -824,4 +825,4 @@ plot(keyVals(:,3),'r')
 
 newFileName = strcat(targetFiles{1}(1:9),'.mat');
 
-save(newFileName,'bigStore','prefScore','condensedBig','condensedSig','keyVals','auc');
+save(newFileName,'bigStore','prefScore','condensedBig','condensedSig','keyVals','auc','store');
