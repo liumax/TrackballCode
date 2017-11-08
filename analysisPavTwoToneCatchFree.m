@@ -203,7 +203,6 @@ catch
     traceMBED = interp1(inputPhotOnset,traceJitt,toneOnset);
     interpTrig = 1;
 end
-traceMBEDDiff = diff(traceMBED);
 
 %check alignment to MBED TTLs
 [traceMBED] = functionTTLrepairTTL(toneOnset,traceMBED);
