@@ -198,18 +198,9 @@ catch
     disp('No TDT Tone Pulses Detected')
     traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
 end
+
+[traceMBED] = functionTTLrepairTTL(onsetPhotDiff/1000,traceMBED);
 traceMBEDDiff = diff(traceMBED);
-
-%check alignment
-[xcf,lags,bounds]  = crosscorr(onsetPhotDiff/1000,traceMBEDDiff);
-[xcMax maxInd] = max(xcf);
-xcLag = lags(maxInd);
-
-if xcLag ~= 0
-    error('Tones Not Aligned')
-elseif length(onsetPhot) ~= length(traceMBED)
-    error('Mismatch in Number of Tone Pulses')
-end
 
 %calculate raster in terms of time steps in photometry
 
