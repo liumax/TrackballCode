@@ -39,6 +39,8 @@ newSmoothDS = downsample(newSmooth,4);
 %now we need to pick out peaks. 
 
 dSmoothDS = diff(newSmoothDS);
+ddSmoothDS= diff(dSmoothDS); %get double derivative
+
 shifter = zeros(100,3);
 shiftInd = 1;
 pSign = 1;
@@ -174,6 +176,38 @@ if shifter(end,4) ~= 2
     shifter(end,:) = [];
     disp('Trimming Ends')
 end
+
+%now what we want to do is hunt through and pull out the nearest zero point
+%in the second derivative. we will take this to be the onset of the
+%transient
+finder = find(shifter(:,4) == 1);
+for crawlInd = 1:length(finder)
+    whileTrig = 0;
+    whileCount = 0;
+    %first, need to get initial value. have in while loop so can check
+    %beyond first value if necessary
+    while whileTrig == 0
+        if ddSmoothDS(shifter(finder(crawlInd)+whileCount,1)) ~= 0
+            startSign = sign(ddSmoothDS(shifter(finder(crawlInd)+whileCount,1)));
+            break
+        elseif ddSmoothDS(shifter(finder(crawlInd)+whileCount,1)) == 0
+            %check next value
+            whileCount = whileCount + 1;
+        end
+    end
+    whileCount = 1;
+    while whileTrig == 0;
+        signCheck = sign(ddSmoothDS(shifter(finder(crawlInd)+whileCount,1)));
+        if signCheck == startSign
+            whileCount = whileCount + 1;
+        else
+            shifter(finder(crawlInd),5) = shifter(finder(crawlInd),1) +whileCount;
+            break
+        end
+    end
+end
+
+shifter(finder,1) = shifter(finder,5);
 
 
 %now get peak and trough values.
