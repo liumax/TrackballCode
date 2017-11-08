@@ -10,17 +10,13 @@ thresh = 0.01;
 locoTimeStep = 0.1;
 photoToggle = 0;
 
-
 %store things in a big structure
 s = struct;
 s.Parameters.RasterWindow = rasterWindow;
 s.Parameters.PeakThreshold = thresh;
 s.Parameters.LocomotionTimeStep = locoTimeStep;
 
-
-                                                 
 %% Pull sound data!
-
 %extract data into matlab
 soundName = strcat(fileName,'Sound.mat');
 soundFile = open(soundName);
@@ -39,8 +35,6 @@ uniqueDBs = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(1),3));
 
 numFreqs = length(uniqueFreqs);
 numDBs = length(uniqueDBs);
-
-
 %% Next, lets pull the MBED stuff
 
 %first, look for tmp file! first, we want to pull all files!
@@ -93,95 +87,8 @@ catch
     disp('NO INPUTS, CANT PULL ONSETS')
 end
 
-
-
-%now see if number of onsetPhot is correct
-if length(onsetPhot) == length(soundData.Delays);
-    disp('Onset Pulses Equal to Planned Number of Tones, Proceeding')
-else
-    disp('Onset Pulses NOT Equal')
-    disp(strcat('OnsetPhot:',num2str(length(onsetPhot))))
-    disp(strcat('SoundData:',num2str(length(soundData.Delays))))
-    %test of there are delays in onset phot that are huge
-    bigFindOnset = find(onsetPhotDiff>max(soundData.Delays)*1200);
-    if bigFindOnset
-        disp('FOUND EXTRA LONG PULSE, DELETING')
-        onsetPhot(bigFindOnset) = [];
-        onsetPhotDiff = diff(onsetPhot);
-        %check if this fixes length issue
-        if length(onsetPhot) == length(soundData.Delays)
-            disp('LENGTH ERROR FIXED')
-        else
-            error('PROBLEM NOT FIXED')
-        end
-    else
-        disp('NO BIG ITIS FOUND...LOOKING FOR MISMATCH')
-        [xcf,lags,bounds]  = crosscorr(onsetPhotDiff/1000,soundData.Delays,300);
-        [xcMax maxInd] = max(xcf);
-        xcLag = lags(maxInd);
-        disp(xcLag)
-        disp(xcMax)
-        if xcMax > 0.9
-            if xcLag < 0
-                onsetPhot(1:-xcLag) = [];
-                onsetPhotDiff = diff(onsetPhot);
-                %check if lengths are right
-                if length(onsetPhot) == length(soundData.Delays)
-                    disp('FIXED THE PROBLEM')
-                else
-                    error('PROBLEM NOT FIXED')
-                end
-            elseif xcLag > 0
-                error('ALIGNMENT IS IN THE POSITIVE DIRECTION...ERROR')
-            elseif xcLag == 0
-                error('TTLS ALIGN WITH DELAYS')
-            end
-        else
-            %time to crawl
-            diffVal = abs(onsetPhotDiff/1000-soundData.Delays);
-            whileTrig = 0;
-            crawlInd = 1;
-            while whileTrig == 0;
-                if diffVal(crawlInd) > 0.6
-                    onsetPhot(crawlInd) = [];
-                    onsetPhotDiff = diff(onsetPhot);
-                    if length(onsetPhot) == length(soundData.Delays)
-                        disp('PROBLEM SOLVED WITH DATA CRAWLER')
-                        crawlStore = crawlInd;
-                        break
-                    else
-                        error('PROBLEM NOT SOLVED WITH DATA CRAWLER, KILLING PROGRAM')
-                    end
-                else
-                    crawlInd = crawlInd + 1;
-                end
-                if crawlInd >= length(diffVal)
-                    break
-                end
-            end
-        end
-    end
-end
-
-
-%now lets also sort out whether this is the right tuning curve. do
-%crosscorr on the delays vs outputs. 
-
-[xcf,lags,bounds]  = crosscorr(onsetPhotDiff,soundData.Delays);
-[xcMax maxInd] = max(xcf);
-xcLag = lags(maxInd);
-
-if xcLag == 0 & xcMax > 0.90
-    disp('Sound File and Actual Lags Aligned!')
-elseif xcLag < 0 & xcMax > 0.9
-    disp('Negative Lag detected in Sound File vs Real Data. Deleting data from OnsetPhot')
-    onsetPhot(1:-xcLag) = [];
-    onsetPhotDiff = diff(onsetPhot);
-    traceMBED(1:-xcLag) = [];
-    s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
-    s.Photo.AlignTimes = traceMBED;
-end
-
+[onsetPhot] = functionITIrepairTTL(soundData.Delays,onsetPhot/1000);
+onsetPhot = onsetPhot * 1000;
 
 s.MBED.ToneDelivery = onsetPhot;
 
@@ -249,7 +156,9 @@ s.Photo.Photo.x70dFTime = t_ds;
 traceJitt = data.epocs.PtE1.onset;
 traceJittDiff = diff(traceJitt);
 
-if photoToggle == 1
+if photoToggle == 0
+    [traceJitt,inputPhotOnset] = functionTDT2MatJitterAlign(traceJitt,inputPhotOnset);
+else
     disp('Generating Fake Jitter Based on MBED Tone Pulses')
     traceMBED = data.epocs.PtC0.onset;
     traceMBEDDiff = diff(traceMBED);
@@ -274,85 +183,6 @@ if photoToggle == 1
     disp('Deleting NaN values')
     traceJittDiff = diff(traceJitt);
     inputPhotDiff = diff(inputPhotOnset);
-end
-
-
-%clean up the MBED signal. generally there will be excess TTLs at the
-%beginning
-findBig = find(inputPhotDiff > 2000);
-%now we need to screen the big differences.
-whileCounter = 1;
-while length(findBig) >= whileCounter;
-    bigSize = findBig(whileCounter);
-    if bigSize > length(inputPhotOnset)/2 %in the case of something coming near the end
-        disp('Late Big Diff, deleting')
-        inputPhotOnset(bigSize:end) = [];
-        inputPhotDiff = diff(inputPhotOnset);
-        findBig = find(inputPhotDiff > 600);
-    else
-        disp('Early Big Difference in Jitter')
-    end
-    whileCounter = whileCounter + 1;
-end
-
-bigDiffs = inputPhotDiff(findBig);
-
-%look for huge diffs. These should indicate the start of the actual session
-massDiff = find(bigDiffs > 2000);
-if length(massDiff) <=10 & length(massDiff)>0
-    disp('Long Differences in jittered trace. taking last.')
-    inputPhotOnset(1:findBig(massDiff(end))) = [];
-    inputPhotDiff = diff(inputPhotOnset);
-elseif isempty(massDiff)
-    disp('No Long differences in jittered trace')
-else
-    error('Excessive Large TTL Differences in Jittered Trace')
-end
-
-%find big differences
-findBig = find(inputPhotDiff > 600);
-bigDiffs = inputPhotDiff(findBig);
-%approximate the length of the differences by 500. round up. 
-bigDiffDiv = round(bigDiffs/500);
-
-%now replace with fake points. 
-for i = length(bigDiffs):-1:1
-    targetInd = findBig(i)+1;
-    inputPhotOnset(targetInd+(bigDiffDiv-1):end+(bigDiffDiv-1)) = inputPhotOnset(targetInd:end);
-    inputPhotOnset(targetInd) = inputPhotOnset(targetInd-1)+500;
-end
-inputPhotDiff = diff(inputPhotOnset);
-
-%now check with crosscorr
-[xcf,lags,bounds]  = crosscorr(inputPhotDiff,traceJittDiff);
-[xcMax maxInd] = max(xcf);
-xcLag = lags(maxInd);
-
-if xcLag ~= 0
-    disp('CorrLag')
-    disp(xcLag)
-    disp('MaxCorr')
-    disp(xcMax)
-    error('Jitter Not Aligned')
-elseif xcLag == 0
-    disp('Jitter Signal Properly Aligned')
-end
-%now check lengths
-if length(inputPhotDiff) ~= length(traceJittDiff)
-    disp('Lengths of Jittered traces unequal, attempting removal')
-    if length(inputPhotDiff)>length(traceJittDiff) %too many mbed inputs
-        inputPhotOnset(end) = [];
-        inputPhotDiff = diff(inputPhotOnset);
-    elseif length(inputPhotDiff)<length(traceJittDiff)
-        traceJitt(length(inputPhotOnset)+1:end) = [];
-        traceJittDiff = diff(traceJitt);
-    end
-elseif length(inputPhotDiff) == length(traceJittDiff)
-    disp('Lengths of Jittered Traces Equal! YAY')
-end
-
-if length(inputPhotDiff) ~= length(traceJittDiff)
-    error('Jittered traces still not the right length')
 end
 
 s.Photo.Jitter = traceJitt;
@@ -527,26 +357,6 @@ riseRasters(:,6) = dbSort(riseRasters(:,2),3);
 s.Processed.RiseRaster = riseRasters;
 s.SoundData.AltMatrix = altMatrix;
 s.SoundData.DBSort = dbSort;
-% %now lets try and make a gaussian convolution of riseRasters!
-% gaussAverage = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,numFreqs,numDBs);
-% gaussStore = cell(numFreqs,numDBs);
-% for i = 1:numFreqs
-%     for j = 1:numDBs
-%         %find all trials of the particular setting
-%         targetFinder = find(trialMatrix(:,2) == uniqueFreqs(i) & trialMatrix(:,3) == uniqueDBs(j));
-%         %pull and average these traces
-%         tempCount = 1;
-%         for k = 1:length(targetFinder)
-%             targetFind = find(riseRasters(:,2) == targetFinder(k));
-%             tempHold(tempCount:tempCount+length(targetFind)-1) = targetFind;
-%             tempCount = tempCount+length(targetFind);
-%         end
-%         gaussStore{i,j} = riseRasters(tempHold,:);
-%         %now collapse to a single line
-%         newGauss = sort(riseRasters(tempHold,1));
-%         photoAverages(:,i,j) = tempHolder;
-%     end
-% end
 
 
 %% Interpolate times for cross plotting of MBED data and Photometry Signal
@@ -660,92 +470,6 @@ for ind = 1:numFreqs
     rasterTicks{ind} = num2str(rasterLabels(ind,1));
 end
 
-% %MAKE THE FIGURE
-% hFig = figure;
-% set(hFig, 'Position', [10 80 1240 850])
-% 
-% %plot overall photometry trace and locomotion trace
-% subplot(3,3,1)
-% hold on
-% if velTrueTime
-%     plot(velTrueTime(findVelFirst:findVelLast),(locoData.Velocity(findVelFirst:findVelLast,2)-min(locoData.Velocity(findVelFirst:findVelLast,2)))/(max(locoData.Velocity(findVelFirst:findVelLast,2))-min(locoData.Velocity(findVelFirst:findVelLast,2))))
-%     xlim([velTrueTime(findVelFirst),velTrueTime(findVelLast)])
-% end
-% plot(traceTiming(findPhotFirst:1000:findPhotLast),(traceDF(findPhotFirst:1000:findPhotLast)-min(traceDF(findPhotFirst:findPhotLast)))/(max(traceDF(findPhotFirst:findPhotLast))-min(traceDF(findPhotFirst:findPhotLast))),'r')
-% 
-% title('Normalized Vel (b) and Photometry (r)')
-% 
-% %Plot heatmaps of photometry response
-% %First, find the overall max and min, so that I can set the same limits for
-% %all imagesc
-% imagescLim = [min(min(min(photoAverages))),max(max(max(photoAverages)))];
-% 
-% subplot(3,3,2)
-% imagesc(squeeze(photoAverages(:,:,1)'),imagescLim)
-% colormap('parula')
-% colorbar
-% set(gca,'XTick',rasterAxis(:,2));
-% set(gca,'XTickLabel',rasterAxis(:,1));
-% set(gca,'YTick',octaveRange(:,2));
-% set(gca,'YTickLabel',octaveRange(:,1));
-% title({fileName;'60DB'})
-%         
-% subplot(3,3,5)
-% imagesc(squeeze(photoAverages(:,:,2)'),imagescLim)
-% colormap('parula')
-% colorbar
-% set(gca,'XTick',rasterAxis(:,2));
-% set(gca,'XTickLabel',rasterAxis(:,1));
-% set(gca,'YTick',octaveRange(:,2));
-% set(gca,'YTickLabel',octaveRange(:,1));
-% title('80DB')
-% 
-% subplot(3,3,8)
-% imagesc(squeeze(photoAverages(:,:,3)'),imagescLim)
-% colormap('parula')
-% colorbar
-% set(gca,'XTick',rasterAxis(:,2));
-% set(gca,'XTickLabel',rasterAxis(:,1));
-% set(gca,'YTick',octaveRange(:,2));
-% set(gca,'YTickLabel',octaveRange(:,1));
-% title('100DB')
-% 
-% 
-% subplot(3,3,3)
-% plot(riseRasters(:,1),riseRasters(:,2),'k.')
-% hold on
-% plot([0 0],[1 length(trialMatrix)],'b')
-% plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
-% title('Rasters Organized by Time')
-% ylim([1 length(trialMatrix)])
-% xlim(rasterWindow)
-% 
-% subplot(3,3,6)
-% plot(riseRasters(:,1),riseRasters(:,3),'k.')
-% hold on
-% for ind = 1:numFreqs
-%     plot([rasterWindow(1) rasterWindow(2)],[rasterLabels(ind,2) rasterLabels(ind,2)],'g')
-% end
-% plot([0 0],[1 length(trialMatrix)],'b')
-% plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
-% title('Rasters Organized by Freq/DB')
-% ylim([1 length(trialMatrix)])
-% xlim(rasterWindow)
-% set(gca,'YTick',rasterLabels(:,3))
-% set(gca,'YTickLabel',rasterTicks)
-% set(gca,'Ydir','reverse')
-% 
-% 
-% 
-% spikeGraphName = strcat(fileName,'Figure');
-% 
-% savefig(hFig,spikeGraphName);
-% 
-% %save as PDF with correct name
-% set(hFig,'Units','Inches');
-% pos = get(hFig,'Position');
-% set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-% print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %MAKE THE FIGURE
 hFig = figure;
