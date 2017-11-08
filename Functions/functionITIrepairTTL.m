@@ -53,7 +53,7 @@ else
             end
         else
             %time to crawl
-            diffVal = abs(onsetPhotDiff/1000-expectedITIs);
+            diffVal = abs(onsetPhotDiff-expectedITIs);
             whileTrig = 0;
             crawlInd = 1;
             while whileTrig == 0;
