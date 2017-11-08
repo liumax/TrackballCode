@@ -73,37 +73,7 @@ s.Locomotion = locoData;
 
 %% Now lets pull the photometry inputs
 %Check for tmp file!
-tmpName = strcat(fileName,'TDTTMPZ.mat');
-[findString] = functionCellStringFind(folderFiles,tmpName);
-disp('LOOKING FOR TDT TMP FILE')
-if findString %if there is a tmp file!
-    disp('TDT TMP FILE FOUND! LOADING')
-    load(folderFiles{findString})
-else
-    disp('NO TMP FOR TDT DATA, EXTRACTING...')
-    %load file
-    data = load(strcat(fileName,'.mat'));
-    data=data.data;
-
-    [filtSig1,filtSig2,traceDF,traceTiming] = functionPhotometryRawExtraction(data);
-
-    %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
-    %additional functionality for peak finding.
-    try
-        [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.01);
-    %     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
-    catch
-        disp('Peak Detection Failed')
-        targetPeaks = [];
-        newSmoothDS = [];
-        t_ds = [];
-    end
-    tmpName = strcat(fileName,'TDTTMPZ.mat');
-    save(tmpName,'filtSig1','filtSig2','traceDF','traceTiming','t_ds','newSmoothDS','targetPeaks','data');
-    disp('TDT DATA SAVED AS TMP')
-end
-
-
+[filtSig1,filtSig2,traceDF,traceTiming,t_ds,newSmoothDS,targetPeaks,data] = functionTDTtmp(fileName,0);
 
 s.Photo.dFTrace = traceDF;
 s.Photo.dFTime = traceTiming;
@@ -112,8 +82,6 @@ s.Photo.x05 = filtSig2;
 s.Photo.Peaks = targetPeaks;
 s.Photo.Photo.x70dF = newSmoothDS;
 s.Photo.Photo.x70dFTime = t_ds;
-
-
 
 %pull jittered signal
 traceJitt = data.epocs.PtE1.onset;
