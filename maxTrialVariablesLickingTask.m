@@ -23,6 +23,9 @@ rew2Size = [];
 NASize = [];
 punSize = [];
 rewDelay = [];
+numToneTrials = [];
+numCatchTrials = [];
+numFreeTrials = [];
 
 %These are trial variables
 trialType = [];
@@ -31,6 +34,7 @@ laserTime = [];
 cueTimeRew2 = [];
 cueTimePun = [];
 cueTimeNA = [];
+playTime = [];
 
 lickTimes = [];
 lickIndex = 1;
@@ -64,6 +68,7 @@ while ischar(tline) %repeats loop as long as tline has characters
                 cueTimeRew2(trialNum) = 0;
                 cueTimePun(trialNum) = 0;
                 cueTimeNA(trialNum) = 0;
+                playTime(trialNum) = 0;
             end
 % %             
 % % %             This updates trialType so I can easily access it.
@@ -82,6 +87,10 @@ while ischar(tline) %repeats loop as long as tline has characters
                 lickIndex = lickIndex + 1;
             end
             
+            if ~isempty(strfind(eventStrings{eventLineNum},'Play'))
+                playTime(trialNum) = str2double(tline(1:(findSpaces(1)-1)));
+            end
+            
             %The following three are for important trial landmarks,
             %including sound on, sound off, and reward delivery
             if ~isempty(strfind(eventStrings{eventLineNum},'Tone Delivered'))
@@ -96,6 +105,21 @@ while ischar(tline) %repeats loop as long as tline has characters
             %session parameters.
             if ~isempty(strfind(eventStrings{eventLineNum},'Mouse ID'))
                 mouseID = eventStrings{eventLineNum}(...
+                    (find(eventStrings{eventLineNum}==':')+1):end);
+            end
+            
+            if ~isempty(strfind(eventStrings{eventLineNum},'toneTrials'))
+                numToneTrials = eventStrings{eventLineNum}(...
+                    (find(eventStrings{eventLineNum}==':')+1):end);
+            end
+            
+            if ~isempty(strfind(eventStrings{eventLineNum},'freeRewTrials'))
+                numFreeTrials = eventStrings{eventLineNum}(...
+                    (find(eventStrings{eventLineNum}==':')+1):end);
+            end
+            
+            if ~isempty(strfind(eventStrings{eventLineNum},'catchTrials'))
+                numCatchTrials = eventStrings{eventLineNum}(...
                     (find(eventStrings{eventLineNum}==':')+1):end);
             end
             
@@ -198,6 +222,7 @@ trialStates.laserTime = laserTime;
 trialStates.cueTimeRew2 = cueTimeRew2;
 trialStates.cueTimePun = cueTimePun;
 trialStates.cueTimeNA = cueTimeNA;
+trialStates.playTime = playTime;
 
 trialParams.mouseID = mouseID;
 trialParams.weight = weight;
@@ -212,6 +237,10 @@ trialParams.toneFreq = toneFreq;
 trialParams.toneDB = toneDB;
 trialParams.totalTrials = totalTrials;
 trialParams.rewDelay = rewDelay;
+trialParams.numToneTrials = numToneTrials;
+trialParams.numCatchTrials = numCatchTrials;
+trialParams.numFreeTrials = numFreeTrials;
+
 
 trialParams.licking = lickTimes;
 
