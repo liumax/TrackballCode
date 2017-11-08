@@ -17,45 +17,7 @@ s.Parameters.LocomotionTimeStep = locoTimeStep;
 
 lickHistBin = 0.1;
 %% First, lets pull the MBED stuff
-
-
-%first, look for tmp file! first, we want to pull all files!
-folderFiles = what;
-folderFiles= folderFiles.mat;
-%set TMP name
-tmpName = strcat(fileName,'MBEDTMP.mat');
-
-[findString] = functionCellStringFind(folderFiles,tmpName);
-disp('LOOKING FOR MBED TMP FILE')
-if findString %if there is a tmp file!
-    disp('MBED TMP FILE FOUND! LOADING')
-    load(folderFiles{findString})
-else
-    disp('NO MBED TMP FILE, EXTRACTING...')
-    
-    [trialStates, portStates, trialParams] = maxTrialVariablesLickingTask(fileName);
-    
-    %look at inputs from TDT (inputPhot) as well as outputs to TDT
-    %(outputPhot)
-    
-    inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
-    outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
-
-    %eliminate duplicate values!
-    try
-        [inputPhot] = functionSignalDuplicateElim(inputPhot,2);
-        disp('Duplicate Elimination for Inputs Successful!')
-    catch
-        disp('NO INPUTS, SWITCH TO USING PHOTOMETRY')
-        photoToggle = 1;
-    end
-    [outputPhot] = functionSignalDuplicateElim(outputPhot,2);
-    %save temporary file so that i can save time later on!
-    
-    save(tmpName,'trialStates','portStates','trialParams','inputPhot','outputPhot');
-    disp('SAVED TMP FILE FOR MBED')
-end
-
+[trialStates, portStates, trialParams,inputPhot,outputPhot,photoToggle] = functionMBEDtmp(fileName);
 
 rewOut = [portStates.tStamps',portStates.outStates(:,2)];
 toneIn = [portStates.tStamps',portStates.inStates(:,1)];
@@ -108,42 +70,12 @@ s.MBED.RewTrials = trialRew;
 s.MBED.Raw = portStates;
 % s.MBED.ToneOutputFailures = delInds;
 %Now pull locomotor data
-
-[locoData] = functionMBEDrotary(portStates.inStates(:,4),portStates.inStates(:,5),portStates.tStamps/1000,locoTimeStep);
-
+[locoData] = functionLocoTmp(fileName,portStates,locoTimeStep);
 s.Locomotion = locoData;
 
 %% Now lets pull the photometry inputs
+[filtSig1,filtSig2,traceDF,traceTiming,t_ds,newSmoothDS,targetPeaks,data] = functionTDTtmp(fileName,0);
 
-tmpName = strcat(fileName,'TDTTMPZ.mat');
-[findString] = functionCellStringFind(folderFiles,tmpName);
-disp('LOOKING FOR TDT TMP FILE')
-if findString %if there is a tmp file!
-    disp('TDT TMP FILE FOUND! LOADING')
-    load(folderFiles{findString})
-else
-    disp('NO TMP FOR TDT DATA, EXTRACTING...')
-    %load file
-    data = load(strcat(fileName,'.mat'));
-    data=data.data;
-
-    [filtSig1,filtSig2,traceDF,traceTiming] = functionPhotometryRawExtraction(data);
-
-    %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
-    %additional functionality for peak finding.
-    try
-        [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.1);
-    %     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
-    catch
-        error('Peak Detection Failed')
-%         targetPeaks = [];
-%         newSmoothDS = [];
-%         t_ds = [];
-    end
-    tmpName = strcat(fileName,'TDTTMPZ.mat');
-    save(tmpName,'filtSig1','filtSig2','traceDF','traceTiming','t_ds','newSmoothDS','targetPeaks','data');
-    disp('TDT DATA SAVED AS TMP')
-end
 s.Photo.dFTrace = traceDF;
 s.Photo.dFTime = traceTiming;
 s.Photo.x70 = filtSig1;
