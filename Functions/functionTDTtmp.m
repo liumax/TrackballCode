@@ -25,7 +25,7 @@ else
     %additional functionality for peak finding.
     try
         if zToggle == 0
-            [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.01);
+            [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.005);
         else
             [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcessZ(traceTiming,(filtSig1-mean(filtSig1))/std(filtSig1),0.1);
         end
