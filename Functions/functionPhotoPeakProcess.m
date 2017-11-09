@@ -194,9 +194,17 @@ for crawlInd = 1:length(finder)
             %check next value
             whileCount = whileCount + 1;
         end
+        if shifter(finder(crawlInd)+whileCount,1) >= length(ddSmoothDS)
+            whileCount = whileCount - 3;
+        end
+        
     end
     whileCount = 1;
     while whileTrig == 0;
+        if shifter(finder(crawlInd)+whileCount,1) >= length(ddSmoothDS)
+            shifter(finder(crawlInd),5) = shifter(finder(crawlInd),1);
+            break
+        end
         signCheck = sign(ddSmoothDS(shifter(finder(crawlInd)+whileCount,1)));
         if signCheck == startSign
             whileCount = whileCount + 1;
@@ -204,6 +212,7 @@ for crawlInd = 1:length(finder)
             shifter(finder(crawlInd),5) = shifter(finder(crawlInd),1) +whileCount;
             break
         end
+        
     end
 end
 
