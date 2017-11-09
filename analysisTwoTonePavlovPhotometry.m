@@ -10,7 +10,7 @@ photoToggle = 0;
 
 %use diary function to save logfile of analysis. this is good for
 %troubleshooting. 
-diaryName = strcat(fileName,'LOGFILE');
+diaryName = strcat(fileName,'ANALYSISLOGFILE');
 diary(diaryName)
 
 disp(fileName)
@@ -29,8 +29,6 @@ toneIn = [portStates.tStamps',portStates.inStates(:,1)];
 %eliminate duplicate values!
 [rewOut] = functionSignalDuplicateElim(rewOut,2);
 [toneIn] = functionSignalDuplicateElim(toneIn,2);
-
-
 
 %check the toneIn, separate out to both onset times and duration
 toneOnset = toneIn(toneIn(:,2) == 1,1);
