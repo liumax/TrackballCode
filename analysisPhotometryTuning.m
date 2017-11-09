@@ -10,6 +10,14 @@ thresh = 0.01;
 locoTimeStep = 0.1;
 photoToggle = 0;
 
+
+%use diary function to save logfile of analysis. this is good for
+%troubleshooting. 
+diaryName = strcat(fileName,'ANALYSISLOGFILE');
+diary(diaryName)
+
+disp(fileName)
+
 %store things in a big structure
 s = struct;
 s.Parameters.RasterWindow = rasterWindow;
@@ -50,25 +58,13 @@ catch
     disp('NO INPUTS, CANT PULL ONSETS')
 end
 
-[onsetPhot] = functionITIrepairTTL(soundData.Delays,onsetPhot/1000);
-onsetPhot = onsetPhot * 1000;
+[onsetPhot] = functionITIrepairTTL(soundData.Delays*1000,onsetPhot,500,1.4,100);
+% onsetPhot = onsetPhot * 1000;
 
 s.MBED.ToneDelivery = onsetPhot;
 
 %Now pull locomotor data, only if no TMP file
-tmpName = strcat(fileName,'LocoTMP.mat');
-[findString] = functionCellStringFind(folderFiles,tmpName);
-disp('LOOKING FOR LOCO TMP FILE')
-if findString %if there is a tmp file!
-    disp('LOCO TMP FILE FOUND! LOADING')
-    load(folderFiles{findString})
-else
-    disp('NO TMP FOR LOCO DATA, EXTRACTING...')
-    [locoData] = functionMBEDrotary(portStates.inStates(:,4),portStates.inStates(:,5),portStates.tStamps/1000,locoTimeStep);
-    save(tmpName,'locoData');
-    disp('LOCODATA SAVED AS TMP')
-end
-
+[locoData] = functionLocoTmp(fileName,portStates,locoTimeStep);
 s.Locomotion = locoData;
 
 %% Now lets pull the photometry inputs
@@ -130,7 +126,8 @@ catch
     traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
 end
 
-[traceMBED] = functionTTLrepairTTL(onsetPhotDiff/1000,traceMBED);
+[traceMBED] = functionTTLrepairTTL(onsetPhot,traceMBED*1000,20,1.4,100);
+traceMBED = traceMBED/1000;
 traceMBEDDiff = diff(traceMBED);
 
 %calculate raster in terms of time steps in photometry
@@ -143,7 +140,6 @@ rasterPhotWindow = round(rasterWindow/photoTimeStep);
 rasterVelWindow = round(rasterWindow/locoTimeStep);
 
 s.Photo.AlignTimes = traceMBED;
-       
 
 %% Now lets sort out tuning curve
 
@@ -173,6 +169,7 @@ for ind = 1:length(traceMBED)
         disp(ind)
     end
     %find the time in the velocity trace
+    alignTime = onsetPhot(ind)/1000;
     velPoint = find(locoData.Velocity(:,1) - alignTime > 0,1,'first');
     if velPoint + rasterVelWindow(2) < length(locoData.Velocity(:,1)) & velPoint + rasterVelWindow(1) >= 1
         velRaster(:,ind) = locoData.Velocity(velPoint + rasterVelWindow(1):velPoint + rasterVelWindow(2),2); 
@@ -558,18 +555,7 @@ pname = pwd;
 save(fullfile(pname,fname),'s');
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+diary off
 end
 
 

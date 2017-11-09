@@ -9,6 +9,14 @@ locoTimeStep = 0.1;
 minBar = 8000; %for clearing out false pulses from speaker card.
 photoToggle = 0;
 
+
+%use diary function to save logfile of analysis. this is good for
+%troubleshooting. 
+diaryName = strcat(fileName,'ANALYSISLOGFILE');
+diary(diaryName)
+
+disp(fileName)
+
 %store things in a big structure
 s = struct;
 s.Parameters.RasterWindow = rasterWindow;
@@ -55,7 +63,7 @@ trialCatch = find(trialStates.trialType == 4);
 trialRew = sort([trialHi,trialFree]);
 
 %NOW DETERMINE the difference between the actual TTL inputs and the intended ITIs
-[toneOnset] = functionITIrepairTTL(trialStates.playTime,toneOnset);
+[toneOnset] = functionTTLrepairTTL(trialStates.playTime,toneOnset,6,1.2,100);
 
 s.MBED.RewTimes = rewTimes;
 s.MBED.RewDur = rewDur;
@@ -90,36 +98,10 @@ s.Photo.Photo.x70dFTime = t_ds;
 
 %pull jittered signal
 traceJitt = data.epocs.PtE1.onset;
+
+[traceJitt,inputPhotOnset] = functionTDT2MatJitterAlign(traceJitt,inputPhotOnset);
+inputPhotDiff = diff(inputPhotOnset);
 traceJittDiff = diff(traceJitt);
-
-if photoToggle == 0
-    [traceJitt,inputPhotOnset] = functionTDT2MatJitterAlign(traceJitt,inputPhotOnset);
-else
-    disp('Generating Fake Jitter Based on MBED Tone Pulses')
-    traceMBED = data.epocs.PtC0.onset;
-    traceMBEDDiff = diff(traceMBED);
-
-    %check alignment
-    [xcf,lags,bounds]  = crosscorr(onsetPhotDiff/1000,traceMBEDDiff);
-    [xcMax maxInd] = max(xcf);
-    xcLag = lags(maxInd);
-
-    if xcLag ~= 0
-        error('Tones Not Aligned')
-    elseif length(toneOnset) ~= length(traceMBED)
-        error('Mismatch in Number of Tone Pulses')
-    end
-    
-    %generate input times off of interpolation
-    inputPhotOnset = interp1(traceMBED,toneOnset,traceJitt);
-    disp('Fake Jitter Constructed...')
-    tester = find(isnan(inputPhotOnset));
-    traceJitt(tester) = [];
-    inputPhotOnset(tester) = [];
-    disp('Deleting NaN values')
-    traceJittDiff = diff(traceJitt);
-    inputPhotDiff = diff(inputPhotOnset);
-end
 
 s.Photo.Jitter = traceJitt;
 s.MBED.Jitter = inputPhotOnset;
@@ -137,8 +119,7 @@ catch
 end
 
 %check alignment to MBED TTLs
-[traceMBED] = functionTTLrepairTTL(toneOnset,traceMBED);
-
+[traceMBED] = functionTTLrepairTTL(toneOnset/1000,traceMBED,0.3,1.2,100);
 traceMBEDDiff = diff(traceMBED);
 
 s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
@@ -235,12 +216,7 @@ else
     photoRasterLick = zeros(lickPhotWindow(2) - lickPhotWindow(1)+1,1);
 end
 
-
-
 %store means of different tones
-
-
-
 steHi = std(photoRaster(:,trialHi)')/sqrt(length(trialHi));
 steLow = std(photoRaster(:,trialLow)')/sqrt(length(trialLow));
 steFree = std(photoRaster(:,trialFree)')/sqrt(length(trialFree));
@@ -620,23 +596,6 @@ fname = saveName;
 pname = pwd;
 
 save(fullfile(pname,fname),'s');
-
+diary off
 
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
