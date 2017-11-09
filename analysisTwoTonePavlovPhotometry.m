@@ -2,11 +2,18 @@
 %recording from my big rig. 
 function [s] = analysisTwoTonePavlovPhotometry(fileName);
 %% Parameters
-
 rasterWindow = [-3,5]; %raster window in seconds
 thresh = 0.01; %threshold for peak detection
 locoTimeStep = 0.1;
 minBar = 8000; %for clearing out false pulses from speaker card.
+photoToggle = 0;
+
+%use diary function to save logfile of analysis. this is good for
+%troubleshooting. 
+diaryName = strcat(fileName,'LOGFILE');
+diary(diaryName)
+
+disp(fileName)
 
 %store things in a big structure
 s = struct;
@@ -14,42 +21,15 @@ s.Parameters.RasterWindow = rasterWindow;
 s.Parameters.PeakThreshold = thresh;
 s.Parameters.LocomotionTimeStep = locoTimeStep;
 %% First, lets pull the MBED stuff
+[trialStates, portStates, trialParams,inputPhot,outputPhot,photoToggle] = functionMBEDtmp(fileName);
 
-%first, look for tmp file! first, we want to pull all files!
-folderFiles = what;
-folderFiles= folderFiles.mat;
-%set TMP name
-tmpName = strcat(fileName,'MBEDTMP.mat');
+rewOut = [portStates.tStamps',portStates.outStates(:,2)];
+toneIn = [portStates.tStamps',portStates.inStates(:,1)];
 
-[findString] = functionCellStringFind(folderFiles,tmpName);
-disp('LOOKING FOR MBED TMP FILE')
+%eliminate duplicate values!
+[rewOut] = functionSignalDuplicateElim(rewOut,2);
+[toneIn] = functionSignalDuplicateElim(toneIn,2);
 
-if findString %if there is a tmp file!
-    disp('MBED TMP FILE FOUND! LOADING')
-    load(folderFiles{findString})
-else
-    disp('NO MBED TMP FILE, EXTRACTING...')
-    
-    [trialStates, portStates, trialParams] = maxTrialVariablesLickingTask(fileName);
-
-    %we want to look at instates. Port 1 is TDT for photometry, port 2 is
-    %NOLDUS
-
-    inputPhot = [portStates.tStamps',portStates.inStates(:,8)];
-    outputPhot = [portStates.tStamps',portStates.outStates(:,8)];
-    rewOut = [portStates.tStamps',portStates.outStates(:,2)];
-    toneIn = [portStates.tStamps',portStates.inStates(:,1)];
-
-    %eliminate duplicate values!
-    [inputPhot] = functionSignalDuplicateElim(inputPhot,2);
-    [outputPhot] = functionSignalDuplicateElim(outputPhot,2);
-    [rewOut] = functionSignalDuplicateElim(rewOut,2);
-    [toneIn] = functionSignalDuplicateElim(toneIn,2);
-
-    
-    save(tmpName,'trialStates','portStates','trialParams','inputPhot','outputPhot','rewOut','toneIn');
-    disp('SAVED TMP FILE FOR MBED')
-end
 
 
 %check the toneIn, separate out to both onset times and duration
@@ -68,75 +48,29 @@ outputDur = (outputPhot(firstFind+1:2:end,1))-(outputPhot(firstFind:2:end,1));
 onsetPhotDiff = diff(onsetPhot);
 
 inputPhotOnset = inputPhot(inputPhot(:,2) == 1,1);
-inputPhotDiff = diff(inputPhotOnset);
 
-mbedErrorFlag = 0;
+%use tone times for the time of tone delivery. 
 
-%use tone times for the time of tone delivery. assign to reward times
-%accordingly. 
-
-%now lets try and match the trials with rewards
-if length(rewTimes) ~= length(onsetPhot)
-    toneRewInd = zeros(length(onsetPhot),2);
-    toneRewInd(:,1) = 1:length(onsetPhot);
-    for i = 1:length(onsetPhot)
-        testDiff = abs(rewTimes - onsetPhot(i));
-        if min(testDiff) < 5000
-            [minVal minInd] = min(testDiff);
-    %         toneRewInd(i,1) = i;
-            toneRewInd(i,2) = minInd;
-        end
-    end
-    %check to see if there are duplicates
-    if length(unique(toneRewInd(:,2))) - 1 ~= length(find(toneRewInd(:,2) ~= 0)) | length(find(toneRewInd(:,2) ~= 0)) ~= length(find(toneRewInd(:,2) == 0))
-        %scan for anything below 8 seconds.
-        
-        minFinder = find(onsetPhotDiff < minBar,1,'first');
-        delInd = 1;
-        if minFinder
-            whileTrig = 0;
-            while whileTrig == 0
-                disp('ERROR TRIAL BELOW 8 SECONDS FOUND, DELETING')
-                onsetPhot(minFinder+1) = [];
-                delMem(delInd) = minFinder + 1;
-                delInd = delInd + 1;
-                onsetPhotDiff = diff(onsetPhot);
-                minFinder = find(onsetPhotDiff < minBar,1,'first');
-                if minFinder
-                    whileTrig = 0;
-                else
-                    whileTrig = 1;
-                end
-            end
-        else
-            error('UNEXPLAINED DIFFERENCE IN TONE DELIVERY VS REWARDS')
-        end
-        %flag this error for downstream processing
-        mbedErrorFlag = 1;
-        toneRewInd = zeros(length(onsetPhot),2);
-        toneRewInd(:,1) = 1:length(onsetPhot);
-        for i = 1:length(onsetPhot)
-            testDiff = abs(rewTimes - onsetPhot(i));
-            if min(testDiff) < 5000
-                [minVal minInd] = min(testDiff);
-        %         toneRewInd(i,1) = i;
-                toneRewInd(i,2) = minInd;
-            end
-        end
-        
-        trialLow = find(toneRewInd(:,2) == 0);
-        trialHi = find(toneRewInd(:,2) ~= 0);
-        
-    else
-        delMem = [];
-        trialLow = find(toneRewInd(:,2) == 0);
-        trialHi = find(toneRewInd(:,2) ~= 0);
-    end
+[onsetPhot] = functionTTLrepairTTL(trialStates.rewTrialTime,onsetPhot,6,1.2,100);
+%assign trials to rewarded or unrewarded. first confirm that number of
+%rewards is half of onsets. If not, throw error.
+if length(rewTimes) ~= length(onsetPhot)/2
+    disp(length(rewTimes))
+    disp(length(onsetPhot))
+    error('Incorrect Number of Rewards Relative to Trials')
 else
-    delMem = [];
-    trialLow = find(rewDur == min(rewDur));
-    trialHi = find(rewDur == max(rewDur));
+    disp('Correct Number of ')
 end
+
+rewIndex = zeros(length(onsetPhot),1);
+for i = 1:length(rewTimes)
+    diffVal = onsetPhot - rewTimes(i);
+    diffFinder = find(diffVal < 0,1,'last');
+    rewIndex(diffFinder) = 1;
+end
+
+trialLow = find(rewIndex == 0);
+trialHi = find(rewIndex == 1);
 
 s.MBED.RewTimes = rewTimes;
 s.MBED.RewDur = rewDur;
@@ -147,52 +81,12 @@ s.MBED.LowTrials = trialLow;
 s.MBED.Raw = portStates;
 %Now pull locomotor data
 
-tmpName = strcat(fileName,'LocoTMP.mat');
-[findString] = functionCellStringFind(folderFiles,tmpName);
-disp('LOOKING FOR LOCO TMP FILE')
-if findString %if there is a tmp file!
-    disp('LOCO TMP FILE FOUND! LOADING')
-    load(folderFiles{findString})
-else
-    disp('NO TMP FOR LOCO DATA, EXTRACTING...')
-    [locoData] = functionMBEDrotary(portStates.inStates(:,4),portStates.inStates(:,5),portStates.tStamps/1000,locoTimeStep);
-    save(tmpName,'locoData');
-    disp('LOCODATA SAVED AS TMP')
-end
+[locoData] = functionLocoTmp(fileName,portStates,locoTimeStep);
 
 s.Locomotion = locoData;
 
 %% Now lets pull the photometry inputs
-
-tmpName = strcat(fileName,'TDTTMP.mat');
-[findString] = functionCellStringFind(folderFiles,tmpName);
-disp('LOOKING FOR TDT TMP FILE')
-if findString %if there is a tmp file!
-    disp('TDT TMP FILE FOUND! LOADING')
-    load(folderFiles{findString})
-else
-    disp('NO TMP FOR TDT DATA, EXTRACTING...')
-    %load file
-    data = load(strcat(fileName,'.mat'));
-    data=data.data;
-
-    [filtSig1,filtSig2,traceDF,traceTiming] = functionPhotometryRawExtraction(data);
-
-    %pull peaks 170616 This appears to have problem: built for 2016 matlab, has
-    %additional functionality for peak finding.
-    try
-        [t_ds,newSmoothDS,targetPeaks] = functionPhotoPeakProcess(traceTiming,filtSig1,0.01);
-    %     [peakInfo, riseInfo, troughInfo] = findPhotoPeaks(traceTiming,traceDF,thresh);
-    catch
-        disp('Peak Detection Failed')
-        targetPeaks = [];
-        newSmoothDS = [];
-        t_ds = [];
-    end
-    tmpName = strcat(fileName,'TDTTMP.mat');
-    save(tmpName,'filtSig1','filtSig2','traceDF','traceTiming','t_ds','newSmoothDS','targetPeaks','data');
-    disp('TDT DATA SAVED AS TMP')
-end
+[filtSig1,filtSig2,traceDF,traceTiming,t_ds,newSmoothDS,targetPeaks,data] = functionTDTtmp(fileName,0);
 
 s.Photo.dFTrace = traceDF;
 s.Photo.dFTime = traceTiming;
@@ -206,85 +100,10 @@ s.Photo.Photo.x70dFTime = t_ds;
 
 %pull jittered signal
 traceJitt = data.epocs.PtE1.onset;
+
+[traceJitt,inputPhotOnset] = functionTDT2MatJitterAlign(traceJitt,inputPhotOnset);
 traceJittDiff = diff(traceJitt);
-
-%clean up the MBED signal. generally there will be excess TTLs at the
-%beginning
-findBig = find(inputPhotDiff > 2000);
-%now we need to screen the big differences.
-whileCounter = 1;
-while length(findBig) >= whileCounter;
-    bigSize = findBig(whileCounter);
-    if bigSize > length(inputPhotOnset)/2 %in the case of something coming near the end
-        disp('Late Big Diff, deleting')
-        inputPhotOnset(bigSize:end) = [];
-        inputPhotDiff = diff(inputPhotOnset);
-        findBig = find(inputPhotDiff > 600);
-    else
-        disp('Early Big Difference in Jitter')
-    end
-    whileCounter = whileCounter + 1;
-end
-
-bigDiffs = inputPhotDiff(findBig);
-
-%look for huge diffs. These should indicate the start of the actual session
-massDiff = find(bigDiffs > 2000);
-if length(massDiff) <=3 & length(massDiff)>0
-    disp('Long Differences in jittered trace. taking last.')
-    inputPhotOnset(1:findBig(massDiff(end))) = [];
-    inputPhotDiff = diff(inputPhotOnset);
-elseif isempty(massDiff)
-    disp('No Long differences in jittered trace')
-else
-    error('Excessive Large TTL Differences in Jittered Trace')
-end
-
-%find big differences
-findBig = find(inputPhotDiff > 600);
-bigDiffs = inputPhotDiff(findBig);
-%approximate the length of the differences by 500. round up. 
-bigDiffDiv = round(bigDiffs/500);
-
-%now replace with fake points. 
-for i = length(bigDiffs):-1:1
-    targetInd = findBig(i)+1;
-    inputPhotOnset(targetInd+(bigDiffDiv-1):end+(bigDiffDiv-1)) = inputPhotOnset(targetInd:end);
-    inputPhotOnset(targetInd) = inputPhotOnset(targetInd-1)+500;
-end
 inputPhotDiff = diff(inputPhotOnset);
-
-%now check with crosscorr
-[xcf,lags,bounds]  = crosscorr(inputPhotDiff,traceJittDiff);
-[xcMax maxInd] = max(xcf);
-xcLag = lags(maxInd);
-
-if xcLag ~= 0
-    disp('CorrLag')
-    disp(xcLag)
-    disp('MaxCorr')
-    disp(xcMax)
-    error('Jitter Not Aligned')
-elseif xcLag == 0
-    disp('Jitter Signal Properly Aligned')
-end
-%now check lengths
-if length(inputPhotDiff) ~= length(traceJittDiff)
-    disp('Lengths of Jittered traces unequal, attempting removal')
-    if length(inputPhotDiff)>length(traceJittDiff) %too many mbed inputs
-        inputPhotOnset(end) = [];
-        inputPhotDiff = diff(inputPhotOnset);
-    elseif length(inputPhotDiff)<length(traceJittDiff)
-        traceJitt(length(inputPhotOnset)+1:end) = [];
-        traceJittDiff = diff(traceJitt);
-    end
-elseif length(inputPhotDiff) == length(traceJittDiff)
-    disp('Lengths of Jittered Traces Equal! YAY')
-end
-
-if length(inputPhotDiff) ~= length(traceJittDiff)
-    error('Jittered traces still not the right length')
-end
 
 s.Photo.Jitter = traceJitt;
 s.MBED.Jitter = inputPhotOnset;
@@ -300,37 +119,10 @@ catch
     traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
     interpTrig = 1;
 end
+
+%check alignment to MBED TTLs
+[traceMBED] = functionTTLrepairTTL(onsetPhot/1000,traceMBED,0.3,1.2,100);
 traceMBEDDiff = diff(traceMBED);
-
-%stash a copy of deletion indices.
-delBackup = delMem;
-
-%check alignment
-if mbedErrorFlag == 1
-    disp('Correcting False Signals in TDT MBED SIGNAL')
-    while delMem
-        traceMBED(delMem(1)) = [];
-        delMem(1) = [];
-    end
-end
-traceMBEDDiff = diff(traceMBED);
-
-[xcf,lags,bounds]  = crosscorr(onsetPhotDiff/1000,traceMBEDDiff);
-[xcMax maxInd] = max(xcf);
-xcLag = lags(maxInd);
-
-if xcLag ~= 0
-    error('Tones Not Aligned')
-elseif length(onsetPhot) ~= length(traceMBED)
-    disp('Mismatch in Number of Tone Pulses')
-    if interpTrig == 1
-        error('Already Using Interpolated Data for Tone Times, ERROR')
-    elseif interpTrig == 0
-        disp('Replacing with Interpolated Data')
-        traceMBED = interp1(inputPhotOnset,traceJitt,onsetPhot);
-    end
-
-end
 
 s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on. 
 
@@ -449,7 +241,7 @@ s.PhotoRaster.TimeStep = photoTimeStep;
 % Here, we will use the photometry as the base, since it is probably more
 % reliable
 if length(locoData.Velocity) > 0
-    velTrueTime = interp1(onsetPhot/1000,traceMBED,locoData.Velocity(:,1));
+    velTrueTime = interp1(inputPhotOnset/1000,traceJitt,locoData.Velocity(:,1));
 
     %in the current iteration, this has issues because the photometry cant
     %align without pulses, and i only have output pulses from the MBED when the
@@ -545,7 +337,6 @@ if length(lickData)>0
     for i = 1:length(trialLow)
         %see if there are values that are present
         lickFinder = find(lickRasterTone(:,2) == trialLow(i));
-        lickRasterToneLow = [0 0];
         if length(lickFinder) > 0
             lickRasterToneLow(lickInd:lickInd + length(lickFinder)-1,:) = lickRasterTone(lickFinder,:);
             lickInd = lickInd + length(lickFinder);
@@ -742,7 +533,7 @@ fname = saveName;
 pname = pwd;
 
 save(fullfile(pname,fname),'s');
-
+diary off
 
 end
 
