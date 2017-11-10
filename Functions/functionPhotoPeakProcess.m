@@ -187,25 +187,25 @@ for crawlInd = 1:length(finder)
     %first, need to get initial value. have in while loop so can check
     %beyond first value if necessary
     while whileTrig == 0
-        if ddSmoothDS(shifter(finder(crawlInd)+whileCount,1)) ~= 0
-            startSign = sign(ddSmoothDS(shifter(finder(crawlInd)+whileCount,1)));
+        if ddSmoothDS(shifter(finder(crawlInd),1)+whileCount) ~= 0
+            startSign = sign(ddSmoothDS(shifter(finder(crawlInd),1)+whileCount));
             break
-        elseif ddSmoothDS(shifter(finder(crawlInd)+whileCount,1)) == 0
+        elseif ddSmoothDS(shifter(finder(crawlInd),1)+whileCount) == 0
             %check next value
             whileCount = whileCount + 1;
         end
-        if shifter(finder(crawlInd)+whileCount,1) >= length(ddSmoothDS)
+        if shifter(finder(crawlInd),1)+whileCount >= length(ddSmoothDS)
             whileCount = whileCount - 3;
         end
         
     end
     whileCount = 1;
     while whileTrig == 0;
-        if shifter(finder(crawlInd)+whileCount,1) >= length(ddSmoothDS)
+        if shifter(finder(crawlInd),1)+whileCount >= length(ddSmoothDS)
             shifter(finder(crawlInd),5) = shifter(finder(crawlInd),1);
             break
         end
-        signCheck = sign(ddSmoothDS(shifter(finder(crawlInd)+whileCount,1)));
+        signCheck = sign(ddSmoothDS(shifter(finder(crawlInd),1)+whileCount));
         if signCheck == startSign
             whileCount = whileCount + 1;
         else
