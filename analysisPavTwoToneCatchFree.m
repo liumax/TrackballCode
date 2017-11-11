@@ -341,6 +341,7 @@ if length(lickData)>0
     [lickRasterRew] = functionBasicRaster(lickData(:,1)/1000,rewTimes/1000,rasterWindow);
     [lickRasterTone] = functionBasicRaster(lickData(:,1)/1000,toneOnset/1000,rasterWindow);
     %now match to high/low
+    lickRasterToneHi = [0,0];
     lickInd = 1;
     for i = 1:length(trialHi)
         %see if there are values that are present

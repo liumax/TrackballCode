@@ -322,6 +322,8 @@ if length(lickData)>0
     [lickRasterTone] = functionBasicRaster(lickData(:,1)/1000,onsetPhot/1000,rasterWindow);
     %now match to high/low
     lickInd = 1;
+    lickRasterToneHi = [0,0];
+    
     for i = 1:length(trialHi)
         %see if there are values that are present
         lickFinder = find(lickRasterTone(:,2) == trialHi(i));
@@ -330,6 +332,8 @@ if length(lickData)>0
             lickInd = lickInd + length(lickFinder);
         end
     end
+    
+    lickRasterToneLow = [0,0];
 
     lickInd = 1;
     for i = 1:length(trialLow)
