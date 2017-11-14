@@ -75,7 +75,7 @@ else
                 if diffVal > threshDiffVal
                     realTTLs(crawlInd) = [];
                     onsetPhotDiff = diff(realTTLs);
-                    if length(realTTLs) == length(expectedTTLs)
+                    if length(realTTLs) == length(expectedITIs)
                         disp('REMOVING POINT WITH CRAWLER, PROBLEM FIXED')
                         crawlStore = crawlInd;
                         break
@@ -86,7 +86,7 @@ else
                 elseif diffVal < -threshDiffVal
                     realTTLs(crawlInd+1) = [];
                     onsetPhotDiff = diff(realTTLs);
-                    if length(realTTLs) == length(expectedTTLs)
+                    if length(realTTLs) == length(expectedITIs)
                         disp('REMOVING POINT WITH CRAWLER, PROBLEM FIXED')
                         crawlStore = crawlInd;
                         break
@@ -97,7 +97,7 @@ else
                 else
                     crawlInd = crawlInd + 1;
                 end
-                if crawlInd >= length(expectedDiff)
+                if crawlInd >= length(expectedITIs)
                     disp('END OF CRAWL')
                     break
                 end
