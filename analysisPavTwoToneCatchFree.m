@@ -8,7 +8,7 @@ thresh = 0.01; %threshold for peak detection
 locoTimeStep = 0.1;
 minBar = 8000; %for clearing out false pulses from speaker card.
 photoToggle = 0;
-
+intSteps = 100; %number of time bins ot travel for calculating integer by getting average value
 
 %use diary function to save logfile of analysis. this is good for
 %troubleshooting. 
@@ -128,8 +128,9 @@ s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on.
 photoTimeStep = mean(diff(t_ds));
 rasterPhotWindow = round(rasterWindow/photoTimeStep);
 rasterVect = [rasterWindow(1):photoTimeStep:rasterWindow(2)];
+zeroPoint = find(rasterVect > 0,1,'first');
 
-%% Now lets sort out responses
+%% Now lets sort out photometry responses
 
 %First, check to see if number of tones equals number of outputs.
 
@@ -156,8 +157,23 @@ for i = 1:length(traceMBED)
     end
 end
 
+%pull z scored raster
+[zRaster,baselineMean,baselineSTD] = functionZScore(photoRaster,zeroPoint,length(traceMBED));
+
+for i = 1:intSteps
+    intStore(:,i) = mean(zRaster(zeroPoint:zeroPoint+i,:)) - mean(zRaster(zeroPoint - 10:zeroPoint));
+end
+
+bigInt = intStore(trialHi,:);
+smallInt = intStore(trialLow,:);
+
+s.Int.TimeStep =photoTimeStep;
+s.Int.IntStore = intStore;
+s.Int.bigInt = bigInt;
+s.Int.smallInt = smallInt;
+
 %now lets try and find things!
-zeroPoint = find(rasterVect > 0,1,'first');
+
 preBin = -10;
 postBin = 20;
 baseVal = min(photoRaster(zeroPoint + preBin:zeroPoint,:));
@@ -225,7 +241,7 @@ steRew = std(photoRasterRew')/sqrt(length(traceMBED));
 
 meanHi = [mean(photoRaster(:,trialHi)');mean(photoRaster(:,trialHi)') - steHi;mean(photoRaster(:,trialHi)') + steHi];
 meanLow = [mean(photoRaster(:,trialLow)');mean(photoRaster(:,trialLow)') - steLow;mean(photoRaster(:,trialLow)') + steLow];
-meanFree = [mean(photoRaster(:,trialFree)');mean(photoRaster(:,trialFree)') - steLow;mean(photoRaster(:,trialFree)') + steFree];
+meanFree = [mean(photoRaster(:,trialFree)');mean(photoRaster(:,trialFree)') - steFree;mean(photoRaster(:,trialFree)') + steFree];
 meanCatch = [mean(photoRaster(:,trialCatch)');mean(photoRaster(:,trialCatch)') - steCatch;mean(photoRaster(:,trialCatch)') + steCatch];
 meanRew = [mean(photoRasterRew');mean(photoRasterRew') - steRew;mean(photoRasterRew') + steRew];
 
@@ -240,6 +256,10 @@ s.PhotoRaster.MeanFree = meanFree;
 s.PhotoRaster.MeanCatch = meanCatch;
 s.PhotoRaster.LickRaster = photoRasterLick;
 s.PhotoRaster.TimeStep = photoTimeStep;
+s.PhotoRaster.ZRaster = zRaster;
+s.PhotoRaster.BaselineMean = baselineMean;
+s.PhotoRaster.BaselineSTD = baselineSTD;
+
 
 
 %% Velocity Data
@@ -479,9 +499,9 @@ plot(meanLow(3,:),'r','LineWidth',1)
 plot(meanRew(1,:),'b--','LineWidth',2)
 plot(meanRew(2,:),'b--','LineWidth',1)
 plot(meanRew(3,:),'b--','LineWidth',1)
-plot(meanCatch(1,:),'k','LineWidth',2)
-plot(meanCatch(2,:),'k','LineWidth',1)
-plot(meanCatch(3,:),'k','LineWidth',1)
+plot(meanCatch(1,:),'c','LineWidth',2)
+plot(meanCatch(2,:),'c','LineWidth',1)
+plot(meanCatch(3,:),'c','LineWidth',1)
 plot(meanFree(1,:),'g','LineWidth',2)
 plot(meanFree(2,:),'g','LineWidth',1)
 plot(meanFree(3,:),'g','LineWidth',1)
@@ -490,7 +510,7 @@ plot(meanFree(3,:),'g','LineWidth',1)
 set(gca,'XTick',rasterAxis(:,2));
 set(gca,'XTickLabel',rasterAxis(:,1));
 xlim([rasterAxis(1,2),rasterAxis(end,2)])
-title('Average of Hi (b) vs Low (r) vs Aligned to Rew (k)')
+title('Average of Hi(b),lo(r),catch(c),free(g)')
 
 
 %plot velocity aligned to tone
@@ -505,9 +525,9 @@ plot(velRasterAxis,s.VelRaster.MeanLow(3,:),'r','LineWidth',1)
 plot(velRasterAxis,s.VelRaster.MeanFree(1,:),'g','LineWidth',2)
 plot(velRasterAxis,s.VelRaster.MeanFree(2,:),'g','LineWidth',1)
 plot(velRasterAxis,s.VelRaster.MeanFree(3,:),'g','LineWidth',1)
-plot(velRasterAxis,s.VelRaster.MeanCatch(1,:),'k','LineWidth',2)
-plot(velRasterAxis,s.VelRaster.MeanCatch(2,:),'k','LineWidth',1)
-plot(velRasterAxis,s.VelRaster.MeanCatch(3,:),'k','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanCatch(1,:),'c','LineWidth',2)
+plot(velRasterAxis,s.VelRaster.MeanCatch(2,:),'c','LineWidth',1)
+plot(velRasterAxis,s.VelRaster.MeanCatch(3,:),'c','LineWidth',1)
 plot(velRasterAxis,s.VelRaster.MeanRew(1,:),'b--','LineWidth',2)
 plot(velRasterAxis,s.VelRaster.MeanRew(2,:),'b--','LineWidth',1)
 plot(velRasterAxis,s.VelRaster.MeanRew(3,:),'b--','LineWidth',1)
@@ -519,66 +539,96 @@ subplot(4,3,10)
 hold on
 plot(histLickAxis,s.Licking.ToneHistHi,'b','LineWidth',2)
 plot(histLickAxis,s.Licking.ToneHistLow,'r','LineWidth',2)
-plot(histLickAxis,s.Licking.ToneHistCatch,'k','LineWidth',2)
+plot(histLickAxis,s.Licking.ToneHistCatch,'c','LineWidth',2)
 plot(histLickAxis,s.Licking.ToneHistFree,'g','LineWidth',2)
 title('Licking Relative to Tone')
 
 
 %Plot heatmaps of photometry response
-subplot(2,3,2)
+subplot(4,3,2)
 imagesc(photoRaster')
 colormap('parula')
 set(gca,'XTick',rasterAxis(:,2));
 set(gca,'XTickLabel',rasterAxis(:,1));
 title(fileName)
 
+%plot out photoemtry over time as binned
+subplot(4,3,5)
+hold on
+plot(s.Vals(3,:),'b.')
+plot(trialLow,s.Vals(3,trialLow),'r.')
+plot(trialFree,s.Vals(3,trialFree),'g.')
+plot(trialCatch,s.Vals(3,trialCatch),'c.')
+xlim([0 length(toneOnset)])
+title('Peak Values Across Session: hi(b) low(r)')
+
+%plot out licking over time. 
+subplot(4,3,8)
+hold on
+plot(binLick,'b.')
+plot(trialLow,binLick(trialLow),'r.')
+plot(trialFree,binLick(trialFree),'g.')
+plot(trialCatch,binLick(trialCatch),'c.')
+xlim([0 length(toneOnset)])
+title('AntiLicks Values Across Session: hi(b) low(r)')
+
+%plot out number of licks vs amplitude of response
+subplot(4,3,11)
+hold on
+plot(s.Vals(3,trialLow),binLick(trialLow),'r.')
+plot(s.Vals(3,trialHi),binLick(trialHi),'b.')
+plot(s.Vals(3,trialCatch),binLick(trialCatch),'c.')
+plot(s.Vals(3,trialFree),binLick(trialFree),'g.')
+title('Peak Response vs Licks, trial specific')
+
+% 
+% %plot out average velocity aligned to reward.
+% subplot(4,3,11)
+% plot(velRasterAxisRew,mean(velRasterRew'))
+% hold on
+% plot([0 0],[min(mean(velRasterRew')) max(mean(velRasterRew'))],'k')
+% xlim([rasterWindow(1) rasterWindow(2)])
+% title('Velocity Relative to Reward')
+
 
 %Plot licking rasters
-subplot(4,3,8)
+subplot(4,3,3)
 plot(lickRasterRew(:,1),lickRasterRew(:,2),'k.')
 title('Lick Raster To Reward (0)')
 xlim(rasterWindow)
 ylim([1 length(rewTimes)]) 
 
-subplot(4,3,11)
+subplot(4,3,6)
 plot(lickRasterToneHi(:,1),lickRasterToneHi(:,2),'b.');
 hold on
 plot(lickRasterToneLow(:,1),lickRasterToneLow(:,2),'r.');
-plot(lickRasterToneCatch(:,1),lickRasterToneCatch(:,2),'k.');
+plot(lickRasterToneCatch(:,1),lickRasterToneCatch(:,2),'c.');
 plot(lickRasterToneFree(:,1),lickRasterToneFree(:,2),'g.');
 ylim([1 length(toneOnset)])
 
 xlim(rasterWindow)
 title('Lick Rasters to Tone')
 
-%plot out photoemtry over time as binned
-subplot(4,3,3)
+%plot out integral related values
+subplot(4,3,9)
+intVect = [1:intSteps];
+intVect = intVect * photoTimeStep;
 hold on
-plot(s.Vals(3,:),'b.')
-plot(trialLow,s.Vals(3,trialLow),'r.')
-plot(trialFree,s.Vals(3,trialFree),'g.')
-plot(trialCatch,s.Vals(3,trialCatch),'k.')
-xlim([0 length(toneOnset)])
-title('Peak Values Across Session: hi(b) low(r)')
+intMin = min([mean(intStore(trialHi,:)),mean(intStore(trialLow,:))]);
+intMax= max([mean(intStore(trialHi,:)),mean(intStore(trialLow,:))]);
+steIntHi = std(intStore(trialHi,:))/sqrt(intSteps);
+steIntLow = std(intStore(trialLow,:))/sqrt(intSteps);
+plot(intVect,mean(intStore(trialHi,:)),'b','LineWidth',2)
+plot(intVect,mean(intStore(trialLow,:)),'r','LineWidth',2)
+plot(intVect,mean(intStore(trialHi,:))-steIntHi,'b','LineWidth',1)
+plot(intVect,mean(intStore(trialLow,:))-steIntLow,'r','LineWidth',1)
+plot(intVect,mean(intStore(trialHi,:))+steIntHi,'b','LineWidth',1)
+plot(intVect,mean(intStore(trialLow,:))+steIntLow,'r','LineWidth',1)
+plot([1 1],[intMin intMax],'k')
+title('Mean Integrals over Time')
+xlim([0 intSteps*photoTimeStep])
 
-%plot out licking over time. 
-subplot(4,3,6)
-hold on
-plot(binLick,'b.')
-plot(trialLow,binLick(trialLow),'r.')
-plot(trialFree,binLick(trialFree),'g.')
-plot(trialCatch,binLick(trialCatch),'k.')
-xlim([0 length(toneOnset)])
-title('AntiLicks Values Across Session: hi(b) low(r)')
-
-
-%plot out average velocity aligned to reward.
-subplot(4,3,12)
-plot(velRasterAxisRew,mean(velRasterRew'))
-hold on
-plot([0 0],[min(mean(velRasterRew')) max(mean(velRasterRew'))],'k')
-xlim([rasterWindow(1) rasterWindow(2)])
-title('Velocity Relative to Reward')
+%plot out 
 
 
 spikeGraphName = strcat(fileName,'Figure');
