@@ -45,6 +45,7 @@ desigArray(:,3) = [1:length(names)];
 %it! Go animal by animal
 
 for i = 1:length(uniqueNames)
+    i
     %find the target files
     targetInds = desigArray(desigArray(:,1) == i,3);
     %open the pre file. 
