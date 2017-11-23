@@ -90,7 +90,7 @@ for bigInd = 1:numFiles
         lickHistHi(:,bigInd) = s.Licking.ToneHistHi;
         lickHistLow(:,bigInd) = s.Licking.ToneHistLow;
     end
-    lickHistLow(31,bigInd) = 0;
+%     lickHistLow(31,bigInd) = 0;
     %pull velocities
     velHistHi(:,bigInd) = mean(s.VelRaster.ToneRaster(:,s.MBED.HiTrials)');
     velHistLow(:,bigInd) = mean(s.VelRaster.ToneRaster(:,s.MBED.LowTrials)');
@@ -422,7 +422,7 @@ end
 xlim([0 length(condensedBig)])
 title('DS(b) and NS(r) Licking Plotted by Trial, binned 20trial average')
 
-prefScore = (condensedBig(5,:) - condensedBig(6,:)) ./ (condensedBig(5,:) + condensedBig(6,:));
+prefScore = (condensedBig(5,:)) ./ (condensedBig(5,:) + condensedBig(6,:));
 
 subplot(4,2,7)
 hold on
