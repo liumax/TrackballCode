@@ -359,7 +359,7 @@ end
 rasterAxis = zeros(rasterWindow(2)-rasterWindow(1)+1,2);
 rasterAxis(:,1) = [rasterWindow(1):rasterWindow(2)];
 %find a second in photometry sample time
-rasterAxis(:,2) = [0:length(photoRaster)/8:length(photoRaster)];
+rasterAxis(:,2) = [0:size(photoRaster,1)/8:size(photoRaster,1)];
 rasterAxis(1,2) = 1;
 
 
