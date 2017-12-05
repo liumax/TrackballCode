@@ -158,10 +158,10 @@ for i = 1:length(traceMBED)
 end
 
 %pull z scored raster
-[zRaster,baselineMean,baselineSTD] = functionZScore(photoRaster,zeroPoint,length(traceMBED));
+[photoRasterZ,baselineMean,baselineSTD] = functionZScore(photoRaster,zeroPoint,length(traceMBED));
 
 for i = 1:intSteps
-    intStore(:,i) = mean(zRaster(zeroPoint:zeroPoint+i,:)) - mean(zRaster(zeroPoint - 10:zeroPoint));
+    intStore(:,i) = mean(photoRasterZ(zeroPoint:zeroPoint+i,:)) - mean(photoRasterZ(zeroPoint - 10:zeroPoint));
 end
 
 bigInt = intStore(trialHi,:);
@@ -176,8 +176,8 @@ s.Int.smallInt = smallInt;
 
 preBin = -10;
 postBin = 20;
-baseVal = min(photoRaster(zeroPoint + preBin:zeroPoint,:));
-peakVal = max(photoRaster(zeroPoint:zeroPoint + postBin,:));
+baseVal = min(photoRasterZ(zeroPoint + preBin:zeroPoint,:));
+peakVal = max(photoRasterZ(zeroPoint:zeroPoint + postBin,:));
 magVal = peakVal - baseVal;
 
 valStore = [baseVal;peakVal;magVal];
@@ -189,13 +189,14 @@ if length(rewTimes)>0
 
     %generate the correct times by interpolation
     rewTimeTDT = interp1(inputPhotOnset,traceJitt,rewTimes);
+    zOverall = (newSmoothDS-baselineMean)/baselineSTD;
 
     for i = 1:length(rewTimes)
         alignTime = rewTimeTDT(i);
         %find the time in the photometry trace
         photoPoint = find(t_ds - alignTime > 0,1,'first');
-        if photoPoint + rasterPhotWindow(2) < length(newSmoothDS)
-            photoRasterRew(:,i) = newSmoothDS(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
+        if photoPoint + rasterPhotWindow(2) < length(zOverall)
+            photoRasterRew(:,i) = zOverall(photoPoint + rasterPhotWindow(1):photoPoint + rasterPhotWindow(2));
         else
             disp('Rew Rasters: Reached End of Photometry Trace')
             disp(i)
@@ -205,32 +206,32 @@ if length(rewTimes)>0
 else
     photoRasterRew = zeros(rasterPhotWindow(2)-rasterPhotWindow(1) + 1,1)
 end
-
-%now try aligning to licks
-if length(trialParams.licking)>0
-    lickTimesTDT = interp1(inputPhotOnset,traceJitt,trialParams.licking(:,1));
-    %lets use smaller raster for licking
-    lickRastWindow = [-1 1];
-    lickPhotWindow = round(lickRastWindow/photoTimeStep);
-
-    for i = 1:length(rewTimes)
-        alignTime = rewTimeTDT(i);
-        %find the time in the photometry trace
-        photoPoint = find(t_ds - alignTime > 0,1,'first');
-        if photoPoint + rasterPhotWindow(2) < length(newSmoothDS)
-            photoRasterLick(:,i) = newSmoothDS(photoPoint + lickPhotWindow(1):photoPoint + lickPhotWindow(2));
-        else
-            disp('LickRasters: Reached End of Photometry Trace')
-            disp(i)
-            break
-        end
-    end
-else
-    %lets use smaller raster for licking
-    lickRastWindow = [-1 1];
-    lickPhotWindow = round(lickRastWindow/photoTimeStep);
-    photoRasterLick = zeros(lickPhotWindow(2) - lickPhotWindow(1)+1,1);
-end
+% 
+% %now try aligning to licks
+% if length(trialParams.licking)>0
+%     lickTimesTDT = interp1(inputPhotOnset,traceJitt,trialParams.licking(:,1));
+%     %lets use smaller raster for licking
+%     lickRastWindow = [-1 1];
+%     lickPhotWindow = round(lickRastWindow/photoTimeStep);
+% 
+%     for i = 1:length(rewTimes)
+%         alignTime = rewTimeTDT(i);
+%         %find the time in the photometry trace
+%         photoPoint = find(t_ds - alignTime > 0,1,'first');
+%         if photoPoint + rasterPhotWindow(2) < length(newSmoothDS)
+%             photoRasterLick(:,i) = newSmoothDS(photoPoint + lickPhotWindow(1):photoPoint + lickPhotWindow(2));
+%         else
+%             disp('LickRasters: Reached End of Photometry Trace')
+%             disp(i)
+%             break
+%         end
+%     end
+% else
+%     %lets use smaller raster for licking
+%     lickRastWindow = [-1 1];
+%     lickPhotWindow = round(lickRastWindow/photoTimeStep);
+%     photoRasterLick = zeros(lickPhotWindow(2) - lickPhotWindow(1)+1,1);
+% end
 
 %store means of different tones
 steHi = std(photoRaster(:,trialHi)')/sqrt(length(trialHi));
@@ -247,16 +248,34 @@ meanRew = [mean(photoRasterRew');mean(photoRasterRew') - steRew;mean(photoRaster
 
 photoZero = (-1*rasterWindow(1))/photoTimeStep;
 
+steHiZ = std(photoRasterZ(:,trialHi)')/sqrt(length(trialHi));
+steLowZ = std(photoRasterZ(:,trialLow)')/sqrt(length(trialLow));
+steFreeZ = std(photoRasterZ(:,trialFree)')/sqrt(length(trialFree));
+steCatchZ = std(photoRasterZ(:,trialCatch)')/sqrt(length(trialCatch));
+steRewZ = std(photoRasterRew')/sqrt(length(traceMBED));
+
+meanHiZ = [mean(photoRasterZ(:,trialHi)');mean(photoRasterZ(:,trialHi)') - steHiZ;mean(photoRasterZ(:,trialHi)') + steHiZ];
+meanLowZ = [mean(photoRasterZ(:,trialLow)');mean(photoRasterZ(:,trialLow)') - steLowZ;mean(photoRasterZ(:,trialLow)') + steLowZ];
+meanFreeZ = [mean(photoRasterZ(:,trialFree)');mean(photoRasterZ(:,trialFree)') - steFreeZ;mean(photoRasterZ(:,trialFree)') + steFreeZ];
+meanCatchZ = [mean(photoRasterZ(:,trialCatch)');mean(photoRasterZ(:,trialCatch)') - steCatchZ;mean(photoRasterZ(:,trialCatch)') + steCatchZ];
+meanRewZ = [mean(photoRasterRew');mean(photoRasterRew') - steRewZ;mean(photoRasterRew') + steRewZ];
+
+s.PhotoRaster.ToneRasterZ = photoRasterZ;
+s.PhotoRaster.RewardRasterZ = photoRasterRew;
+s.PhotoRaster.MeanRew = meanRewZ;
+s.PhotoRaster.MeanHi = meanHiZ;
+s.PhotoRaster.MeanLow = meanLowZ;
+s.PhotoRaster.MeanFree = meanFreeZ;
+s.PhotoRaster.MeanCatch = meanCatchZ;
+
 s.PhotoRaster.ToneRaster = photoRaster;
-s.PhotoRaster.RewardRaster = photoRasterRew;
 s.PhotoRaster.MeanRew = meanRew;
 s.PhotoRaster.MeanHi = meanHi;
 s.PhotoRaster.MeanLow = meanLow;
 s.PhotoRaster.MeanFree = meanFree;
 s.PhotoRaster.MeanCatch = meanCatch;
-s.PhotoRaster.LickRaster = photoRasterLick;
 s.PhotoRaster.TimeStep = photoTimeStep;
-s.PhotoRaster.ZRaster = zRaster;
+s.PhotoRaster.ZRaster = photoRasterZ;
 s.PhotoRaster.BaselineMean = baselineMean;
 s.PhotoRaster.BaselineSTD = baselineSTD;
 
@@ -490,27 +509,27 @@ title('Normalized Vel (b) and Photometry (r)')
 %plot average hi and low traces for photometry
 subplot(4,3,4)
 hold on
-plot(meanHi(1,:),'b','LineWidth',2)
-plot(meanHi(2,:),'b','LineWidth',1)
-plot(meanHi(3,:),'b','LineWidth',1)
-plot(meanLow(1,:),'r','LineWidth',2)
-plot(meanLow(2,:),'r','LineWidth',1)
-plot(meanLow(3,:),'r','LineWidth',1)
-plot(meanRew(1,:),'b--','LineWidth',2)
-plot(meanRew(2,:),'b--','LineWidth',1)
-plot(meanRew(3,:),'b--','LineWidth',1)
-plot(meanCatch(1,:),'c','LineWidth',2)
-plot(meanCatch(2,:),'c','LineWidth',1)
-plot(meanCatch(3,:),'c','LineWidth',1)
-plot(meanFree(1,:),'g','LineWidth',2)
-plot(meanFree(2,:),'g','LineWidth',1)
-plot(meanFree(3,:),'g','LineWidth',1)
+plot(meanHiZ(1,:),'b','LineWidth',2)
+plot(meanHiZ(2,:),'b','LineWidth',1)
+plot(meanHiZ(3,:),'b','LineWidth',1)
+plot(meanLowZ(1,:),'r','LineWidth',2)
+plot(meanLowZ(2,:),'r','LineWidth',1)
+plot(meanLowZ(3,:),'r','LineWidth',1)
+plot(meanRewZ(1,:),'b--','LineWidth',2)
+plot(meanRewZ(2,:),'b--','LineWidth',1)
+plot(meanRewZ(3,:),'b--','LineWidth',1)
+plot(meanCatchZ(1,:),'c','LineWidth',2)
+plot(meanCatchZ(2,:),'c','LineWidth',1)
+plot(meanCatchZ(3,:),'c','LineWidth',1)
+plot(meanFreeZ(1,:),'g','LineWidth',2)
+plot(meanFreeZ(2,:),'g','LineWidth',1)
+plot(meanFreeZ(3,:),'g','LineWidth',1)
 % plot([photoZero photoZero],[ylim(1) ylim(2)],'k')
 
 set(gca,'XTick',rasterAxis(:,2));
 set(gca,'XTickLabel',rasterAxis(:,1));
 xlim([rasterAxis(1,2),rasterAxis(end,2)])
-title('Average of Hi(b),lo(r),catch(c),free(g)')
+title('Average Z of Hi(b),lo(r),catch(c),free(g)')
 
 
 %plot velocity aligned to tone
@@ -591,14 +610,36 @@ title('Peak Response vs Licks, trial specific')
 % title('Velocity Relative to Reward')
 
 
-%Plot licking rasters
+%plot out raw values for responses
 subplot(4,3,3)
+hold on
+plot(meanHi(1,:),'b','LineWidth',2)
+plot(meanHi(2,:),'b','LineWidth',1)
+plot(meanHi(3,:),'b','LineWidth',1)
+plot(meanLow(1,:),'r','LineWidth',2)
+plot(meanLow(2,:),'r','LineWidth',1)
+plot(meanLow(3,:),'r','LineWidth',1)
+plot(meanCatch(1,:),'c','LineWidth',2)
+plot(meanCatch(2,:),'c','LineWidth',1)
+plot(meanCatch(3,:),'c','LineWidth',1)
+plot(meanFree(1,:),'g','LineWidth',2)
+plot(meanFree(2,:),'g','LineWidth',1)
+plot(meanFree(3,:),'g','LineWidth',1)
+% plot([photoZero photoZero],[ylim(1) ylim(2)],'k')
+
+set(gca,'XTick',rasterAxis(:,2));
+set(gca,'XTickLabel',rasterAxis(:,1));
+xlim([rasterAxis(1,2),rasterAxis(end,2)])
+title('Average of Hi(b),lo(r),catch(c),free(g)')
+
+%Plot licking rasters
+subplot(4,3,6)
 plot(lickRasterRew(:,1),lickRasterRew(:,2),'k.')
 title('Lick Raster To Reward (0)')
 xlim(rasterWindow)
 ylim([1 length(rewTimes)]) 
 
-subplot(4,3,6)
+subplot(4,3,9)
 plot(lickRasterToneHi(:,1),lickRasterToneHi(:,2),'b.');
 hold on
 plot(lickRasterToneLow(:,1),lickRasterToneLow(:,2),'r.');
@@ -610,7 +651,7 @@ xlim(rasterWindow)
 title('Lick Rasters to Tone')
 
 %plot out integral related values
-subplot(4,3,9)
+subplot(4,3,12)
 intVect = [1:intSteps];
 intVect = intVect * photoTimeStep;
 hold on
