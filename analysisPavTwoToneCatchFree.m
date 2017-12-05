@@ -262,11 +262,11 @@ meanRewZ = [mean(photoRasterRew');mean(photoRasterRew') - steRewZ;mean(photoRast
 
 s.PhotoRaster.ToneRasterZ = photoRasterZ;
 s.PhotoRaster.RewardRasterZ = photoRasterRew;
-s.PhotoRaster.MeanRew = meanRewZ;
-s.PhotoRaster.MeanHi = meanHiZ;
-s.PhotoRaster.MeanLow = meanLowZ;
-s.PhotoRaster.MeanFree = meanFreeZ;
-s.PhotoRaster.MeanCatch = meanCatchZ;
+s.PhotoRaster.MeanRewZ = meanRewZ;
+s.PhotoRaster.MeanHiZ = meanHiZ;
+s.PhotoRaster.MeanLowZ = meanLowZ;
+s.PhotoRaster.MeanFreeZ = meanFreeZ;
+s.PhotoRaster.MeanCatchZ = meanCatchZ;
 
 s.PhotoRaster.ToneRaster = photoRaster;
 s.PhotoRaster.MeanRew = meanRew;
