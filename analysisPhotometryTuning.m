@@ -138,6 +138,8 @@ s.Photo.MBEDSig = traceMBED; %store tone times, makes life easier later on.
 photoTimeStep = mean(diff(t_ds));
 rasterPhotWindow = round(rasterWindow/photoTimeStep);
 rasterVelWindow = round(rasterWindow/locoTimeStep);
+rasterVect = [rasterWindow(1):photoTimeStep:rasterWindow(2)];
+zeroPoint = find(rasterVect > 0,1,'first');
 
 s.Photo.AlignTimes = traceMBED;
 
@@ -180,6 +182,8 @@ for ind = 1:length(traceMBED)
     
 end
 
+[photoRasterZ,baselineMean,baselineSTD] = functionZScore(photoRaster,zeroPoint,length(traceMBED));
+
 %make simple plot
 simplePlot = photoRaster;
 for ind = 1:length(traceMBED)
@@ -188,6 +192,10 @@ end
 
 s.Processed.PhotoRaster = photoRaster;
 s.Processed.VelRaster = velRaster;
+s.Processed.PhotoRasterZ = photoRasterZ;
+s.Processed.BaselineMean = baselineMean;
+s.Processed.BaselineSTD = baselineSTD;
+
 
 %now I need to store different means
 
@@ -201,7 +209,7 @@ for ind = 1:numFreqs
         %find all trials of the particular setting
         targetFinder = find(trialMatrix(:,2) == uniqueFreqs(ind) & trialMatrix(:,3) == subUniqueDB(j));
         %pull and average these traces
-        tempHolder = photoRaster(:,targetFinder);
+        tempHolder = photoRasterZ(:,targetFinder);
         photoRasterStore{ind,j} = tempHolder;
         tempHolder = mean(tempHolder');
         photoAverages(:,ind,j) = tempHolder;
@@ -268,14 +276,31 @@ for ind = 1:numDBs
     sortIndex = [];
 end
 
-riseRasters(:,4) = dbSort(riseRasters(:,2),1);
-riseRasters(:,5) = dbSort(riseRasters(:,2),2);
-riseRasters(:,6) = dbSort(riseRasters(:,2),3);
+for i = 1:numDBs
+    riseRasters(:,3+i) = dbSort(riseRasters(:,2),i);
+end
+
+for i = 1:numFreqs
+    for j = 1:numDBs
+        tempData = s.Processed.PhotoStore{i,j};
+        baseVal = min(tempData(130:145,:));
+        peakVal = max(tempData(145:192,:));
+        baseMean = mean(tempData(130:145,:));
+        peakMean = mean(tempData(145:192,:));
+        peakMag = peakVal - baseVal;
+        peakInt = peakMean - baseMean;
+        magStore(:,i,j) = peakMag;
+        intStore(:,i,j) = peakInt;
+    end
+end
 
 
 s.Processed.RiseRaster = riseRasters;
+s.Processed.MagStore = magStore;
+s.Processed.IntStore = intStore;
 s.SoundData.AltMatrix = altMatrix;
 s.SoundData.DBSort = dbSort;
+
 
 
 %% Interpolate times for cross plotting of MBED data and Photometry Signal
@@ -303,7 +328,7 @@ else
     findPhotLast = length(traceTiming);
 end
 
-        
+
 %% Plot everything
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
@@ -359,7 +384,7 @@ end
 rasterAxis = zeros(rasterWindow(2)-rasterWindow(1)+1,2);
 rasterAxis(:,1) = [rasterWindow(1):rasterWindow(2)];
 %find a second in photometry sample time
-rasterAxis(:,2) = [0:size(photoRaster,1)/8:size(photoRaster,1)];
+rasterAxis(:,2) = [0:size(photoRasterZ,1)/8:size(photoRasterZ,1)];
 rasterAxis(1,2) = 1;
 
 
@@ -397,111 +422,166 @@ set(hFig, 'Position', [10 80 1240 850])
 
 imagescLim = [min(min(min(photoAverages))),max(max(max(photoAverages)))];
 
-%plot overall photometry trace and locomotion trace
-subplot(3,4,1)
-imagesc(squeeze(photoAverages(:,:,1)'),imagescLim)
-colormap('parula')
-colorbar
-set(gca,'XTick',rasterAxis(:,2));
-set(gca,'XTickLabel',rasterAxis(:,1));
-set(gca,'YTick',octaveRange(:,2));
-set(gca,'YTickLabel',octaveRange(:,1));
-title({fileName;'60DB'})
-
-subplot(3,4,5)
-imagesc(squeeze(photoAverages(:,:,2)'),imagescLim)
-colormap('parula')
-colorbar
-set(gca,'XTick',rasterAxis(:,2));
-set(gca,'XTickLabel',rasterAxis(:,1));
-set(gca,'YTick',octaveRange(:,2));
-set(gca,'YTickLabel',octaveRange(:,1));
-title('80DB')
-
-subplot(3,4,9)
-imagesc(squeeze(photoAverages(:,:,3)'),imagescLim)
-colormap('parula')
-colorbar
-set(gca,'XTick',rasterAxis(:,2));
-set(gca,'XTickLabel',rasterAxis(:,1));
-set(gca,'YTick',octaveRange(:,2));
-set(gca,'YTickLabel',octaveRange(:,1));
-title('100DB')
-
-%plot out rasters
-subplot(3,4,2)
-hold on
-plot(riseRasters(:,1),riseRasters(:,4),'k.')
-
-for ind = 1:numFreqs
-    plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(ind,2) dbRasterLabels(ind,2)],'g')
-end
-plot([0 0],[1 length(trialMatrix)],'b')
-plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
-title('60DB Rasters Organized by Freq')
-set(gca,'YTick',dbRasterLabels(:,3))
-set(gca,'YTickLabel',rasterTicks)
-ylim([2 s.SoundData.ToneRepetitions*numFreqs])
-xlim(rasterWindow)
-set(gca,'Ydir','reverse')
-
-subplot(3,4,6)
-hold on
-plot(riseRasters(:,1),riseRasters(:,5),'k.')
-
-for ind = 1:numFreqs
-    plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(ind,2) dbRasterLabels(ind,2)],'g')
-end
-plot([0 0],[1 length(trialMatrix)],'b')
-plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
-title('80DB Rasters Organized by Freq')
-set(gca,'YTick',dbRasterLabels(:,3))
-set(gca,'YTickLabel',rasterTicks)
-ylim([2 s.SoundData.ToneRepetitions*numFreqs])
-xlim(rasterWindow)
-set(gca,'Ydir','reverse')
-
-subplot(3,4,10)
-hold on
-plot(riseRasters(:,1),riseRasters(:,6),'k.')
-
-for ind = 1:numFreqs
-    plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(ind,2) dbRasterLabels(ind,2)],'g')
-end
-plot([0 0],[1 length(trialMatrix)],'b')
-plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
-title('100DB Rasters Organized by Freq')
-set(gca,'YTick',dbRasterLabels(:,3))
-set(gca,'YTickLabel',rasterTicks)
-ylim([2 s.SoundData.ToneRepetitions*numFreqs])
-xlim(rasterWindow)
-set(gca,'Ydir','reverse')
-%plot out velocities
-
-%find min and max overall
 velMax = max(max(max(velAverages)));
 velMin = min(min(min(velAverages)));
 
-subplot(3,4,3)
-imagesc(squeeze(velAverages(:,:,1))',[velMin velMax])
-colormap('parula')
-set(gca,'XTick',velRasterAxis(:,2));
-set(gca,'XTickLabel',velRasterAxis(:,1));
-title('Velocity Heatmap 60DB')
+for i = 1:numDBs
+    %plot heatmap of all responses
+    subplot(numDBs,4,1+numDBs*(i-1))
+    imagesc(squeeze(photoAverages(:,:,i)'),imagescLim)
+    colormap('parula')
+    colorbar
+    set(gca,'XTick',rasterAxis(:,2));
+    set(gca,'XTickLabel',rasterAxis(:,1));
+    set(gca,'YTick',octaveRange(:,2));
+    set(gca,'YTickLabel',octaveRange(:,1));
+    if i == 1
+        title({fileName;strcat(num2str(uniqueDBs(i)),'DB')})
+    else
+        title({strcat(num2str(uniqueDBs(i)),'DB')})
+    end
+    
+    %plot peak detection rasters
+    subplot(numDBs,4,2+numDBs*(i-1))
+    hold on
+    plot(riseRasters(:,1),riseRasters(:,3+i),'k.')
 
-subplot(3,4,7)
-imagesc(squeeze(velAverages(:,:,2))',[velMin velMax])
-colormap('parula')
-set(gca,'XTick',velRasterAxis(:,2));
-set(gca,'XTickLabel',velRasterAxis(:,1));
-title('Velocity Heatmap 80DB')
-
-subplot(3,4,11)
-imagesc(squeeze(velAverages(:,:,3))',[velMin velMax])
-colormap('parula')
-set(gca,'XTick',velRasterAxis(:,2));
-set(gca,'XTickLabel',velRasterAxis(:,1));
-title('Velocity Heatmap 100DB')
+    for ind = 1:numFreqs
+        plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(ind,2) dbRasterLabels(ind,2)],'g')
+    end
+    plot([0 0],[1 length(trialMatrix)],'b')
+    plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
+    title(strcat(num2str(uniqueDBs(i)),'RastersByFreq'))
+    set(gca,'YTick',dbRasterLabels(:,3))
+    set(gca,'YTickLabel',rasterTicks)
+    ylim([2 s.SoundData.ToneRepetitions*numFreqs])
+    xlim(rasterWindow)
+    set(gca,'Ydir','reverse')
+    
+    %plot out velocity changes
+    subplot(numDBs,4,3+numDBs*(i-1))
+    imagesc(squeeze(velAverages(:,:,i))',[velMin velMax])
+    colormap('parula')
+    set(gca,'XTick',velRasterAxis(:,2));
+    set(gca,'XTickLabel',velRasterAxis(:,1));
+    title(strcat('Velocity Heatmap',num2str(uniqueDBs(i)),'DB'))
+    
+    %plot out individual magnitudes
+    subplot(numDBs,4,4+numDBs*(i-1))
+    hold on
+    plot(squeeze(magStore(:,:,i)))
+    meanFind = mean(squeeze(magStore(:,:,i))');
+    plot(meanFind,'k','LineWidth',2)
+    title('Individual Response Magnitudes')
+    ylim([0 max(max(squeeze(magStore(:,:,i))))])
+    xlim([1,numReps])
+    
+end
+% 
+% %plot overall photometry trace and locomotion trace
+% subplot(3,4,1)
+% imagesc(squeeze(photoAverages(:,:,1)'),imagescLim)
+% colormap('parula')
+% colorbar
+% set(gca,'XTick',rasterAxis(:,2));
+% set(gca,'XTickLabel',rasterAxis(:,1));
+% set(gca,'YTick',octaveRange(:,2));
+% set(gca,'YTickLabel',octaveRange(:,1));
+% title({fileName;'60DB'})
+% 
+% subplot(3,4,5)
+% imagesc(squeeze(photoAverages(:,:,2)'),imagescLim)
+% colormap('parula')
+% colorbar
+% set(gca,'XTick',rasterAxis(:,2));
+% set(gca,'XTickLabel',rasterAxis(:,1));
+% set(gca,'YTick',octaveRange(:,2));
+% set(gca,'YTickLabel',octaveRange(:,1));
+% title('80DB')
+% 
+% subplot(3,4,9)
+% imagesc(squeeze(photoAverages(:,:,3)'),imagescLim)
+% colormap('parula')
+% colorbar
+% set(gca,'XTick',rasterAxis(:,2));
+% set(gca,'XTickLabel',rasterAxis(:,1));
+% set(gca,'YTick',octaveRange(:,2));
+% set(gca,'YTickLabel',octaveRange(:,1));
+% title('100DB')
+% 
+% %plot out rasters
+% subplot(3,4,2)
+% hold on
+% plot(riseRasters(:,1),riseRasters(:,4),'k.')
+% 
+% for ind = 1:numFreqs
+%     plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(ind,2) dbRasterLabels(ind,2)],'g')
+% end
+% plot([0 0],[1 length(trialMatrix)],'b')
+% plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
+% title('60DB Rasters Organized by Freq')
+% set(gca,'YTick',dbRasterLabels(:,3))
+% set(gca,'YTickLabel',rasterTicks)
+% ylim([2 s.SoundData.ToneRepetitions*numFreqs])
+% xlim(rasterWindow)
+% set(gca,'Ydir','reverse')
+% 
+% subplot(3,4,6)
+% hold on
+% plot(riseRasters(:,1),riseRasters(:,5),'k.')
+% 
+% for ind = 1:numFreqs
+%     plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(ind,2) dbRasterLabels(ind,2)],'g')
+% end
+% plot([0 0],[1 length(trialMatrix)],'b')
+% plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
+% title('80DB Rasters Organized by Freq')
+% set(gca,'YTick',dbRasterLabels(:,3))
+% set(gca,'YTickLabel',rasterTicks)
+% ylim([2 s.SoundData.ToneRepetitions*numFreqs])
+% xlim(rasterWindow)
+% set(gca,'Ydir','reverse')
+% 
+% subplot(3,4,10)
+% hold on
+% plot(riseRasters(:,1),riseRasters(:,6),'k.')
+% 
+% for ind = 1:numFreqs
+%     plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(ind,2) dbRasterLabels(ind,2)],'g')
+% end
+% plot([0 0],[1 length(trialMatrix)],'b')
+% plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
+% title('100DB Rasters Organized by Freq')
+% set(gca,'YTick',dbRasterLabels(:,3))
+% set(gca,'YTickLabel',rasterTicks)
+% ylim([2 s.SoundData.ToneRepetitions*numFreqs])
+% xlim(rasterWindow)
+% set(gca,'Ydir','reverse')
+% %plot out velocities
+% 
+% %find min and max overall
+% 
+% 
+% subplot(3,4,3)
+% imagesc(squeeze(velAverages(:,:,1))',[velMin velMax])
+% colormap('parula')
+% set(gca,'XTick',velRasterAxis(:,2));
+% set(gca,'XTickLabel',velRasterAxis(:,1));
+% title('Velocity Heatmap 60DB')
+% 
+% subplot(3,4,7)
+% imagesc(squeeze(velAverages(:,:,2))',[velMin velMax])
+% colormap('parula')
+% set(gca,'XTick',velRasterAxis(:,2));
+% set(gca,'XTickLabel',velRasterAxis(:,1));
+% title('Velocity Heatmap 80DB')
+% 
+% subplot(3,4,11)
+% imagesc(squeeze(velAverages(:,:,3))',[velMin velMax])
+% colormap('parula')
+% set(gca,'XTick',velRasterAxis(:,2));
+% set(gca,'XTickLabel',velRasterAxis(:,1));
+% title('Velocity Heatmap 100DB')
 
 spikeGraphName = strcat(fileName,'Figure');
 
