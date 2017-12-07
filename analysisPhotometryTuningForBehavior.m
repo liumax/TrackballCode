@@ -22,16 +22,24 @@ for bigInd = 1:numFiles
     
     load(testNames{bigInd})
     
+    
+    uniqueFreqs = unique(s.SoundData.Frequencies);
+    tester = squeeze(s.Processed.PhotoAverages(:,:,end));
+    
     %lets just plot things?
     figure
-    plot(squeeze(s.Processed.PhotoAverages(:,:,3)))
+    plot(tester)
+    
+    figure
+    imagesc(tester')
+    colormap('parula')
     
     %now lets go through the data and extract the shits. only looking at
     %maximum amplitude for now
     numFreqs = size(s.Processed.PhotoStore,1);
     
     for i = 1:numFreqs
-        tempData = s.Processed.PhotoStore{i,3};
+        tempData = s.Processed.PhotoStore{i,end};
         baseVal = min(tempData(140:150,:));
         peakVal = max(tempData(150:170,:));
         peakMag = peakVal - baseVal;
@@ -54,3 +62,13 @@ plot(magStore(:,4))
 hold on
 plot(magStore(:,9),'r')
 
+figure
+plot(tester(:,5))
+hold on
+plot(tester(:,8),'r')
+
+
+figure
+plot(s.Processed.PhotoStore{6,4})
+figure
+plot(s.Processed.PhotoStore{10,4})
