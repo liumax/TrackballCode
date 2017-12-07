@@ -40,7 +40,7 @@ else
         disp(xcLag)
         disp('MaxCorr')
         disp(xcMax)
-        if xcMax > 0.9
+        if xcMax > 0.9 & length(onsetPhotDiff) == length(expectedDiff)
             if xcLag < 0
                 disp('DELETING EXCESS PULSES')
                 realTTLs(1:-xcLag) = [];
@@ -56,7 +56,7 @@ else
             elseif xcLag == 0
                 error('TTLS ALIGN WITH DELAYS')
             end
-        else
+        elseif xcMax < 0.9 | length(onsetPhotDiff) ~= length(expectedDiff)
             %time to crawl
             %find longer thing, extend the other one to match
             if length(onsetPhotDiff) > length(expectedDiff)
