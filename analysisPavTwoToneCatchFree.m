@@ -161,7 +161,7 @@ end
 [photoRasterZ,baselineMean,baselineSTD] = functionZScore(photoRaster,zeroPoint,length(traceMBED));
 
 for i = 1:intSteps
-    intStore(:,i) = mean(photoRasterZ(zeroPoint:zeroPoint+i,:)) - mean(photoRasterZ(zeroPoint - 10:zeroPoint));
+    intStore(:,i) = (mean(photoRasterZ(zeroPoint:zeroPoint+i,:)) - mean(photoRasterZ(zeroPoint - 10:zeroPoint,:)))*i;
 end
 
 bigInt = intStore(trialHi,:);
