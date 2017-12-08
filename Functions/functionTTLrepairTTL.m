@@ -10,27 +10,35 @@ disp('BEGINNING CHECK OF TTLS WITH EXPECTATIONS')
 %first, calculate differences
 onsetPhotDiff = diff(realTTLs);
 expectedDiff = diff(expectedTTLs);
+crawlTrig = 0;
+delTrig = 0;
 
 if length(realTTLs) == length(expectedTTLs);
     disp('Actual Pulses Equal to Planned Number of Pulses, Proceeding')
 else
     %calculate actual ITIs
-    
     disp('Actual Pulses NOT Equal To Planned Pulses')
     disp(strcat('Actual Pulses:',num2str(length(realTTLs))))
     disp(strcat('Expected Pulses:',num2str(length(expectedTTLs))))
     %test of there are delays in onset phot that are huge
     bigFindOnset = find(onsetPhotDiff>max(expectedDiff)*maxDelayRatio);
     if bigFindOnset
-        disp('FOUND EXTRA LONG PULSE, DELETING')
-        realTTLs(bigFindOnset) = [];
-        onsetPhotDiff = diff(realTTLs);
-        %check if this fixes length issue
-        if length(realTTLs) == length(expectedTTLs)
-            disp('LENGTH ERROR FIXED')
+        %find location of big pulse relative to length of file
+        if bigFindOnset ==1
+            disp('FOUND EXTRA LONG PULSE AT BEGINNING, DELETING')
+            realTTLs(bigFindOnset) = [];
+            onsetPhotDiff = diff(realTTLs);
+            %check if this fixes length issue
+            if length(realTTLs) == length(expectedTTLs)
+                disp('LENGTH ERROR FIXED')
+            else
+                error('PROBLEM NOT FIXED')
+            end
         else
-            error('PROBLEM NOT FIXED')
+            disp('EXTRA LONG PULSE NOT AT BEGINNING, SHUNTING TO CRAWLER')
+            crawlTrig = 1;
         end
+        
     else
         disp('NO BIG ITIS FOUND...LOOKING FOR MISMATCH WITH CROSSCORR')
         [xcf,lags,bounds]  = crosscorr(onsetPhotDiff,expectedDiff,corrSlide);
@@ -57,56 +65,63 @@ else
                 error('TTLS ALIGN WITH DELAYS')
             end
         elseif xcMax < 0.9 | length(onsetPhotDiff) ~= length(expectedDiff)
-            %time to crawl
-            %find longer thing, extend the other one to match
-            if length(onsetPhotDiff) > length(expectedDiff)
-                disp('RECEIVED TTLS GREATER THAN EXPECTED')
-            elseif length(onsetPhotDiff) < length(expectedDiff)
-                disp('RECEIVED TTLS LESS THAN EXPECTED')
-                error('CANNOT COMPUTE')
-            elseif length(onsetPhotDiff) == length(expectedDiff)
-                disp('RECEIVED TTLS EQUAL TO EXPECTED')
-            end
-%             diffVal = abs(reshape(onsetPhotDiff,1,[])-reshape(expectedDiff,1,[]));
-            whileTrig = 0;
-            crawlInd = 1;
-            disp('BEGIN DATA CRAWL')
-            while whileTrig == 0;
-%                 disp(crawlInd)
-                diffVal = onsetPhotDiff(crawlInd) - expectedDiff(crawlInd);
-                if diffVal > threshDiffVal
-                    realTTLs(crawlInd) = [];
-                    onsetPhotDiff = diff(realTTLs);
-                    if length(realTTLs) == length(expectedTTLs)
-                        disp('REMOVING POINT WITH CRAWLER, PROBLEM FIXED')
-                        crawlStore = crawlInd;
-                        break
-                    else
-                        disp('PROBLEM NOT SOLVED WITH DATA CRAWLER FULLY, CONTINUING...')
-                        crawlInd = crawlInd + 1;
-                    end
-                elseif diffVal < -threshDiffVal
-                    realTTLs(crawlInd+1) = [];
-                    onsetPhotDiff = diff(realTTLs);
-                    if length(realTTLs) == length(expectedTTLs)
-                        disp('REMOVING POINT WITH CRAWLER, PROBLEM FIXED')
-                        crawlStore = crawlInd;
-                        break
-                    else
-                        disp('PROBLEM NOT SOLVED WITH DATA CRAWLER FULLY, CONTINUING...')
-                        crawlInd = crawlInd + 1;
-                    end
-                else
-                    crawlInd = crawlInd + 1;
-                end
-                if crawlInd >= length(expectedDiff)
-                    disp('END OF CRAWL')
-                    break
-                end
-            end
+            crawlTrig = 1;
         end
     end
 end
-
+if crawlTrig == 1;
+    %time to crawl
+    %find longer thing, extend the other one to match
+    if length(onsetPhotDiff) > length(expectedDiff)
+        disp('RECEIVED TTLS GREATER THAN EXPECTED')
+    elseif length(onsetPhotDiff) < length(expectedDiff)
+        disp('RECEIVED TTLS LESS THAN EXPECTED')
+        error('CANNOT COMPUTE')
+    elseif length(onsetPhotDiff) == length(expectedDiff)
+        disp('RECEIVED TTLS EQUAL TO EXPECTED')
+    end
+%             diffVal = abs(reshape(onsetPhotDiff,1,[])-reshape(expectedDiff,1,[]));
+    whileTrig = 0;
+    crawlInd = 1;
+    disp('BEGIN DATA CRAWL')
+    while whileTrig == 0;
+%                 disp(crawlInd)
+        diffVal = onsetPhotDiff(crawlInd) - expectedDiff(crawlInd);
+        if diffVal > threshDiffVal
+            realTTLs(crawlInd) = [];
+            onsetPhotDiff = diff(realTTLs);
+            if length(realTTLs) == length(expectedTTLs)
+                disp('REMOVING POINT WITH CRAWLER, PROBLEM FIXED')
+                crawlStore = crawlInd;
+                break
+            else
+                disp('PROBLEM NOT SOLVED WITH DATA CRAWLER FULLY, CONTINUING...')
+                crawlInd = crawlInd + 1;
+            end
+        elseif diffVal < -threshDiffVal
+            realTTLs(crawlInd+1) = [];
+            onsetPhotDiff = diff(realTTLs);
+            if length(realTTLs) == length(expectedTTLs)
+                disp('REMOVING POINT WITH CRAWLER, PROBLEM FIXED')
+                crawlStore = crawlInd;
+                break
+            else
+                disp('PROBLEM NOT SOLVED WITH DATA CRAWLER FULLY, CONTINUING...')
+                crawlInd = crawlInd + 1;
+            end
+        else
+            crawlInd = crawlInd + 1;
+        end
+        if crawlInd >= length(expectedDiff)
+            disp('END OF CRAWL')
+            delTrig = 1;
+            break
+        end
+    end
+end
+if delTrig == 1 & length(expectedTTLs) ~= length(realTTLs)
+    disp('DELETING POINTS OFF END')
+    realTTLs(length(expectedTTLs)+1:end) = [];
+end
 
 end
