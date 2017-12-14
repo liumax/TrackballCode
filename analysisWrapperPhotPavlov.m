@@ -34,13 +34,21 @@ for bigInd = 1:numFiles
     rasterVect = [-3:photoTimeStep:5];
     zeroPoint = find(rasterVect > 0,1,'first');
     endPoint = find(rasterVect > 1,1,'first');
+    
+    preBins = reshape(s.PhotoRaster.ToneRaster([1:zeroPoint],:),1,[]);
+    preMean = mean(preBins);
+    preSTD = std(preBins);
+    zRaster = (s.PhotoRaster.ToneRaster - preMean)/preSTD;
+    
     %baseline period will simply be average of the five bins before zero
-    zeroBase = mean(s.PhotoRaster.ToneRaster(zeroPoint - 4:zeroPoint,:));
-    endBase =  mean(s.PhotoRaster.ToneRaster(endPoint - 4:endPoint,:));
+    zeroBase = mean(zRaster(zeroPoint - 4:zeroPoint,:));
+    endBase =  mean(zRaster(endPoint - 4:endPoint,:));
+    
     %find peak values for the twentyfive bins following the stimulus onset
     %(~500ms)
-    zeroPeak = max(s.PhotoRaster.ToneRaster(zeroPoint:zeroPoint+ 25,:));
-    endPeak = max(s.PhotoRaster.ToneRaster(endPoint:endPoint+ 25,:));
+    zeroPeak = max(zRaster(zeroPoint:zeroPoint+ 25,:));
+    endPeak = max(zRaster(endPoint:endPoint+ 25,:));
+    
     %capture average velocity from different time points
     preVel = mean(s.VelRaster.ToneRaster([19:29],:));
     zeroVel = mean(s.VelRaster.ToneRaster([30:36],:));
@@ -51,8 +59,7 @@ for bigInd = 1:numFiles
     bigStore(2,incInd:incInd + length(s.MBED.LowTrials) - 1) = zeroPeakVal(s.MBED.LowTrials);
     bigStore(3,incInd:incInd + length(s.MBED.HiTrials) - 1) = endPeak(s.MBED.HiTrials);
     bigStore(4,incInd:incInd + length(s.MBED.LowTrials) - 1) = endPeak(s.MBED.LowTrials);
-%     bigStore(5,incInd:incInd + length(s.MBED.LowTrials) - 1) = 0;
-%     bigStore(5,s.MBED.HiTrials + incInd - 1) = 1;
+    
     %LETS ALSO PULL LICKS!!!
     lickLatStore = ones(length(s.MBED.ToneDelivery),1);
     for i = 1:length(s.MBED.ToneDelivery)
@@ -75,13 +82,13 @@ for bigInd = 1:numFiles
     bigStore(11,incInd:incInd + length(s.MBED.LowTrials) - 1) = zeroVel(s.MBED.HiTrials);
     bigStore(12,incInd:incInd + length(s.MBED.LowTrials) - 1) = zeroVel(s.MBED.LowTrials);
     
-    peakValStore{bigInd} = s.Photo.Peaks(:,1);
-    
     bigVelStore{bigInd} = s.Locomotion.Velocity;
-    photoStore{bigInd} = [s.Photo.Photo.x70dFTime',s.Photo.Photo.x70dF];
+    photoStore{bigInd} = [s.Photo.Photo.x70dFTime',(s.Photo.Photo.x70dF - preMean)/preSTD];
+    
     %now lets also store average photometry traces
-    bigPhotAverage(:,bigInd) = s.PhotoRaster.MeanHi(1,:);
-    smallPhotAverage(:,bigInd) = s.PhotoRaster.MeanLow(1,:);
+    bigPhotAverage(:,bigInd) = mean(zRaster(:,s.MBED.HiTrials)');
+    smallPhotAverage(:,bigInd) = mean(zRaster(:,s.MBED.LowTrials)');
+    
     %pull licking histograms
     if max(s.Licking.ToneHistHi) > 30
         lickHistHi(:,bigInd) = s.Licking.ToneHistHi/10;
@@ -95,7 +102,7 @@ for bigInd = 1:numFiles
     velHistHi(:,bigInd) = mean(s.VelRaster.ToneRaster(:,s.MBED.HiTrials)');
     velHistLow(:,bigInd) = mean(s.VelRaster.ToneRaster(:,s.MBED.LowTrials)');
     
-    %calculate locomotiong ROC over whole trace
+    %calculate locomotion ROC over whole trace
     
     smoothVel = smooth(bigVelStore{1}(:,2),5);
     velTrueTime = interp1(s.MBED.Jitter/1000,s.Photo.Jitter,bigVelStore{1}(:,1));
@@ -125,7 +132,6 @@ for bigInd = 1:numFiles
     trueLocs = length(find(locomotionInd == 1));
     truePause = length(find(locomotionInd == 0));
 
-
     %rates at which I will threshold as classifier
     rateRange = minPhot:(maxPhot-minPhot)/rateInc:maxPhot;
 
@@ -147,9 +153,6 @@ for bigInd = 1:numFiles
         %find points with no locomotion and no classifier (2 + 0 = 2)
         rocStore(i,4) = length(find(testInd == 2));
     end
-
-
-
     %calculate AUC using trapz
     falsePos = rocStore(:,3)/truePause;
     truePos = rocStore(:,1)/trueLocs;
@@ -163,8 +166,136 @@ for bigInd = 1:numFiles
     falsePos = C;
     %calculate estimate of area under curve. 
     AUCoverall(bigInd)= trapz(falsePos,truePos);
+    %now lets calculate shuffled AUCs
+    numShuff = 1000;
+    for shuffInd = 1:numShuff
+        shuffleTimes = randperm(length(interpPhot));
+        shuffleTimes = interpPhot(shuffleTimes);
+        minPhot = min(shuffleTimes);
+        maxPhot = max(shuffleTimes);
+        rateRange = minPhot:(maxPhot-minPhot)/rateInc:maxPhot;
+        rocStore = zeros(4,rateInc);
+
+        for i = 1:rateInc
+            %need to conver i to the targeted rate
+            threshRate = rateRange(i);
+            %find all points at which we classify as locomotion
+            classifyInd = (double(shuffleTimes>=threshRate)+1)*2;
+            %compare by adding to locomotionInd
+            testInd = classifyInd + locomotionInd;
+            %find points with locomotion and classifier(4+1 = 5)
+            rocStore(i,1) = length(find(testInd == 5));
+            %find points with locomotion but no classifier (2+1 = 3)
+            rocStore(i,2) = length(find(testInd == 3));
+            %find points with no locomotion but classifier (4 + 0 = 4)
+            rocStore(i,3) = length(find(testInd == 4));
+            %find points with no locomotion and no classifier (2 + 0 = 2)
+            rocStore(i,4) = length(find(testInd == 2));
+        end
+        %calculate AUC using trapz
+        falsePos = rocStore(:,3)/truePause;
+        truePos = rocStore(:,1)/trueLocs;
+        %reorder in order of false positive from 0 to 1
+        [B,I] = sort(falsePos);
+        falsePos = B;
+        truePos = truePos(I);
+        %eliminate duplicate values. 
+        [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
+        truePos = truePos(ia);
+        falsePos = C;
+        %calculate estimate of area under curve. 
+        aucShuffLoco(shuffInd,bigInd)= trapz(falsePos,truePos);
+        
+        
+    end
     
+    %now lets do ROC for big vs small trials in terms of licking
+    minLick = min(lickStore);
+    maxLick = max(lickStore);
+    rateRange = minLick:(maxLick-minLick)/rateInc:maxLick;
+
+    rocStore = zeros(4,rateInc);
+    
+    lickTrues = NaN(1,length(lickStore));
+    lickTrues(s.MBED.HiTrials) = 1;
+    lickTrues(s.MBED.LowTrials) = 0;
+
+    for i = 1:rateInc
+        %need to conver i to the targeted rate
+        threshRate = rateRange(i);
+        %find all points at which we classify as locomotion
+        classifyInd = (double(lickStore>=threshRate)+1)*2;
+        %compare by adding to locomotionInd
+        testInd = classifyInd + lickTrues;
+        %find points with locomotion and classifier(4+1 = 5)
+        rocStore(i,1) = length(find(testInd == 5));
+        %find points with locomotion but no classifier (2+1 = 3)
+        rocStore(i,2) = length(find(testInd == 3));
+        %find points with no locomotion but classifier (4 + 0 = 4)
+        rocStore(i,3) = length(find(testInd == 4));
+        %find points with no locomotion and no classifier (2 + 0 = 2)
+        rocStore(i,4) = length(find(testInd == 2));
+    end
+    
+    trueHi = length(s.MBED.HiTrials);
+    trueLow = length(s.MBED.LowTrials);
+
+    %calculate AUC using trapz
+    falsePos = rocStore(:,3)/trueLow;
+    truePos = rocStore(:,1)/trueHi;
+    %reorder in order of false positive from 0 to 1
+    [B,I] = sort(falsePos);
+    falsePos = B;
+    truePos = truePos(I);
+    %eliminate duplicate values. 
+    [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
+    truePos = truePos(ia);
+    falsePos = C;
+    %calculate estimate of area under curve. 
+    lickAUC(bigInd)= trapz(falsePos,truePos);
+    %do bootstrapping/shuffling
+    numShuff = 1000;
+    for shuffInd = 1:numShuff
+        shuffleTimes = randperm(length(lickStore));
+        shuffleTimes = lickStore(shuffleTimes);
+        minPhot = min(shuffleTimes);
+        maxPhot = max(shuffleTimes);
+        rateRange = minPhot:(maxPhot-minPhot)/rateInc:maxPhot;
+        rocStore = zeros(4,rateInc);
+
+        for i = 1:rateInc
+            %need to conver i to the targeted rate
+            threshRate = rateRange(i);
+            %find all points at which we classify as locomotion
+            classifyInd = (double(shuffleTimes>=threshRate)+1)*2;
+            %compare by adding to locomotionInd
+            testInd = classifyInd + lickTrues;
+            %find points with locomotion and classifier(4+1 = 5)
+            rocStore(i,1) = length(find(testInd == 5));
+            %find points with locomotion but no classifier (2+1 = 3)
+            rocStore(i,2) = length(find(testInd == 3));
+            %find points with no locomotion but classifier (4 + 0 = 4)
+            rocStore(i,3) = length(find(testInd == 4));
+            %find points with no locomotion and no classifier (2 + 0 = 2)
+            rocStore(i,4) = length(find(testInd == 2));
+        end
+        %calculate AUC using trapz
+        falsePos = rocStore(:,3)/trueLow;
+        truePos = rocStore(:,1)/trueHi;
+        %reorder in order of false positive from 0 to 1
+        [B,I] = sort(falsePos);
+        falsePos = B;
+        truePos = truePos(I);
+        %eliminate duplicate values. 
+        [C,ia,ic] = unique(falsePos,'rows'); %MUST BE ROWS
+        truePos = truePos(ia);
+        falsePos = C;
+        %calculate estimate of area under curve. 
+        aucShuffLick(shuffInd,bigInd)= trapz(falsePos,truePos);
+    end
+    %increment index for low trials
     incInd = incInd + length(s.MBED.LowTrials);
+    
     
     
     
