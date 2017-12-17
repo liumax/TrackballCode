@@ -301,6 +301,17 @@ for bigInd = 1:numFiles
     
 end
 
+% reference: https://www.quora.com/How-is-statistical-significance-determined-for-ROC-curves-and-AUC-values
+%now figure out which licking AUCs were useful for separating
+for i = 1:numFiles
+    testPrct = prctile(aucShuffLick(:,i),99);
+    if lickAUC(i) > testPrct
+        lickAUCSig(i) = 1;
+    else
+        lickAUCSig(i) = 0;
+    end
+end
+
 store.bigPhotAverage = bigPhotAverage;
 store.smallPhotAverage = smallPhotAverage;
 %lets try breaking things into 20 trial blocks
@@ -625,27 +636,56 @@ print(hFig,'condensed dFoF vs Licking','-dpdf','-r0')
 %criterion, and the last day of behavior
 
 %to find the first day above criterion, lets look at hte day to day data. 
+% whileTrig = 0;
+% setTrig = 0;
+% indStart = 1;
+% while whileTrig == 0
+%     %check at the current index
+%     prefVal = prefScore(indStart);
+%     if prefVal >= behavLim & setTrig == 0
+%         setTrig = 1;
+%         disp('First Threshold Crossing')
+%         indStart = indStart + 1;
+%     elseif prefVal >= behavLim & setTrig == 1
+%         disp('TargetFound')
+%         targetInd = indStart -1;
+%         whileTrig = 1;
+%         disp(strcat('DAY ',num2str(targetInd)))
+%         break
+%     elseif prefVal < behavLim & setTrig == 1
+%         disp('Failure To Maintain Behavior')
+%         setTrig = 0;
+%         indStart = indStart + 1;
+%     elseif prefVal < behavLim & setTrig == 0
+%         disp('No Threshold Crossing')
+%         indStart = indStart + 1;
+%     end
+%         
+% end
+
 whileTrig = 0;
 setTrig = 0;
 indStart = 1;
+
+sigLim = 0.05;
 while whileTrig == 0
     %check at the current index
-    prefVal = prefScore(indStart);
-    if prefVal >= behavLim & setTrig == 0
+    prefVal = daySig(1,indStart);
+    if prefVal <= sigLim & setTrig == 0
         setTrig = 1;
         disp('First Threshold Crossing')
         indStart = indStart + 1;
-    elseif prefVal >= behavLim & setTrig == 1
+    elseif prefVal >= sigLim & setTrig == 1
         disp('TargetFound')
         targetInd = indStart -1;
         whileTrig = 1;
         disp(strcat('DAY ',num2str(targetInd)))
         break
-    elseif prefVal < behavLim & setTrig == 1
+    elseif prefVal < sigLim & setTrig == 1
         disp('Failure To Maintain Behavior')
         setTrig = 0;
         indStart = indStart + 1;
-    elseif prefVal < behavLim & setTrig == 0
+    elseif prefVal < sigLim & setTrig == 0
         disp('No Threshold Crossing')
         indStart = indStart + 1;
     end
@@ -894,7 +934,7 @@ plot(lickAUC,'b')
 plot(locoChangeAUC,'r')
 plot(locoValAUC,'r*-')
 legend
-title('AUC Calculation for Photometry Kphoto Gloco')
+title('AUC Calculation for Photometry Kphoto GphotoOver Rloco BLick')
 ylabel('AUC Score')
 xlabel('Days')
 
