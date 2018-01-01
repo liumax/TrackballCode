@@ -8,23 +8,23 @@ function [s] = analysisPVStimHiLowLaser(fileName);
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROCLoco = 1;
+toggleROCLoco = 0;
 
 
-s.Parameters.RasterWindow = [-2 4]; %seconds for raster window. 
+s.Parameters.RasterWindow = [-5 10]; %seconds for raster window. 
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.05; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
 
 %bins of interest
-s.Parameters.PreBin = [-2,0];
-s.Parameters.PostBin = [2,4];
-s.Parameters.LaserBin = [0,2];
+s.Parameters.PreBin = [-5,0];
+s.Parameters.PostBin = [5,10];
+s.Parameters.LaserBin = [0,5];
 
-s.Parameters.ResPreBin = [-2,-1];
-s.Parameters.ResPostBin = [3,4];
-s.Parameters.ResLaserBin = [1,2];
+s.Parameters.ResPreBin = [-5,-1];
+s.Parameters.ResPostBin = [6,10];
+s.Parameters.ResLaserBin = [1,5];
 
 
 
@@ -48,7 +48,7 @@ s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display w
 s.Parameters.PVLim = 0.0005;
 
 %for laser related!
-s.Parameters.TrialUnit = 100;
+s.Parameters.TrialUnit = 50;
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'LaserStimAnalysis','.mat');
@@ -366,7 +366,7 @@ for i = 1:numUnits
     %lets first make histograms of the different epocs
     laserHists = zeros(numMultiple,length(histBinVector));
     for j =1:numMultiple
-        laserHists(j,:) = mean(s.(desigNames{i}).TrialHists(:,((j-1)*100+1:j*100))')/s.Parameters.histBin;
+        laserHists(j,:) = mean(s.(desigNames{i}).TrialHists(:,((j-1)*s.Parameters.TrialUnit+1:j*s.Parameters.TrialUnit))')/s.Parameters.histBin;
     end
     
     s.(desigNames{i}).LaserHistograms = laserHists;
@@ -375,7 +375,7 @@ for i = 1:numUnits
     
     laserSpikes = zeros(numMultiple,size(s.(desigNames{i}).TrialBinnedSpikes,2));
     for j = 1:numMultiple
-        laserSpikes(j,:) = mean(s.(desigNames{i}).TrialBinnedSpikes(((j-1)*100+1:j*100),:));
+        laserSpikes(j,:) = mean(s.(desigNames{i}).TrialBinnedSpikes(((j-1)*s.Parameters.TrialUnit+1:j*s.Parameters.TrialUnit),:));
     end
     
     s.(desigNames{i}).LaserBinnedSpikes = laserSpikes;
