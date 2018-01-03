@@ -8,7 +8,7 @@ function [funcOut,peakTrough] = functionPVMSNSeparatorMountain(waveForms,thresho
 waveLength = length(waveForms);
 
 %chose the big wave, interpolate to fine degree
-chosenWave = waveForms(:,maxInd);
+chosenWave = waveForms;
 interpVect = [1:0.1:waveLength];
 interpWave = interp1(1:waveLength,chosenWave,interpVect,'spline');
 

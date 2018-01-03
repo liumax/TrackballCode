@@ -1,6 +1,6 @@
 %This code is meant to process mountainsort CSV data. 
 
-fileName = '171206_ML171117F_R10_2300_PVStimTwoLaser50Pulse';
+fileName = '171206_ML171117F_R10_2000_PVStimTwoLaser50Pulse';
 
 %% Set parameters!
 toggleROCLoco = 0;
@@ -38,69 +38,97 @@ shankElectrodes = 16;
 s.ShankLength = 200;
 
 
-
-
 %% Pull out MDA stuffs!
-
-%determine the number of shanks recorded
-fileNames = dir('*.csv'); %find csv files
+disp('Extracting MDA Files')
+%find mda files, determine if both shanks represented
+fileNames = dir('curFire*');
 numNames = size(fileNames,1);
 shankRecord = [0 0];
 for i = 1:numNames
     nameStore{i} = fileNames(i).name;
     for j = 1:2
-        shankName = strcat(fileName,'_nt',num2str(j),'firings');
+        shankName = strcat('nt',num2str(j));
         %check if shank exists
         nameTest = strfind(fileNames(i).name,shankName);
-        if nameTest == 1
+        if nameTest
             shankRecord(j) = 1;
         end
     end
 end
 %find which shanks are represented
 shankFind = find(shankRecord);
+disp(strcat('Shanks',num2str(shankFind)))
 
+%extract timestamps
+disp('Extracting Mountainsort Timestamps')
+fileNames = dir('*timestamps*');
+timeName = fileNames.name;
+timeStamps = readmda(timeName);
+%all we really care about is the first time point. extract this!
+firstTime = timeStamps(1);
+
+%now we want to actually extract the data. 
+
+%set up a clusterVector, which will define histogram bins for looking at
+%autocorrelograms
+clusterVect = [s.Parameters.ClusterWindow(1):0.0001:s.Parameters.ClusterWindow(2)];
+
+%set up empty array
 counter = 1;
 unitData = zeros(2,3);
-
+%now go through mda files and extract. 
 for i = shankFind
-    %first, assign a fileName
-    mountainName = strcat(fileName,'_nt',num2str(i),'firings');
-
-    %lets pull the actual unit designations
-    nameUnit = strcat(mountainName,'.curated_unitsInd.csv');
-    tempHold = csvread(nameUnit);
-    numUnits = length(tempHold);
-    
-    %lets pull the channels file
-    nameCh = strcat(mountainName,'.curated_unitsCh.csv');
-    channelDesig = csvread(nameCh);
-    %this tells me which channel the waveform was biggest on
-    
-    %fill in unitData
+    disp(strcat('Pulling Shank',num2str(i)))
+    holder = readmda(nameStore{i});
+    %this produces a three row matrix, with row 1 being the electrode with
+    %the biggest signal, row 2 being the sample # relative to the first sample
+    %, and row 3 being the unit number. We now want to change this to
+    %seconds
+    holder(2,:) = (holder(2,:)+firstTime)/s.Parameters.trodesFS;
+    %determine number of units
+    uniqueUnits = unique(holder(3,:));
+    numUnits = length(uniqueUnits);
+    disp(strcat('Found ',num2str(numUnits),' Units'))
+    %determine biggest channel for each unit
+    channelDesig = [];
+    for j = 1:numUnits
+        chanHold = holder(1,holder(3,:) == uniqueUnits(j));
+        channelDesig(j) = mode(chanHold);
+    end
+    %store shank, electrode, and nt name
     unitData(counter:counter + numUnits - 1,1) = i;
     unitData(counter:counter + numUnits - 1,2) = channelDesig; %store biggest channel
-    unitData(counter:counter + numUnits - 1,3) = tempHold; %store channel name
-    %finally, lets pull spikes
-    nameSpikes = strcat(mountainName,'.curated_unitsSpikes.csv');
-    rawSpikeTimes = csvread(nameSpikes);
-
-    %pull out individual spikes
+    unitData(counter:counter + numUnits - 1,3) = uniqueUnits; %store channel name
+    
+    %Extract clips file for getting waveform data
+    clipName = strcat('myClipsnt',num2str(i),'.mda');
+    recordClips = readmda(clipName);
+    
+    %finally, pull spikes
     for j = 1:numUnits
-        targetName = strcat('nt',num2str(i),'_',num2str(tempHold(j)));
+        targetName = strcat('nt',num2str(i),'_',num2str(uniqueUnits(j)));
         nameHold{counter - 1 + j} = targetName;
-        targetSpikes = rawSpikeTimes(rawSpikeTimes(:,2) == tempHold(j),1);
+        targetSpikes = holder(2,holder(3,:) == uniqueUnits(j));
         s.(targetName).SpikeTimes = targetSpikes;
-        s.(targetName).ISIGraph = 
+        %make crude autocorrelogram
+        pruned = diff(targetSpikes);
+        pruned(pruned>s.Parameters.ClusterWindow(2)) = [];
+        s.(targetName).ISIGraph = hist(pruned,clusterVect);
         %since we are already here, why not also pull the position of
         %the electrode?
         fullMap(counter - 1 + j,:) = [i channelDesig(j)];
+        %now store all spikes belonging to the target unit
+        s.(targetName).AllSpikes = -recordClips(:,:,holder(3,:) == uniqueUnits(j));
+        %now pull averages of the biggest channel.
+        s.(targetName).TemplateSpike = -mean(squeeze(recordClips(channelDesig(j),:,holder(3,:) == uniqueUnits(j))),2);
     end
     
     counter = counter + numUnits;
+    
 end
-%now need to pull total number of units
 numUnits = size(unitData,1);
+
+
 
 %generate master array for 2-d storage of important values
 master = zeros(numUnits,10);
@@ -108,6 +136,21 @@ masterHeader = cell(10,1);
 masterInd = 1;
 
 desigNames = nameHold;
+
+%now separate into PV vs MSN
+
+%determine PV vs MSN
+for i = 1:numUnits
+    tempInd = masterInd; %need to have this or masterInd will creep up with each for loop iteration.
+    [funcOut,peakTrough] = functionPVMSNSeparatorMountain(s.(desigNames{i}).TemplateSpike,s.Parameters.PVLim);
+    master(i,tempInd) = funcOut; masterHeader{tempInd} = 'PV/MSN Desig'; tempInd = tempInd + 1;
+    master(i,tempInd) = peakTrough; masterHeader{tempInd} = 'PeakTroughTimeinMS'; tempInd = tempInd + 1;
+%     master(i,tempInd) = s.(desigNames{i}).OverallFiringRate; masterHeader{tempInd} = 'OverallFiringRate'; tempInd = tempInd + 1;
+    indChange = tempInd - masterInd;
+end
+masterInd = masterInd + indChange; %updates masterInd value.
+disp('PV and MSN Designations Performed')
+
 
 %now we need to generate a real physical map. Need to add some variation
 %for things found on the same channel, to increase spread.
@@ -278,7 +321,7 @@ for i = 1:numUnits
     disp(strcat('Processing',desigNames{i}))
     tempInd = masterInd;%need to have this or masterInd will creep up with each for loop iteration.
     %pulls spike times and times for alignment
-    spikeTimes = s.(desigNames{i}).SpikeTimes;
+    spikeTimes = s.(desigNames{i}).SpikeTimes';
     
     %make a plot of firing rate over time. 
     sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
@@ -649,19 +692,19 @@ for i = 1:numUnits
     hFig = figure;
     set(hFig, 'Position', [10 80 1240 850])
     %plots average waveform
-%     subplot(3,6,1)
-%     hold on
-%     plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
+    subplot(3,6,1)
+    hold on
+    plot(s.(desigNames{i}).TemplateSpike,'LineWidth',2)
 %     title(strcat('OverallRate:',num2str(s.(desigNames{i}).OverallFiringRate)))
     %plots ISI
-%     subplot(3,6,2)
-%     hist(s.(desigNames{i}).ISIGraph,1000)
-%     histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
-%     line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-%     xlim(s.Parameters.ClusterWindow)
+    subplot(3,6,2)
+    bar(clusterVect,s.(desigNames{i}).ISIGraph)
+    histMax = max((s.(desigNames{i}).ISIGraph));
+    line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+    xlim(s.Parameters.ClusterWindow)
 %     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
 %         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-%     
+    
     %plot velocity and firing rate
     subplot(3,3,4)
     hold on
