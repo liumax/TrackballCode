@@ -190,6 +190,35 @@ else
     error('Checking Number of Trials: Incomplete Multiple! Check File')
 end
 
+%now we want a prompt for which sections are considered hi and which are
+%low
+promptCount = 0;
+while promptCount == 0
+    try
+    prompt = 'Enter low power sessions, as comma separated values within brackets.';
+    lowBlocks = input(prompt);
+    promptCount = 1;
+    catch
+    end
+end
+%assign high blocks
+hiBlocks = [1:numMultiple];
+hiBlocks(lowBlocks)=[];
+s.LowBlocks =lowBlocks;
+s.HiBlocks = hiBlocks;
+%assign individual trials
+counter = 1;
+for i = 1:length(lowBlocks)
+    lowTrials(counter:counter+s.Parameters.TrialUnit - 1) = [((lowBlocks(i)-1)*s.Parameters.TrialUnit)+1:1+((lowBlocks(i)-1)*s.Parameters.TrialUnit)+s.Parameters.TrialUnit - 1];
+    counter = counter+s.Parameters.TrialUnit;
+end
+
+counter = 1;
+for i = 1:length(hiBlocks)
+    hiTrials(counter:counter+s.Parameters.TrialUnit - 1) = [((hiBlocks(i)-1)*s.Parameters.TrialUnit)+1:1+((hiBlocks(i)-1)*s.Parameters.TrialUnit)+s.Parameters.TrialUnit - 1];
+    counter = counter+s.Parameters.TrialUnit;
+end
+
 %% Extract data from rotary encoder.
 [funcOut] = functionRotaryExtraction(s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
 s.RotaryData = funcOut;
@@ -209,6 +238,8 @@ for i = 1:length(dioTimes)
 end
 
 averageVel = mean(velRaster,2);
+avVelLow = mean(velRaster(:,lowTrials),2);
+avVelHi = mean(velRaster(:,hiTrials),2);
 
 %generate vectors for plotting things out later. 
 velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
@@ -321,6 +352,14 @@ for i = 1:numUnits
     master(i,tempInd) = pResPostLaser; masterHeader{tempInd} = 'pValResPostLaser'; tempInd = tempInd + 1;
     master(i,tempInd) = pResPrePost; masterHeader{tempInd} = 'pValResPrePost'; tempInd = tempInd + 1;
     
+    %store by trial type
+    master(i,tempInd) = mean(infoStore(lowTrials,1)); masterHeader{tempInd} = 'PreLowAverage'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(lowTrials,2)); masterHeader{tempInd} = 'PostLowAverage'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(lowTrials,3)); masterHeader{tempInd} = 'LaserLowAverage'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(hiTrials,4)); masterHeader{tempInd} = 'PreHiAverage'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(hiTrials,5)); masterHeader{tempInd} = 'PostHiAverage'; tempInd = tempInd + 1;
+    master(i,tempInd) = mean(infoStore(hiTrials,6)); masterHeader{tempInd} = 'LaserHiAverage'; tempInd = tempInd + 1;
+    
     %now measure locomotion ROC if toggle is on
     if toggleROCLoco == 1
         [velOut] = functionLocomotionROC(spikeTimes,s.RotaryData.Velocity);
@@ -346,6 +385,8 @@ for i = 1:numUnits
     master(i,tempInd) = s.(desigNames{i}).AUCSig; masterHeader{tempInd} = 'LocoAUCSignificance'; tempInd = tempInd + 1;
     
     
+    
+    
     indChange = tempInd - masterInd; %serves as way to update master ind.
 end
 %display update about progress
@@ -359,7 +400,6 @@ masterInd = masterInd + indChange;
 disp('Processing Information Regarding Different Laser Powers')
 for i = 1:numUnits  
     disp(strcat('Processing',desigNames{i}))
-    tempInd = masterInd;%need to have this or masterInd will creep up with each for loop iteration.
     %we basically now want to separate binned values and histograms into
     %bins corresponding to the number of repetitions. 
     
@@ -377,17 +417,19 @@ for i = 1:numUnits
     for j = 1:numMultiple
         laserSpikes(j,:) = mean(s.(desigNames{i}).TrialBinnedSpikes(((j-1)*s.Parameters.TrialUnit+1:j*s.Parameters.TrialUnit),:));
     end
+    %now divide into high and low
+    laserHistLow = mean(s.(desigNames{i}).TrialHists(:,lowTrials)')/s.Parameters.histBin;
+    laserHistHi = mean(s.(desigNames{i}).TrialHists(:,hiTrials)')/s.Parameters.histBin;
     
-    s.(desigNames{i}).LaserBinnedSpikes = laserSpikes;
+    s.(desigNames{i}).LaserHistLow = laserHistLow;
+    s.(desigNames{i}).LaserHistHi = laserHistHi;
+    %now lets pull the time periods from infoStore
     
-    master(i,tempInd) = laserSpikes(1,1); masterHeader{tempInd} = 'PreLowAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = laserSpikes(1,2); masterHeader{tempInd} = 'PostLowAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = laserSpikes(1,3); masterHeader{tempInd} = 'LaserLowAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = laserSpikes(2,1); masterHeader{tempInd} = 'PreHiAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = laserSpikes(2,2); masterHeader{tempInd} = 'PostHiAverage'; tempInd = tempInd + 1;
-    master(i,tempInd) = laserSpikes(2,3); masterHeader{tempInd} = 'LaserHiAverage'; tempInd = tempInd + 1;
-    
-    indChange = tempInd - masterInd;
+
+    laserSpikesLow = mean(s.(desigNames{i}).TrialBinnedSpikes(lowTrials,:));
+    laserSpikesHi = mean(s.(desigNames{i}).TrialBinnedSpikes(hiTrials,:)); 
+    s.(desigNames{i}).LaserBinnedSpikesLow = laserSpikesLow;
+    s.(desigNames{i}).LaserBinnedSpikesHi = laserSpikesHi;
     
 end
 
@@ -431,12 +473,19 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01])
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
 
-%plot AUC vs firing rate
+
+%plot firing rate vs peak trough times
 subplot(3,3,1)
-plot(master(:,indLocoAUC),master(:,indPreAverage),'k.')
+plot(master(:,indPkTrough),master(:,indPreAverage),'k.')
 hold on
-plot(master(master(:,indLocoSig) == 1,indLocoAUC),master(master(:,indLocoSig) == 1,indPreAverage),'ro')
-title('Scatter Plot of Baseline Rate vs LocoAUC')
+plot(master(master(:,indPVMSN) == 1,indPkTrough),master(master(:,indPVMSN) == 1,indPreAverage),'ro')
+title('Peak Trough vs Baseline Rate, PV in red')
+% %plot AUC vs firing rate
+% subplot(3,3,1)
+% plot(master(:,indLocoAUC),master(:,indPreAverage),'k.')
+% hold on
+% plot(master(master(:,indLocoSig) == 1,indLocoAUC),master(master(:,indLocoSig) == 1,indPreAverage),'ro')
+% title('Scatter Plot of Baseline Rate vs LocoAUC')
 
 %plot overall velocity trace. 
 subplot(3,3,4)
@@ -451,21 +500,14 @@ title('Overall Velocity Trace')
 %plot rasterized velocities
 subplot(3,3,7)
 hold on
-plot(velVector,averageVel,'k')
+plot(velVector,avVelLow,'b')
+plot(velVector,avVelHi,'g')
 xlim([velVector(1) velVector(end)]);
-title('Average Velocity for Tone(k) Laser(b) ToneLaser(g)')
-
-
-%plot firing rate vs peak trough times
-subplot(3,3,2)
-plot(master(:,indPkTrough),master(:,indPreAverage),'k.')
-hold on
-plot(master(master(:,indPVMSN) == 1,indPkTrough),master(master(:,indPVMSN) == 1,indPreAverage),'ro')
-title('Peak Trough vs Baseline Rate, PV in red')
+title('Average Velocity for Low (B) and Hi (G)')
 
 
 %plot modulation index of pre vs laser for laser only trials
-subplot(3,3,5)
+subplot(3,3,2)
 %calculate modulation index, which is (laser - pre)/(pre + laser)
 modInd1 = (master(:,indLaserLowAverage)-master(:,indPreLowAverage))./(master(:,indLaserLowAverage) + master(:,indPreLowAverage));
 modInd2 = (master(:,indLaserHiAverage)-master(:,indPreHiAverage))./(master(:,indLaserHiAverage) + master(:,indPreHiAverage));
@@ -475,6 +517,32 @@ modInd2 = (master(:,indLaserHiAverage)-master(:,indPreHiAverage))./(master(:,ind
 hist([modInd1,modInd2],[-1:0.1:1]);
 xlim([-1 1]);
 title('Modulation Index For Laser Only Trials')
+
+subplot(3,3,5)
+%pull mean histograms from all MSNs
+msns = find(master(:,indPVMSN) == 0);
+zeroPoint = find(histBinVector < 0,1,'last');
+for i = 1:length(msns)
+    holderLow(:,i) = s.(desigNames{i}).LaserHistLow;
+    holderLowZ(:,i) = (s.(desigNames{i}).LaserHistLow - mean(s.(desigNames{i}).LaserHistLow(1:zeroPoint)))/std(s.(desigNames{i}).LaserHistLow(1:zeroPoint));
+    holderHi(:,i) = s.(desigNames{i}).LaserHistHi;
+    holderHiZ(:,i) = (s.(desigNames{i}).LaserHistHi - mean(s.(desigNames{i}).LaserHistHi(1:zeroPoint)))/std(s.(desigNames{i}).LaserHistHi(1:zeroPoint));
+end
+meanLow = mean(holderLow,2);
+meanHi = mean(holderHi,2);
+hold on
+plot(histBinVector,meanLow,'b','LineWidth',2)
+plot(histBinVector,meanHi,'g','LineWidth',2)
+title('Average Firing Rate (Hz)')
+
+subplot(3,3,8)
+hold on
+meanLowZ = mean(holderLowZ,2);
+meanHiZ = mean(holderHiZ,2);
+plot(histBinVector,meanLowZ,'b','LineWidth',2)
+plot(histBinVector,meanHiZ,'g','LineWidth',2)
+title('Average Firing Rate (Z)')
+
 % 
 % %plot p values!
 % %First for normal bins
@@ -616,8 +684,8 @@ for i = 1:numUnits
     %plot histograms
     subplot(3,3,7)
     hold on
-    plot(histBinVector,s.(desigNames{i}).LaserHistograms(1,:),'k','LineWidth',2)
-    plot(histBinVector,s.(desigNames{i}).LaserHistograms(2,:),'g','LineWidth',2)
+    plot(histBinVector,s.(desigNames{i}).LaserHistLow,'k','LineWidth',2)
+    plot(histBinVector,s.(desigNames{i}).LaserHistHi,'g','LineWidth',2)
     plot([0 0],[ylim],'b');
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
 %     title({fileName;desigNames{i}})
