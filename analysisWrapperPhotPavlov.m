@@ -363,7 +363,8 @@ print(hFig,'vel and photScatter','-dpdf','-r0')
 
 
 
-%now also plot out average photometry traces
+%now also plot out average photometry traces, colorcoded in shades of red.
+%also plots licking and locomotion behavior
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
 
@@ -458,6 +459,9 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,'photVSlickVSvel','-dpdf','-r0')
 
 
+
+%This is for plotting trial by trial, and smoothed, data for licking,
+%response size, and response latency
 hFig = figure
 set(hFig, 'Position', [10 80 1240 850])
 subplot(2,2,1)
@@ -529,7 +533,9 @@ print(hFig,'dFoF vs Licking','-dpdf','-r0')
 
 
 
-
+%This plots out condensed versions of the above data (in 20 trial bins and days)
+%, including magnitude of response, variability of response, licking
+%numbers, and preference score. 
 hFig = figure
 set(hFig, 'Position', [10 80 1240 850])
 subplot(4,2,1)
@@ -662,35 +668,35 @@ print(hFig,'condensed dFoF vs Licking','-dpdf','-r0')
 %     end
 %         
 % end
-
-whileTrig = 0;
-setTrig = 0;
-indStart = 1;
-
-sigLim = 0.05;
-while whileTrig == 0
-    %check at the current index
-    prefVal = daySig(1,indStart);
-    if prefVal <= sigLim & setTrig == 0
-        setTrig = 1;
-        disp('First Threshold Crossing')
-        indStart = indStart + 1;
-    elseif prefVal >= sigLim & setTrig == 1
-        disp('TargetFound')
-        targetInd = indStart -1;
-        whileTrig = 1;
-        disp(strcat('DAY ',num2str(targetInd)))
-        break
-    elseif prefVal < sigLim & setTrig == 1
-        disp('Failure To Maintain Behavior')
-        setTrig = 0;
-        indStart = indStart + 1;
-    elseif prefVal < sigLim & setTrig == 0
-        disp('No Threshold Crossing')
-        indStart = indStart + 1;
-    end
-        
-end
+% 
+% whileTrig = 0;
+% setTrig = 0;
+% indStart = 1;
+% 
+% sigLim = 0.05;
+% while whileTrig == 0
+%     %check at the current index
+%     prefVal = daySig(1,indStart);
+%     if prefVal <= sigLim & setTrig == 0
+%         setTrig = 1;
+%         disp('First Threshold Crossing')
+%         indStart = indStart + 1;
+%     elseif prefVal >= sigLim & setTrig == 1
+%         disp('TargetFound')
+%         targetInd = indStart -1;
+%         whileTrig = 1;
+%         disp(strcat('DAY ',num2str(targetInd)))
+%         break
+%     elseif prefVal < sigLim & setTrig == 1
+%         disp('Failure To Maintain Behavior')
+%         setTrig = 0;
+%         indStart = indStart + 1;
+%     elseif prefVal < sigLim & setTrig == 0
+%         disp('No Threshold Crossing')
+%         indStart = indStart + 1;
+%     end
+%         
+% end
 
 
 
