@@ -618,14 +618,14 @@ prefScore = (dayBig(5,:)) ./ (dayBig(5,:) + dayBig(6,:));
 
 subplot(4,2,8)
 hold on
-plot(prefScore,'g.-')
-findSig = find(daySig(3,:) < 0.05);
-plot(findSig,prefScore(findSig),'ro')
-plot([0 length(dayBig)],[0 0],'k')
+plot(lickAUC,'g.-')
+findSig = find(lickAUCSig == 1);
+plot(findSig,lickAUC(findSig),'ro')
+plot([0 length(dayBig)],[0.5 0.5],'k')
 ylim([0 1])
-plot([0 length(dayBig)],[behavLim behavLim],'r')
+% plot([0 length(dayBig)],[behavLim behavLim],'r')
 xlim([0 length(dayBig)])
-title('Licking Preference Plotted by DAY')
+title('Licking AUC Plotted by DAY')
 
 savefig(hFig,'dFoF vs Licking');
 
@@ -636,72 +636,9 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,'condensed dFoF vs Licking','-dpdf','-r0')
 
 
-%now lets extract data from the relevant time points. I want to get all the
-%info at several specific times: day 1, which should be early, the first
-%day of at least two consecutive days in which the animal performs above
-%criterion, and the last day of behavior
 
-%to find the first day above criterion, lets look at hte day to day data. 
-% whileTrig = 0;
-% setTrig = 0;
-% indStart = 1;
-% while whileTrig == 0
-%     %check at the current index
-%     prefVal = prefScore(indStart);
-%     if prefVal >= behavLim & setTrig == 0
-%         setTrig = 1;
-%         disp('First Threshold Crossing')
-%         indStart = indStart + 1;
-%     elseif prefVal >= behavLim & setTrig == 1
-%         disp('TargetFound')
-%         targetInd = indStart -1;
-%         whileTrig = 1;
-%         disp(strcat('DAY ',num2str(targetInd)))
-%         break
-%     elseif prefVal < behavLim & setTrig == 1
-%         disp('Failure To Maintain Behavior')
-%         setTrig = 0;
-%         indStart = indStart + 1;
-%     elseif prefVal < behavLim & setTrig == 0
-%         disp('No Threshold Crossing')
-%         indStart = indStart + 1;
-%     end
-%         
-% end
-% 
-% whileTrig = 0;
-% setTrig = 0;
-% indStart = 1;
-% 
-% sigLim = 0.05;
-% while whileTrig == 0
-%     %check at the current index
-%     prefVal = daySig(1,indStart);
-%     if prefVal <= sigLim & setTrig == 0
-%         setTrig = 1;
-%         disp('First Threshold Crossing')
-%         indStart = indStart + 1;
-%     elseif prefVal >= sigLim & setTrig == 1
-%         disp('TargetFound')
-%         targetInd = indStart -1;
-%         whileTrig = 1;
-%         disp(strcat('DAY ',num2str(targetInd)))
-%         break
-%     elseif prefVal < sigLim & setTrig == 1
-%         disp('Failure To Maintain Behavior')
-%         setTrig = 0;
-%         indStart = indStart + 1;
-%     elseif prefVal < sigLim & setTrig == 0
-%         disp('No Threshold Crossing')
-%         indStart = indStart + 1;
-%     end
-%         
-% end
-
-
-
-
-%now lets try calculation ROC (again Q_Q)
+%now lets try calculation ROC (again Q_Q). this is for calculating how well
+%photometry predicts trial type. Not sure why i'm recalculating this here. 
 
 rateInc = 20;
 locomotionInd = repmat([1 0],1,100);
@@ -751,9 +688,6 @@ for ind = 1:numFiles
     %calculate estimate of area under curve. 
     trueAUC(ind)= trapz(falsePos,truePos);
 end
-
-%now calculate AUC prediction of velocity relative to photometry
-
 
 
 %now look at AUC for locomotion predicting trial type
@@ -940,7 +874,12 @@ plot(lickAUC,'b')
 plot(locoChangeAUC,'r')
 plot(locoValAUC,'r*-')
 legend
-title('AUC Calculation for Photometry Kphoto GphotoOver Rloco BLick')
+title('AUC Calculation for Photometry Kphoto GphotoOverall G-peakPhoto Rloco BLick')
+%here, black is how well photometry predicts trial type. Green solid is the
+%same, using the AUC calculated earlier. G-- is using peak values to
+%calculate AUC of photometry for locomotion?? blue is using licks to
+%predict trial type. red is using change in locomotion to predict trial
+%type. red dash is using average locomotion to predict trial type
 ylabel('AUC Score')
 xlabel('Days')
 
