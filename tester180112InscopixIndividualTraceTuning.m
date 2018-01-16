@@ -650,7 +650,7 @@ for ind = 1:numUnits
         %plot peak detection rasters
         subplot(numDBs,4,2+numDBs*(i-1))
         hold on
-        plot(s.(s.DesignationName{ind}).PointRaster(d,1),dbSort(s.(s.DesignationName{ind}).PointRaster(:,2)),'k.')
+        plot(s.(s.DesignationName{ind}).PointRaster(:,1),dbSort(s.(s.DesignationName{ind}).PointRaster(:,2)),'k.')
     
         for ind = 1:numFreqs
             plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(ind,2) dbRasterLabels(ind,2)],'g')

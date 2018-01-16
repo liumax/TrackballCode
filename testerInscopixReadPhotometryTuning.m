@@ -3,8 +3,8 @@
 
 % function [s] = analysisPhotometryTuning(fileName);
 % fileName = '180105_ML171117A_Tuning';
-fileName = '180105_ML171117B_Tuning';
-fileName = '180105_ML171119A_Tuning';
+% fileName = '180105_ML171117B_Tuning';
+% fileName = '180105_ML171119A_Tuning';
 fileName = '180105_ML171119B_Tuning';
 
 %% Parameters
@@ -639,6 +639,6 @@ save(fullfile(pname,fname),'s');
 
 
 diary off
-end
+% end
 
 
