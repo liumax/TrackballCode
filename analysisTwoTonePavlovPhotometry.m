@@ -49,7 +49,7 @@ inputPhotOnset = inputPhot(inputPhot(:,2) == 1,1);
 
 %use tone times for the time of tone delivery. 
 
-[onsetPhot] = functionTTLrepairTTL(trialStates.rewTrialTime,onsetPhot,6,1.2,100);
+[onsetPhot] = functionTTLrepairTTL(trialStates.cueTimeRew1,onsetPhot,6,1.2,100);
 %assign trials to rewarded or unrewarded. first confirm that number of
 %rewards is half of onsets. If not, throw error.
 if length(rewTimes) ~= length(onsetPhot)/2
