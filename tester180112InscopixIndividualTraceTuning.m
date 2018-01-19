@@ -3,9 +3,9 @@
 
 % function [s] = analysisPhotometryTuning(fileName);
 fileName = '180105_ML171117A_Tuning';
-fileName = '180105_ML171117B_Tuning';
+% fileName = '180105_ML171117B_Tuning';
 % fileName = '180105_ML171119A_Tuning';
-fileName = '180105_ML171119B_Tuning';
+% fileName = '180105_ML171119B_Tuning';
 
 %% Parameters
 
@@ -152,7 +152,7 @@ s.MBED.Sync = mbedSync;
 
 frameTimes = mbedSync(mbedSync(:,2) == 1,1);
 frameRate = 1/(mean(diff(frameTimes))/1000);
-
+s.Framerate = frameRate;
 %repair frameTimes!
 meanITI = mean(diff(frameTimes));
 whileTrig = 0;
@@ -229,7 +229,13 @@ end
 
 rasterPhotWindow = round(rasterWindow*frameRate);
 
+maskDim = size(neuron_results.Cn);
+
 for j = 1:numUnits
+    %store mask
+    disp('Storing mask')
+    s.(strcat('unit',num2str(j))).Mask = reshape(neuron_results.A(:,j),maskDim(1),maskDim(2));
+    
     %% generate point rasters too!
     disp('Generating Point Data...')
     traceData = smooth(traces(j,:),5);
@@ -398,19 +404,39 @@ for j = 1:numUnits
 
     peakThresh = 1;
     targetPeaks = peakVals(peakVals(:,1) > peakThresh,:);
+    targetPeaks(:,5) = targetPeaks(:,5)+3;
     s.(strcat('unit',num2str(j))).AllPeakTimes = targetPeaks(:,5);
+    
+    %% now lets also make a gaussian convolution
+    gaussRange = [-5:1:5];
+    norm = normpdf(gaussRange,0,1);
+    convTrace = zeros(length(traces),1);
+    for normInd = 1:length(targetPeaks(:,5))
+        %check if within range
+        if targetPeaks(normInd,5) + gaussRange(1) > 0 & targetPeaks(normInd,5) + gaussRange(end) < length(traces)
+            convTrace(targetPeaks(normInd,5)-5:targetPeaks(normInd,5)+5) = convTrace(targetPeaks(normInd,5)-5:targetPeaks(normInd,5)+5) + norm';
+        end
+    end
+    disp('Convolution Trace Made')
+    s.(strcat('unit',num2str(j))).ConvTrace = convTrace;
+    
     
     disp('Point Data Generated...')
     %% now make raster from this.
     [rasters] = functionBasicRaster(targetPeaks(:,5),alignTimes,rasterPhotWindow);
     s.(strcat('unit',num2str(j))).PointRaster = rasters;
+    s.(strcat('unit',num2str(j))).PointRasterTime = rasters;
+    s.(strcat('unit',num2str(j))).PointRasterTime(:,1) = rasters(:,1)/frameRate;
+    
     
     for i = 1:length(alignTimes)
         photoRaster(:,i) = traces(j,alignTimes(i) + rasterPhotWindow(1):alignTimes(i) + rasterPhotWindow(2));
+        photoRasterConv(:,i) =convTrace(alignTimes(i) + rasterPhotWindow(1):alignTimes(i) + rasterPhotWindow(2));
     end
     [photoRasterZ,baselineMean,baselineSTD] = functionZScore(photoRaster,rasterWindow(1)*-1,length(alignTimes));
     
     s.(strcat('unit',num2str(j))).PhotoAligned = photoRaster;
+    s.(strcat('unit',num2str(j))).PhotoAlignedConv = photoRasterConv;
     s.(strcat('unit',num2str(j))).PhotoAlignedZ = photoRasterZ;
     s.(strcat('unit',num2str(j))).BaselineMean = baselineMean;
     s.(strcat('unit',num2str(j))).BaselineSTD = baselineSTD;
@@ -428,11 +454,18 @@ for j = 1:numUnits
             photoRasterStore{ind,k} = tempHolder;
             tempHolder = mean(tempHolder');
             photoAverages(:,ind,k) = tempHolder;
+            %pull from convolved trace too
+            tempHolder = photoRasterConv(:,targetFinder);
+            photoRasterStoreConv{ind,k} = tempHolder;
+            tempHolder = mean(tempHolder');
+            photoAveragesConv(:,ind,k) = tempHolder;
         end
     end
     
     s.(strcat('unit',num2str(j))).PhotoAverages = photoAverages;
     s.(strcat('unit',num2str(j))).PhotoRasterStore = photoRasterStore;
+    s.(strcat('unit',num2str(j))).PhotoAveragesConv = photoAveragesConv;
+    s.(strcat('unit',num2str(j))).PhotoRasterStoreConv = photoRasterStoreConv;
     
 end
 
@@ -623,58 +656,81 @@ end
 
 
 %MAKE THE FIGURE
-for ind = 1:numUnits
+for plotInd = 1:numUnits
     hFig = figure;
     set(hFig, 'Position', [10 80 1240 850])
-    imagescLim = [min(min(min(s.(s.DesignationName{ind}).PhotoAverages))),max(max(max(s.(s.DesignationName{ind}).PhotoAverages)))];
+    imagescLim = [min(min(min(s.(s.DesignationName{plotInd}).PhotoAverages))),max(max(max(s.(s.DesignationName{plotInd}).PhotoAverages)))];
 
     velMax = max(max(max(velAverages)));
     velMin = min(min(min(velAverages)));
 
-    for i = 1:numDBs
-        %plot heatmap of all responses
-        subplot(numDBs,4,1+numDBs*(i-1))
-        imagesc(squeeze(s.(s.DesignationName{ind}).PhotoAverages(:,:,i)'),imagescLim)
-        colormap('parula')
-        colorbar
-        set(gca,'XTick',rasterAxis(:,2));
-        set(gca,'XTickLabel',rasterAxis(:,1));
-        set(gca,'YTick',octaveRange(:,2));
-        set(gca,'YTickLabel',octaveRange(:,1));
-        if i == 1
-            title({fileName;strcat(num2str(uniqueDBs(i)),'DB')})
-        else
-            title({strcat(num2str(uniqueDBs(i)),'DB')})
-        end
-        
-        %plot peak detection rasters
-        subplot(numDBs,4,2+numDBs*(i-1))
-        hold on
-        plot(s.(s.DesignationName{ind}).PointRaster(:,1),dbSort(s.(s.DesignationName{ind}).PointRaster(:,2)),'k.')
-    
-        for ind = 1:numFreqs
-            plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(ind,2) dbRasterLabels(ind,2)],'g')
-        end
-        plot([0 0],[1 length(trialMatrix)],'b')
-        plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
-        title(strcat(num2str(uniqueDBs(i)),'RastersByFreq'))
-        set(gca,'YTick',dbRasterLabels(:,3))
-        set(gca,'YTickLabel',rasterTicks)
-        ylim([2 s.SoundData.ToneRepetitions*numFreqs])
-        xlim(rasterWindow)
-        set(gca,'Ydir','reverse')
 
-        %plot out velocity changes
-        subplot(numDBs,4,3+numDBs*(i-1))
-        imagesc(squeeze(velAverages(:,:,i))',[velMin velMax])
-        colormap('parula')
-        set(gca,'XTick',velRasterAxis(:,2));
-        set(gca,'XTickLabel',velRasterAxis(:,1));
-        title(strcat('Velocity Heatmap',num2str(uniqueDBs(i)),'DB'))
+    %plot heatmap of all responses
+    subplot(2,4,1)
+    imagesc(squeeze(s.(s.DesignationName{plotInd}).PhotoAverages(:,:)'))
+    colormap('parula')
+    colorbar
+    set(gca,'XTick',rasterAxis(:,2));
+    set(gca,'XTickLabel',rasterAxis(:,1));
+    set(gca,'YTick',octaveRange(:,2));
+    set(gca,'YTickLabel',octaveRange(:,1));
+
+
+    %plot heatmap of all responses
+    subplot(2,4,2)
+    imagesc(squeeze(s.(s.DesignationName{plotInd}).PhotoAveragesConv(:,:)'))
+    colormap('parula')
+    colorbar
+    set(gca,'XTick',rasterAxis(:,2));
+    set(gca,'XTickLabel',rasterAxis(:,1));
+    set(gca,'YTick',octaveRange(:,2));
+    set(gca,'YTickLabel',octaveRange(:,1));
+
+
+    %plot peak detection rasters
+    subplot(2,4,3)
+    hold on
+    plot(s.(s.DesignationName{plotInd}).PointRaster(:,1)/frameRate,dbSort(s.(s.DesignationName{plotInd}).PointRaster(:,2)),'k.')
+
+    for i = 1:numFreqs
+        plot([rasterWindow(1) rasterWindow(2)],[dbRasterLabels(i,2) dbRasterLabels(i,2)],'g')
     end
+    plot([0 0],[1 length(trialMatrix)],'b')
+    plot([soundData.ToneDuration soundData.ToneDuration],[1 length(trialMatrix)],'b')
+    title('RastersByFreq')
+    set(gca,'YTick',dbRasterLabels(:,3))
+    set(gca,'YTickLabel',rasterTicks)
+    ylim([2 s.SoundData.ToneRepetitions*numFreqs])
+    xlim(rasterWindow)
+    set(gca,'Ydir','reverse')
+
+    %plot out velocity changes
+    subplot(2,4,4)
+    imagesc(squeeze(velAverages(:,:))',[velMin velMax])
+    colormap('parula')
+    colorbar
+    set(gca,'XTick',velRasterAxis(:,2));
+    set(gca,'XTickLabel',velRasterAxis(:,1));
+    title('Velocity Heatmap')
+
+    %plot tuning curve
+    subplot(2,1,2)
+    tester = reshape(s.(s.DesignationName{plotInd}).PhotoAveragesConv,[],1);
+    graphMax = max(tester);
+    graphMin = min(tester);
+    plot(smooth(tester,round(frameRate/2)))
+    hold on
+    spaceLength = length(s.(s.DesignationName{plotInd}).PhotoAveragesConv);
+    for i = 1:numFreqs
+        plot([spaceLength*i spaceLength*i],[graphMin graphMax],'k','LineWidth',2)
+        plot([spaceLength*(i-1)+frameRate*rasterWindow(1)*-1 spaceLength*(i-1)+frameRate*rasterWindow(1)*-1],[graphMin graphMax],'r','LineWidth',1)
+        plot([spaceLength*(i-1)+frameRate*(rasterWindow(1)*-1+1) spaceLength*(i-1)+frameRate*(rasterWindow(1)*-1+1)],[graphMin graphMax],'r','LineWidth',1)
+    end
+    xlim([1 length(tester)])
+    ylim([graphMin graphMax])
 
 
-    spikeGraphName = strcat(fileName,'Figure');
+    spikeGraphName = strcat(fileName,'unit',num2str(plotInd),'Figure');
 
     savefig(hFig,spikeGraphName);
 
@@ -686,22 +742,6 @@ for ind = 1:numUnits
 end
 
 
-for ind = 1:numUnits
-    tester = s.(s.DesignationName{ind}).PhotoAverages;
-    tester = reshape(tester,[],1);
-    graphMax = max(tester);
-    graphMin = min(tester);
-    figure
-    plot(tester)
-    hold on
-    for i = 1:numFreqs-1
-        plot([161*i 161*i],[graphMin graphMax],'k','LineWidth',2)
-        plot([161*(i-1)+60 161*(i-1)+60],[graphMin graphMax],'r','LineWidth',1)
-    end
-end
-
-
-
 saveName = strcat(fileName,'Analysis','.mat');
 fname = saveName;
 pname = pwd;
@@ -710,6 +750,6 @@ save(fullfile(pname,fname),'s');
 
 
 diary off
-end
+% end
 
 
