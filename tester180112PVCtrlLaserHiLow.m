@@ -36,17 +36,30 @@ pvHiRateMean = mean(averageHistHi(pvs,:));
 pvLowZMean = mean(averageZLow(pvs,:));
 pvHiZMean = mean(averageZHi(pvs,:));
 
-msnLowRateMean = interp1([1:300],msnLowRateMean,[1:5/2:300]);
-msnHiRateMean = interp1([1:300],msnHiRateMean,[1:5/2:300]);
+% msnLowRateMean = interp1([1:300],msnLowRateMean,[1:5/2:300]);
+% msnHiRateMean = interp1([1:300],msnHiRateMean,[1:5/2:300]);
+% 
+% msnLowZMean = interp1([1:300],msnLowZMean,[1:5/2:300]);
+% msnHiZMean = interp1([1:300],msnHiZMean,[1:5/2:300]);
+% 
+% pvLowRateMean = interp1([1:300],pvLowRateMean,[1:5/2:300]);
+% pvHiRateMean = interp1([1:300],pvHiRateMean,[1:5/2:300]);
+% 
+% pvLowZMean = interp1([1:300],pvLowZMean,[1:5/2:300]);
+% pvHiZMean = interp1([1:300],pvHiZMean,[1:5/2:300]);
 
-msnLowZMean = interp1([1:300],msnLowZMean,[1:5/2:300]);
-msnHiZMean = interp1([1:300],msnHiZMean,[1:5/2:300]);
 
-pvLowRateMean = interp1([1:300],pvLowRateMean,[1:5/2:300]);
-pvHiRateMean = interp1([1:300],pvHiRateMean,[1:5/2:300]);
+msnLowRateMean = interp1([1:300],msnLowRateMean,[1:4:300]);
+msnHiRateMean = interp1([1:300],msnHiRateMean,[1:4:300]);
 
-pvLowZMean = interp1([1:300],pvLowZMean,[1:5/2:300]);
-pvHiZMean = interp1([1:300],pvHiZMean,[1:5/2:300]);
+msnLowZMean = interp1([1:300],msnLowZMean,[1:4:300]);
+msnHiZMean = interp1([1:300],msnHiZMean,[1:4:300]);
+
+pvLowRateMean = interp1([1:300],pvLowRateMean,[1:4:300]);
+pvHiRateMean = interp1([1:300],pvHiRateMean,[1:4:300]);
+
+pvLowZMean = interp1([1:300],pvLowZMean,[1:4:300]);
+pvHiZMean = interp1([1:300],pvHiZMean,[1:4:300]);
 
 msnLowRateStd = std(averageHistLow(msns,:))/sqrt(length(msns));
 msnHiRateStd = std(averageHistHi(msns,:))/sqrt(length(msns));
@@ -60,17 +73,29 @@ pvHiRateStd = std(averageHistHi(pvs,:))/sqrt(length(pvs));
 pvLowZStd = std(averageZLow(pvs,:))/sqrt(length(pvs));
 pvHiZStd = std(averageZHi(pvs,:))/sqrt(length(pvs));
 
-msnLowRateStd = interp1([1:300],msnLowRateStd,[1:5/2:300]);
-msnHiRateStd = interp1([1:300],msnHiRateStd,[1:5/2:300]);
+% msnLowRateStd = interp1([1:300],msnLowRateStd,[1:5/2:300]);
+% msnHiRateStd = interp1([1:300],msnHiRateStd,[1:5/2:300]);
+% 
+% msnLowZStd = interp1([1:300],msnLowZStd,[1:5/2:300]);
+% msnHiZStd = interp1([1:300],msnHiZStd,[1:5/2:300]);
+% 
+% pvLowRateStd = interp1([1:300],pvLowRateStd,[1:5/2:300]);
+% pvHiRateStd = interp1([1:300],pvHiRateStd,[1:5/2:300]);
+% 
+% pvLowZStd = interp1([1:300],pvLowZStd,[1:5/2:300]);
+% pvHiZStd = interp1([1:300],pvHiZStd,[1:5/2:300]);
 
-msnLowZStd = interp1([1:300],msnLowZStd,[1:5/2:300]);
-msnHiZStd = interp1([1:300],msnHiZStd,[1:5/2:300]);
+msnLowRateStd = interp1([1:300],msnLowRateStd,[1:4:300]);
+msnHiRateStd = interp1([1:300],msnHiRateStd,[1:4:300]);
 
-pvLowRateStd = interp1([1:300],pvLowRateStd,[1:5/2:300]);
-pvHiRateStd = interp1([1:300],pvHiRateStd,[1:5/2:300]);
+msnLowZStd = interp1([1:300],msnLowZStd,[1:4:300]);
+msnHiZStd = interp1([1:300],msnHiZStd,[1:4:300]);
 
-pvLowZStd = interp1([1:300],pvLowZStd,[1:5/2:300]);
-pvHiZStd = interp1([1:300],pvHiZStd,[1:5/2:300]);
+pvLowRateStd = interp1([1:300],pvLowRateStd,[1:4:300]);
+pvHiRateStd = interp1([1:300],pvHiRateStd,[1:4:300]);
+
+pvLowZStd = interp1([1:300],pvLowZStd,[1:4:300]);
+pvHiZStd = interp1([1:300],pvHiZStd,[1:4:300]);
 
 %readjust binning so that matches number of points with other recordings.
 %this should make for 120 bins
