@@ -1,6 +1,6 @@
 %This is meant to be wrapper function for analysis of pavlovian behavior
 %with photometry. This should be executed on a per animal basis. 
-
+function [] = analysisWrapperPhotPavlov(targetPath);
 clear
 
 %set parameters
@@ -637,6 +637,11 @@ print(hFig,'condensed dFoF vs Licking','-dpdf','-r0')
 
 
 
+newFileName = strcat(targetFiles{1}(1:9),'.mat');
+
+save(newFileName);
+
+
 %now lets try calculation ROC (again Q_Q). this is for calculating how well
 %photometry predicts trial type. Not sure why i'm recalculating this here. 
 
@@ -893,38 +898,38 @@ auc.locoValAUC = locoValAUC;
 
 
 %now lets try for licks
-
-keyVals = zeros(3,1);
-
-keyVals(1,1) = prefScore(1);
-keyVals(1,2) = dayBig(1,1);
-keyVals(1,3) = dayBig(2,1);
-keyVals(1,4) = dayBig(5,1);
-keyVals(1,5) = dayBig(6,1);
-keyVals(1,6) = AUCoverall(1);
-keyVals(1,7) = trueAUC(1);
-
-keyVals(2,1) = prefScore(targetInd);
-keyVals(2,2) = dayBig(1,targetInd);
-keyVals(2,3) = dayBig(2,targetInd);
-keyVals(2,4) = dayBig(5,targetInd);
-keyVals(2,5) = dayBig(6,targetInd);
-keyVals(2,6) = AUCoverall(targetInd);
-keyVals(2,7) = trueAUC(targetInd);
-
-keyVals(3,1) = prefScore(end);
-keyVals(3,2) = dayBig(1,end);
-keyVals(3,3) = dayBig(2,end);
-keyVals(3,4) = dayBig(5,end);
-keyVals(3,5) = dayBig(6,end);
-keyVals(3,6) = AUCoverall(end);
-keyVals(3,7) = trueAUC(end);
-
-figure
-hold on
-% plot(keyVals(:,1),'g')
-plot(keyVals(:,2))
-plot(keyVals(:,3),'r')
+% 
+% keyVals = zeros(3,1);
+% 
+% keyVals(1,1) = prefScore(1);
+% keyVals(1,2) = dayBig(1,1);
+% keyVals(1,3) = dayBig(2,1);
+% keyVals(1,4) = dayBig(5,1);
+% keyVals(1,5) = dayBig(6,1);
+% keyVals(1,6) = AUCoverall(1);
+% keyVals(1,7) = trueAUC(1);
+% 
+% keyVals(2,1) = prefScore(targetInd);
+% keyVals(2,2) = dayBig(1,targetInd);
+% keyVals(2,3) = dayBig(2,targetInd);
+% keyVals(2,4) = dayBig(5,targetInd);
+% keyVals(2,5) = dayBig(6,targetInd);
+% keyVals(2,6) = AUCoverall(targetInd);
+% keyVals(2,7) = trueAUC(targetInd);
+% 
+% keyVals(3,1) = prefScore(end);
+% keyVals(3,2) = dayBig(1,end);
+% keyVals(3,3) = dayBig(2,end);
+% keyVals(3,4) = dayBig(5,end);
+% keyVals(3,5) = dayBig(6,end);
+% keyVals(3,6) = AUCoverall(end);
+% keyVals(3,7) = trueAUC(end);
+% 
+% figure
+% hold on
+% % plot(keyVals(:,1),'g')
+% plot(keyVals(:,2))
+% plot(keyVals(:,3),'r')
 
 
 
@@ -941,4 +946,6 @@ plot(keyVals(:,3),'r')
 
 newFileName = strcat(targetFiles{1}(1:9),'.mat');
 
-save(newFileName,'bigStore','prefScore','condensedBig','condensedSig','keyVals','auc','store');
+save(newFileName);
+
+end
