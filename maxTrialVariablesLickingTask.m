@@ -35,6 +35,7 @@ cueTimeRew2 = [];
 cueTimePun = [];
 cueTimeNA = [];
 playTime = [];
+rewTrialTime = [];
 
 lickTimes = [];
 lickIndex = 1;
@@ -69,6 +70,7 @@ while ischar(tline) %repeats loop as long as tline has characters
                 cueTimePun(trialNum) = 0;
                 cueTimeNA(trialNum) = 0;
                 playTime(trialNum) = 0;
+                rewTrialTime(trialNum) = 0;
             end
 % %             
 % % %             This updates trialType so I can easily access it.
@@ -90,6 +92,12 @@ while ischar(tline) %repeats loop as long as tline has characters
             if ~isempty(strfind(eventStrings{eventLineNum},'Play'))
                 playTime(trialNum) = str2double(tline(1:(findSpaces(1)-1)));
             end
+            
+            if ~isempty(strfind(eventStrings{eventLineNum},'RewTrial')) & isempty(strfind(eventStrings{eventLineNum},'freeRewTrials'))
+                rewTrialTime(trialNum) = str2double(tline(1:(findSpaces(1)-1)));
+            end
+            
+            
             
             %The following three are for important trial landmarks,
             %including sound on, sound off, and reward delivery
@@ -223,6 +231,7 @@ trialStates.cueTimeRew2 = cueTimeRew2;
 trialStates.cueTimePun = cueTimePun;
 trialStates.cueTimeNA = cueTimeNA;
 trialStates.playTime = playTime;
+trialStates.rewTrialTime = rewTrialTime;
 
 trialParams.mouseID = mouseID;
 trialParams.weight = weight;
