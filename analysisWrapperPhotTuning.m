@@ -9,6 +9,10 @@ masterIndex = strfind(targetFiles,'ML');
 masterIndex = find(not(cellfun('isempty', masterIndex)));
 targetFiles = targetFiles(masterIndex);
 
+% masterIndex = strfind(targetFiles,'Analysis');
+% masterIndex = find(not(cellfun('isempty', masterIndex)));
+% targetFiles = targetFiles(masterIndex);
+
 numFiles = length(targetFiles);
 
 for bigInd = 1:numFiles
