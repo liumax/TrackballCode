@@ -739,6 +739,8 @@ for plotInd = 1:numUnits
     pos = get(hFig,'Position');
     set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
     print(hFig,spikeGraphName,'-dpdf','-r0')
+    
+    close
 end
 
 
