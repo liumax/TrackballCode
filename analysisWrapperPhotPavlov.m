@@ -888,6 +888,13 @@ title('AUC Calculation for Photometry Kphoto GphotoOverall G-peakPhoto Rloco BLi
 ylabel('AUC Score')
 xlabel('Days')
 
+savefig(hFig,'AUCPlot');
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,'AUC Score','-dpdf','-r0')
 
 auc.trueAUC = trueAUC;
 auc.overallAUC = AUCoverall;

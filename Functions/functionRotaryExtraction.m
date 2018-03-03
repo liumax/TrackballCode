@@ -43,6 +43,18 @@ D1FileName = D1FileName{1};
 dio1Times = double(DIO1Data.fields(1).data)/sampRate;
 dio1States = double(DIO1Data.fields(2).data);
 
+%and for D2
+[D2FileName] = functionFileFinder(subFoldersCell,'DIO','D2');
+if length(D2FileName) == 0
+    [D2FileName] = functionFileFinder(subFoldersCell,'DIO','Din2');
+end
+D2FileName = D2FileName{1};
+%pull data from targeted files.
+[DIO2Data] = readTrodesExtractedDataFile(D2FileName);
+
+dio2Times = double(DIO2Data.fields(1).data)/sampRate;
+dio2States = double(DIO2Data.fields(2).data);
+
 %turns out i wired things up funny, DIO4 is actually the first one to cross
 %the plastic in forward motion. XD
 
@@ -53,8 +65,8 @@ dio3States = double(DIO3Data.fields(2).data);
 dio4Times = double(DIO4Data.fields(1).data)/sampRate;
 dio4States = double(DIO4Data.fields(2).data);
 
-timeMin = min([dio1Times;dio3Times;dio4Times])-10;
-timeMax = max([dio1Times;dio3Times;dio4Times])+ 10;
+timeMin = min([dio1Times;dio3Times;dio4Times;dio2Times])-10;
+timeMax = max([dio1Times;dio3Times;dio4Times;dio2Times])+ 10;
 
 %the first values are initialized values when recording starts. These will
 %help track the direction of the wheel.
