@@ -33,7 +33,7 @@
 function [sigResp] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,trialNum,minSpikes,sigCalcBin,baselineWindow,zLimit,minSigSpikes,smoothWindow);
 
 baselineSpikes = functionBasicRaster(spikeTimes,alignTimes,baselineWindow);
-inputRaster = functionBasicRaster(spikeTimes,alignTimes,calcWindow);
+inputRaster = functionBasicRaster(spikeTimes,alignTimes,[calcWindow(1)-(round(smoothWindow/2)*sigCalcBin) calcWindow(2)+(round(smoothWindow/2)*sigCalcBin)]);
 inputRaster = inputRaster(:,1);
 baselineVector = [baselineWindow(1) + sigCalcBin/2:sigCalcBin:baselineWindow(2)];
 
@@ -60,10 +60,16 @@ end
 
 %% Now we use the  distribution and percentiles to calculate positive significant responses
 %generate vector for bin centers for histogram
-targetHistVector = [calcWindow(1) + sigCalcBin/2: sigCalcBin:calcWindow(2)];
+targetHistVector = [calcWindow(1)-(round(smoothWindow/2)*sigCalcBin) + sigCalcBin/2: sigCalcBin:calcWindow(2)+(round(smoothWindow/2)*sigCalcBin)]; %180302 added in code to have histogram overlap over both edges so that smoothing is more accurate. 
 %calculate histogram
 targetHist = hist(inputRaster,targetHistVector);
 targetHist = smooth(reshape(targetHist,[],1)/sigCalcBin/trialNum,smoothWindow);
+% length(targetHist)
+%remove edges after smoothing
+targetHist(1:(round(smoothWindow/2))) = [];
+targetHist(end-round(smoothWindow/2)+1:end) = [];
+% length(targetHist)
+
 %allocate space for information about significance
 targetHist(:,2:length(percentileRange)+1) = zeros;
 %find all values above specific thresholds
@@ -88,10 +94,14 @@ for respInd = 1:length(percentileRange)
     targetHist(sigFinder,length(percentileRange)+respInd+1) = 1;
 end
 
-if length(find(targetHist(:,2:end)>0))>minSigSpikes;
-    sigSpike = 1;
-else
-    sigSpike = 0;
+if length(find(targetHist(:,3)>0))>minSigSpikes; %180302 adjusted so that this can work on just the 0.01 percentile values. 
+    sigSpikePos = 1;
+elseif length(find(targetHist(:,6)>0))>minSigSpikes;
+    sigSpikeNeg = 1;
+elseif  length(find(targetHist(:,3)>0))<=minSigSpikes;
+    sigSpikePos = 0;
+elseif  length(find(targetHist(:,6)>0))<=minSigSpikes;
+    sigSpikeNeg = 0;
 end
 
 %% save data!
@@ -105,7 +115,8 @@ else
     sigResp.Warning = 1; %warning indicates baseline was too low for anything.
 end
 sigResp.SpikeNumber = length(baselineSpikes);
-sigResp.SigSpike = sigSpike;
+sigResp.SigSpikePos = sigSpikePos;
+sigResp.SigSpikeNeg = sigSpikeNeg;
 sigResp.MaxResp = max(targetHist(:,1));
 
 end
