@@ -17,6 +17,71 @@ for i = 1:length(fileNames)
         averageZLow(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistLow - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/mean(s.(s.DesignationName{j}).HistogramLaser(1:100));
         averageZHi(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistHi - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/mean(s.(s.DesignationName{j}).HistogramLaser(1:100));
     end
+        
+    
+    jumpsBack = round((s.Parameters.RasterWindow(1))/s.Parameters.InterpolationStepRotary);
+    jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
+    
+    
+    velRaster = s.VelocityRasterLow;
+    %pull velocity rasters
+    
+    preMean = mean(velRaster(1:-jumpsBack,:));
+    preZeroFind = find(preMean == 0);
+%     figure
+%     plot(velRaster(:,preZeroFind))
+
+    laserMean = mean(velRaster(-jumpsBack:-jumpsBack*2,:));
+    laserZeroFind = find(laserMean == 0);
+%     figure
+%     plot(velRaster(:,laserZeroFind))
+
+    [C ia ib] = intersect(preZeroFind,laserZeroFind);
+    preZeroFind(ia) = [];
+    laserZeroFind(ib) = [];
+
+    fullStopMean = mean(velRaster(1:-jumpsBack*2,:));
+    fullStopZeroFind = find(fullStopMean == 0);
+%     figure
+%     plot(velRaster(:,fullStopZeroFind))
+
+    %find "running" trials
+    combFind = sort([preZeroFind,laserZeroFind,fullStopZeroFind]);
+    fullVelFind = [1:length(s.Timing.LaserTimes)];
+    fullVelFind(combFind) = [];
+    
+    typeStoreLow(i,:)  = [length(fullVelFind) length(fullStopZeroFind) length(laserZeroFind) length(preZeroFind) length(s.Timing.LaserTimes)];
+    
+    
+    velRaster = s.VelocityRasterHi;
+    %pull velocity rasters
+    
+    preMean = mean(velRaster(1:-jumpsBack,:));
+    preZeroFind = find(preMean == 0);
+%     figure
+%     plot(velRaster(:,preZeroFind))
+
+    laserMean = mean(velRaster(-jumpsBack:-jumpsBack*2,:));
+    laserZeroFind = find(laserMean == 0);
+%     figure
+%     plot(velRaster(:,laserZeroFind))
+
+    [C ia ib] = intersect(preZeroFind,laserZeroFind);
+    preZeroFind(ia) = [];
+    laserZeroFind(ib) = [];
+
+    fullStopMean = mean(velRaster(1:-jumpsBack*2,:));
+    fullStopZeroFind = find(fullStopMean == 0);
+%     figure
+%     plot(velRaster(:,fullStopZeroFind))
+
+    %find "running" trials
+    combFind = sort([preZeroFind,laserZeroFind,fullStopZeroFind]);
+    fullVelFind = [1:length(s.Timing.LaserTimes)];
+    fullVelFind(combFind) = [];
+    
+    typeStoreHi(i,:)  = [length(fullVelFind) length(fullStopZeroFind) length(laserZeroFind) length(preZeroFind) length(s.Timing.LaserTimes)];
+    
     counter = counter + size(s.MasterSheet,1);
 end
 
