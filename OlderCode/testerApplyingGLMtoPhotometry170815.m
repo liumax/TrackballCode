@@ -5,7 +5,7 @@
 rasterWindow = s.Parameters.RasterWindow;
 
 newWindow = [-1,3];
-timeBin = 0.1;
+timeBin = 0.25;
 
 %pull photometry traces
 toneRaster = s.PhotoRaster.ToneRaster;
@@ -53,7 +53,61 @@ for i = 1:length(s.MBED.ToneDelivery)
 end
 
 
-%now perform GLM fits
+%now perform GLM fits without velocity variables
+for i = 1:length(newVector)
+    X(:,1) = toneOrder(i,:);
+%     X(:,2) = newVel(i,:);
+    X(:,2) = newLicks(i,:);
+    X = zscore(X);
+    %calculate variance inflation factor
+    R0 = corrcoef(X); % correlation matrix
+    V=diag(inv(R0))';
+%     Variance inflation factor (VIF) quantifies how much the variance is 
+% inflated due to collinearity of regressor matrix columns. 
+% i_th entry in the output vector is the variance inflation factor 
+% for the i_th predictor, which indicates how much the variance of 
+% the i_th predictor is inflated due to collinearity.
+    %store
+    varStore(:,i) = V;
+    y = newPhot(i,:);
+    y = zscore(y);
+    [beta non stats] = glmfit(X,y);
+    betaStore(:,i) = beta;
+    statStore(:,i) = stats.p;
+end
+
+hFig= figure
+set(hFig, 'Position', [10 80 1240 850])
+subplot(2,2,2)
+hold on
+plot(betaStore(2:end,:)')
+legend('ToneOrder','Licks')
+for i = 2:size(betaStore,1)
+    findSig = find(statStore(i,:) < 0.05);
+    plot(findSig,betaStore(i,findSig),'r*')
+end
+set(gca,'XTick',[1:10:length(newVector)]);
+set(gca,'XTickLabel',[newWindow(1):newWindow(2)]);
+title(('GLM Fit for Two Factor'))
+xlabel('Time(s)')
+ylabel('Beta Coefficient')
+
+subplot(2,2,4)
+plot(varStore')
+set(gca,'XTick',[1:10:length(newVector)]);
+set(gca,'XTickLabel',[newWindow(1):newWindow(2)]);
+title('Variance Inflation Factor')
+xlabel('Time(s)')
+ylabel('VIF')
+
+
+
+X = [];
+varStore = [];
+betaStore = [];
+statStore = [];
+
+%now perform GLM fits with all three variables
 
 for i = 1:length(newVector)
     X(:,1) = toneOrder(i,:);
@@ -77,8 +131,8 @@ for i = 1:length(newVector)
     statStore(:,i) = stats.p;
 end
 
-hFig= figure
-subplot(2,1,1)
+
+subplot(2,2,1)
 hold on
 plot(betaStore(2:end,:)')
 legend('ToneOrder','Velocity','Licks')
@@ -88,13 +142,11 @@ for i = 2:size(betaStore,1)
 end
 set(gca,'XTick',[1:10:length(newVector)]);
 set(gca,'XTickLabel',[newWindow(1):newWindow(2)]);
-title(strcat('GLM Fit for',testNames{bigInd}))
+title(strcat('GLM Fit for',targetFiles{bigInd}))
 xlabel('Time(s)')
 ylabel('Beta Coefficient')
 
-
-
-subplot(2,1,2)
+subplot(2,2,3)
 plot(varStore')
 set(gca,'XTick',[1:10:length(newVector)]);
 set(gca,'XTickLabel',[newWindow(1):newWindow(2)]);
@@ -102,7 +154,7 @@ title('Variance Inflation Factor')
 xlabel('Time(s)')
 ylabel('VIF')
 
-spikeGraphName = strcat(testNames{bigInd}(1:end-4),'GLMFigure');
+spikeGraphName = strcat(targetFiles{bigInd}(1:end-4),'GLMFigure');
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -112,9 +164,13 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
+
+
+
 X = [];
 varStore = [];
 betaStore = [];
 newVel = [];
 newPhot = [];
 newLicks = [];
+statStore = [];
