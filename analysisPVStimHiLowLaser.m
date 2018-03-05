@@ -9,21 +9,29 @@ s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means no
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROCLoco = 0;
 
-
-s.Parameters.RasterWindow = [-2 4]; %seconds for raster window. 
+% s.Parameters.RasterWindow = [-2 4]; %seconds for raster window. 
+s.Parameters.RasterWindow = [-5 10]; %seconds for raster window. 
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.05; %histogram bin size in seconds
 s.Parameters.trodesFS = 30000;%trodes sampling rate
 
 %bins of interest
-s.Parameters.PreBin = [-2,0];
-s.Parameters.PostBin = [2,4];
-s.Parameters.LaserBin = [0,2];
+% s.Parameters.PreBin = [-2,0];
+% s.Parameters.PostBin = [2,4];
+% s.Parameters.LaserBin = [0,2];
+% 
+% s.Parameters.ResPreBin = [-2,-1];
+% s.Parameters.ResPostBin = [3,4];
+% s.Parameters.ResLaserBin = [1,2];
 
-s.Parameters.ResPreBin = [-2,-1];
-s.Parameters.ResPostBin = [3,4];
-s.Parameters.ResLaserBin = [1,2];
+s.Parameters.PreBin = [-5,0];
+s.Parameters.PostBin = [5,10];
+s.Parameters.LaserBin = [0,5];
+
+s.Parameters.ResPreBin = [-5,-1];
+s.Parameters.ResPostBin = [6,10];
+s.Parameters.ResLaserBin = [1,5];
 
 
 
@@ -237,6 +245,9 @@ for i = 1:length(dioTimes)
         disp(i)
     end
 end
+s.VelocityRaster = velRaster;
+s.VelocityRasterLow = velRaster(:,lowTrials);
+s.VelocityRasterHi = velRaster(:,hiTrials);
 
 averageVel = mean(velRaster,2);
 avVelLow = mean(velRaster(:,lowTrials),2);
