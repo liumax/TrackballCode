@@ -2,10 +2,17 @@
 %recording from my big rig. 
 
 % function [s] = analysisPhotometryTuning(fileName);
-fileName = '180105_ML171117A_Tuning';
+% fileName = '180105_ML171117A_Tuning';
 % fileName = '180105_ML171117B_Tuning';
 % fileName = '180105_ML171119A_Tuning';
 % fileName = '180105_ML171119B_Tuning';
+% fileName = '180201_ML171117A_InscopixTuning';
+% fileName = '180201_ML171117B_InscopixTuning';
+% fileName = '180205_ML171117A_InscopixTuning';
+fileName = '180201_ML171117B_InscopixTuning';
+
+% traceName = strcat(fileName(1:end-7),'_GMC_Crop_results.mat'); %for first set from 180105
+traceName = strcat(fileName(1:16),'_GMC_Crop_results.mat'); % for second set.
 
 %% Parameters
 
@@ -207,7 +214,7 @@ s.Locomotion = locoData;
 disp('Locomotion Data Loaded')
 
 %% Now pull up trace data!
-traceName = strcat(fileName(1:end-7),'_GMC_Crop_results.mat');
+% traceName = strcat(fileName(1:end-7),'_GMC_Crop_results.mat');
 load(traceName);
 traces = neuron_results.C;
 numUnits = size(traces,1);
