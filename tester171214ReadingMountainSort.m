@@ -2,6 +2,11 @@
 
 fileName = '171206_ML171117F_R10_2000_PVStimTwoLaser50Pulse';
 
+%% sets up file saving stuff
+saveName = strcat(fileName,'LaserStimAnalysis','.mat');
+fname = saveName;
+pname = pwd;
+
 %% Set parameters!
 toggleROCLoco = 0;
 %commenting out RPV code. meant to do this within mountainsort.
@@ -297,6 +302,8 @@ for i = 1:length(dioTimes)
 end
 
 averageVel = mean(velRaster,2);
+avVel1 = mean(velRaster(:,1:s.Parameters.TrialUnit),2);
+avVel2 = mean(velRaster(:,s.Parameters.TrialUnit+1:s.Parameters.TrialUnit*2),2);
 
 %generate vectors for plotting things out later. 
 velVector = [rasterWindow(1):s.Parameters.InterpolationStepRotary:rasterWindow(2)];
@@ -554,7 +561,8 @@ title('Overall Velocity Trace')
 %plot rasterized velocities
 subplot(3,3,7)
 hold on
-plot(velVector,averageVel,'k')
+plot(velVector,avVel1,'b','LineWidth',2)
+plot(velVector,avVel2,'g','LineWidth',2)
 xlim([velVector(1) velVector(end)]);
 title('Average Velocity for Tone(k) Laser(b) ToneLaser(g)')
 
@@ -568,7 +576,7 @@ title('Average Velocity for Tone(k) Laser(b) ToneLaser(g)')
 
 
 %plot modulation index of pre vs laser for laser only trials
-subplot(3,3,5)
+subplot(3,3,2)
 %calculate modulation index, which is (laser - pre)/(pre + laser)
 modInd1 = (master(:,indLaserLowAverage)-master(:,indPreLowAverage))./(master(:,indLaserLowAverage) + master(:,indPreLowAverage));
 modInd2 = (master(:,indLaserHiAverage)-master(:,indPreHiAverage))./(master(:,indLaserHiAverage) + master(:,indPreHiAverage));
