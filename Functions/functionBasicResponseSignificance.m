@@ -96,11 +96,14 @@ end
 
 if length(find(targetHist(:,3)>0))>minSigSpikes; %180302 adjusted so that this can work on just the 0.01 percentile values. 
     sigSpikePos = 1;
-elseif length(find(targetHist(:,6)>0))>minSigSpikes;
+end
+if length(find(targetHist(:,6)>0))>minSigSpikes;
     sigSpikeNeg = 1;
-elseif  length(find(targetHist(:,3)>0))<=minSigSpikes;
+end
+if  length(find(targetHist(:,3)>0))<=minSigSpikes;
     sigSpikePos = 0;
-elseif  length(find(targetHist(:,6)>0))<=minSigSpikes;
+end
+if  length(find(targetHist(:,6)>0))<=minSigSpikes;
     sigSpikeNeg = 0;
 end
 
