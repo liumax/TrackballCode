@@ -23,9 +23,9 @@
 function [s] = analysisBasicTuningWithWhite(fileName);
 %% Constants and things you might want to tweak
 %TOGGLES FOR ENABLING/DISABLING FEATURES
-s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
+s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
-toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
+toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
@@ -570,7 +570,7 @@ for i = 1:numUnits
     
     disp(strcat('Baseline Spikes:',num2str(generalResponseHist.SpikeNumber),' Unit:',(desigNames{i})))
     s.BaselineSpikes = generalResponseHist.SpikeNumber;
-    if generalResponseHist.Warning == 0 & generalResponseHist.SigSpike == 1
+    if generalResponseHist.Warning == 0 & generalResponseHist.SigSpikePos == 1 
         s.SignificantSpikes(i) = 1;
     end
     
@@ -614,7 +614,12 @@ for i = 1:numUnits
         s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
             responseHistHolder{k,l} = responseHist;
         end
-        freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
+        if numDBs == 1
+            freqSpecHist(k,:) = (squeeze(organizedHist(k,:,:)));
+        elseif numDBs > 1
+            freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
+        end
+        
     end
         disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
     s.(desigNames{i}).AllRasters = fullRasterData;
@@ -1012,7 +1017,12 @@ else %in the case you dont want to do tuning selection, default to normal system
         plot([0 0],[ylim],'b');
         plot([toneDur toneDur],[ylim],'b');
         rasterFreqLines = zeros(numFreqs,2);
-        rasterFreqLines(:,1) = cumsum(sum(matrixTrialNum'));
+        if numDBs ==1
+            rasterFreqLines(:,1) = cumsum((matrixTrialNum'));
+        elseif numDBs > 1
+            rasterFreqLines(:,1) = cumsum(sum(matrixTrialNum'));
+        end
+        
         rasterFreqLines(:,2) = uniqueFreqs;
         %this generates green lines separating by Frequency
         tempHold = 1;
