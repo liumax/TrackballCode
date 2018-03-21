@@ -58,6 +58,7 @@ for i = 1:numFiles
     masterHeader{end+1} = 'SpikeWidth';
     masterHeader{end+1} = 'signRankSigOfRestricted';
     masterHeader{end+1} = 'signRankSigOfNorm';
+    disp(strcat('Headings Generated for File',num2str(i),'/',num2str(numFiles)))
     %170905 need to do some repairs to add percentage of trials with
     %firing. 
     numCells = length(s.DesignationName);
@@ -67,12 +68,38 @@ for i = 1:numFiles
     spikeWidth = zeros(numCells,1);
     resSig = zeros(numCells,1);
     normSig = zeros(numCells,1);
+    numSpikes = zeros(numCells,1);
+    preITIratio = zeros(numCells,1);
+    preITInum = zeros(numCells,1);
     for j = 1:numCells
+        disp(strcat('Analyzing Cell #',num2str(j),'/',num2str(numCells)))
         %pull rasterLaser
         laserRasterData(j) = length(unique(s.(s.DesignationName{j}).RasterLaser(:,2)));
-        %also pull isi data. 
+        %also pull isi data. This is crude measure over entire firing
+        %period. 
         isiTimes = diff(s.(s.DesignationName{j}).SpikeTimes);
-        isiRatio(j) = length(find(isiTimes < 0.033))/length(isiTimes);
+        isiRatio(j) = length(find(isiTimes < 0.033 & isiTimes > 0.01))/length(isiTimes);
+        numSpikes(j) = length(s.(s.DesignationName{j}).SpikeTimes);
+        %now lets try pulling just from the baseline
+        itiCounter = 1;
+        preITIstore = [];
+        for k = 1:length(s.LaserData.LaserStartTimes)
+            %first, pull out spikes from ITIs
+            if k == 1
+                selSpikes = s.(s.DesignationName{j}).SpikeTimes(s.(s.DesignationName{j}).SpikeTimes < s.LaserData.LaserStartTimes(k));
+            else
+                selSpikes = s.(s.DesignationName{j}).SpikeTimes(s.(s.DesignationName{j}).SpikeTimes < s.LaserData.LaserStartTimes(k));
+                selSpikes = selSpikes(selSpikes>(s.LaserData.LaserEndTimes(k-1)+1));%adding in 1 second fudge factor to avoid the period immediately following laser offset. 
+            end
+            lengthSpikes = length(selSpikes);
+            if lengthSpikes > 1
+                preDiff = diff(selSpikes);
+                preITIstore(itiCounter:itiCounter + length(preDiff)-1) = preDiff;
+                itiCounter = itiCounter + length(preDiff);
+            end
+        end
+        preITIratio(j) = length(find(preITIstore < 0.033 & preITIstore > 0.01))/length(preITIstore);
+        preITInum(j) = length(preITIstore);
         %now lets try pulling spike width (half max)
         waves = s.(s.DesignationName{j}).AverageWaveForms;
         maxWave = max(waves);
@@ -98,7 +125,7 @@ for i = 1:numFiles
         normSig(j) = signrank(avFire,laserFire);
         
     end
-    
+    disp('Finished Cell Data, Storing in Master')
     laserRasterData = laserRasterData/numStims;
     
     
@@ -114,6 +141,9 @@ for i = 1:numFiles
     fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+4) = spikeWidth;
     fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+5) = resSig;
     fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+6) = normSig;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+7) = numSpikes;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+8) = preITIratio;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+9) = preITInum;
     fullMasterHeaders(:,i) = masterHeader;
     masterInd = masterInd + numUnits;
     
