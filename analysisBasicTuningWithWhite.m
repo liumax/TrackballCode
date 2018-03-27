@@ -22,6 +22,7 @@
 
 function [s] = analysisBasicTuningWithWhite(fileName);
 %% Constants and things you might want to tweak
+
 %TOGGLES FOR ENABLING/DISABLING FEATURES
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
@@ -62,6 +63,10 @@ s.Parameters.EDRTimeCol = 1;
 s.Parameters.EDRTTLCol = 3;
 s.Parameters.EDRPiezoCol = 2;
 
+%for cell type
+s.Parameters.PVLim = 0.0005;
+s.Parameters.ChatLim = 1.1;
+
 %for plotting speed vs firing
 s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display with velocity. 
 
@@ -78,6 +83,16 @@ disp('Parameters Set')
 saveName = strcat(fileName,'FullTuningAnalysis','.mat');
 fname = saveName;
 pname = pwd;
+%check to see if analysis file already exists.
+searchNames = what;
+searchNames = searchNames.mat;
+searchResult = strcmp(searchNames,saveName);
+if find(searchResult == 1) 
+    prevFile = 1;
+    disp('Previous Analysis Found!!')
+else
+    prevFile = 0;
+end
 
 %% Establishes folders and extracts files!
 homeFolder = pwd;
@@ -104,20 +119,48 @@ disp('Matclust Files Extracted')
 [s, truncatedNames] = functionMatclustExtraction(s.Parameters.RPVTime,...
     matclustFiles,s,s.Parameters.ClusterWindow,subFoldersCell);
 
-if toggleDuplicateElimination ==1
-    if length(s.DesignationName) > 1
-        disp('Now Selecting Based on xCORR')
-        [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
-            s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow,...
-            s.ShankDesignation,s.ShankMap,s.Shanks);
+%if a previous analysis file exists, I want to default to that selection of
+%duplicates, to avoid repeatedly choosing which units to save. 
+if prevFile == 0
+disp('No Previous Analysis, Performing Duplicate Elimination')
+    if toggleDuplicateElimination ==1
+        if length(s.DesignationName) > 1
+            disp('Now Selecting Based on xCORR')
+            [s] = functionDuplicateElimination(s,s.Parameters.DownSampFactor,...
+                s.Parameters.corrSlide,s.Parameters.ThresholdComparison,s.Parameters.trodesFS,s.Parameters.RPVTime,s.Parameters.ClusterWindow,...
+                s.ShankDesignation,s.ShankMap,s.Shanks);
+        end
+    else
+        disp('NOT EXECUTING DUPLICATE ELIMINATION')
     end
-else
-    disp('NOT EXECUTING DUPLICATE ELIMINATION')
+elseif prevFile == 1
+    disp('Using Existing Analysis for Duplicate Elimination')
+    n = load(saveName);
+    %load deleted units
+    s.DeletedUnits = n.s.DeletedUnits;
+    %now delete bad units
+    delUnits = fields(s.DeletedUnits);
+    for indCount = 1:length(delUnits)
+        s = rmfield(s,delUnits{indCount});
+    end
+    %replace designation array and names. 
+    s.DesignationArray = n.s.DesignationArray;
+    s.DesignationName = n.s.DesignationName;
+    
+    disp('Finished! Closing original file')
+    clear n
 end
+    
 %pull number of units, as well as names and designation array.
 numUnits = size(s.DesignationName,2);
 desigNames = s.DesignationName;
 desigArray = s.DesignationArray;
+
+
+%generate master array for 2-d storage of important values
+masterData = zeros(numUnits,10);
+masterHeader = cell(10,1);
+masterInd = 1;
 
 %% Extracts Sound Data from soundFile, including freq, db, reps.
 soundName = strcat(fileName,'.mat');
@@ -520,6 +563,7 @@ if edrToggle == 1
 end
 
 
+
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
 for i = 1:numUnits
     
@@ -547,6 +591,61 @@ for i = 1:numUnits
     averageSTD = std(averageSpikeHolder/(-s.Parameters.RasterWindow(1)));
     averageSTE = averageSTD/(sqrt(totalTrialNum-1));
     
+    %store average rate into master
+    masterData(i,masterInd) = averageRate;
+    masterHeader{i} = Average Rate;
+    masterInd = masterInd + 1;
+    
+    %now pull waveform data and isi data to categorize cells
+    waveForms = s.(desigNames{i}).AverageWaveForms;
+    
+    %find size of waveforms
+    waveSize = size(waveForms);
+
+    %find maximum waveform by max peak size
+    maxWave = max(waveForms);
+    [maxVal maxInd] = max(maxWave);
+
+    %chose the big wave, interpolate to fine degree
+    chosenWave = waveForms(:,maxInd);
+    interpVect = [1:0.1:40];
+    interpWave = interp1(1:40,chosenWave,interpVect,'spline');
+    
+    %now we need to find the peak. Find this starting at point 10. 
+
+    [pkVal pkInd] = max(interpWave(100:end));
+    pkInd = pkInd + 100 - 1;
+    %now we need to find the minimum following the peak
+
+    [troughVal troughInd] = min(interpWave(pkInd:end));
+    troughInd = troughInd + pkInd - 1;
+
+    peakTrough = (troughInd - pkInd)/300000;
+    
+    %find ISIs
+    isiTimes = diff(spikeTimes);
+    isiCov = std(isiTimes)/mean(isiTimes);
+    
+    masterData(i,masterInd) = peakTrough;
+    masterHeader(i,masterInd) = 'PeakTrough(ms)';
+    masterInd = masterInd + 1;
+    
+    masterData(i,masterInd) = isiCov;
+    masterHeader(i,masterInd) = 'isiCov';
+    masterInd = masterInd + 1;
+    
+    
+    if peakTrough < s.Parameters.PVLim
+        masterData(i,masterInd) = 1; %pv cell
+    elseif peakTrough > s.Parameters.PVLim & isiCov < s.Parameters.ChatLim
+        masterData(i,masterInd) = 2; %ChAT Cell
+    else
+        masterData(i,masterInd) = 0; %MSN
+    end
+    masterHeader(i,masterInd) = 'CellType';
+    masterInd = masterInd + 1;
+    
+    
     %calculates histograms of every single trial. 
     fullHistHolder = zeros(length(histBinVector),totalTrialNum);
     for k =1:totalTrialNum
@@ -573,6 +672,14 @@ for i = 1:numUnits
     if generalResponseHist.Warning == 0 & generalResponseHist.SigSpikePos == 1 
         s.SignificantSpikes(i) = 1;
     end
+    
+    masterData(i,masterInd) = generalResponseHist.SigSpikePos;
+    masterHeader(i,masterInd) = 'PosSigGenHist';
+    masterInd = masterInd + 1;
+    
+    masterData(i,masterInd) = generalResponseHist.SigSpikeNeg;
+    masterHeader(i,masterInd) = 'NegSigGenHist';
+    masterInd = masterInd + 1;
     
     %allocates empty array.
     organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
@@ -603,11 +710,16 @@ for i = 1:numUnits
                 targetRasters,length(targetTrials),2,targetTrials,s.Parameters.latBin,s.Parameters.histBin,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
             latePeakBinStore{k,l} = latPeakBinOut;
             latStore(k,l) = latPeakBinOut.ResponseLatency;
+            peakStoreFast(k,l) = latPeakBinOut.PeakRespFast;
+            peakStoreTone(k,l) = latPeakBinOut.PeakRespTone;
             peakStoreGen(k,l) = latPeakBinOut.PeakRespGen;
+            binStoreFast(k,l) = mean(latPeakBinOut.BinnedSpikesFast);
             binStoreTone(k,l) = mean(latPeakBinOut.BinnedSpikesTone);
             binStoreGen(k,l) = mean(latPeakBinOut.BinnedSpikesGen);
             probStoreTone(k,l) = latPeakBinOut.ProbSpikeTone;
             probStoreGen(k,l) = latPeakBinOut.ProbSpikeGen;
+            binSigVals(k,l,:) = latPeakBinOut.BinSigVals;
+            
             latPeakBinOut = [];
 %             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes(targetTrials),length(targetTrials),...
@@ -639,11 +751,19 @@ for i = 1:numUnits
     s.(desigNames{i}).SpecHistogramSig = responseHistHolder;
     s.(desigNames{i}).LatPeakBin = latePeakBinStore;
     s.(desigNames{i}).LatencyMap = latStore;
-    s.(desigNames{i}).PeakMap = peakStoreGen;
+    s.(desigNames{i}).PeakMapGen = peakStoreGen;
+    s.(desigNames{i}).PeakMapTone = peakStoreTone;
+    s.(desigNames{i}).BinFast = binStoreFast;
     s.(desigNames{i}).BinTone = binStoreTone;
     s.(desigNames{i}).BinGen = binStoreGen;
     s.(desigNames{i}).ProbTone = probStoreTone;
     s.(desigNames{i}).ProbGen = probStoreGen;
+    s.(desigNames{i}).BinSigVals = binSigVals;
+    
+    %store some values in masterData.
+    masterData(i,masterInd) = max(bigStoreTone(:,end));%find best frequency
+    masterHeader(i,masterInd) = 'BF';
+    masterInd = masterInd + 1;
     
     if toggleROC == 1
         [velOut] = functionLocomotionROC(spikeTimes,s.RotaryData.Velocity);
@@ -709,136 +829,225 @@ end
 %% Plotting
 
 if toggleTuneSelect == 1 %if you want tuning selection...
-    hFig = figure;
-    set(hFig, 'Position', [10 80 1240 850])
-    decisionTuning = zeros(numUnits,1);
+    %% tuning selection code. Commented out 180326
+%     hFig = figure;
+%     set(hFig, 'Position', [10 80 1240 850])
+%     decisionTuning = zeros(numUnits,1);
+%     for i = 1:numUnits
+%         %plots average waveform
+%         subplot(4,6,1)
+%         hold on
+%         plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
+%         title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
+%         %plots ISI
+%         subplot(4,6,2)
+%         hist(s.(desigNames{i}).ISIGraph,1000)
+%         histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
+%         line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+%         xlim(s.Parameters.ClusterWindow)
+%         title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+%             strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
+%         %Plot binned response during tone period
+%         subplot(4,3,4)
+%         imagesc(s.(desigNames{i}).BinTone')
+%         colormap(parula)
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Mean Binned Response (tone)')
+%         %Plot binned response during general period
+%         subplot(4,3,7)
+%         imagesc(s.(desigNames{i}).BinGen')
+%         colormap(parula)
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Mean Binned Response (general)')
+%         %Plot peak response during general period
+%         subplot(4,3,10)
+%         imagesc(s.(desigNames{i}).PeakMap')
+%         colormap(parula)
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Peak Response (general)')
+%         %plot velocity data
+%         subplot(4,3,6)
+%         hold on
+%         plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+%         plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+%         xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+%         ylim([-0.1,1])
+%         if toggleROC == 1
+%             title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+%         else
+%             title('Vel & Firing Rate')
+%         end
+%         %plot probability of response (tone)
+%         subplot(4,3,9)
+%         imagesc(s.(desigNames{i}).ProbTone')
+%         colormap(parula)
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Probability of Response (tone)')
+%         %plot probability of response (gen)
+%         subplot(4,3,12)
+%         imagesc(s.(desigNames{i}).ProbGen')
+%         colormap(parula)
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Probability of Response (general)')
+% 
+%         %plots rasters (chronological)
+%         subplot(3,3,2)
+%         plot(s.(desigNames{i}).AllRasters(:,1),...
+%             s.(desigNames{i}).AllRasters(:,2),'k.','markersize',4)
+%         hold on
+%         ylim([0 totalTrialNum])
+%         xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+%         plot([0 0],[ylim],'b');
+%         plot([toneDur toneDur],[ylim],'b');
+%         title({fileName;desigNames{i}},'fontweight','bold')
+%         set(0, 'DefaulttextInterpreter', 'none')
+%         %plots rasters (frequency and amplitude organized)
+%         subplot(3,3,5)
+%         plot(s.(desigNames{i}).AllRasters(:,1),...
+%             s.(desigNames{i}).AllRasters(:,3),'k.','markersize',4)
+%         hold on
+%         plot([0 0],[ylim],'b');
+%         plot([toneDur toneDur],[ylim],'b');
+%         rasterFreqLines = zeros(numFreqs,2);
+%         rasterFreqLines(:,1) = toneReps*size(uniqueDBs,1)/2:toneReps*size(uniqueDBs,1):totalTrialNum;
+%         rasterFreqLines(:,2) = uniqueFreqs;
+%         %this generates green lines separating by Frequency
+%         for k = 1:size(uniqueFreqs,1)
+%             plot(s.Parameters.RasterWindow,[toneReps*numDBs*k toneReps*numDBs*k],'g','LineWidth',1)
+%         end
+%         set(gca,'YTick',rasterFreqLines(:,1));
+%         set(gca,'YTickLabel',rasterFreqLines(:,2));
+%         set(gca,'Ydir','reverse')
+%         ylim([0 totalTrialNum])
+%         xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+%         title('Descending = increase in amplitude and freq')
+%         %plot heatmap organized by frequency
+%         subplot(3,3,8)
+%         imagesc(s.(desigNames{i}).FrequencyHistograms(:,:))
+%         colormap(parula)
+%         colorbar
+%         set(gca,'YTick',octaveRange(:,2));
+%         set(gca,'YTickLabel',octaveRange(:,1));
+%         set(gca,'XTick',[1:10:size(histBinVector,2)]);
+%         set(gca,'XTickLabel',histBinVector(1:20:end));
+%         histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
+%         histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
+%         line([histBinZero histBinZero],[0 numFreqs],'LineWidth',3,'Color','green')
+%         line([histBinZero histBinZero],[0 numFreqs],'LineWidth',2,'Color','black')
+%         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
+%         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
+%     %         title('Heatmap by Frequency and Time Max')
+%         title('Frequency Arranged Heatmap')
+%         % plot histogram.
+%         subplot(4,3,3)
+%         plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
+%         hold on
+%         plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+%         plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
+%         %plot significant values
+%         plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+%             s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1),...
+%             s.(desigNames{i}).AllHistogramSig.Histogram(...
+%             s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1,1),...
+%             'b*')
+%         plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+%             s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1),...
+%             s.(desigNames{i}).AllHistogramSig.Histogram(...
+%             s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1,1),...
+%             'bo')
+%         %plot negative values for first tuning
+%         plot(s.(desigNames{i}).AllHistogramSig.Centers(...
+%             s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1),...
+%             s.(desigNames{i}).AllHistogramSig.Histogram(...
+%             s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1,1),...
+%             'k*')
+%         plot([0 0],[ylim],'b');
+%         plot([toneDur toneDur],[ylim],'b');
+%         xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+%         title('Histogram')
+% 
+%         hold off
+%         spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
+%         savefig(hFig,spikeGraphName);
+% 
+%         %save as PDF with correct name
+%         set(hFig,'Units','Inches');
+%         pos = get(hFig,'Position');
+%         set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+%         print(hFig,spikeGraphName,'-dpdf','-r0')
+% 
+%         %ask for input! 
+%         promptCounter = 1; %This is used to run the while loop.
+%         whileCounter = 0; %this is the counter that gets updated to exit the loop
+% 
+%         while whileCounter ~= promptCounter
+%             try
+%                 prompt = 'How is this unit tuned? (excite(e)/inhib(i)/both(b)/none(n))';
+%                 str = input(prompt,'s');
+%                 if str~='n' & str~='e' & str~='i' & str~='b'
+%                     error
+%                 else
+%                     whileCounter = 1;
+%                 end
+%             catch
+%             end
+%         end
+%         if strfind(str,'e') | strfind(str,'i') | strfind(str,'b')
+%             decisionTuning(i) = 1;
+%         elseif strfind(str,'n')
+%             decisionTuning(i) = 0;
+%         end
+%         
+%         tuningType{i} = str;
+%         %clear figure.
+%         clf
+% 
+%     end
+%     s.TuningDecision = decisionTuning;
+%     s.TuningType = tuningType;
+%     close
+else %in the case you dont want to do tuning selection, default to normal system
     for i = 1:numUnits
+        hFig = figure;
+        set(hFig, 'Position', [10 80 1900 1000])
+        
+        %% Column 1
         %plots average waveform
-        subplot(4,6,1)
+        subplot(4,8,1)
         hold on
         plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
         title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
         %plots ISI
-        subplot(4,6,2)
+        subplot(4,8,2)
         hist(s.(desigNames{i}).ISIGraph,1000)
         histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
         line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
         xlim(s.Parameters.ClusterWindow)
         title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
             strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-        %Plot binned response during tone period
-        subplot(4,3,4)
-        imagesc(s.(desigNames{i}).BinTone')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Mean Binned Response (tone)')
-        %Plot binned response during general period
-        subplot(4,3,7)
-        imagesc(s.(desigNames{i}).BinGen')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Mean Binned Response (general)')
-        %Plot peak response during general period
-        subplot(4,3,10)
-        imagesc(s.(desigNames{i}).PeakMap')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Peak Response (general)')
-        %plot velocity data
-        subplot(4,3,6)
-        hold on
-        plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
-        plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
-        xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
-        ylim([-0.1,1])
-        if toggleROC == 1
-            title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
-        else
-            title('Vel & Firing Rate')
-        end
-        %plot probability of response (tone)
-        subplot(4,3,9)
-        imagesc(s.(desigNames{i}).ProbTone')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Probability of Response (tone)')
-        %plot probability of response (gen)
-        subplot(4,3,12)
-        imagesc(s.(desigNames{i}).ProbGen')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Probability of Response (general)')
 
-        %plots rasters (chronological)
-        subplot(3,3,2)
-        plot(s.(desigNames{i}).AllRasters(:,1),...
-            s.(desigNames{i}).AllRasters(:,2),'k.','markersize',4)
-        hold on
-        ylim([0 totalTrialNum])
-        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-        plot([0 0],[ylim],'b');
-        plot([toneDur toneDur],[ylim],'b');
-        title({fileName;desigNames{i}},'fontweight','bold')
-        set(0, 'DefaulttextInterpreter', 'none')
-        %plots rasters (frequency and amplitude organized)
-        subplot(3,3,5)
-        plot(s.(desigNames{i}).AllRasters(:,1),...
-            s.(desigNames{i}).AllRasters(:,3),'k.','markersize',4)
-        hold on
-        plot([0 0],[ylim],'b');
-        plot([toneDur toneDur],[ylim],'b');
-        rasterFreqLines = zeros(numFreqs,2);
-        rasterFreqLines(:,1) = toneReps*size(uniqueDBs,1)/2:toneReps*size(uniqueDBs,1):totalTrialNum;
-        rasterFreqLines(:,2) = uniqueFreqs;
-        %this generates green lines separating by Frequency
-        for k = 1:size(uniqueFreqs,1)
-            plot(s.Parameters.RasterWindow,[toneReps*numDBs*k toneReps*numDBs*k],'g','LineWidth',1)
-        end
-        set(gca,'YTick',rasterFreqLines(:,1));
-        set(gca,'YTickLabel',rasterFreqLines(:,2));
-        set(gca,'Ydir','reverse')
-        ylim([0 totalTrialNum])
-        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-        title('Descending = increase in amplitude and freq')
-        %plot heatmap organized by frequency
-        subplot(3,3,8)
-        imagesc(s.(desigNames{i}).FrequencyHistograms(:,:))
-        colormap(parula)
-        colorbar
-        set(gca,'YTick',octaveRange(:,2));
-        set(gca,'YTickLabel',octaveRange(:,1));
-        set(gca,'XTick',[1:10:size(histBinVector,2)]);
-        set(gca,'XTickLabel',histBinVector(1:20:end));
-        histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
-        histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
-        line([histBinZero histBinZero],[0 numFreqs],'LineWidth',3,'Color','green')
-        line([histBinZero histBinZero],[0 numFreqs],'LineWidth',2,'Color','black')
-        line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
-        line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
-    %         title('Heatmap by Frequency and Time Max')
-        title('Frequency Arranged Heatmap')
         % plot histogram.
-        subplot(4,3,3)
+        subplot(4,4,5)
         plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
         hold on
         plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
@@ -864,153 +1073,9 @@ if toggleTuneSelect == 1 %if you want tuning selection...
         plot([toneDur toneDur],[ylim],'b');
         xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
         title('Histogram')
-
-        hold off
-        spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
-        savefig(hFig,spikeGraphName);
-
-        %save as PDF with correct name
-        set(hFig,'Units','Inches');
-        pos = get(hFig,'Position');
-        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-        print(hFig,spikeGraphName,'-dpdf','-r0')
-
-        %ask for input! 
-        promptCounter = 1; %This is used to run the while loop.
-        whileCounter = 0; %this is the counter that gets updated to exit the loop
-
-        while whileCounter ~= promptCounter
-            try
-                prompt = 'How is this unit tuned? (excite(e)/inhib(i)/both(b)/none(n))';
-                str = input(prompt,'s');
-                if str~='n' & str~='e' & str~='i' & str~='b'
-                    error
-                else
-                    whileCounter = 1;
-                end
-            catch
-            end
-        end
-        if strfind(str,'e') | strfind(str,'i') | strfind(str,'b')
-            decisionTuning(i) = 1;
-        elseif strfind(str,'n')
-            decisionTuning(i) = 0;
-        end
         
-        tuningType{i} = str;
-        %clear figure.
-        clf
-
-    end
-    s.TuningDecision = decisionTuning;
-    s.TuningType = tuningType;
-    close
-else %in the case you dont want to do tuning selection, default to normal system
-    for i = 1:numUnits
-        hFig = figure;
-        set(hFig, 'Position', [10 80 1240 850])
-        %plots average waveform
-        subplot(4,6,1)
-        hold on
-        plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
-        title(strcat('AverageFiringRate:',num2str(s.(desigNames{i}).AverageRate)))
-        %plots ISI
-        subplot(4,6,2)
-        hist(s.(desigNames{i}).ISIGraph,1000)
-        histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
-        line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-        xlim(s.Parameters.ClusterWindow)
-        title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
-            strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-        %Plot binned response during tone period
-        subplot(4,3,4)
-        imagesc(s.(desigNames{i}).BinTone')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Mean Binned Response (tone)')
-        %Plot binned response during general period
-        subplot(4,3,7)
-        imagesc(s.(desigNames{i}).BinGen')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Mean Binned Response (general)')
-        %Plot peak response during general period
-        subplot(4,3,10)
-        imagesc(s.(desigNames{i}).PeakMap')
-        colormap(parula)
-        colorbar
-        set(gca,'XTick',octaveRange(:,2));
-        set(gca,'XTickLabel',octaveRange(:,1));
-        set(gca,'YTick',dbRange(:,2));
-        set(gca,'YTickLabel',dbRange(:,1));
-        title('Peak Response (general)')
-        %plot velocity data
-        subplot(4,3,6)
-        hold on
-        plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
-        plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
-        xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
-        ylim([-0.1,1])
-        if toggleROC == 1
-            title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
-        else
-            title('Vel & Firing Rate')
-        end
-        
-        if idToggle == 0
-            %plot probability of response (tone)
-            subplot(4,3,9)
-            imagesc(s.(desigNames{i}).ProbTone')
-            colormap(parula)
-            colorbar
-            set(gca,'XTick',octaveRange(:,2));
-            set(gca,'XTickLabel',octaveRange(:,1));
-            set(gca,'YTick',dbRange(:,2));
-            set(gca,'YTickLabel',dbRange(:,1));
-            title('Probability of Response (tone)')
-            %plot probability of response (gen)
-            subplot(4,3,12)
-            imagesc(s.(desigNames{i}).ProbGen')
-            colormap(parula)
-            colorbar
-            set(gca,'XTick',octaveRange(:,2));
-            set(gca,'XTickLabel',octaveRange(:,1));
-            set(gca,'YTick',dbRange(:,2));
-            set(gca,'YTickLabel',dbRange(:,1));
-            title('Probability of Response (general)')
-        elseif idToggle == 1
-            %plot laser raster
-            subplot(4,3,9)
-            plot(s.(desigNames{i}).LaserRasters(:,1),s.(desigNames{i}).LaserRasters(:,2),'k.')
-            xlim([s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2)])
-            title(strcat('Laser Raster, Response %:',num2str(sum(s.(desigNames{i}).LaserResps)/length(dio2Times))))
-            subplot(4,3,12)
-            plot(laserBinVect,s.(desigNames{i}).LaserHist)
-            xlim([s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2)])
-            title('Laser Histogram')
-        end
-
-        %plots rasters (chronological)
-        subplot(3,3,2)
-        plot(s.(desigNames{i}).AllRasters(:,1),...
-            s.(desigNames{i}).AllRasters(:,2),'k.','markersize',4)
-        hold on
-        ylim([0 totalTrialNum])
-        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-        plot([0 0],[ylim],'b');
-        plot([toneDur toneDur],[ylim],'b');
-        title({fileName;desigNames{i}},'fontweight','bold')
-        set(0, 'DefaulttextInterpreter', 'none')
-        %plots rasters (frequency and amplitude organized)
-        subplot(3,3,5)
+        %plot out rasters, organized!
+        subplot(2,4,5)
         plot(s.(desigNames{i}).AllRasters(:,1),...
             s.(desigNames{i}).AllRasters(:,3),'k.','markersize',4)
         hold on
@@ -1036,8 +1101,140 @@ else %in the case you dont want to do tuning selection, default to normal system
         ylim([0 totalTrialNum])
         xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
         title('Descending = increase in amplitude and freq')
+        
+        %% Column 2
+        %Plot binned response during tone period
+        subplot(4,4,2)
+        imagesc(s.(desigNames{i}).BinTone')
+        colormap(parula)
+        colorbar
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
+        title({fileName;desigNames{i}},'fontweight','bold')
+
+        %Plot binned response during general period
+        subplot(4,4,6)
+        imagesc(s.(desigNames{i}).BinGen')
+        colormap(parula)
+        colorbar
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
+        title('Mean Binned Response (general)')
+        %Plot peak response during tone period
+        subplot(4,4,10)
+        imagesc(s.(desigNames{i}).PeakMapTone')
+        colormap(parula)
+        colorbar
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
+        title('Peak Response (tone)')
+        %Plot peak response during general period
+        subplot(4,4,14)
+        imagesc(s.(desigNames{i}).PeakMapGen')
+        colormap(parula)
+        colorbar
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        set(gca,'YTick',dbRange(:,2));
+        set(gca,'YTickLabel',dbRange(:,1));
+        title('Peak Response (general)')
+        
+        %% Column 3
+%         %plot probability of response (tone)
+%         subplot(4,4,3)
+%         imagesc(s.(desigNames{i}).ProbTone')
+%         colormap(parula)
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Probability of Response (tone)')
+%         %plot probability of response (gen)
+%         subplot(4,4,7)
+%         imagesc(s.(desigNames{i}).ProbGen')
+%         colormap(parula)
+%         colorbar
+%         set(gca,'XTick',octaveRange(:,2));
+%         set(gca,'XTickLabel',octaveRange(:,1));
+%         set(gca,'YTick',dbRange(:,2));
+%         set(gca,'YTickLabel',dbRange(:,1));
+%         title('Probability of Response (general)')
+
+        %plot out binned spikes (tone)
+        subplot(4,4,7)
+        hold on
+        for cInd = 1:numDBs
+            plot(s.(desigNames{i}).BinFast(:,cInd),'Color',[cInd/numDBs 0 0])
+            %find significant points, by p < 0.05
+            findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.05);
+            plot(findSigs,s.(desigNames{i}).BinFast(findSigs,cInd),'g*')
+            %find significant points, by p < 0.01
+            findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.01);
+            plot(findSigs,s.(desigNames{i}).BinFast(findSigs,cInd),'go')
+        end
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        ylabel('Binned Spikes/Fast Period')
+        title('Tuning Curves Across Fast Period')
+        
+        %plot out binned spikes (tone)
+        
+        subplot(4,4,11)
+        hold on
+        for cInd = 1:numDBs
+            plot(s.(desigNames{i}).BinTone(:,cInd),'Color',[cInd/numDBs 0 0])
+            %find significant points, by p < 0.05
+            findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,2)<0.05);
+            plot(findSigs,s.(desigNames{i}).BinTone(findSigs,cInd),'g*')
+            %find significant points, by p < 0.01
+            findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,2)<0.01);
+            plot(findSigs,s.(desigNames{i}).BinTone(findSigs,cInd),'go')
+        end
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        ylabel('Binned Spikes/Tone Period')
+        title('Tuning Curves Across Tone Period')
+        %plot out binned spikes (general)
+        subplot(4,4,15)
+        hold on
+        for cInd = 1:numDBs
+            plot(s.(desigNames{i}).BinGen(:,cInd),'Color',[cInd/numDBs 0 0])
+            %find significant points, by p < 0.05
+            findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,3)<0.05);
+            plot(findSigs,s.(desigNames{i}).BinGen(findSigs,cInd),'g*')
+            %find significant points, by p < 0.01
+            findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,3)<0.01);
+            plot(findSigs,s.(desigNames{i}).BinGen(findSigs,cInd),'go')
+        end
+        set(gca,'XTick',octaveRange(:,2));
+        set(gca,'XTickLabel',octaveRange(:,1));
+        ylabel('Binned Spikes/Gen Period')
+        title('Tuning Curves Across General Period')
+        
+        %% Column 4
+        %plot velocity data
+        subplot(4,4,4)
+        hold on
+        plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+        plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+        xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+        ylim([-0.1,1])
+        if toggleROC == 1
+            title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+        else
+            title('Vel & Firing Rate')
+        end
+        
+        
         %plot heatmap organized by frequency
-        subplot(3,3,8)
+        subplot(4,4,8)
         imagesc(s.(desigNames{i}).FrequencyHistograms(:,:))
         colormap(parula)
         colorbar
@@ -1053,33 +1250,22 @@ else %in the case you dont want to do tuning selection, default to normal system
         line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
     %         title('Heatmap by Frequency and Time Max')
         title('Frequency Arranged Heatmap')
-        % plot histogram.
-        subplot(4,3,3)
-        plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
-        hold on
-        plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
-        plot(histBinVector,s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
-        %plot significant values
-        plot(s.(desigNames{i}).AllHistogramSig.Centers(...
-            s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1),...
-            s.(desigNames{i}).AllHistogramSig.Histogram(...
-            s.(desigNames{i}).AllHistogramSig.Histogram(:,3) == 1,1),...
-            'b*')
-        plot(s.(desigNames{i}).AllHistogramSig.Centers(...
-            s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1),...
-            s.(desigNames{i}).AllHistogramSig.Histogram(...
-            s.(desigNames{i}).AllHistogramSig.Histogram(:,4) == 1,1),...
-            'bo')
-        %plot negative values for first tuning
-        plot(s.(desigNames{i}).AllHistogramSig.Centers(...
-            s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1),...
-            s.(desigNames{i}).AllHistogramSig.Histogram(...
-            s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1,1),...
-            'k*')
-        plot([0 0],[ylim],'b');
-        plot([toneDur toneDur],[ylim],'b');
-        xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-        title('Histogram')
+        
+        if idToggle == 0
+            
+        elseif idToggle == 1
+            %plot laser raster
+            subplot(4,4,12)
+            plot(s.(desigNames{i}).LaserRasters(:,1),s.(desigNames{i}).LaserRasters(:,2),'k.')
+            xlim([s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2)])
+            title(strcat('Laser Raster, Response %:',num2str(sum(s.(desigNames{i}).LaserResps)/length(dio2Times))))
+            subplot(4,4,16)
+            plot(laserBinVect,s.(desigNames{i}).LaserHist)
+            xlim([s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2)])
+            title('Laser Histogram')
+        end
+        
+        
 
         hold off
         spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
