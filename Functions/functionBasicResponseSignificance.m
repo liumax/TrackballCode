@@ -107,10 +107,12 @@ if  length(find(targetHist(:,6)>0))<=minSigSpikes;
     sigSpikeNeg = 0;
 end
 
+
 %% save data!
 sigResp.Histogram = targetHist;
 sigResp.BaselineHist = baselineHist;
 sigResp.MeanBaseline = mean(baselineHist);
+sigResp.STDBaseline = std(mean(baselineHist));
 sigResp.Centers = targetHistVector;
 if length(baselineSpikes) > minSpikes
     sigResp.Warning = 0; %warning indicates baseline was too low for anything.
