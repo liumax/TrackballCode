@@ -71,6 +71,7 @@ for i = 1:numFiles
     numSpikes = zeros(numCells,1);
     preITIratio = zeros(numCells,1);
     preITInum = zeros(numCells,1);
+    isiCov = zeros(numCells,1);
     for j = 1:numCells
         disp(strcat('Analyzing Cell #',num2str(j),'/',num2str(numCells)))
         %pull rasterLaser
@@ -78,6 +79,7 @@ for i = 1:numFiles
         %also pull isi data. This is crude measure over entire firing
         %period. 
         isiTimes = diff(s.(s.DesignationName{j}).SpikeTimes);
+        isiCov(j) = std(isiTimes)/mean(isiTimes);
         isiRatio(j) = length(find(isiTimes < 0.033 & isiTimes > 0.01))/length(isiTimes);
         numSpikes(j) = length(s.(s.DesignationName{j}).SpikeTimes);
         %now lets try pulling just from the baseline
@@ -144,6 +146,7 @@ for i = 1:numFiles
     fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+7) = numSpikes;
     fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+8) = preITIratio;
     fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+9) = preITInum;
+    fullMaster(masterInd: masterInd + numUnits - 1,size(master,2)+10) = isiCov;
     fullMasterHeaders(:,i) = masterHeader;
     masterInd = masterInd + numUnits;
     
