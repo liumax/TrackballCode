@@ -66,6 +66,8 @@ function [latPeakBinOut] = functionLatPeakBinCalculation(toneWindow,generalWindo
 %% Calculate binned spikes occurring during tone or general period
 binSpikeTone = zeros(numTrials,1);
 binSpikeGen = zeros(numTrials,1);
+binSpikeFast = zeros(numTrials,1); %using a hard coded value here!
+fastWindow = [0 0.05];
 
 for latCount = 1:numTrials
     targetSpikes = alignedSpikes(alignedSpikes(:,trialColumn) == trialNumbers(latCount),1);
@@ -76,6 +78,32 @@ for latCount = 1:numTrials
             toneFinder = find(genFinder > toneWindow(1) & genFinder < toneWindow(2));
             if ~isempty(toneFinder)
                 binSpikeTone(latCount) = length(toneFinder);
+                fastFinder = find(genFinder > fastWindow(1) & genFinder < fastWindow(2));
+                if ~isempty(fastFinder)
+                    binSpikeFast(latCount) = length(fastFinder);
+                end
+            end
+        end
+    end
+end
+
+binSpikeToneBase = zeros(numTrials,1);
+binSpikeGenBase = zeros(numTrials,1);
+binSpikeFastBase = zeros(numTrials,1);
+
+for latCount = 1:numTrials
+    targetSpikes = alignedSpikes(alignedSpikes(:,trialColumn) == trialNumbers(latCount),1);
+    if ~isempty(targetSpikes)
+        genFinder = targetSpikes(targetSpikes<generalWindow(1) & targetSpikes>-1*generalWindow(2));
+        if ~isempty(genFinder)
+            binSpikeGenBase(latCount) = length(genFinder);
+            toneFinder = find(genFinder < toneWindow(1) & genFinder > -1*toneWindow(2));
+            if ~isempty(toneFinder)
+                binSpikeToneBase(latCount) = length(toneFinder);
+                fastFinder = find(genFinder < fastWindow(1) & genFinder > -1*fastWindow(2));
+                if ~isempty(fastFinder)
+                    binSpikeFastBase(latCount) = length(fastFinder);
+                end
             end
         end
     end
@@ -96,15 +124,20 @@ peakHist = hist(alignedSpikes(:,1),peakBinVector);
 [~,genEnd] = min(abs((peakBinVector - generalWindow(2))));
 [~,toneStart] = min(abs((peakBinVector - toneWindow(1))));
 [~,toneEnd] = min(abs((peakBinVector - toneWindow(2))));
+[~,fastStart] = min(abs((peakBinVector - fastWindow(1))));
+[~,fastEnd] = min(abs((peakBinVector - fastWindow(2))));
 %finally, find max values during this window
 [peakGenVal,peakGenTime]= max(peakHist(genStart:genEnd));
 [peakToneVal,peakToneTime]= max(peakHist(toneStart:toneEnd));
+[peakFastVal,peakFastTime]= max(peakHist(fastStart:fastEnd));
 %compensate for bin size and number of trials
 peakGenVal = peakGenVal/peakBins/numTrials;
 peakToneVal = peakToneVal/peakBins/numTrials;
+peakFastVal = peakFastVal/peakBins/numTrials;
 %supplement indices for time with the correct offsets
 peakGenTime = peakBinVector(peakGenTime + genStart - 1);
 peakToneTime = peakBinVector(peakToneTime + toneStart - 1);
+peakFastTime = peakBinVector(peakFastTime + fastStart - 1);
 
 %% Now calculate latency of response! XD
 %first, calculate histogram
@@ -168,6 +201,15 @@ latPeakBinOut.ResponseFirstSig = latBinVector(genStart + sigBins(respToneFirst)-
 
 latPeakBinOut.BinnedSpikesTone = binSpikeTone;
 latPeakBinOut.BinnedSpikesGen = binSpikeGen;
+latPeakBinOut.BinnedSpikesFast = binSpikeFast;
+
+latPeakBinOut.BinnedSpikesToneBase = binSpikeToneBase;
+latPeakBinOut.BinnedSpikesGenBase = binSpikeGenBase;
+latPeakBinOut.BinnedSpikesFastBase = binSpikeFastBase;
+
+latPeakBinOut.BinSigValHeader = {'FastBin','ToneBin','GenBin'};
+latPeakBinOut.BinSigVals = [signrank(binSpikeFastBase,binSpikeFast),signrank(binSpikeToneBase,binSpikeTone),signrank(binSpikeGenBase,binSpikeGen)];
+latPeakBinOut.BinSigDiff = [mean(binSpikeFastBase) - mean(binSpikeFast),mean(binSpikeToneBase) - mean(binSpikeTone),mean(binSpikeGenBase) - mean(binSpikeGen)];
 
 latPeakBinOut.ProbSpikeTone = probSpikeTone;
 latPeakBinOut.ProbSpikeGen = probSpikeGen;
@@ -176,5 +218,7 @@ latPeakBinOut.PeakRespTone = peakToneVal;
 latPeakBinOut.PeakRespToneTime = peakToneTime;
 latPeakBinOut.PeakRespGen = peakGenVal;
 latPeakBinOut.PeakRespGenTime = peakGenTime;
+latPeakBinOut.PeakRespFast = peakFastVal;
+latPeakBinOut.PeakRespFastTime = peakFastTime;
 
 end
