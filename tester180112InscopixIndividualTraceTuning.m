@@ -9,7 +9,10 @@
 % fileName = '180201_ML171117A_InscopixTuning';
 % fileName = '180201_ML171117B_InscopixTuning';
 % fileName = '180205_ML171117A_InscopixTuning';
-fileName = '180201_ML171117B_InscopixTuning';
+fileName = '180205_ML171117B_InscopixTuning'; %has missing tone TTL
+% fileName = '180208_ML171117A_InscopixTuning';
+% fileName = '180208_ML171117B_InscopixTuning';
+
 
 % traceName = strcat(fileName(1:end-7),'_GMC_Crop_results.mat'); %for first set from 180105
 traceName = strcat(fileName(1:16),'_GMC_Crop_results.mat'); % for second set.

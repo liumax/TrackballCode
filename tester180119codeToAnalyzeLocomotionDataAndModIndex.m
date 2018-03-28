@@ -193,6 +193,9 @@ for i = 1:numFiles
         baseMean = mean(baseHolder);
         baseSTD = std(baseHolder);
         speczhistFull(counter+subsubInd-1,:) = mean(histStore);
+        
+        isiCov(counter + subsubInd - 1) = std(diff(s.(s.DesignationName{subsubInd}).SpikeTimes))/mean(diff(s.(s.DesignationName{subsubInd}).SpikeTimes));
+        
     end
     
     %store pv/msn designations
@@ -215,8 +218,8 @@ plot(zhistFull')
 %generate vector for velocity
 velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
 %identify msns and pvs
-pvs = find(spikeWidthStore(:,1) < 4*10^-4);
-msns = find(spikeWidthStore(:,1) >= 5*10^-4);
+pvs = find(spikeWidthStore(:,1) < 4*10^-4 & isiCov' > 1.1);
+msns = find(spikeWidthStore(:,1) >= 5*10^-4& isiCov' > 1.1);
 
 histVectMod = [-1:0.1:1];
 

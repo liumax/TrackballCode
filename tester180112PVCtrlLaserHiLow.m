@@ -16,6 +16,7 @@ for i = 1:length(fileNames)
         averageHistHi(counter-1+j,:) = s.(s.DesignationName{j}).LaserHistHi;
         averageZLow(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistLow - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/mean(s.(s.DesignationName{j}).HistogramLaser(1:100));
         averageZHi(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistHi - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/mean(s.(s.DesignationName{j}).HistogramLaser(1:100));
+        isiCov(counter - 1 + j) = std(diff(s.(s.DesignationName{j}).SpikeTimes))/mean(diff(s.(s.DesignationName{j}).SpikeTimes));
     end
         
     
@@ -86,8 +87,8 @@ for i = 1:length(fileNames)
 end
 
 
-pvs = find(masterSheet(:,1) == 1);
-msns = find(masterSheet(:,1) == 0);
+pvs = find(masterSheet(:,1) == 1 & isiCov' > 1.1);
+msns = find(masterSheet(:,1) == 0 & isiCov' > 1.1);
 
 msnLowRateMean = mean(averageHistLow(msns,:));
 msnHiRateMean = mean(averageHistHi(msns,:));
@@ -180,6 +181,7 @@ plot(msnHiRateMean+msnHiRateStd,'g','LineWidth',2)
 xlabel('Time (s)')
 ylabel('Firing Rate (Hz)')
 title('MSN Low (b) vs Hi (g)')
+set(gca,'TickDir','out');
 savefig(hFig,'msnHzLowVsHi');
 
 %save as PDF with correct name
@@ -196,6 +198,7 @@ plot(msnLowZMean+msnLowZStd,'b','LineWidth',2)
 plot(msnHiZMean,'g','LineWidth',2)
 plot(msnHiZMean-msnHiZStd,'g','LineWidth',2)
 plot(msnHiZMean+msnHiZStd,'g','LineWidth',2)
+set(gca,'TickDir','out');
 xlabel('Time (s)')
 ylabel('Firing Rate (Z)')
 title('MSN Low (b) vs Hi (g) Z')
@@ -215,6 +218,7 @@ plot(pvLowRateMean+pvLowRateStd,'b','LineWidth',2)
 plot(pvHiRateMean,'g','LineWidth',2)
 plot(pvHiRateMean-pvHiRateStd,'g','LineWidth',2)
 plot(pvHiRateMean+pvHiRateStd,'g','LineWidth',2)
+set(gca,'TickDir','out');
 xlabel('Time (s)')
 ylabel('Firing Rate (Hz)')
 title('PV Low (b) vs Hi (g)')
@@ -234,6 +238,7 @@ plot(pvLowZMean+pvLowZStd,'b','LineWidth',2)
 plot(pvHiZMean,'g','LineWidth',2)
 plot(pvHiZMean-pvHiZStd,'g','LineWidth',2)
 plot(pvHiZMean+pvHiZStd,'g','LineWidth',2)
+set(gca,'TickDir','out');
 xlabel('Time (s)')
 ylabel('Firing Rate (Z)')
 title('PV Low (b) vs Hi (g) Z')
@@ -256,11 +261,13 @@ hist(modLow(msns),[-1:0.1:1])
 xlim([-1 1])
 ylim([0 30])
 title('Modulation Index MSNs, Low Power (3 mW)')
+set(gca,'TickDir','out');
 subplot(2,1,2)
 hist(modHi(msns),[-1:0.1:1])
 xlim([-1 1])
 ylim([0 30])
 title('Modulation Index MSNs, Hi Power (15 mW)')
+set(gca,'TickDir','out');
 savefig(hFig,'msnModHist');
 
 %save as PDF with correct name
@@ -275,11 +282,13 @@ hist(modLow(pvs),[-1:0.1:1])
 xlim([-1 1])
 ylim([0 10])
 title('Modulation Index PV, Low Power (3 mW)')
+set(gca,'TickDir','out');
 subplot(2,1,2)
 hist(modHi(pvs),[-1:0.1:1])
 xlim([-1 1])
 ylim([0 10])
 title('Modulation Index PV, Hi Power (15 mW)')
+set(gca,'TickDir','out');
 savefig(hFig,'pvModHist');
 
 %save as PDF with correct name
@@ -305,6 +314,7 @@ xlim([0 3])
 ylim([-1 1])
 xlabel('3 mW vs 15 mW')
 ylabel('Modulation Index')
+set(gca,'TickDir','out');
 title(strcat('msns Mod Index. Pval:',num2str(pvalmsn)))
 
 subplot(2,1,2)
@@ -319,6 +329,7 @@ xlim([0 3])
 ylim([-1 1])
 xlabel('3 mW vs 15 mW')
 ylabel('Modulation Index')
+set(gca,'TickDir','out');
 title(strcat('msns Mod Index. Pval:',num2str(pvalpv)))
 
 spikeGraphName = 'pvAndmsnsModCompare';
