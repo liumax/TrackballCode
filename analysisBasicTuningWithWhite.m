@@ -761,14 +761,17 @@ for i = 1:numUnits
     s.(desigNames{i}).BinSigVals = binSigVals;
     
     %store some values in masterData.
-    masterData(i,masterInd) = max(bigStoreTone(:,end));%find best frequency
-    masterHeader(i,masterInd) = 'BF';
-    masterInd = masterInd + 1;
+%     masterData(i,masterInd) = max(bigStoreTone(2:end,end));%find best frequency, ignores white noise
+%     masterHeader(i,masterInd) = 'BF';
+%     masterInd = masterInd + 1;
     
     if toggleROC == 1
         [velOut] = functionLocomotionROC(spikeTimes,s.RotaryData.Velocity);
         s.(desigNames{i}).TrueAUC = velOut.TrueAUC;
         s.(desigNames{i}).ShuffleAUC = velOut.ShuffleAUC;
+        masterData(i,masterInd) = velOut.TrueAUC;%find best frequency, ignores white noise
+        masterHeader(i,masterInd) = 'LocoAUC';
+        masterInd = masterInd + 1;
     else
         s.(desigNames{i}).TrueAUC = 0;
         s.(desigNames{i}).ShuffleAUC = zeros(1000,1);
@@ -781,6 +784,9 @@ for i = 1:numUnits
     else
         s.(desigNames{i}).AUCSig = 0;
     end
+    masterData(i,masterInd) = s.(desigNames{i}).AUCSig;%find best frequency, ignores white noise
+    masterHeader(i,masterInd) = 'LocoAUCSig';
+    masterInd = masterInd + 1;
     
 end
 
