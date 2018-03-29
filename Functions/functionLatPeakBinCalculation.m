@@ -207,9 +207,10 @@ latPeakBinOut.BinnedSpikesToneBase = binSpikeToneBase;
 latPeakBinOut.BinnedSpikesGenBase = binSpikeGenBase;
 latPeakBinOut.BinnedSpikesFastBase = binSpikeFastBase;
 
+latPeakBinOut.BinDiff = [mean(binSpikeFast) - mean(binSpikeFastBase),mean(binSpikeTone) - mean(binSpikeToneBase),mean(binSpikeGen)-mean(binSpikeGenBase)];
+
 latPeakBinOut.BinSigValHeader = {'FastBin','ToneBin','GenBin'};
 latPeakBinOut.BinSigVals = [signrank(binSpikeFastBase,binSpikeFast),signrank(binSpikeToneBase,binSpikeTone),signrank(binSpikeGenBase,binSpikeGen)];
-latPeakBinOut.BinSigDiff = [mean(binSpikeFastBase) - mean(binSpikeFast),mean(binSpikeToneBase) - mean(binSpikeTone),mean(binSpikeGenBase) - mean(binSpikeGen)];
 
 latPeakBinOut.ProbSpikeTone = probSpikeTone;
 latPeakBinOut.ProbSpikeGen = probSpikeGen;

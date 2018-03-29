@@ -565,6 +565,16 @@ end
 
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
+
+s.PosWidths = zeros(numDBs,numUnits,3); %store width of response for positive responses here. 
+s.NegWidths = zeros(numDBs,numUnits,3); %store width of response for negative responses here. 
+s.PosTots = zeros(numDBs,numUnits,3); %store total number of significant responses here
+s.NegTots = zeros(numDBs,numUnits,3);  %store total number of significant responses here
+s.PosCont = zeros(numDBs,numUnits,3); %store whether response is contiguous or not here
+s.NegCont = zeros(numDBs,numUnits,3); %store whether response is contiguous or not here
+s.PosEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
+s.NegEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
+s.PosGaussWidth = zeros(numDBs,numUnits,3); % will perform gaussian fit on binned spikes if there is sufficient significant values. Store half-peak width
 for i = 1:numUnits
     
     %pulls spike times and times for alignment
@@ -593,7 +603,7 @@ for i = 1:numUnits
     
     %store average rate into master
     masterData(i,masterInd) = averageRate;
-    masterHeader{i} = Average Rate;
+    masterHeader{masterInd} = 'Average Rate';
     masterInd = masterInd + 1;
     
     %now pull waveform data and isi data to categorize cells
@@ -627,11 +637,11 @@ for i = 1:numUnits
     isiCov = std(isiTimes)/mean(isiTimes);
     
     masterData(i,masterInd) = peakTrough;
-    masterHeader(i,masterInd) = 'PeakTrough(ms)';
+    masterHeader{masterInd} = 'PeakTrough(ms)';
     masterInd = masterInd + 1;
     
     masterData(i,masterInd) = isiCov;
-    masterHeader(i,masterInd) = 'isiCov';
+    masterHeader{masterInd} = 'isiCov';
     masterInd = masterInd + 1;
     
     
@@ -642,7 +652,7 @@ for i = 1:numUnits
     else
         masterData(i,masterInd) = 0; %MSN
     end
-    masterHeader(i,masterInd) = 'CellType';
+    masterHeader{masterInd} = 'CellType';
     masterInd = masterInd + 1;
     
     
@@ -674,11 +684,11 @@ for i = 1:numUnits
     end
     
     masterData(i,masterInd) = generalResponseHist.SigSpikePos;
-    masterHeader(i,masterInd) = 'PosSigGenHist';
+    masterHeader{masterInd} = 'PosSigGenHist';
     masterInd = masterInd + 1;
     
     masterData(i,masterInd) = generalResponseHist.SigSpikeNeg;
-    masterHeader(i,masterInd) = 'NegSigGenHist';
+    masterHeader{masterInd} = 'NegSigGenHist';
     masterInd = masterInd + 1;
     
     %allocates empty array.
@@ -719,7 +729,7 @@ for i = 1:numUnits
             probStoreTone(k,l) = latPeakBinOut.ProbSpikeTone;
             probStoreGen(k,l) = latPeakBinOut.ProbSpikeGen;
             binSigVals(k,l,:) = latPeakBinOut.BinSigVals;
-            
+            binDiff(k,l,:) = latPeakBinOut.BinDiff;
             latPeakBinOut = [];
 %             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes(targetTrials),length(targetTrials),...
@@ -756,21 +766,111 @@ for i = 1:numUnits
     s.(desigNames{i}).BinFast = binStoreFast;
     s.(desigNames{i}).BinTone = binStoreTone;
     s.(desigNames{i}).BinGen = binStoreGen;
+    s.(desigNames{i}).BinDiff = binDiff;
     s.(desigNames{i}).ProbTone = probStoreTone;
     s.(desigNames{i}).ProbGen = probStoreGen;
     s.(desigNames{i}).BinSigVals = binSigVals;
     
-    %store some values in masterData.
-%     masterData(i,masterInd) = max(bigStoreTone(2:end,end));%find best frequency, ignores white noise
-%     masterHeader(i,masterInd) = 'BF';
-%     masterInd = masterInd + 1;
+    %store some information about width
+    CFTrig = 0;
+    for j = 1:numDBs
+        %pull out sign of change, and significance value
+        if whiteStatus == 1
+            targetSig = squeeze(binSigVals(2:end,j,:));
+            targetSign = squeeze(binDiff(2:end,j,:));
+            targetBins = squeeze(binStoreFast(2:end,j,:));
+        else
+            targetSig = squeeze(binSigVals(:,j,:));
+            targetSign = squeeze(binDiff(:,j,:));
+            targetBins = squeeze(binStoreFast(:,j,:));
+        end
+        for k = 1:size(targetSig,2)
+            %first, deal with positives
+            sigThresh = 0.01;
+            findPos =  find(targetSig(:,k) < sigThresh & targetSign(:,k) > 0);
+            if findPos%in the event of positive and significant events
+                if find(findPos == 1) | find(findPos == length(targetSig)) %determine if anything on the edge of the tuning range
+                    s.PosEdgeWarn(j,i,k) = 1;
+                end
+                if length(findPos) > 1
+                    try
+                        x = [1:length(targetSig)];
+                        y = targetBins;
+                        f = fit(x',y,'gauss1'); %perform single gaussian fit
+                        newVect = [1:0.1:length(targetSig)];
+                        fVals = f(newVect);
+                        %find peak
+                        [peakVal peakInd] = max(fVals);
+
+                        %find half peak width
+                        firstBound = find(fVals(1:peakInd) - peakVal/2 > 0,1,'first');
+                        lastBound = find(fVals(peakInd:end) - peakVal/2 > 0,1,'last');
+                        s.PosGaussWidth(j,i,k) = (lastBound + peakInd - firstBound)/10;
+                    catch
+                        s.PosGaussWidth(j,i,k) = 0;
+                    end
+                end
+                s.PosTots(j,i,k) = length(findPos);
+                diffFind = diff(findPos);
+                if diffFind == 1
+                    disp('All Consecutive!')
+                    s.PosCont(j,i,k) = 1;
+                    %since all consecutive, width equals length of findPos
+                    s.PosWidths(j,i,k) = length(findPos);
+                else
+                    disp('Not Consecutive, Finding Widest')
+                    s.PosCont(j,i,k) = 0;
+%                     findSpaces = length(find(diffFind ~= 1)); %determine how many different segments there are
+                    findGaps = find(diffFind ~= 1);
+                    findGaps(2:end+1) = findGaps;
+                    findGaps(1) = 0;
+                    findGaps(end+1) = length(findPos);
+                    diffLengths = diff(findGaps);
+                    disp('Widest Point Found')
+                    s.PosWidths(j,i,k) = max(diffLengths);
+                end
+            else
+                disp('No Positives Found')
+            end
+            
+            %now do negative
+            sigThresh = 0.01;
+            findNeg =  find(targetSig(:,k) < sigThresh & targetSign(:,k) < 0);
+            if findNeg%in the event of positive and significant events
+                if find(findNeg == 1) | find(findNeg == length(targetSig))
+                    s.NegEdgeWarn(j,i,k) = 1;
+                end
+                s.NegTots(j,i,k) = length(findNeg);
+                diffFind = diff(findNeg);
+                if diffFind == 1
+                    disp('All Consecutive!')
+                    s.NegCont(j,i,k) = 1;
+                    %since all consecutive, width equals length of findNeg
+                    s.NegWidths(j,i,k) = length(findNeg);
+                else
+                    disp('Not Consecutive, Finding Widest')
+                    s.NegCont(j,i,k) = 0;
+%                     findSpaces = length(find(diffFind ~= 1)); %determine how many different segments there are
+                    findGaps = find(diffFind ~= 1);
+                    findGaps(2:end+1) = findGaps;
+                    findGaps(1) = 0;
+                    findGaps(end+1) = length(findNeg);
+                    diffLengths = diff(findGaps);
+                    disp('Widest Point Found')
+                    s.NegWidths(j,i,k) = max(diffLengths);
+                end
+            else
+                disp('No Negatives Found')
+            end
+        end
+    end
     
     if toggleROC == 1
         [velOut] = functionLocomotionROC(spikeTimes,s.RotaryData.Velocity);
         s.(desigNames{i}).TrueAUC = velOut.TrueAUC;
         s.(desigNames{i}).ShuffleAUC = velOut.ShuffleAUC;
         masterData(i,masterInd) = velOut.TrueAUC;%find best frequency, ignores white noise
-        masterHeader(i,masterInd) = 'LocoAUC';
+        masterHeader{masterInd} = 'LocoAUC';
         masterInd = masterInd + 1;
     else
         s.(desigNames{i}).TrueAUC = 0;
@@ -785,7 +885,7 @@ for i = 1:numUnits
         s.(desigNames{i}).AUCSig = 0;
     end
     masterData(i,masterInd) = s.(desigNames{i}).AUCSig;%find best frequency, ignores white noise
-    masterHeader(i,masterInd) = 'LocoAUCSig';
+    masterHeader{masterInd} = 'LocoAUCSig';
     masterInd = masterInd + 1;
     
 end
@@ -1033,6 +1133,10 @@ if toggleTuneSelect == 1 %if you want tuning selection...
 %     s.TuningType = tuningType;
 %     close
 else %in the case you dont want to do tuning selection, default to normal system
+    %first plot a general figure
+    
+    
+    %now plot individual cells. 
     for i = 1:numUnits
         hFig = figure;
         set(hFig, 'Position', [10 80 1900 1000])
@@ -1177,13 +1281,13 @@ else %in the case you dont want to do tuning selection, default to normal system
         subplot(4,4,7)
         hold on
         for cInd = 1:numDBs
-            plot(s.(desigNames{i}).BinFast(:,cInd),'Color',[cInd/numDBs 0 0])
+            plot(s.(desigNames{i}).BinDiff(:,cInd,1),'Color',[cInd/numDBs 0 0])
             %find significant points, by p < 0.05
             findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.05);
-            plot(findSigs,s.(desigNames{i}).BinFast(findSigs,cInd),'g*')
+            plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,1),'g*')
             %find significant points, by p < 0.01
             findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.01);
-            plot(findSigs,s.(desigNames{i}).BinFast(findSigs,cInd),'go')
+            plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,1),'go')
         end
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -1195,13 +1299,13 @@ else %in the case you dont want to do tuning selection, default to normal system
         subplot(4,4,11)
         hold on
         for cInd = 1:numDBs
-            plot(s.(desigNames{i}).BinTone(:,cInd),'Color',[cInd/numDBs 0 0])
+            plot(s.(desigNames{i}).BinDiff(:,cInd,2),'Color',[cInd/numDBs 0 0])
             %find significant points, by p < 0.05
             findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,2)<0.05);
-            plot(findSigs,s.(desigNames{i}).BinTone(findSigs,cInd),'g*')
+            plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,2),'g*')
             %find significant points, by p < 0.01
             findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,2)<0.01);
-            plot(findSigs,s.(desigNames{i}).BinTone(findSigs,cInd),'go')
+            plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,2),'go')
         end
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
@@ -1211,13 +1315,13 @@ else %in the case you dont want to do tuning selection, default to normal system
         subplot(4,4,15)
         hold on
         for cInd = 1:numDBs
-            plot(s.(desigNames{i}).BinGen(:,cInd),'Color',[cInd/numDBs 0 0])
+            plot(s.(desigNames{i}).BinDiff(:,cInd,3),'Color',[cInd/numDBs 0 0])
             %find significant points, by p < 0.05
             findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,3)<0.05);
-            plot(findSigs,s.(desigNames{i}).BinGen(findSigs,cInd),'g*')
+            plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,3),'g*')
             %find significant points, by p < 0.01
             findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,3)<0.01);
-            plot(findSigs,s.(desigNames{i}).BinGen(findSigs,cInd),'go')
+            plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,3),'go')
         end
         set(gca,'XTick',octaveRange(:,2));
         set(gca,'XTickLabel',octaveRange(:,1));
