@@ -575,6 +575,9 @@ s.NegCont = zeros(numDBs,numUnits,3); %store whether response is contiguous or n
 s.PosEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
 s.NegEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
 s.PosGaussWidth = zeros(numDBs,numUnits,3); % will perform gaussian fit on binned spikes if there is sufficient significant values. Store half-peak width
+
+masterHolder = masterInd;
+
 for i = 1:numUnits
     
     %pulls spike times and times for alignment
@@ -602,9 +605,9 @@ for i = 1:numUnits
     averageSTE = averageSTD/(sqrt(totalTrialNum-1));
     
     %store average rate into master
-    masterData(i,masterInd) = averageRate;
-    masterHeader{masterInd} = 'Average Rate';
-    masterInd = masterInd + 1;
+    masterData(i,masterHolder) = averageRate;
+    masterHeader{masterHolder} = 'Average Rate';
+    masterHolder = masterHolder + 1;
     
     %now pull waveform data and isi data to categorize cells
     waveForms = s.(desigNames{i}).AverageWaveForms;
@@ -636,24 +639,24 @@ for i = 1:numUnits
     isiTimes = diff(spikeTimes);
     isiCov = std(isiTimes)/mean(isiTimes);
     
-    masterData(i,masterInd) = peakTrough;
-    masterHeader{masterInd} = 'PeakTrough(ms)';
-    masterInd = masterInd + 1;
+    masterData(i,masterHolder) = peakTrough;
+    masterHeader{masterHolder} = 'PeakTrough(ms)';
+    masterHolder = masterHolder + 1;
     
-    masterData(i,masterInd) = isiCov;
-    masterHeader{masterInd} = 'isiCov';
-    masterInd = masterInd + 1;
+    masterData(i,masterHolder) = isiCov;
+    masterHeader{masterHolder} = 'isiCov';
+    masterHolder = masterHolder + 1;
     
     
     if peakTrough < s.Parameters.PVLim
-        masterData(i,masterInd) = 1; %pv cell
+        masterData(i,masterHolder) = 1; %pv cell
     elseif peakTrough > s.Parameters.PVLim & isiCov < s.Parameters.ChatLim
-        masterData(i,masterInd) = 2; %ChAT Cell
+        masterData(i,masterHolder) = 2; %ChAT Cell
     else
-        masterData(i,masterInd) = 0; %MSN
+        masterData(i,masterHolder) = 0; %MSN
     end
-    masterHeader{masterInd} = 'CellType';
-    masterInd = masterInd + 1;
+    masterHeader{masterHolder} = 'CellType';
+    masterHolder = masterHolder + 1;
     
     
     %calculates histograms of every single trial. 
@@ -683,13 +686,17 @@ for i = 1:numUnits
         s.SignificantSpikes(i) = 1;
     end
     
-    masterData(i,masterInd) = generalResponseHist.SigSpikePos;
-    masterHeader{masterInd} = 'PosSigGenHist';
-    masterInd = masterInd + 1;
+    masterData(i,masterHolder) = generalResponseHist.MeanBaseline;
+    masterHeader{masterHolder} = 'BaselineRate';
+    masterHolder = masterHolder + 1;
     
-    masterData(i,masterInd) = generalResponseHist.SigSpikeNeg;
-    masterHeader{masterInd} = 'NegSigGenHist';
-    masterInd = masterInd + 1;
+    masterData(i,masterHolder) = generalResponseHist.SigSpikePos;
+    masterHeader{masterHolder} = 'PosSigGenHist';
+    masterHolder = masterHolder + 1;
+    
+    masterData(i,masterHolder) = generalResponseHist.SigSpikeNeg;
+    masterHeader{masterHolder} = 'NegSigGenHist';
+    masterHolder = masterHolder + 1;
     
     %allocates empty array.
     organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
@@ -773,24 +780,49 @@ for i = 1:numUnits
     
     %store some information about width
     CFTrig = 0;
+    BFTrig = 0;
     for j = 1:numDBs
+        sigThresh = 0.01;
         %pull out sign of change, and significance value
         if whiteStatus == 1
             targetSig = squeeze(binSigVals(2:end,j,:));
             targetSign = squeeze(binDiff(2:end,j,:));
             targetBins = squeeze(binStoreFast(2:end,j,:));
+            
         else
             targetSig = squeeze(binSigVals(:,j,:));
             targetSign = squeeze(binDiff(:,j,:));
             targetBins = squeeze(binStoreFast(:,j,:));
         end
-        for k = 1:size(targetSig,2)
+
+        for kk = 1:size(targetSig,2)
             %first, deal with positives
-            sigThresh = 0.01;
-            findPos =  find(targetSig(:,k) < sigThresh & targetSign(:,k) > 0);
+            findPos =  find(targetSig(:,kk) < sigThresh & targetSign(:,kk) > 0);
             if findPos%in the event of positive and significant events
+                
+                if CFTrig == 0
+                    sigValLength = length(find(targetSig(:,kk) < sigThresh));
+                    if whiteStatus == 1
+                        if sigValLength == 1
+                            masterData(i,masterHolder) = uniqueFreqs(find(targetSig(:,kk)<sigThresh)+1);
+                        else
+                            masterData(i,masterHolder) = mean(uniqueFreqs(find(targetSig(:,kk)<sigThresh)+1));
+                        end
+                    else
+                        if sigValLength == 1
+                            masterData(i,masterHolder) = uniqueFreqs(find(targetSig(:,kk)<sigThresh));
+                        else
+                            masterData(i,masterHolder) = mean(uniqueFreqs(find(targetSig(:,kk)<sigThresh)));
+                        end
+                    end
+                    masterHeader{masterHolder} = 'CF';
+                    masterHolder = masterHolder + 1;
+                    disp('CF Detected')
+                    CFTrig = 1;
+                end
+                %determine number of significant values
                 if find(findPos == 1) | find(findPos == length(targetSig)) %determine if anything on the edge of the tuning range
-                    s.PosEdgeWarn(j,i,k) = 1;
+                    s.PosEdgeWarn(j,i,kk) = 1;
                 end
                 if length(findPos) > 1
                     try
@@ -805,21 +837,21 @@ for i = 1:numUnits
                         %find half peak width
                         firstBound = find(fVals(1:peakInd) - peakVal/2 > 0,1,'first');
                         lastBound = find(fVals(peakInd:end) - peakVal/2 > 0,1,'last');
-                        s.PosGaussWidth(j,i,k) = (lastBound + peakInd - firstBound)/10;
+                        s.PosGaussWidth(j,i,kk) = (lastBound + peakInd - firstBound)/10;
                     catch
-                        s.PosGaussWidth(j,i,k) = 0;
+                        s.PosGaussWidth(j,i,kk) = 0;
                     end
                 end
-                s.PosTots(j,i,k) = length(findPos);
+                s.PosTots(j,i,kk) = length(findPos);
                 diffFind = diff(findPos);
                 if diffFind == 1
                     disp('All Consecutive!')
-                    s.PosCont(j,i,k) = 1;
+                    s.PosCont(j,i,kk) = 1;
                     %since all consecutive, width equals length of findPos
-                    s.PosWidths(j,i,k) = length(findPos);
+                    s.PosWidths(j,i,kk) = length(findPos);
                 else
                     disp('Not Consecutive, Finding Widest')
-                    s.PosCont(j,i,k) = 0;
+                    s.PosCont(j,i,kk) = 0;
 %                     findSpaces = length(find(diffFind ~= 1)); %determine how many different segments there are
                     findGaps = find(diffFind ~= 1);
                     findGaps(2:end+1) = findGaps;
@@ -827,7 +859,20 @@ for i = 1:numUnits
                     findGaps(end+1) = length(findPos);
                     diffLengths = diff(findGaps);
                     disp('Widest Point Found')
-                    s.PosWidths(j,i,k) = max(diffLengths);
+                    s.PosWidths(j,i,kk) = max(diffLengths);
+                end
+                %find maximum value. This is BF. 
+                if j == numDBs & BFTrig == 0
+                    [M bfFind] = max(findPos);
+                    if whiteStatus == 1
+                        masterData(i,masterHolder) = uniqueFreqs(findPos(bfFind)+1);
+                    else
+                        masterData(i,masterHolder) = uniqueFreqs(findPos(bfFind));
+                    end
+                    masterHeader{masterHolder} = 'BF';
+                    masterHolder = masterHolder + 1;
+                    disp('BF Detected')
+                    BFTrig = 1;
                 end
             else
                 disp('No Positives Found')
@@ -835,21 +880,21 @@ for i = 1:numUnits
             
             %now do negative
             sigThresh = 0.01;
-            findNeg =  find(targetSig(:,k) < sigThresh & targetSign(:,k) < 0);
+            findNeg =  find(targetSig(:,kk) < sigThresh & targetSign(:,kk) < 0);
             if findNeg%in the event of positive and significant events
                 if find(findNeg == 1) | find(findNeg == length(targetSig))
-                    s.NegEdgeWarn(j,i,k) = 1;
+                    s.NegEdgeWarn(j,i,kk) = 1;
                 end
-                s.NegTots(j,i,k) = length(findNeg);
+                s.NegTots(j,i,kk) = length(findNeg);
                 diffFind = diff(findNeg);
                 if diffFind == 1
                     disp('All Consecutive!')
-                    s.NegCont(j,i,k) = 1;
+                    s.NegCont(j,i,kk) = 1;
                     %since all consecutive, width equals length of findNeg
-                    s.NegWidths(j,i,k) = length(findNeg);
+                    s.NegWidths(j,i,kk) = length(findNeg);
                 else
                     disp('Not Consecutive, Finding Widest')
-                    s.NegCont(j,i,k) = 0;
+                    s.NegCont(j,i,kk) = 0;
 %                     findSpaces = length(find(diffFind ~= 1)); %determine how many different segments there are
                     findGaps = find(diffFind ~= 1);
                     findGaps(2:end+1) = findGaps;
@@ -857,11 +902,24 @@ for i = 1:numUnits
                     findGaps(end+1) = length(findNeg);
                     diffLengths = diff(findGaps);
                     disp('Widest Point Found')
-                    s.NegWidths(j,i,k) = max(diffLengths);
+                    s.NegWidths(j,i,kk) = max(diffLengths);
                 end
             else
                 disp('No Negatives Found')
             end
+        end
+        if j == numDBs & CFTrig == 0
+            masterData(i,masterHolder) = NaN;
+            masterHeader{masterHolder} = 'CF';
+            masterHolder = masterHolder + 1;
+            disp('NO CF')
+        end
+        
+        if j == numDBs & BFTrig == 0
+            masterData(i,masterHolder) = NaN;
+            masterHeader{masterHolder} = 'BF';
+            masterHolder = masterHolder + 1;
+            disp('NO BF')
         end
     end
     
@@ -869,9 +927,9 @@ for i = 1:numUnits
         [velOut] = functionLocomotionROC(spikeTimes,s.RotaryData.Velocity);
         s.(desigNames{i}).TrueAUC = velOut.TrueAUC;
         s.(desigNames{i}).ShuffleAUC = velOut.ShuffleAUC;
-        masterData(i,masterInd) = velOut.TrueAUC;%find best frequency, ignores white noise
-        masterHeader{masterInd} = 'LocoAUC';
-        masterInd = masterInd + 1;
+        masterData(i,masterHolder) = velOut.TrueAUC;%find best frequency, ignores white noise
+        masterHeader{masterHolder} = 'LocoAUC';
+        masterHolder = masterHolder + 1;
     else
         s.(desigNames{i}).TrueAUC = 0;
         s.(desigNames{i}).ShuffleAUC = zeros(1000,1);
@@ -884,11 +942,13 @@ for i = 1:numUnits
     else
         s.(desigNames{i}).AUCSig = 0;
     end
-    masterData(i,masterInd) = s.(desigNames{i}).AUCSig;%find best frequency, ignores white noise
-    masterHeader{masterInd} = 'LocoAUCSig';
-    masterInd = masterInd + 1;
+    masterData(i,masterHolder) = s.(desigNames{i}).AUCSig;%find best frequency, ignores white noise
+    masterHeader{masterHolder} = 'LocoAUCSig';
+    masterHolder = masterHolder + 1;
     
 end
+
+masterInd = masterHolder;
 
 %% Laser Analysis
 
@@ -1134,6 +1194,8 @@ if toggleTuneSelect == 1 %if you want tuning selection...
 %     close
 else %in the case you dont want to do tuning selection, default to normal system
     %first plot a general figure
+    hFig = figure;
+    set(hFig, 'Position', [10 80 1900 1000])
     
     
     %now plot individual cells. 
