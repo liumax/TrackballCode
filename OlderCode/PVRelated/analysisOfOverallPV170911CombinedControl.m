@@ -731,7 +731,7 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %dont see any strong regression coefficients coming out. 
 
-%how about making z-scored firing rate plots?
+%% how about making z-scored firing rate plots?
 
 %for this I need to go through the whole datasets, pull individual files,
 %and from there, pull individual units. 
@@ -765,9 +765,9 @@ for m = 1:4
                 zSelfStore(bigInd,:) = zeros(length(s.(s.DesignationName{j}).HistogramLaser),1);
             end
             widthHold = s.MasterSheet(j,2);
-            if widthHold < 4*10^(-4)
+            if widthHold < 4*10^(-4) & std(diff(s.(s.DesignationName{j}).SpikeTimes))/mean(diff(s.(s.DesignationName{j}).SpikeTimes)) > 1.1
                 idStore(bigInd) = 1;
-            elseif widthHold > 5*10^(-4)
+            elseif widthHold > 5*10^(-4) & std(diff(s.(s.DesignationName{j}).SpikeTimes))/mean(diff(s.(s.DesignationName{j}).SpikeTimes)) > 1.1
                 idStore(bigInd) = 0;
             else
                 idStore(bigInd) = NaN;
