@@ -576,9 +576,10 @@ s.PosEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses a
 s.NegEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
 s.PosGaussWidth = zeros(numDBs,numUnits,3); % will perform gaussian fit on binned spikes if there is sufficient significant values. Store half-peak width
 
-masterHolder = masterInd;
+
 
 for i = 1:numUnits
+    masterHolder = masterInd;
     
     %pulls spike times and times for alignment
     spikeTimes = s.(desigNames{i}).SpikeTimes;
@@ -1193,9 +1194,92 @@ if toggleTuneSelect == 1 %if you want tuning selection...
 %     s.TuningType = tuningType;
 %     close
 else %in the case you dont want to do tuning selection, default to normal system
-    %first plot a general figure
+    %first plot general figures
+    
+    %determine if there are units in each category
+    findPVs = find(masterData(:,4) == 1);
+    if findPVs
+        for i = 1:length(findPVs)
+            pvStores(:,i) = s.(s.DesignationName{findPVs(i)}).SessionFiring;
+        end
+        avPV = mean(pvStores');
+    end
+    
+    findMSNs = find(masterData(:,4) == 0);
+    for i = 1:length(findMSNs)
+        msnStores(:,i) = s.(s.DesignationName{findMSNs(i)}).SessionFiring;
+    end
+    avMSN = mean(msnStores');
+    
+    findCHATs = find(masterData(:,4) == 2);
+    if findCHATs
+        for i = 1:length(findCHATs)
+            chatStores(:,i) = s.(s.DesignationName{findCHATs(i)}).SessionFiring;
+        end
+        avCHAT = mean(chatStores');
+    end
+    
     hFig = figure;
     set(hFig, 'Position', [10 80 1900 1000])
+    %% Column 1
+    %plot spike width vs coefficient of variation
+    subplot(3,4,1)
+    hold on
+    plot(masterData(:,2),masterData(:,3),'k.')
+    plot(masterData(masterData(:,4) == 1,2),masterData(masterData(:,4) == 1,3),'r.')
+    plot(masterData(masterData(:,4) == 2,2),masterData(masterData(:,4) == 2,3),'g.')
+    xlabel('Peak Trough (ms)')
+    ylabel('ISI Coefficient of Variation')
+    title(fileName,'fontweight','bold', 'Interpreter', 'none');
+    
+    %plot loco speed vs firing rates
+    subplot(3,4,5)
+    hold on
+    plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],avMSN/max(avMSN),'k')
+    xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+    ylim([-0.1,1])
+    
+    %plot distribution of positive, negative, both, and untuned units
+    subplot(3,4,9)
+    holder = masterData(findMSNs,[6,7]);
+    holder(:,2) = holder(:,2) * -2;
+    det = holder(:,1) + holder(:,2);
+    det = hist(det,[-2:1:1]);
+    pie(det,{'Neg','Mix','None','Pos'})
+    posResp = find(holder(:,1) == 1);
+
+    %% Column 2
+    
+    subplot(3,4,2)
+    hold on
+    plot(s.PosWidths(:,findMSNs(posResp),1),'k.')
+    plot(mean(s.PosWidths(:,findMSNs(posResp),1)'),'k-')
+    plot(s.PosWidths(:,findMSNs(posResp),2),'b.')
+    plot(mean(s.PosWidths(:,findMSNs(posResp),2)'),'b-')
+    plot(s.PosWidths(:,findMSNs(posResp),3),'m.')
+    plot(mean(s.PosWidths(:,findMSNs(posResp),3)'),'m-')
+    xlim([0 size(s.PosWidths,1) + 1])
+    title('Tuning Width Responses fast(k) tone(b) gen(m)')
+    
+    %% Column 3
+    subplot(3,4,3)
+    hold on
+    holder = masterData(findPVs,[6,7]);
+    holder(:,2) = holder(:,2) * -2;
+    posResp = find(holder(:,1) == 1);
+    
+    plot(s.PosWidths(:,findPVs(posResp),1),'k.')
+    plot(mean(s.PosWidths(:,findPVs(posResp),1)'),'k-')
+    plot(s.PosWidths(:,findPVs(posResp),2),'b.')
+    plot(mean(s.PosWidths(:,findPVs(posResp),2)'),'b-')
+    plot(s.PosWidths(:,findPVs(posResp),3),'m.')
+    plot(mean(s.PosWidths(:,findPVs(posResp),3)'),'m-')
+    xlim([0 size(s.PosWidths,1) + 1])
+    title('Tuning Width Responses fast(k) tone(b) gen(m)')
+    
+    %% Column 4
+    
     
     
     %now plot individual cells. 
@@ -1284,7 +1368,7 @@ else %in the case you dont want to do tuning selection, default to normal system
         set(gca,'XTickLabel',octaveRange(:,1));
         set(gca,'YTick',dbRange(:,2));
         set(gca,'YTickLabel',dbRange(:,1));
-        title({fileName;desigNames{i}},'fontweight','bold')
+        title({fileName;desigNames{i}},'fontweight','bold', 'Interpreter', 'none');
 
         %Plot binned response during general period
         subplot(4,4,6)
