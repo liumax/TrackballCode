@@ -14,8 +14,8 @@ for i = 1:length(fileNames)
     for j = 1:length(s.DesignationName)
         averageHistLow(counter-1+j,:) = s.(s.DesignationName{j}).LaserHistLow;
         averageHistHi(counter-1+j,:) = s.(s.DesignationName{j}).LaserHistHi;
-        averageZLow(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistLow - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/mean(s.(s.DesignationName{j}).HistogramLaser(1:100));
-        averageZHi(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistHi - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/mean(s.(s.DesignationName{j}).HistogramLaser(1:100));
+        averageZLow(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistLow - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/std(s.(s.DesignationName{j}).HistogramLaser(1:100));
+        averageZHi(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistHi - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/std(s.(s.DesignationName{j}).HistogramLaser(1:100));
         isiCov(counter - 1 + j) = std(diff(s.(s.DesignationName{j}).SpikeTimes))/mean(diff(s.(s.DesignationName{j}).SpikeTimes));
     end
         
