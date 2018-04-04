@@ -4,8 +4,10 @@
 
 %first, open dataset
 
-load('170913FullDatasetWithSpikeWidthCombinedControls.mat')
+% load('170913FullDatasetWithSpikeWidthCombinedControls.mat')
+load('180326FullDatasetWithSpikeWidthCombinedControls.mat')
 
+%% Just do some analysis on locomotion AUC
 %lets plot out locomotion AUC score
 %first, combine all AUC storage information
 bigAUCStore = [];
@@ -15,12 +17,17 @@ bigAUCStore(:,2) = bigData.PV2AHalo(:,3); %store average firing rate
 bigAUCStore(:,3) = bigData.PV2AHalo(:,18); %store locomotion AUC score
 bigAUCStore(:,4) = bigData.PV2AHalo(:,19); %store locomotion AUC significance
 bigAUCStore(:,5) = 1; %store to indicate PV2A Halo Data
+bigAUCStore(:,6) = bigData.PV2AHalo(:,end);  %store isiCov
+bigAUCStore(:,7) = bigData.PV2AHalo(:,2);  %store peaktrough
+
 counter = counter + size(bigData.PV2AHalo,1);
 bigAUCStore(counter:counter+size(bigData.PVARBRHalo,1)-1,1) = bigData.PVARBRHalo(:,1); %store PV/MSN designation
 bigAUCStore(counter:counter+size(bigData.PVARBRHalo,1)-1,2) = bigData.PVARBRHalo(:,3); %store average firing rate
 bigAUCStore(counter:counter+size(bigData.PVARBRHalo,1)-1,3) = bigData.PVARBRHalo(:,18); %store locomotion AUC score
 bigAUCStore(counter:counter+size(bigData.PVARBRHalo,1)-1,4) = bigData.PVARBRHalo(:,19); %store locomotion AUC significance
 bigAUCStore(counter:counter+size(bigData.PVARBRHalo,1)-1,5) = 2; %store to indicate PV2A Halo Data
+bigAUCStore(counter:counter+size(bigData.PVARBRHalo,1)-1,6) = bigData.PVARBRHalo(:,end);
+bigAUCStore(counter:counter+size(bigData.PVARBRHalo,1)-1,7) = bigData.PVARBRHalo(:,2);%store peaktrough
 counter = counter + size(bigData.PVARBRHalo,1);
 
 bigAUCStore(counter:counter+size(bigData.Controls,1)-1,1) = bigData.Controls(:,1); %store PV/MSN designation
@@ -28,6 +35,8 @@ bigAUCStore(counter:counter+size(bigData.Controls,1)-1,2) = bigData.Controls(:,3
 bigAUCStore(counter:counter+size(bigData.Controls,1)-1,3) = bigData.Controls(:,18); %store locomotion AUC score
 bigAUCStore(counter:counter+size(bigData.Controls,1)-1,4) = bigData.Controls(:,19); %store locomotion AUC significance
 bigAUCStore(counter:counter+size(bigData.Controls,1)-1,5) = 3; %store to indicate PV2A Halo Data
+bigAUCStore(counter:counter+size(bigData.Controls,1)-1,6) = bigData.Controls(:,end); %store isi cov
+bigAUCStore(counter:counter+size(bigData.Controls,1)-1,7) = bigData.Controls(:,2); %store peaktrough
 counter = counter + size(bigData.Controls,1);
 
 %eliminate units that arent PV or MSN
@@ -36,8 +45,8 @@ bigAUCStore(findNans,:) = [];
 %eliminate any units with no running data
 findNans = find(isnan(bigAUCStore(:,3)));
 bigAUCStore(findNans,:) = [];
-aucMSNS = find(bigAUCStore(:,1) == 0);
-aucPVS = find(bigAUCStore(:,1) == 1);
+aucMSNS = find(bigAUCStore(:,7) > 0.0005 & bigAUCStore(:,6) > 1.1);
+aucPVS = find(bigAUCStore(:,7)< 0.0004 & bigAUCStore(:,6) > 1.1);
 
 msnAUCsig = intersect(aucMSNS,find(bigAUCStore(:,4)==1));
 msnAUCnsig = intersect(aucMSNS,find(bigAUCStore(:,4)==0));
@@ -112,7 +121,7 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
-
+%% Now lets plot out how these units look in terms of spike width etc. 
 %plot out spike width vs other metrics
 storeInd = 1;
 spikeWidthRateStore = [];
@@ -131,21 +140,50 @@ finder = find((spikeWidthRateStore(:,8) - spikeWidthRateStore(:,6))./(spikeWidth
 plot(spikeWidthRateStore(finder,2),spikeWidthRateStore(finder,3),'r.')
 xlabel('Spike Width (s)')
 ylabel('Firing Rate (Hz)')
-title('Spike Width vs FR')
+title('Spike Width vs FR, SIG Mod Red')
 
-figure
+hFig = figure
 plot(spikeWidthRateStore(:,2)*1000,spikeWidthRateStore(:,23)*1000,'k.')
 hold on
 greyFind = find(spikeWidthRateStore(:,2) > 0.0004 & spikeWidthRateStore(:,2) < 0.0005);
 plot(spikeWidthRateStore(greyFind,2)*1000,spikeWidthRateStore(greyFind,23)*1000,'b.')
-pvFind = find(spikeWidthRateStore(:,2) < 0.0004);
+pvFind = find(spikeWidthRateStore(:,2) < 0.0004 & spikeWidthRateStore(:,end) > 1.1);
 plot(spikeWidthRateStore(pvFind,2)*1000,spikeWidthRateStore(pvFind,23)*1000,'r.')
+chatFind = find(spikeWidthRateStore(:,end) < 1.1);
+plot(spikeWidthRateStore(chatFind,2)*1000,spikeWidthRateStore(chatFind,23)*1000,'g.')
 xlabel('Peak Trough (ms)')
 ylabel('Spike Width (ms)')
 title('Peak Trough vs Spike Width')
+spikeGraphName = 'peakTroughvsSpikeWidth';
+savefig(hFig,spikeGraphName);
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
-figure
-plot(spikeWidthRateStore(:,2),spikeWidthRateStore(:,23),'k.')
+hFig = figure
+plot(spikeWidthRateStore(:,2)*1000,spikeWidthRateStore(:,end),'k.')
+hold on
+greyFind = find(spikeWidthRateStore(:,2) > 0.0004 & spikeWidthRateStore(:,2) < 0.0005);
+plot(spikeWidthRateStore(greyFind,2)*1000,spikeWidthRateStore(greyFind,end),'b.')
+pvFind = find(spikeWidthRateStore(:,2) < 0.0004 & spikeWidthRateStore(:,end) > 1.1);
+plot(spikeWidthRateStore(pvFind,2)*1000,spikeWidthRateStore(pvFind,end),'r.')
+chatFind = find(spikeWidthRateStore(:,end) < 1.1);
+plot(spikeWidthRateStore(chatFind,2)*1000,spikeWidthRateStore(chatFind,end),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('ISI Coeff Variation')
+title('Peak Trough vs ISI Coeff Variation')
+spikeGraphName = 'peakTroughvsISIcov';
+savefig(hFig,spikeGraphName);
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+% 
+% figure
+% plot(spikeWidthRateStore(:,2),spikeWidthRateStore(:,23),'k.')
 
 %lets also include code that can basically shift the distribution of PV vs
 %MSN. Try shifting to 0.4 ms
@@ -154,16 +192,16 @@ lowThresh = 0.0004;
 highThresh = 0.0005;
 
 bigData.PV2AHalo(:,1) = NaN;
-bigData.PV2AHalo(bigData.PV2AHalo(:,2)<lowThresh,1) = 1;
-bigData.PV2AHalo(bigData.PV2AHalo(:,2)>highThresh,1) = 0;
+bigData.PV2AHalo(bigData.PV2AHalo(:,2)<lowThresh & bigData.PV2AHalo(:,end)>1.1,1) = 1;
+bigData.PV2AHalo(bigData.PV2AHalo(:,2)>highThresh & bigData.PV2AHalo(:,end)>1.1,1) = 0;
 
 bigData.PVARBRHalo(:,1) = NaN;
-bigData.PVARBRHalo(bigData.PVARBRHalo(:,2)<lowThresh,1) = 1;
-bigData.PVARBRHalo(bigData.PVARBRHalo(:,2)>highThresh,1) = 0;
+bigData.PVARBRHalo(bigData.PVARBRHalo(:,2)<lowThresh & bigData.PVARBRHalo(:,end)>1.1,1) = 1;
+bigData.PVARBRHalo(bigData.PVARBRHalo(:,2)>highThresh & bigData.PVARBRHalo(:,end)>1.1,1) = 0;
 
 bigData.Controls(:,1) = NaN;
-bigData.Controls(bigData.Controls(:,2)<lowThresh,1) = 1;
-bigData.Controls(bigData.Controls(:,2)>highThresh,1) = 0;
+bigData.Controls(bigData.Controls(:,2)<lowThresh & bigData.Controls(:,end)>1.1,1) = 1;
+bigData.Controls(bigData.Controls(:,2)>highThresh & bigData.Controls(:,end)>1.1,1) = 0;
 
 %first test: lets see how well our controls match up!
 
