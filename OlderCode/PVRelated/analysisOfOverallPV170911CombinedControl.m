@@ -143,14 +143,15 @@ ylabel('Firing Rate (Hz)')
 title('Spike Width vs FR, SIG Mod Red')
 
 hFig = figure
-plot(spikeWidthRateStore(:,2)*1000,spikeWidthRateStore(:,23)*1000,'k.')
+msnFind = find(spikeWidthRateStore(:,2) > 0.0005 & spikeWidthRateStore(:,end) > 1.1);
+plot(spikeWidthRateStore(msnFind,2)*1000,spikeWidthRateStore(msnFind,23)*1000,'k.')
 hold on
-greyFind = find(spikeWidthRateStore(:,2) > 0.0004 & spikeWidthRateStore(:,2) < 0.0005);
-plot(spikeWidthRateStore(greyFind,2)*1000,spikeWidthRateStore(greyFind,23)*1000,'b.')
+greyFind = find(spikeWidthRateStore(:,2) > 0.0004 & spikeWidthRateStore(:,2) < 0.0005 & spikeWidthRateStore(:,end) > 1.1);
+plot(spikeWidthRateStore(greyFind,2)*1000,spikeWidthRateStore(greyFind,23)*1000,'g.')
 pvFind = find(spikeWidthRateStore(:,2) < 0.0004 & spikeWidthRateStore(:,end) > 1.1);
 plot(spikeWidthRateStore(pvFind,2)*1000,spikeWidthRateStore(pvFind,23)*1000,'r.')
-chatFind = find(spikeWidthRateStore(:,end) < 1.1);
-plot(spikeWidthRateStore(chatFind,2)*1000,spikeWidthRateStore(chatFind,23)*1000,'g.')
+% chatFind = find(spikeWidthRateStore(:,end) < 1.1);
+% plot(spikeWidthRateStore(chatFind,2)*1000,spikeWidthRateStore(chatFind,23)*1000,'g.')
 xlabel('Peak Trough (ms)')
 ylabel('Spike Width (ms)')
 title('Peak Trough vs Spike Width')
@@ -563,18 +564,19 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
 hold on
-for i = 1:3
+plotTrans = [1,3,2];
+for i = [1,3,2]
     dataHolder = modStore{i,1};
-    dataHolder(:,2) = i+ (randn(length(dataHolder),1))/10;
-    bar(i,mean(dataHolder(:,1)),'FaceColor','white')
+    dataHolder(:,2) = plotTrans(i)+ (randn(length(dataHolder),1))/10;
+    bar((plotTrans(i)),mean(dataHolder(:,1)),'FaceColor','white')
     plot(dataHolder(:,2),dataHolder(:,1),'ko')
 end
-meanHolder = [mean(modStore{1,1}),mean(modStore{2,1}),mean(modStore{3,1})];
+meanHolder = [mean(modStore{1,1}),mean(modStore{3,1}),mean(modStore{2,1})];
 steStore = [std(modStore{1,1})/sqrt(length(modStore{1,1})),std(modStore{2,1})/sqrt(length(modStore{2,1})),std(modStore{3,1})/sqrt(length(modStore{3,1}))];
 errorbar(meanHolder,steStore)
 title('MSN Modulation Index, Individual Points and Means')
 set(gca,'XTick',[1,2,3])
-set(gca,'XTickLabel',{strcat('Ctrl (',num2str(length(msnCtrl)),')'),strcat('2A Halo (',num2str(length(msnHalo2A)),')'),strcat('ARBR Halo (',num2str(length(msnHaloARBR)),')')})
+set(gca,'XTickLabel',{strcat('Ctrl (',num2str(length(msnCtrl)),')'),strcat('ARBR Halo (',num2str(length(msnHaloARBR)),')'),strcat('2A Halo (',num2str(length(msnHalo2A)),')')})
 ylim([-1 1])
 ylabel('Modulation Index')
 spikeGraphName = 'barGraphMSNModSinglePoints';
@@ -588,18 +590,19 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
 hold on
-for i = 1:3
+plotTrans = [1,3,2];
+for i = [1,3,2]
     dataHolder = modStore{i,2};
-    dataHolder(:,2) = i+ (randn(length(dataHolder),1))/10;
-    bar(i,mean(dataHolder(:,1)),'FaceColor','white')
+    dataHolder(:,2) =  plotTrans(i) + (randn(length(dataHolder),1))/10;
+    bar(plotTrans(i),mean(dataHolder(:,1)),'FaceColor','white')
     plot(dataHolder(:,2),dataHolder(:,1),'ko')
 end
-meanHolder = [mean(modStore{1,2}),mean(modStore{2,2}),mean(modStore{3,2})];
+meanHolder = [mean(modStore{1,2}),mean(modStore{3,2}),mean(modStore{2,2})];
 steStore = [std(modStore{1,2})/sqrt(length(modStore{1,2})),std(modStore{2,2})/sqrt(length(modStore{2,2})),std(modStore{3,2})/sqrt(length(modStore{3,2}))];
 errorbar(meanHolder,steStore)
 title('PV Modulation Index, Individual Points and Means')
 set(gca,'XTick',[1,2,3])
-set(gca,'XTickLabel',{strcat('Ctrl (',num2str(length(pvCtrl)),')'),strcat('2A Halo (',num2str(length(pvHalo2A)),')'),strcat('ARBR Halo (',num2str(length(pvHaloARBR)),')')})
+set(gca,'XTickLabel',{strcat('Ctrl (',num2str(length(pvCtrl)),')'),strcat('ARBR Halo (',num2str(length(pvHaloARBR)),')'),strcat('2A Halo (',num2str(length(pvHalo2A)),')')})
 ylim([-1 1])
 ylabel('Modulation Index')
 spikeGraphName = 'barGraphPVModSinglePoints';
@@ -682,6 +685,23 @@ end
 %but I can see how with smaller N and much noisier effects, it wouldnt come
 %out. The MSN difference is good, suggesting there is a significant effect
 %of genotype. 
+
+
+% %Now lets do anovas
+% 
+% %make vector of modulations
+% counter = 1;
+% for i = 1:3
+%     targetLength = length(modStore{i,1});
+%     respVect(counter:counter+targetLength-1) = modStore{i,1};
+% %     desigVect(counter:counter+targetLength-1) = i;
+%     if i > 1
+%         desigVect(counter:counter+targetLength-1) = 1;
+%     else
+%         desigVect(counter:counter+targetLength-1) = 0;
+%     end
+% end
+
 
 
 %okay, now lets try looking at distance vs modulation. 
@@ -810,6 +830,7 @@ for m = 1:4
             else
                 idStore(bigInd) = NaN;
             end
+            indStore(bigInd,:) = [i,j];
 %             idStore(bigInd) = s.MasterSheet(j,1);
             bigInd = bigInd + 1;
         end
@@ -863,7 +884,7 @@ for m = 1:4
     plot(pvSelfZ - steSelfZPV)
     plot(pvSelfZ + steSelfZPV)
     title('Averaged Pre Z Rates')
-    ylim([-6 1])
+    ylim([-8 1])
     
     cd (homeFolder)
     spikeGraphName = strcat('zFireRates',num2str(m));
@@ -910,21 +931,21 @@ hold on
 plot([-1.95:0.05:4],mean(combCtrls{2}),'r','LineWidth',2)
 plot([-1.95:0.05:4],mean(combCtrls{2}) - std(combCtrls{2})/sqrt(size(combCtrls{2},1)),'r')
 plot([-1.95:0.05:4],mean(combCtrls{2}) + std(combCtrls{2})/sqrt(size(combCtrls{2},1)),'r')
-ylim([-6 1])
+ylim([-8 1])
 
 subplot(3,2,4)
 hold on
 plot([-1.95:0.05:4],mean(zStore{2,2}),'r','LineWidth',2)
 plot([-1.95:0.05:4],mean(zStore{2,2}) - std(zStore{2,2})/sqrt(size(zStore{2,2},1)),'r')
 plot([-1.95:0.05:4],mean(zStore{2,2}) + std(zStore{2,2})/sqrt(size(zStore{2,2},1)),'r')
-ylim([-6 1])
+ylim([-8 1])
 
 subplot(3,2,6)
 hold on
 plot([-1.95:0.05:4],mean(zStore{4,2}),'r','LineWidth',2)
 plot([-1.95:0.05:4],mean(zStore{4,2}) - std(zStore{4,2})/sqrt(size(zStore{4,2},1)),'r')
 plot([-1.95:0.05:4],mean(zStore{4,2}) + std(zStore{4,2})/sqrt(size(zStore{4,2},1)),'r')
-ylim([-6 1])
+ylim([-8 1])
 
 spikeGraphName = strcat('combinedZFireRates',num2str(m));
 savefig(hFig,spikeGraphName);
@@ -974,17 +995,20 @@ subplot(3,2,2)
 hold on
 bar(vectMod,histModCtrlMSN)
 xlim([-1 1])
+ylim([0 100])
 title('Histogram 2A Ctrl')
 
 subplot(3,2,4)
 hold on
 bar(vectMod,histMod2AMSN)
 xlim([-1 1])
+ylim([0 100])
 title('Histogram 2A Halo')
 
 subplot(3,2,6)
 bar(vectMod,histModARBRMSN)
 xlim([-1 1])
+ylim([0 100])
 title('Histogram ARBR Halo')
 
 spikeGraphName = strcat('combinedZFireRateAndHistMSN',num2str(m));
@@ -1025,6 +1049,7 @@ subplot(3,2,2)
 hold on
 bar(vectMod,histModCtrlPV)
 xlim([-1 1])
+
 title('Histogram 2A Ctrl')
 
 subplot(3,2,4)
