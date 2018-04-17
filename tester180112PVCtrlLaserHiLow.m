@@ -14,8 +14,26 @@ for i = 1:length(fileNames)
     for j = 1:length(s.DesignationName)
         averageHistLow(counter-1+j,:) = s.(s.DesignationName{j}).LaserHistLow;
         averageHistHi(counter-1+j,:) = s.(s.DesignationName{j}).LaserHistHi;
-        averageZLow(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistLow - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/std(s.(s.DesignationName{j}).HistogramLaser(1:100));
-        averageZHi(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistHi - mean(s.(s.DesignationName{j}).HistogramLaser(1:100)))/std(s.(s.DesignationName{j}).HistogramLaser(1:100));
+        
+        %now i need to pull just laser baseline shit
+        lowTrials = [(s.LowBlocks(1)-1)*50+1:(s.LowBlocks(1)-1)*50+50,(s.LowBlocks(2)-1)*50+1:(s.LowBlocks(2)-1)*50+50];
+        hiTrials = [(s.HiBlocks(1)-1)*50+1:(s.HiBlocks(1)-1)*50+50,(s.HiBlocks(2)-1)*50+1:(s.HiBlocks(2)-1)*50+50];
+        rastersLow = [];
+        rastersHi = [];
+        rastersLow = s.(s.DesignationName{j}).RasterLaser(ismember(s.(s.DesignationName{j}).RasterLaser(:,2),lowTrials),1);
+        rastersHi = s.(s.DesignationName{j}).RasterLaser(ismember(s.(s.DesignationName{j}).RasterLaser(:,2),hiTrials),1);
+        %remove values greater than zero
+        rastersLow(rastersLow>0) = [];
+        rastersHi(rastersHi>0) = [];
+        baselineVector = [-5:0.05:0];
+        baselineLow = hist(rastersLow,baselineVector)/100/0.05;
+        baselineHi = hist(rastersHi,baselineVector)/100/0.05;
+        stdLow = std(baselineLow);
+        stdHi = std(baselineHi);
+        meanLow = mean(baselineLow);
+        meanHi = mean(baselineHi);
+        averageZLow(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistLow - meanLow)/stdLow;
+        averageZHi(counter-1+j,:) = (s.(s.DesignationName{j}).LaserHistHi - meanHi)/stdHi;
         isiCov(counter - 1 + j) = std(diff(s.(s.DesignationName{j}).SpikeTimes))/mean(diff(s.(s.DesignationName{j}).SpikeTimes));
     end
         
