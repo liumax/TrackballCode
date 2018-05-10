@@ -3,30 +3,109 @@
 [fname pname] = uiputfile('test1.mat');
 
 %% USER ADJUSTED PARAMETERS
+%% for quick tuning, ephys
+% %Duration and Repetition
+% toneReps = 20; %number of repetitions of each tone/amplitude pair
+% toneDur = .1; %tone duration in seconds
+% onRampDur = 0.005;
+% offRampDur = 0.005;
+% 
+% %Timing
+% prePause = 0.1; %pause in seconds before tone
+% postPauseMin = 500; %pause in milliseconds after tone
+% postPauseMax = 1000; %pause in milliseconds after tone
+% % postPauseMin = 3000; %pause in milliseconds after tone
+% % postPauseMax = 6000; %pause in milliseconds after tone
+% 
+% %Frequency
+% startF = 4000; %starting frequency in Hz
+% endF = 64000; %ending frequency in Hz
+% octFrac = 0.25; %fractions of octaves to move
+% %White noise?
+% whiteNoise = 1; %1 for white noise inclusion.
+% 
+% %dB
+% startdB = 100; %starting decibel value
+% enddB = 100; %lowest decibel value
+% dbSteps = 10; %resolution of decible steps
+
+%% for full tuning, Ephys
+% %Duration and Repetition
+% toneReps = 40; %number of repetitions of each tone/amplitude pair
+% toneDur = 0.1; %tone duration in seconds
+% onRampDur = 0.005;
+% offRampDur = 0.005;
+% 
+% %Timing
+% prePause = 0.1; %pause in seconds before tone
+% postPauseMin = 500; %pause in milliseconds after tone
+% postPauseMax = 1000; %pause in milliseconds after tone
+% 
+% 
+% %Frequency
+% startF = 4000; %starting frequency in Hz
+% endF = 32000; %ending frequency in Hz
+% octFrac = 0.2; %fractions of octaves to move
+% %White noise?
+% whiteNoise = 1; %1 for white noise inclusion.
+% 
+% %dB
+% startdB = 100; %starting decibel value
+% enddB = 60; %lowest decibel value
+% dbSteps = 10; %resolution of decible steps
+
+%% for quick tuning, calcium
+% %Duration and Repetition
+% toneReps = 40; %number of repetitions of each tone/amplitude pair
+% toneDur = 1; %tone duration in seconds
+% onRampDur = 0.005;
+% offRampDur = 0.005;
+% 
+% %Timing
+% prePause = 0.1; %pause in seconds before tone
+
+% postPauseMin = 3000; %pause in milliseconds after tone
+% postPauseMax = 6000; %pause in milliseconds after tone
+% 
+% %Frequency
+% startF = 4000; %starting frequency in Hz
+% endF = 64000; %ending frequency in Hz
+% octFrac = 0.25; %fractions of octaves to move
+% %White noise?
+% whiteNoise = 1; %1 for white noise inclusion.
+% 
+% %dB
+% startdB = 100; %starting decibel value
+% enddB = 100; %lowest decibel value
+% dbSteps = 10; %resolution of decible steps
+
+%% for full tuning, calcium
 %Duration and Repetition
-toneReps = 30; %number of repetitions of each tone/amplitude pair
-toneDur = 0.1; %tone duration in seconds
+toneReps = 40; %number of repetitions of each tone/amplitude pair
+toneDur = 1; %tone duration in seconds
 onRampDur = 0.005;
 offRampDur = 0.005;
 
 %Timing
 prePause = 0.1; %pause in seconds before tone
-postPauseMin = 500; %pause in milliseconds after tone
-postPauseMax = 1000; %pause in milliseconds after tone
+postPauseMin = 3000; %pause in milliseconds after tone
+postPauseMax = 6000; %pause in milliseconds after tone
+
 
 %Frequency
 startF = 4000; %starting frequency in Hz
-endF = 64000; %ending frequency in Hz
+endF = 32000; %ending frequency in Hz
 octFrac = 0.2; %fractions of octaves to move
 %White noise?
 whiteNoise = 1; %1 for white noise inclusion.
 
 %dB
 startdB = 100; %starting decibel value
-enddB = 60; %lowest decibel value
+enddB = 100; %lowest decibel value
 dbSteps = 10; %resolution of decible steps
 
-%confirm pauses are longer than double the tone length
+
+%% confirm pauses are longer than double the tone length
 warningCheck = (postPauseMin/1000 - 2*toneDur)<0;
 if warningCheck == 1
     error('TONE DURATION LONGER THAN ITI')
@@ -181,7 +260,7 @@ rampProfile(end-offRampDur:end) = offRampProfile;
 
 %this makes the profile for the TTL signal
 ttlSig = zeros(paddingL,1);
-ttlSig(1:2*fs/1000) = 1;
+ttlSig(1:3*fs/1000) = 1;
 
 %generate white noise to be used repeatedly.
 %generate white gaussian noise of correct size
@@ -192,7 +271,9 @@ Wn = 4e3/(0.5*fs); % pass above 3.9 kHz 160121 Adjusted to 4kHz
 n = 1000; % 1000th order filter (slower? but 100-order was too low)
 b = fir1(n, Wn, 'high'); 
 audio_data = filtfilt(b,1,y);
+%% Save Information First!!
 
+save(fullfile(pname,fname),'soundData');
 
 %% Perform actual Tuning
 for i = 1:length(master)
@@ -236,5 +317,3 @@ soundData.Amplitudes = master(:,3);
 soundData.WhiteNoise = whiteNoise;
 
 
-
-save(fullfile(pname,fname),'soundData');
