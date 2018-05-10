@@ -1,0 +1,62 @@
+%This code is meant for EP recordings and combines a range of potential stimuli
+% Auditory stimuli is received in port1, and outputted through port 1
+% Light stimuli will be delivered via finger triggering. Output via output
+% 7
+% Time keeping via output 6
+
+%These are variables controlling light stimulation (visual)
+int toggle = 0
+int idITI = 200
+int idPulseDur = 5
+int idCounter = 0
+
+%These are variables controlling time-keeper pulsing
+int timePulseDur = 5
+int timeITI = 500
+int timerToggle = 1
+
+%timekeeper pulse
+function 1
+    timeWait = random(99) + timeITI
+    while timerToggle == 1 do in timeWait
+        portout[6] = 1
+        do in timePulseDur
+            portout[6] = 0
+        end
+        timeWait = random(99) + timeITI
+    end
+    
+end;
+
+%finger triggered light stimulation
+function 2
+	while toggle == 1 do every idITI
+		portout[6] = 1
+		do in idPulseDur
+			portout[6] = 0
+		end
+		idCounter = idCounter + 1
+		disp(idCounter)
+	end
+end;
+
+callback portin[1] up
+	portout[1] = 1
+	do in 5
+		portout[1] = 0
+    end
+end;
+
+callback portin[3] up
+    if toggle == 0 do
+        toggle = 1
+        trigger(2)
+    else do
+        toggle = 0
+	idCounter = 0
+	disp('Stop ID')
+    end
+end;
+
+
+
