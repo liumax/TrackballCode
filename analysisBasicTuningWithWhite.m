@@ -1080,6 +1080,9 @@ end
 [indPosSig] = functionCellStringFind(masterHeader,'PosSigGenHist');
 [indNegSig] = functionCellStringFind(masterHeader,'NegSigGenHist');
 
+
+
+
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
 %% Column 1
@@ -1215,6 +1218,97 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%% Now plot figure of all cross correlograms. 
+%first, calculate all xcorrs. 
+crossWindow = [-0.02 0.02];
+xCorrVect = [crossWindow(1):0.001:crossWindow(2)];
+%divide by shank
+for m = 1:2
+    disp(strcat('xCorr-Shank-',num2str(m)))
+    targUnits = find(masterData(:,2) == m);
+%     targPVs = find(masterData(targUnits,7) == 1);
+    targNames = desigNames(targUnits);
+    numTargs = length(targUnits);
+    for i = 1:numTargs
+        disp(i)
+        for j = 1:numTargs
+            %compute xcorr
+            spikeTimes1 = s.(targNames{i}).SpikeTimes;
+            spikeTimes2 = s.(targNames{j}).SpikeTimes;
+            spikeStore = ones(100000,1);
+            sCounter = 1;
+            for spikeInd = 1:length(spikeTimes1)
+                %subtract spike time from first train out of all of second train
+                subSpikes = spikeTimes2 - spikeTimes1(spikeInd);
+                %remove things outside the window of interest
+                subSpikes(subSpikes>crossWindow(2) | subSpikes<crossWindow(1)) = [];
+                spikeStore(sCounter:(sCounter + length(subSpikes)-1)) = subSpikes;
+                sCounter = sCounter + length(subSpikes);
+            end
+            spikeStore(sCounter:end) = [];
+            %now we need to standardize so we can store large array
+            tempStore = [];
+            tempStore = hist(spikeStore,xCorrVect);
+            bigXCorrStore(m,i,j,:) = tempStore;
+        end
+
+    end
+end
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01], [0.01 0.01], [0.03 0.01]);
+
+% for m = 1:2
+%     targUnits = find(masterData(:,2) == m);
+%     targNames = desigNames(targUnits);
+%     numTargs = length(targUnits);
+%     hFig = figure;
+%     set(hFig, 'Position', [10 80 1900 1000])
+%     for i = 1:numTargs
+%         for j = 1:numTargs
+%             subplot(numTargs,numTargs,(i-1)*numTargs+j)
+%             bar(xCorrVect,squeeze(bigXCorrStore(m,i,j,:)))
+%             hold on
+%             plot([0 0],[0 max(squeeze(bigXCorrStore(m,i,j,:)))],'r')
+%             plot(crossWindow,[0 0],'b')
+%             axis off
+%         end
+%     end
+% end
+
+
+for m = 1:2
+    targUnits = find(masterData(:,2) == m);
+    targPVs = find(masterData(targUnits,7) == 1);
+    targNames = desigNames(targUnits);
+    numTargs = length(targUnits);
+    if targPVs
+        hFig = figure;
+        set(hFig, 'Position', [10 80 1600 800])
+        for i = 1:length(targPVs)
+            for j = 1:numTargs
+                subplot(length(targPVs),numTargs,(i-1)*numTargs+j)
+                bar(xCorrVect,squeeze(bigXCorrStore(m,targPVs(i),j,:)))
+                hold on
+                plot([0 0],[0 max(squeeze(bigXCorrStore(m,targPVs(i),j,:)))],'r')
+                plot(crossWindow,[0 0],'b')
+                axis off
+                xlim(crossWindow)
+            end
+        end
+        
+        spikeGraphName = strcat('CrossCorrPVvsOthersShank',num2str(m));
+        savefig(hFig,spikeGraphName);
+
+        %save as PDF with correct name
+        set(hFig,'Units','Inches');
+        pos = get(hFig,'Position');
+        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+        print(hFig,spikeGraphName,'-dpdf','-r0')
+    end
+end
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
 %% Plot differentiating by shank
 hFig = figure;
