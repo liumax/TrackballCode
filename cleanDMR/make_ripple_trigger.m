@@ -77,8 +77,8 @@ triglength = 32000;  % inter-trigger time MUST BE 32000 samples
 
 pulselength = round(0.05*fs) + mod(round(0.05*fs), 2);  % pulse-length will be 50 ms
 
-trigger = 2^(nbits-1)/2 * [ones(1, pulselength/2) -1*ones(1,pulselength/2) zeros(1, triglength-pulselength)];
-
+trigger = 2^(nbits-1)/2 * [ones(1, pulselength/2) zeros(1,pulselength/2) zeros(1, triglength-pulselength)]; %180320 max edit. eliminate negative. 
+% trigger = 2^(nbits-1)/2 * [ones(1, pulselength/2) -1*ones(1,pulselength/2) zeros(1, triglength-pulselength)];
 
 % make the special first trigger, which will have 3 distinct pulses
 % firsttrigger = 2^(nbits-1)/2 * [ones(1, pulselength/2) -1*ones(1,pulselength/2) zeros(1, triglength-pulselength)];
@@ -86,9 +86,9 @@ trigger = 2^(nbits-1)/2 * [ones(1, pulselength/2) -1*ones(1,pulselength/2) zeros
 % firsttrigger(10000:(10000+pulselength-1)) = 2^(nbits-1)/2 * [ones(1, pulselength/2) -1*ones(1,pulselength/2)];
 
 
-firsttrigger = round( 2^(nbits-1)/2 * [ones(1, pulselength/2) -1*ones(1,pulselength/2) ...
-                           ones(1, pulselength/2) -1*ones(1,pulselength/2) ...
-                           ones(1, pulselength/2) -1*ones(1,pulselength/2) ...
+firsttrigger = round( 2^(nbits-1)/2 * [ones(1, pulselength/2) zeros(1,pulselength/2) ...
+                           ones(1, pulselength/2) zeros(1,pulselength/2) ...
+                           ones(1, pulselength/2) zeros(1,pulselength/2) ...
                            zeros(1, triglength-3*pulselength)]);
 
 pulselength
