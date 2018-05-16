@@ -48,7 +48,21 @@ s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display w
 
 %Parameters for auditory stimuli, visual stimuli, locomotion
 s.Parameters.RasterWindow = [-0.3 0.4];
+s.Parameters.histBin = 0.005;
 
+%parameters specifically for auditory
+calcWindow = [0 0.2]; %defines period for looking for responses, based on toneDur
+s.Parameters.zLimit = [0.05 0.01 0.001];
+s.Parameters.minSpikes = 100; %minimum number of spikes in baseline, if lower, triggers a warning
+s.Parameters.minSigSpikes = 5; %minimum number of significant points to record a significant response.
+s.Parameters.PercentCutoff = 99.9; %for significance in latency calculations
+s.Parameters.BaselineCutoff = 95; %for the onset in latency calculations
+s.Parameters.latBin = 0.001; %histogram bins for latency and significance calculations
+s.Parameters.SigSmoothWindow = 11; %window of smoothing for calculations of significance
+rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
+histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin;
+s.Parameters.ToneWindow = [0 0.1];
+s.Parameters.GenWindow = [0 0.2];
 
 %% sets up file saving stuff
 saveName = strcat(fileName,'LightToneAnalysis','.mat');
@@ -277,7 +291,7 @@ totalTrialNum = length(soundData.Frequencies);
 % calcWindow = s.Parameters.calcWindow*toneDur;
 % rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
 % histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin;
-% histBinVector = [s.Parameters.RasterWindow(1)+s.Parameters.histBin/2:s.Parameters.histBin:s.Parameters.RasterWindow(2)-s.Parameters.histBin/2]; %this is vector with midpoints of all histogram bins
+histBinVector = [s.Parameters.RasterWindow(1)+s.Parameters.histBin/2:s.Parameters.histBin:s.Parameters.RasterWindow(2)-s.Parameters.histBin/2]; %this is vector with midpoints of all histogram bins
 % %histBinVector is for the purposes of graphing. This provides a nice axis
 % %for graphing purposes
 % % s.Parameters.CalcWindow = s.Parameters.CalcWindow * toneDur;
@@ -632,6 +646,7 @@ plot([1 length(magData)],[0 0],'k')
 title('EDR Peak Detection')
 
 edrOnsetTimes = edrMagTimes(onsetStore);
+edrOnsetTimes(isnan(edrOnsetTimes)) = [];
 
 
 %% Now process spiking data aligned to various points
@@ -739,6 +754,7 @@ for i = 1:numUnits
     
     [histCounts histCenters] = hist(rasters(:,1),histBinVector);
     fullHistData = histCounts'/totalTrialNum/s.Parameters.histBin;
+    bigHistStore(:,i) = fullHistData;
     
     %calculate significant response for combined histogram of all responses
     %to all sounds.    
@@ -776,7 +792,7 @@ for i = 1:numUnits
     binStoreGen = zeros(numFreqs,numDBs);
     probStoreTone = zeros(numFreqs,numDBs);
     probStoreGen = zeros(numFreqs,numDBs);
-    freqSpecHist = zeros(numFreqs,histBinNum,1);
+    freqSpecHist = zeros(numFreqs,histBinNum,1); 
     
     for k = 1:numFreqs
         subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(k),3));
@@ -846,18 +862,20 @@ for i = 1:numUnits
     
     %% Now do rasters aligned to light delivery
     [rastersLight] = functionBasicRaster(spikeTimes,dio5Times,s.Parameters.RasterWindow);
-    [histCounts histCenters] = hist(rasters(:,1),histBinVector);
+    [histCounts histCenters] = hist(rastersLight(:,1),histBinVector);
     histLight = histCounts'/length(dio5Times)/s.Parameters.histBin;
     s.(desigNames{i}).LightRaster = rastersLight;
     s.(desigNames{i}).LightHist = histLight;
+    bigHistLight(:,i) = histLight; %for plotting purposes!
     
     %% Now do rasters aligned to significant deviations based on EDR
     
-    [rastersEDR] = functionBasicRaster(spikeTimes,dio5Times,s.Parameters.RasterWindow);
-    [histCounts histCenters] = hist(rasters(:,1),histBinVector);
-    histEDR = histCounts'/length(dio5Times)/s.Parameters.histBin;
+    [rastersEDR] = functionBasicRaster(spikeTimes,edrOnsetTimes,s.Parameters.RasterWindow);
+    [histCounts histCenters] = hist(rastersEDR(:,1),histBinVector);
+    histEDR = histCounts'/length(edrOnsetTimes)/s.Parameters.histBin;
     s.(desigNames{i}).EDRRaster = rastersEDR;
     s.(desigNames{i}).EDRHist = histEDR;
+    bigHistEDR(:,i) = histEDR; %for plotting purposes!
     
     
     %% Now do locomotion overall correlation
@@ -884,12 +902,72 @@ for i = 1:numUnits
     masterData(i,masterHolder) = s.(desigNames{i}).AUCSig;%find best frequency, ignores white noise
     masterHeader{masterHolder} = 'LocoAUCSig';
     masterHolder = masterHolder + 1;
-    
-    %% Now do 
-    
 end
 
 masterInd = masterHolder;
+
+%now generate normalized overall histograms for light and movement
+findZero = find(histBinVector < 0,1,'last');
+for i = 1:numUnits
+    bigHistLightNorm(:,i) = bigHistLight(:,i) / mean(bigHistLight([1:findZero],i));
+    bigHistEDRNorm(:,i) = bigHistEDR(:,i) / mean(bigHistEDR([1:findZero],i));
+    bigHistStoreNorm(:,i) = bigHistStore(:,i) / mean(bigHistStore([1:findZero],i));
+end
+
+%% Plotting!!
+
+%% Want to plot by shanks, overall responses to light, sound, locomotion. Do heatmaps?
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+findFirst = find(masterData(:,2) == 1);
+findSecond = find(masterData(:,2) == 2);
+%plot out responses to blue light
+subplot(2,4,1)
+imagesc(bigHistLightNorm(:,findFirst)')
+colormap('parula')
+colorbar
+title('Shank1 Resp Blue Light')
+
+subplot(2,4,5)
+imagesc(bigHistLightNorm(:,findSecond)')
+colormap('parula')
+colorbar
+
+%plot out responses to auditory overall
+subplot(2,4,2)
+imagesc(bigHistStoreNorm(:,findFirst)')
+title('Shank1 Resp Auditory')
+colormap('parula')
+colorbar
+
+subplot(2,4,6)
+imagesc(bigHistStoreNorm(:,findSecond)')
+colormap('parula')
+colorbar
+
+%plot out responses to loco start
+subplot(2,4,3)
+imagesc(bigHistEDRNorm(:,findFirst)')
+title('Shank1 Resp EDR')
+colormap('parula')
+colorbar
+
+subplot(2,4,7)
+imagesc(bigHistEDRNorm(:,findSecond)')
+colormap('parula')
+colorbar
+
+%plot out responses to auditory overall, reserved for A2A stim in the
+%future. 
+subplot(2,4,4)
+title('Shank1 Resp A2A')
+
+
+subplot(2,4,8)
+
+
+%% Plot out individual cells more specifically?
 
 
 
