@@ -124,8 +124,7 @@ for i = 1:2
         unitData(counter:counter + numUnits - 1,1) = i;
         unitData(counter:counter + numUnits - 1,2) = channelDesig; %store biggest channel
         unitData(counter:counter + numUnits - 1,3) = uniqueUnits; %store channel name
-        %store this information in combined manner
-        s.OrderData(counter:counter+length(unitData)-1,:) = unitData;
+        
         clipName = uigetfile('*.mda',strcat('Select Clips for-',num2str(i)));
         recordClips = readmda(clipName);
         %finally, pull spikes
@@ -147,10 +146,14 @@ for i = 1:2
             %now pull template
             s.(targetName).TemplateSpike = recordClips(:,:,j);
         end
-
-        counter = counter + numUnits;
     end
+    counter = counter + numUnits;
 end
+
+%store this information in combined manner
+s.OrderData = unitData;
+
+
 numUnits = size(unitData,1);
 holder = [];
 
@@ -582,9 +585,13 @@ threshHiPass = 1000;
 threshReset = 200;
 whileTrig = 0;
 whileInd = 1;
-whileCounter = 1;
+%we need for whileCounter, which is the starting point of the search to
+%equal the first zero value. 
+whileCounter = find(magData < 200,1,'first');
+% whileCounter = 1;
 onsetStore = [];
 while whileTrig == 0
+%     whileInd
     %first, establish break for when exceeds length
     testFind = find(magData(whileCounter:end) > threshHiPass);
     if length(testFind) == 0
@@ -593,12 +600,15 @@ while whileTrig == 0
     %now lets do our iterative search. first, find the next point exceeding
     %the high threshold
     findNext = find(magData(whileCounter:end) > threshHiPass,1,'first');
+%     disp('Finding Next')
     %next, find the earliest point before with a slope of less than 0
     %(bottom)
     findBottom = find(magDiff(1:whileCounter + findNext-2) < 0, 1, 'last');
+%     disp('Finding Bottom')
     onsetStore(whileInd) = findBottom + 2;
     %store magnitude
     peakSizeStore(whileInd) = magData(findNext + whileCounter - 1) - magData(findBottom+2);
+%     disp('Storing Mag')
     %now that we've stored the value, we need to find the next ok point. 
     findLim = find(magData(whileCounter + findNext:end) < threshReset,1,'first');
     whileCounter = whileCounter + findNext + findLim;
@@ -606,6 +616,7 @@ while whileTrig == 0
     wholeStore(whileInd,2) = findBottom;
     wholeStore(whileInd,3) = findLim;
     wholeStore(whileInd,4) = whileCounter;
+%     disp('Storing whole')
     
     whileInd = whileInd + 1;  
 end
