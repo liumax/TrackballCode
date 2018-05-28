@@ -339,10 +339,15 @@ newDist = reshape(newDist,[],1);
 velTimes = reshape(velTimes,[],1);
 mouseVel = reshape(mouseVel,[],1);
 disp('Finished Interpolation And Remapping of Velocity/Distance')
+
 %find start times of velocity
 
 locoBinary = zeros(length(mouseVel),1);
 locoBinary(abs(mouseVel)>1) = 1; 
+
+locoSimp = zeros(length(mouseVel),1);
+locoSimp(mouseVel > 0.1) = 1;
+locoSimp(mouseVel < -0.1) = -2;
 
 locoStarts = find(diff(locoBinary) == 1)+1;
 locoEnds = find(diff(locoBinary) == -1);
@@ -376,10 +381,14 @@ if failTrigger == 0
         end
 
     end
+    
 elseif failTrigger == 1
     iStarts = 0;
     iEnds = 0;
 end
+
+
+
 disp('Finished Finding Locomotion Starts')
 funcOut=struct;
 funcOut.Distance = [newTimes,newDist];
@@ -387,6 +396,7 @@ funcOut.Velocity = [velTimes,mouseVel];
 funcOut.RawDistance = [catTimes,cumDist];
 funcOut.RawData = timeStateArray;
 funcOut.BinaryLocomotion = locoBinary;
+funcOut.SimpleLocomotion = locoSimp;
 % x.BinaryLocoRev = revBinary;
 funcOut.LocoStarts = velTimes(locoStarts);
 funcOut.LocoEnds = velTimes(locoEnds);
