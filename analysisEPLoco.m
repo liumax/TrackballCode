@@ -99,7 +99,8 @@ unitData = zeros(2,3);
 clusterVect = [s.Parameters.ClusterWindow(1):0.0001:s.Parameters.ClusterWindow(2)];
 for i = 1:2
     disp('Select Shank')
-    tarFileName = uigetfile('*.mda',strcat('Select Shank-',num2str(i)));
+%     tarFileName = uigetfile('*.mda',strcat('Select Shank-',num2str(i)));
+        tarFileName = strcat('nt',num2str(i),'Sort.mda');
     if tarFileName
         %extract file
         holder = readmda(tarFileName);
@@ -123,7 +124,8 @@ for i = 1:2
         unitData(counter:counter + numUnits - 1,2) = channelDesig; %store biggest channel
         unitData(counter:counter + numUnits - 1,3) = uniqueUnits; %store channel name
         
-        clipName = uigetfile('*.mda',strcat('Select Clips for-',num2str(i)));
+%         clipName = uigetfile('*.mda',strcat('Select Clips for-',num2str(i)));
+        clipName = strcat('nt',num2str(i),'SortWave.mda');
         recordClips = readmda(clipName);
         %finally, pull spikes
         for j = 1:numUnits
@@ -131,11 +133,15 @@ for i = 1:2
             desigNames{counter+j-1} = targetName;
             nameHold{counter - 1 + j} = targetName;
             targetSpikes = holder(2,holder(3,:) == uniqueUnits(j));
-            s.(targetName).SpikeTimes = targetSpikes;
-%             s.(targetName).BigChan = 
+            
+            
             %make crude autocorrelogram
             pruned = diff(targetSpikes);
+            findDoubles = find(pruned < 0.0005);
+            targetSpikes(findDoubles) = [];
+            pruned = diff(targetSpikes);
             pruned(pruned>s.Parameters.ClusterWindow(2)) = [];
+            s.(targetName).SpikeTimes = targetSpikes;
             s.(targetName).ISIGraph = hist(pruned,clusterVect);
             %store rpv violation number
             s.(targetName).RPVNum = length(find(pruned < s.Parameters.RPVTime));
@@ -305,6 +311,9 @@ while whileTrig == 0
 %     disp('Storing Mag')
     %now that we've stored the value, we need to find the next ok point. 
     findLim = find(magData(whileCounter + findNext:end) < threshReset,1,'first');
+    if length(findLim) == 0
+        break
+    end
     whileCounter = whileCounter + findNext + findLim;
     wholeStore(whileInd,1) = findNext;
     wholeStore(whileInd,2) = findBottom;
@@ -343,6 +352,8 @@ for i = 1:numUnits
     
     %pulls spike times and times for alignment
     spikeTimes = s.(desigNames{i}).SpikeTimes';
+    
+    averageRate = length(spikeTimes)/(s.RotaryData.Velocity(end,1)-s.RotaryData.Velocity(1,1));
     
     %make a plot of firing rate over time. 
     sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
@@ -568,19 +579,35 @@ for i = 1:numUnits
     f = Fs*(0:(L/2))/L;
     plot(f,smooth(P1,41)/max(smooth(P1,41))) 
     plot(f,smooth(P1floco,41)/max(smooth(P1floco,41)),'r')
+    posLocoFind = find(s.RotaryData.NewSimp == 1);
+    X = s.(desigNames{i}).FineSession(posLocoFind);
+    Fs = 100;
+    L = length(X);
+    Y = fft(X);
+    P2 = abs(Y/L);
+    P1 = P2(1:L/2+1);
+    P1(2:end-1) = 2*P1(2:end-1);
+    f = Fs*(0:(L/2))/L;
+    plot(f,smooth(P1,41)/max(smooth(P1,41)),'k') 
     xlim([0.5 20])
-    title('norm FFT of 10ms FR (b) loco (r)')
+    title('norm FFT of 10ms FR (b) FRloco (k) loco (r)')
     
     
     %big velocity etc plot
     subplot(2,1,2)
     hold on
     %plot velocity
-    plot(downsample(s.RotaryData.Velocity(:,1),10),downsample(s.RotaryData.Velocity(:,2)./max(s.RotaryData.Velocity(:,2)),10),'k')
+    plot(downsample(s.RotaryData.Velocity(:,1),2),downsample(s.RotaryData.Velocity(:,2)./max(s.RotaryData.Velocity(:,2)),2),'k')
     %plot EDR power
-    plot(downsample(edrMagTimes,10),downsample(EDROut.PiezoPower(:,2)./max(EDROut.PiezoPower(:,2)),10),'b')
+    plot(downsample(edrMagTimes,2),downsample(EDROut.PiezoPower(:,2)./max(EDROut.PiezoPower(:,2)),2),'b')
     %plot firing rate
-    plot(downsample(s.(desigNames{i}).FineSessionVector,5),downsample(smooth(s.(desigNames{i}).FineSession,31)./max(smooth(s.(desigNames{i}).FineSession,31)),5),'r')
+    plot(downsample(s.(desigNames{i}).FineSessionVector,2),downsample(smooth(s.(desigNames{i}).FineSession,31)./max(smooth(s.(desigNames{i}).FineSession,31)),2),'r')
+    %Consider looking at filtered version?
+%     Wn = [0.5*2/100 5*2/100]; % %confirmed 180601 that this is correct
+%     formula. do 2 x desired Hz /sampling rate
+%     n = 1000; % 1000th order filter (slower? but 100-order was too low)
+%     b = fir1(n, Wn); 
+%     filtData = filtfilt(b,1,s.(desigNames{i}).FineSession);
     %restrict timeframe to EDR times.
     edrStart = edrMagTimes(find(~isnan(edrMagTimes),1,'first'));
     edrEnd = edrMagTimes(find(~isnan(edrMagTimes),1,'last'));
