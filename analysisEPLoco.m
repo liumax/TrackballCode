@@ -81,7 +81,11 @@ end
 homeFolder = pwd;
 subFolders = genpath(homeFolder);
 addpath(subFolders)
-subFoldersCell = strsplit(subFolders,';')';
+if ispc
+    subFoldersCell = strsplit(subFolders,';')';
+elseif ismac
+    subFoldersCell = strsplit(subFolders,':')';
+end
 
 
 %% Extract trodes timestamps
@@ -338,6 +342,9 @@ title('EDR Peak Detection')
 edrOnsetTimes = edrMagTimes(onsetStore);
 edrOnsetTimes(isnan(edrOnsetTimes)) = [];
 
+s.EDR.OnsetTimes = edrOnsetTimes;
+s.EDR.MagData = magData;
+s.EDR.TimeVector = edrMagTimes;
 
 
 %% Now process spiking data aligned to various points
@@ -379,8 +386,8 @@ for i = 1:numUnits
     
     %now we need to find the peak. Find this starting at point 10. 
 
-    [pkVal pkInd] = max(interpWave(100:end));
-    pkInd = pkInd + 100 - 1;
+    [pkVal pkInd] = max(interpWave(300:end));
+    pkInd = pkInd + 300 - 1;
     %now we need to find the minimum following the peak
 
     [troughVal troughInd] = min(interpWave(pkInd:end));
@@ -388,12 +395,26 @@ for i = 1:numUnits
 
     peakTrough = (troughInd - pkInd)/300000;
     
+    %now find spike width
+    halfMax = pkVal/2;
+    %Find front end of spike. 
+    frontEnd = find(interpWave(1:pkInd)>halfMax,1,'last');
+    %Find back end of spike. 
+    backEnd = find(interpWave(pkInd:end)<halfMax,1,'first');
+    backEnd = backEnd + pkInd - 1;
+    
+    spikeWidth = (backEnd - frontEnd)/300000;
+    
     %find ISIs
     isiTimes = diff(spikeTimes);
     isiCov = std(isiTimes)/mean(isiTimes);
     
     masterData(i,masterHolder) = peakTrough;
     masterHeader{masterHolder} = 'PeakTrough(ms)';
+    masterHolder = masterHolder + 1;
+    
+    masterData(i,masterHolder) = spikeWidth;
+    masterHeader{masterHolder} = 'SpikeWidth(ms)';
     masterHolder = masterHolder + 1;
     
     masterData(i,masterHolder) = isiCov;
@@ -418,6 +439,7 @@ for i = 1:numUnits
     s.(desigNames{i}).FineSession = fineSessFire;
     s.(desigNames{i}).FineSessionVector = [s.RotaryData.Velocity(1,1):0.01:s.RotaryData.Velocity(end,1)];
     s.(desigNames{i}).HistBinVector = histBinVector;
+    s.(desigNames{i}).AverageRate = averageRate;
 
     %% Now do rasters aligned to significant deviations based on EDR
     [rastersEDR] = functionBasicRaster(spikeTimes,edrOnsetTimes,s.Parameters.RasterWindow);
@@ -426,6 +448,22 @@ for i = 1:numUnits
     s.(desigNames{i}).EDRRaster = rastersEDR;
     s.(desigNames{i}).EDRHist = histEDR;
     bigHistEDR(:,i) = histEDR; %for plotting purposes!
+    
+    %% Now do rasters aligned to locomotion bout onsets
+    [rastersLocoStart] = functionBasicRaster(spikeTimes,s.RotaryData.Velocity(s.RotaryData.PosStartsEnds(:,1),1),s.Parameters.RasterWindow);
+    [histCounts histCenters] = hist(rastersLocoStart(:,1),histBinVector);
+    histLocoStart = histCounts'/length(edrOnsetTimes)/s.Parameters.histBin;
+    s.(desigNames{i}).locoStartRaster = rastersLocoStart;
+    s.(desigNames{i}).locoStartHist = histLocoStart;
+    bigHistLocoStart(:,i) = histLocoStart; %for plotting purposes!
+    
+    %and offsets
+    [rastersLocoEnd] = functionBasicRaster(spikeTimes,s.RotaryData.Velocity(s.RotaryData.PosStartsEnds(:,2),1),s.Parameters.RasterWindow);
+    [histCounts histCenters] = hist(rastersLocoEnd(:,1),histBinVector);
+    histLocoEnd = histCounts'/length(edrOnsetTimes)/s.Parameters.histBin;
+    s.(desigNames{i}).locoEndRaster = rastersLocoEnd;
+    s.(desigNames{i}).locoEndHist = histLocoEnd;
+    bigHistLocoEnd(:,i) = histLocoEnd; %for plotting purposes!
     
     
     %% Now do locomotion overall correlation
@@ -460,6 +498,8 @@ masterInd = masterHolder;
 findZero = find(histBinVector < 0,1,'last');
 for i = 1:numUnits
     bigHistEDRNorm(:,i) = bigHistEDR(:,i) / mean(bigHistEDR([1:findZero],i));
+    bigHistLocoStartNorm(:,i) = bigHistLocoStart(:,i) / mean(bigHistLocoStart([1:findZero],i));
+    bigHistLocoEndNorm(:,i) = bigHistLocoEnd(:,i) / mean(bigHistLocoEnd([1:findZero],i));
 end
 
 
@@ -473,6 +513,33 @@ P1floco = P2(1:L/2+1);
 P1floco(2:end-1) = 2*P1floco(2:end-1);
 floco = Fs*(0:(L/2))/L;
 
+%now generate average of different aspects of velocity behavior. 
+meanJump = nanmean(diff(edrMagTimes));
+convertWindow = round(s.Parameters.RasterWindow/meanJump);
+edrVect = [s.Parameters.RasterWindow(1):meanJump:s.Parameters.RasterWindow(2)];
+avEDRstore = zeros(length(edrOnsetTimes),length(edrVect));
+for i = 1:length(edrOnsetTimes)
+    %find target
+    tarTime = find(edrMagTimes - edrOnsetTimes(i) > 0, 1, 'first');
+    avEDRstore(i,:) = magData(tarTime + convertWindow(1):tarTime + convertWindow(2)-1);
+end
+
+avEDR = mean(avEDRstore);
+
+meanJump = s.Parameters.InterpolationStepRotary;
+convertWindow = round(s.Parameters.RasterWindow/meanJump);
+velVect = [s.Parameters.RasterWindow(1):meanJump:s.Parameters.RasterWindow(2)];
+avVelStartStore = zeros(length(s.RotaryData.PosStartsEnds),length(velVect));
+avVelEndStore = zeros(length(s.RotaryData.PosStartsEnds),length(velVect));
+for i = 1:length(s.RotaryData.PosStartsEnds)
+    avVelStartStore(i,:) = s.RotaryData.Velocity(s.RotaryData.PosStartsEnds(i,1) + convertWindow(1):s.RotaryData.PosStartsEnds(i,1) + convertWindow(2),2);
+    avVelEndStore(i,:) = s.RotaryData.Velocity(s.RotaryData.PosStartsEnds(i,2) + convertWindow(1):s.RotaryData.PosStartsEnds(i,2) + convertWindow(2),2);
+end
+
+avVelStart = mean(avVelStartStore);
+avVelEnd = mean(avVelEndStore);
+
+
 %% Plotting!!
 
 %% Want to plot by shanks, overall responses to light, sound, locomotion. Do heatmaps?
@@ -482,15 +549,41 @@ set(hFig, 'Position', [10 80 1900 1000])
 findFirst = find(masterData(:,1) == 1);
 findSecond = find(masterData(:,1) == 2);
 
-%plot out responses to loco start
-subplot(2,1,1)
+%plot out responses to EDR start
+subplot(2,3,1)
 imagesc(bigHistEDRNorm(:,findFirst)')
 title('Shank1 Resp EDR')
 colormap('parula')
 colorbar
 
-subplot(2,1,2)
+subplot(2,3,4)
 imagesc(bigHistEDRNorm(:,findSecond)')
+colormap('parula')
+colorbar
+
+
+%plot out responses to loco start
+subplot(2,3,2)
+imagesc(bigHistLocoStartNorm(:,findFirst)')
+title('Shank1 Resp Loco')
+colormap('parula')
+colorbar
+
+subplot(2,3,5)
+imagesc(bigHistLocoStartNorm(:,findSecond)')
+colormap('parula')
+colorbar
+
+
+%plot out responses to loco start
+subplot(2,3,3)
+imagesc(bigHistLocoEndNorm(:,findFirst)')
+title('Shank1 Resp LocoEnd')
+colormap('parula')
+colorbar
+
+subplot(2,3,6)
+imagesc(bigHistLocoEndNorm(:,findSecond)')
 colormap('parula')
 colorbar
 
@@ -534,7 +627,7 @@ for i = 1:numUnits
     %EDR vs EDR power vs smoothed firing rate
     
     %template
-    subplot(2,4,1)
+    subplot(2,8,1)
     hold on
     fullMin = 0;
     fullMax = 0;
@@ -551,12 +644,13 @@ for i = 1:numUnits
         end
     end
     ylim([fullMin,fullMax])
-    title(strcat((desigNames{i}),'Shank',num2str(s.OrderData(i)),'Template'), 'Interpreter', 'none');
+    title({fileName;...
+        strcat((desigNames{i}),'Shank',num2str(s.OrderData(i)),'Template')}, 'Interpreter', 'none');
     
     
     %autocorrelogram
     
-    subplot(4,4,2)
+    subplot(4,8,2)
     hold on
     bar(clusterVect,s.(desigNames{i}).ISIGraph)
     histMax = max(s.(desigNames{i}).ISIGraph);
@@ -567,7 +661,7 @@ for i = 1:numUnits
     
     %do fft of fine firing
     
-    subplot(4,4,6)
+    subplot(4,8,10)
     hold on
     X = s.(desigNames{i}).FineSession;
     Fs = 100;
@@ -577,8 +671,8 @@ for i = 1:numUnits
     P1 = P2(1:L/2+1);
     P1(2:end-1) = 2*P1(2:end-1);
     f = Fs*(0:(L/2))/L;
-    plot(f,smooth(P1,41)/max(smooth(P1,41))) 
-    plot(f,smooth(P1floco,41)/max(smooth(P1floco,41)),'r')
+    plot(f,smooth(P1,41)/max(smooth(P1,41)),'r') 
+    plot(f,smooth(P1floco,41)/max(smooth(P1floco,41)),'k')
     posLocoFind = find(s.RotaryData.NewSimp == 1);
     X = s.(desigNames{i}).FineSession(posLocoFind);
     Fs = 100;
@@ -588,9 +682,10 @@ for i = 1:numUnits
     P1 = P2(1:L/2+1);
     P1(2:end-1) = 2*P1(2:end-1);
     f = Fs*(0:(L/2))/L;
-    plot(f,smooth(P1,41)/max(smooth(P1,41)),'k') 
-    xlim([0.5 20])
-    title('norm FFT of 10ms FR (b) FRloco (k) loco (r)')
+    plot(f,smooth(P1,41)/max(smooth(P1,41)),'g') 
+    xlim([0.2 10])
+    title({strcat('OverallRate:',num2str(s.(desigNames{i}).AverageRate));...
+        'norm FFT of 10ms FR (r) FRloco (g) loco (k)'})
     
     
     %big velocity etc plot
@@ -619,24 +714,60 @@ for i = 1:numUnits
     end
     
     
-    %Column 2: rasters for lights and sound, edr histogram
+    %Column 2: rasters for edr, histogram
     
     %EDR raster
-    subplot(4,2,2)
+    subplot(4,4,2)
     hold on
     rasterPlot(s.(desigNames{i}).EDRRaster(:,1),s.(desigNames{i}).EDRRaster(:,2))
     xlim(s.Parameters.RasterWindow)
     ylim([0 length(edrOnsetTimes)])
     title('EDR RASTER')
     
-    subplot(4,2,4)
-    plot(histBinVector,s.(desigNames{i}).EDRHist)
+    subplot(4,4,6)
+    plotyy(histBinVector,s.(desigNames{i}).EDRHist,edrVect,avEDR)
     xlim(s.Parameters.RasterWindow)
     title('Histogram of EDR Response')
     
+    %column 3: rasters for loco onset
+    
+    %loco raster
+    subplot(4,4,3)
+    hold on
+    rasterPlot(s.(desigNames{i}).locoStartRaster(:,1),s.(desigNames{i}).locoStartRaster(:,2))
+    xlim(s.Parameters.RasterWindow)
+    ylim([0 length(s.RotaryData.PosStartsEnds)])
+    title('LocoStart RASTER')
+    
+    %loco Hist
+    subplot(4,4,7)
+    plotyy(histBinVector,s.(desigNames{i}).locoStartHist,velVect,avVelStart)
+    xlim(s.Parameters.RasterWindow)
+    title('Histogram of LocoStart Response')
+    
+    %column 4: rasters for loco offset
+    
+    %loco raster
+    subplot(4,4,4)
+    hold on
+    rasterPlot(s.(desigNames{i}).locoEndRaster(:,1),s.(desigNames{i}).locoEndRaster(:,2))
+    xlim(s.Parameters.RasterWindow)
+    ylim([0 length(s.RotaryData.PosStartsEnds)])
+    title('LocoEnd RASTER')
+    
+    %loco Hist
+    subplot(4,4,8)
+    plotyy(histBinVector,s.(desigNames{i}).locoEndHist,velVect,avVelEnd)
+    xlim(s.Parameters.RasterWindow)
+    title('Histogram of LocoEnd Response')
+    
+    
+    
+
+    
     spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
     savefig(hFig,spikeGraphName);
-
+    
     %save as PDF with correct name
     set(hFig,'Units','Inches');
     pos = get(hFig,'Position');
