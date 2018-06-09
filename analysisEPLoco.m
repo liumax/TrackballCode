@@ -398,7 +398,7 @@ for i = 1:numUnits
     %now find spike width
     halfMax = pkVal/2;
     %Find front end of spike. 
-    frontEnd = find(interpWave(1:pkInd)>halfMax,1,'last');
+    frontEnd = find(interpWave(1:pkInd)>halfMax,1,'first');
     %Find back end of spike. 
     backEnd = find(interpWave(pkInd:end)<halfMax,1,'first');
     backEnd = backEnd + pkInd - 1;
