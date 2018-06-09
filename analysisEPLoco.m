@@ -67,15 +67,15 @@ saveName = strcat(fileName,'LightToneAnalysis','.mat');
 fname = saveName;
 pname = pwd;
 %check to see if analysis file already exists.
-searchNames = what;
-searchNames = searchNames.mat;
-searchResult = strcmp(searchNames,saveName);
-if find(searchResult == 1) 
-    prevFile = 1;
-    disp('Previous Analysis Found!!')
-else
-    prevFile = 0;
-end
+% searchNames = what;
+% searchNames = searchNames.mat;
+% searchResult = strcmp(searchNames,saveName);
+% if find(searchResult == 1) 
+%     prevFile = 1;
+%     disp('Previous Analysis Found!!')
+% else
+%     prevFile = 0;
+% end
 
 %% Establishes folders and extracts files!
 homeFolder = pwd;
@@ -457,6 +457,23 @@ for i = 1:numUnits
     s.(desigNames{i}).locoStartHist = histLocoStart;
     bigHistLocoStart(:,i) = histLocoStart; %for plotting purposes!
     
+    %now stash values for the binned period before and after
+    binningPeriod = 0.5;
+    for j = 1:length(s.RotaryData.PosStartsEnds)
+        targetSpikes = rastersLocoStart(rastersLocoStart(:,2) == j,1);
+        s.(desigNames{i}).BinnedLocoStart(j,1) = length(find(targetSpikes > -binningPeriod & targetSpikes < 0));
+        s.(desigNames{i}).BinnedLocoStart(j,2) = length(find(targetSpikes < binningPeriod & targetSpikes > 0));
+    end
+    
+    %do stats, save in master. ########
+    masterData(i,masterHolder) = signrank(s.(desigNames{i}).BinnedLocoStart(:,1),s.(desigNames{i}).BinnedLocoStart(:,2));
+    masterHeader{masterHolder} = 'SignRankLocoStartSig';
+    masterHolder = masterHolder + 1;
+    %determine sign
+    masterData(i,masterHolder) = (mean(s.(desigNames{i}).BinnedLocoStart(:,2)) - mean(s.(desigNames{i}).BinnedLocoStart(:,1)))/(mean(s.(desigNames{i}).BinnedLocoStart(:,2)) + mean(s.(desigNames{i}).BinnedLocoStart(:,1)));
+    masterHeader{masterHolder} = 'SignRankLocoStartMod';
+    masterHolder = masterHolder + 1;
+    
     %and offsets
     [rastersLocoEnd] = functionBasicRaster(spikeTimes,s.RotaryData.Velocity(s.RotaryData.PosStartsEnds(:,2),1),s.Parameters.RasterWindow);
     [histCounts histCenters] = hist(rastersLocoEnd(:,1),histBinVector);
@@ -464,6 +481,22 @@ for i = 1:numUnits
     s.(desigNames{i}).locoEndRaster = rastersLocoEnd;
     s.(desigNames{i}).locoEndHist = histLocoEnd;
     bigHistLocoEnd(:,i) = histLocoEnd; %for plotting purposes!
+    %now stash values for the binned second before and after
+    for j = 1:length(s.RotaryData.PosStartsEnds)
+        targetSpikes = rastersLocoEnd(rastersLocoEnd(:,2) == j,1);
+        s.(desigNames{i}).BinnedLocoEnd(j,1) = length(find(targetSpikes > -binningPeriod & targetSpikes < 0));
+        s.(desigNames{i}).BinnedLocoEnd(j,2) = length(find(targetSpikes < binningPeriod & targetSpikes > 0));
+    end
+    
+    %do stats, save in master. ########
+    masterData(i,masterHolder) = signrank(s.(desigNames{i}).BinnedLocoEnd(:,1),s.(desigNames{i}).BinnedLocoEnd(:,2));
+    masterHeader{masterHolder} = 'SignRankLocoEndSig';
+    masterHolder = masterHolder + 1;
+    
+    %determine sign
+    masterData(i,masterHolder) = (mean(s.(desigNames{i}).BinnedLocoEnd(:,2)) - mean(s.(desigNames{i}).BinnedLocoEnd(:,1)))/(mean(s.(desigNames{i}).BinnedLocoEnd(:,2)) + mean(s.(desigNames{i}).BinnedLocoEnd(:,1)));
+    masterHeader{masterHolder} = 'SignRankLocoEndMod';
+    masterHolder = masterHolder + 1;
     
     
     %% Now do locomotion overall correlation
@@ -472,24 +505,34 @@ for i = 1:numUnits
         [velOut] = functionLocomotionROC(spikeTimes,s.RotaryData.Velocity);
         s.(desigNames{i}).TrueAUC = velOut.TrueAUC;
         s.(desigNames{i}).ShuffleAUC = velOut.ShuffleAUC;
-        masterData(i,masterHolder) = velOut.TrueAUC;%find best frequency, ignores white noise
+        masterData(i,masterHolder) = velOut.TrueAUC;
         masterHeader{masterHolder} = 'LocoAUC';
         masterHolder = masterHolder + 1;
+        %now generate 99 to 1 percentile range. everything above considered
+        %significant
+        bigRange = [prctile(s.(desigNames{i}).ShuffleAUC,0.05) prctile(s.(desigNames{i}).ShuffleAUC,99.95)];
+        if velOut.TrueAUC < bigRange(1)
+            masterData(i,masterHolder) = -1;
+            masterHeader{masterHolder} = 'AUCSignificance';
+            masterHolder = masterHolder + 1;
+        elseif velOut.TrueAUC < bigRange(2)
+            masterData(i,masterHolder) = 1;
+            masterHeader{masterHolder} = 'AUCSignificance';
+            masterHolder = masterHolder + 1;
+        else
+            masterData(i,masterHolder) = 0;
+            masterHeader{masterHolder} = 'AUCSignificance';
+            masterHolder = masterHolder + 1;
+        end
     else
         s.(desigNames{i}).TrueAUC = 0;
         s.(desigNames{i}).ShuffleAUC = zeros(1000,1);
+        
+        masterData(i,masterHolder) = 0;
+        masterHeader{masterHolder} = 'AUCSignificance';
+        masterHolder = masterHolder + 1;
     end
     
-    AUCLims(1) = prctile(s.(desigNames{i}).ShuffleAUC,0.05);
-    AUCLims(2) = prctile(s.(desigNames{i}).ShuffleAUC,99.95);
-    if s.(desigNames{i}).TrueAUC > AUCLims(2) | s.(desigNames{i}).TrueAUC < AUCLims(1)
-        s.(desigNames{i}).AUCSig = 1;
-    else
-        s.(desigNames{i}).AUCSig = 0;
-    end
-    masterData(i,masterHolder) = s.(desigNames{i}).AUCSig;%find best frequency, ignores white noise
-    masterHeader{masterHolder} = 'LocoAUCSig';
-    masterHolder = masterHolder + 1;
 end
 
 masterInd = masterHolder;
@@ -779,5 +822,9 @@ end
 
 %% Saving
 save(fullfile(pname,fname),'s','masterData','masterHeader');
+
+
+
+end
 
 
