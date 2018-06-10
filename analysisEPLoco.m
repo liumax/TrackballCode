@@ -511,12 +511,12 @@ for i = 1:numUnits
         masterHolder = masterHolder + 1;
         %now generate 99 to 1 percentile range. everything above considered
         %significant
-        bigRange = [prctile(s.(desigNames{i}).ShuffleAUC,0.05) prctile(s.(desigNames{i}).ShuffleAUC,99.95)];
+        bigRange = [prctile(s.(desigNames{i}).ShuffleAUC,0.5) prctile(s.(desigNames{i}).ShuffleAUC,99.5)];
         if velOut.TrueAUC < bigRange(1)
             masterData(i,masterHolder) = -1;
             masterHeader{masterHolder} = 'AUCSignificance';
             masterHolder = masterHolder + 1;
-        elseif velOut.TrueAUC < bigRange(2)
+        elseif velOut.TrueAUC > bigRange(2)
             masterData(i,masterHolder) = 1;
             masterHeader{masterHolder} = 'AUCSignificance';
             masterHolder = masterHolder + 1;
