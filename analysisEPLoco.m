@@ -380,7 +380,7 @@ for i = 1:numUnits
     [maxVal findMax] = max(maxWave);
    
     %chose the big wave, interpolate to fine degree
-    chosenWave = waveForms(findMax,:);
+    chosenWave = -waveForms(findMax,:);
     interpVect = [1:0.1:100];
     interpWave = interp1(1:100,chosenWave,interpVect,'spline');
     
@@ -413,6 +413,7 @@ for i = 1:numUnits
     masterHeader{masterHolder} = 'PeakTrough(ms)';
     masterHolder = masterHolder + 1;
     
+%     spikeWidth
     masterData(i,masterHolder) = spikeWidth;
     masterHeader{masterHolder} = 'SpikeWidth(ms)';
     masterHolder = masterHolder + 1;
