@@ -1221,7 +1221,7 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %% Now plot figure of all cross correlograms. 
 %first, calculate all xcorrs. 
-crossWindow = [-0.02 0.02];
+crossWindow = [-0.01 0.01];
 xCorrVect = [crossWindow(1):0.001:crossWindow(2)];
 %divide by shank
 for m = 1:2
