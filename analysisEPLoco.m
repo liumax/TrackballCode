@@ -43,7 +43,8 @@ s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display w
 
 
 %Parameters for auditory stimuli, visual stimuli, locomotion
-s.Parameters.RasterWindow = [-0.5 1];
+s.Parameters.RasterWindow = [-1 1];
+s.Parameters.LocoSplit = 2;
 s.Parameters.histBin = 0.005;
 
 %parameters specifically for auditory
@@ -211,8 +212,21 @@ s.RotaryData.PosStartsEnds = [locoOut.starts,locoOut.ends];
 s.RotaryData.NegStartsEnds = [locoOut.starts,locoOut.ends];
 s.RotaryData.NewSimp = locoOut.newSimp;
 disp('Fixed Negative and Positive Starts/Ends')
+%find locomotor periods and split up into 2 second chunks?
+s.Parameters.LocoSplit = 2;
 
-
+runBoutLength = s.RotaryData.PosStartsEnds(:,2) - s.RotaryData.PosStartsEnds(:,1);
+timeBin = mean(diff(s.RotaryData.Velocity(:,1)));
+sampleRange = s.Parameters.LocoSplit/timeBin;
+%find small bouts, remove
+findBig = find(runBoutLength > sampleRange);
+counter = 1;
+locoPoints = [];
+for i = 1:length(findBig)
+    numFits = floor(runBoutLength(findBig(i))/sampleRange);
+    locoPoints(counter:counter+numFits-1) = [s.RotaryData.PosStartsEnds(findBig(i),1):sampleRange:s.RotaryData.PosStartsEnds(findBig(i),1)+sampleRange*(numFits-1)+1];
+    counter = counter + numFits;
+end
 
 %% Extract EDR Data
 fileNames = dir(homeFolder);
@@ -561,11 +575,12 @@ floco = Fs*(0:(L/2))/L;
 meanJump = nanmean(diff(edrMagTimes));
 convertWindow = round(s.Parameters.RasterWindow/meanJump);
 edrVect = [s.Parameters.RasterWindow(1):meanJump:s.Parameters.RasterWindow(2)];
-avEDRstore = zeros(length(edrOnsetTimes),length(edrVect));
+% avEDRstore = zeros(length(edrOnsetTimes),length(edrVect));
+avEDRstore = [];
 for i = 1:length(edrOnsetTimes)
     %find target
     tarTime = find(edrMagTimes - edrOnsetTimes(i) > 0, 1, 'first');
-    avEDRstore(i,:) = magData(tarTime + convertWindow(1):tarTime + convertWindow(2)-1);
+    avEDRstore(i,:) = magData(tarTime + convertWindow(1):tarTime + convertWindow(2));
 end
 
 avEDR = mean(avEDRstore);
@@ -707,7 +722,18 @@ for i = 1:numUnits
     
     subplot(4,8,10)
     hold on
-    X = s.(desigNames{i}).FineSession;
+%     X = s.(desigNames{i}).FineSession;
+%     Fs = 100;
+%     L = length(X);
+%     Y = fft(X);
+%     P2 = abs(Y/L);
+%     P1 = P2(1:L/2+1);
+%     P1(2:end-1) = 2*P1(2:end-1);
+%     f = Fs*(0:(L/2))/L;
+%     plot(f,smooth(P1,41)/max(smooth(P1,41)),'r') %180612, removing
+%     general, going to put in just the temp. 
+    posLocoFind = find(s.RotaryData.NewSimp == 0);
+    X = s.(desigNames{i}).FineSession(posLocoFind);
     Fs = 100;
     L = length(X);
     Y = fft(X);
@@ -716,7 +742,7 @@ for i = 1:numUnits
     P1(2:end-1) = 2*P1(2:end-1);
     f = Fs*(0:(L/2))/L;
     plot(f,smooth(P1,41)/max(smooth(P1,41)),'r') 
-    plot(f,smooth(P1floco,41)/max(smooth(P1floco,41)),'k')
+    plot(floco,smooth(P1floco,41)/max(smooth(P1floco,41)),'k')
     posLocoFind = find(s.RotaryData.NewSimp == 1);
     X = s.(desigNames{i}).FineSession(posLocoFind);
     Fs = 100;
@@ -773,37 +799,48 @@ for i = 1:numUnits
     xlim(s.Parameters.RasterWindow)
     title('Histogram of EDR Response')
     
-    %column 3: rasters for loco onset
+    %column 3: histograms for loco onset/offset
     
-    %loco raster
-    subplot(4,4,3)
-    hold on
-    rasterPlot(s.(desigNames{i}).locoStartRaster(:,1),s.(desigNames{i}).locoStartRaster(:,2))
-    xlim(s.Parameters.RasterWindow)
-    ylim([0 length(s.RotaryData.PosStartsEnds)])
-    title('LocoStart RASTER')
+%     %loco raster
+%     subplot(4,4,3)
+%     hold on
+%     rasterPlot(s.(desigNames{i}).locoStartRaster(:,1),s.(desigNames{i}).locoStartRaster(:,2))
+%     xlim(s.Parameters.RasterWindow)
+%     ylim([0 length(s.RotaryData.PosStartsEnds)])
+%     title('LocoStart RASTER')
     
     %loco Hist
-    subplot(4,4,7)
+    subplot(4,4,3)
     plotyy(histBinVector,s.(desigNames{i}).locoStartHist,velVect,avVelStart)
     xlim(s.Parameters.RasterWindow)
     title('Histogram of LocoStart Response')
     
-    %column 4: rasters for loco offset
-    
-    %loco raster
-    subplot(4,4,4)
-    hold on
-    rasterPlot(s.(desigNames{i}).locoEndRaster(:,1),s.(desigNames{i}).locoEndRaster(:,2))
-    xlim(s.Parameters.RasterWindow)
-    ylim([0 length(s.RotaryData.PosStartsEnds)])
-    title('LocoEnd RASTER')
+%     %loco raster
+%     subplot(4,4,4)
+%     hold on
+%     rasterPlot(s.(desigNames{i}).locoEndRaster(:,1),s.(desigNames{i}).locoEndRaster(:,2))
+%     xlim(s.Parameters.RasterWindow)
+%     ylim([0 length(s.RotaryData.PosStartsEnds)])
+%     title('LocoEnd RASTER')
     
     %loco Hist
-    subplot(4,4,8)
+    subplot(4,4,7)
     plotyy(histBinVector,s.(desigNames{i}).locoEndHist,velVect,avVelEnd)
     xlim(s.Parameters.RasterWindow)
     title('Histogram of LocoEnd Response')
+    
+    %column 4: look at heatmap of responses during sustained locomotion. 
+    subplot(2,4,4)
+    %first, generate smoothed data of 10ms bin firing. 
+    smoothFire = smooth(s.(desigNames{i}).FineSession,25);
+    %next, fill in heatmap of this!
+    heatStore = [];
+    for j = 1:length(locoPoints)
+        heatStore(:,j) = smoothFire(round(locoPoints(j)):round(locoPoints(j)) + 200);
+    end
+    imagesc(heatStore')
+    colormap('parula')
+    colorbar
     
     
     
