@@ -1,6 +1,6 @@
 
 
-function [s] = analysisEPLocoNOEDR(fileName);
+function [s] = analysisEPLoco(fileName);
 
 %set other things
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
@@ -29,7 +29,7 @@ s.Parameters.ThresholdComparison = 0.05; % percentage overlap to trigger xcorr
 s.Parameters.InterpolationStepRotary = 0.01; %interpolation steps in seconds.
 
 %for edr
-% % s.Parameters.EDRdownsamp = 20; %number of samples to downsample by. Smoothing is likely unnecessary
+% s.Parameters.EDRdownsamp = 20; %number of samples to downsample by. Smoothing is likely unnecessary
 % s.Parameters.EDRTimeCol = 1;
 % s.Parameters.EDRTTLCol = [3:5];
 % s.Parameters.EDRPiezoCol = 2;
@@ -43,7 +43,8 @@ s.Parameters.SpeedFiringBins = 1; %bins in seconds for firing rate for display w
 
 
 %Parameters for auditory stimuli, visual stimuli, locomotion
-s.Parameters.RasterWindow = [-0.5 1];
+s.Parameters.RasterWindow = [-1 1];
+s.Parameters.LocoSplit = 2;
 s.Parameters.histBin = 0.005;
 
 %parameters specifically for auditory
@@ -103,8 +104,8 @@ unitData = zeros(2,3);
 clusterVect = [s.Parameters.ClusterWindow(1):0.0001:s.Parameters.ClusterWindow(2)];
 for i = 1:2
     disp('Select Shank')
-    tarFileName = uigetfile('*.mda',strcat('Select Shank-',num2str(i)));
-%         tarFileName = strcat('nt',num2str(i),'Sort.mda');
+%     tarFileName = uigetfile('*.mda',strcat('Select Shank-',num2str(i)));
+        tarFileName = strcat('nt',num2str(i),'Sort.mda');
     if tarFileName
         %extract file
         holder = readmda(tarFileName);
@@ -128,8 +129,8 @@ for i = 1:2
         unitData(counter:counter + numUnits - 1,2) = channelDesig; %store biggest channel
         unitData(counter:counter + numUnits - 1,3) = uniqueUnits; %store channel name
         
-        clipName = uigetfile('*.mda',strcat('Select Clips for-',num2str(i)));
-%         clipName = strcat('nt',num2str(i),'SortWave.mda');
+%         clipName = uigetfile('*.mda',strcat('Select Clips for-',num2str(i)));
+        clipName = strcat('nt',num2str(i),'SortWave.mda');
         recordClips = readmda(clipName);
         %finally, pull spikes
         for j = 1:numUnits
@@ -225,6 +226,153 @@ s.RotaryData.PosStartsEnds = [locoOut.starts,locoOut.ends];
 s.RotaryData.NegStartsEnds = [locoOut.starts,locoOut.ends];
 s.RotaryData.NewSimp = locoOut.newSimp;
 disp('Fixed Negative and Positive Starts/Ends')
+%find locomotor periods and split up into 2 second chunks?
+s.Parameters.LocoSplit = 2;
+
+runBoutLength = s.RotaryData.PosStartsEnds(:,2) - s.RotaryData.PosStartsEnds(:,1);
+timeBin = mean(diff(s.RotaryData.Velocity(:,1)));
+sampleRange = s.Parameters.LocoSplit/timeBin;
+%find small bouts, remove
+findBig = find(runBoutLength > sampleRange);
+counter = 1;
+locoPoints = [];
+for i = 1:length(findBig)
+    numFits = floor(runBoutLength(findBig(i))/sampleRange);
+    locoPoints(counter:counter+numFits-1) = [s.RotaryData.PosStartsEnds(findBig(i),1):sampleRange:s.RotaryData.PosStartsEnds(findBig(i),1)+sampleRange*(numFits-1)+1];
+    counter = counter + numFits;
+end
+
+%% Extract EDR Data
+% fileNames = dir(homeFolder);
+% fileNames = {fileNames.name};
+% targetFileFinder = strfind(fileNames,'.EDR'); %examines names for D1
+% targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
+% 
+% %pull filename
+% targetFile = fileNames{targetFileFinder};%pulls out actual file name
+% %extract data
+% [EDROut] = functionEDRPull(targetFile,s.Parameters.EDRTimeCol,s.Parameters.EDRPiezoCol,s.Parameters.EDRTTLCol);
+% 
+% %now we need to sync edr with trodes. 
+% 
+% edrSyncDiff = diff(EDROut.TTLs{3});
+% %check for absurdly short things. if they are present remove and adjust edr
+% %data as well. Do this by iteratively going through every diff value and
+% %determining whats going on. 
+% 
+% whileCounter = 1;
+% whileTrigger = 0;
+% while whileTrigger == 0;
+%     if whileCounter == length(edrSyncDiff)
+%         break
+%     end
+%     if edrSyncDiff(whileCounter) < 0.5
+%         EDROut.TTLs{3}(whileCounter+1) = [];
+%         edrSyncDiff = diff(EDROut.TTLs{3});
+%     else
+%         whileCounter = whileCounter + 1;
+%     end
+% end
+% 
+% %now we align ttls with each other
+% [xcf,lags,bounds]  = crosscorr(edrSyncDiff,dio2TimeDiff,100);
+% [xcMax maxInd] = max(xcf);
+% xcLag = lags(maxInd);
+% disp('CorrLag')
+% disp(xcLag)
+% disp('MaxCorr')
+% disp(xcMax)
+% 
+% if xcLag == 0
+%     lengthEDR = length(EDROut.TTLs{3});
+%     lengthMCU = length(dio2Times);
+%     if lengthEDR == lengthMCU
+%         disp('MCU and EDR TTLs matched and aligned')
+%     elseif lengthEDR > lengthMCU
+%         disp('Sync TTLs Aligned, Excess EDR, adjusting...')
+%         EDROut.TTLs{3}(lengthMCU+1:end)=[];
+%         edrSyncDiff = diff(EDROut.TTLs{3});
+%         disp('Excess EDR Pulses Removed')
+%     elseif lengthEDR < lengthMCU
+%         disp('Sync TTLs Aligned, Excess MCU, adjusting...')
+%         dio2Times(lengthEDR+1:end)=[];
+%         dio2TimeDiff = diff(dio2Times);
+%         disp('Excess MCU Pulses Removed')
+%     end
+% else
+%     figure
+%     plot(edrSyncDiff,'r')
+%     hold on
+%     plot(dio2TimeDiff,'b')
+%     title('EDR Sync (r) vs MCU Sync (b)')
+%     error('FAILURE TO ALIGN SYNCING PULSES')
+% end
+% 
+% edrMagTimes = interp1(EDROut.TTLs{3},dio2Times,EDROut.PiezoPower(:,1));
+% 
+% %now lets try and going through and find onsets. 
+% magData = EDROut.PiezoPower(:,2);
+% magDiff = diff(magData);
+% threshHiPass = 1000;
+% threshReset = 200;
+% whileTrig = 0;
+% whileInd = 1;
+% %we need for whileCounter, which is the starting point of the search to
+% %equal the first zero value. 
+% whileCounter = find(magData < 200,1,'first');
+% % whileCounter = 1;
+% onsetStore = [];
+% while whileTrig == 0
+% %     whileInd
+%     %first, establish break for when exceeds length
+%     testFind = find(magData(whileCounter:end) > threshHiPass);
+%     if length(testFind) == 0
+%         break
+%     end
+%     %now lets do our iterative search. first, find the next point exceeding
+%     %the high threshold
+%     findNext = find(magData(whileCounter:end) > threshHiPass,1,'first');
+% %     disp('Finding Next')
+%     %next, find the earliest point before with a slope of less than 0
+%     %(bottom)
+%     findBottom = find(magDiff(1:whileCounter + findNext-2) < 0, 1, 'last');
+% %     disp('Finding Bottom')
+%     onsetStore(whileInd) = findBottom + 2;
+%     %store magnitude
+%     peakSizeStore(whileInd) = magData(findNext + whileCounter - 1) - magData(findBottom+2);
+% %     disp('Storing Mag')
+%     %now that we've stored the value, we need to find the next ok point. 
+%     findLim = find(magData(whileCounter + findNext:end) < threshReset,1,'first');
+%     if length(findLim) == 0
+%         break
+%     end
+%     whileCounter = whileCounter + findNext + findLim;
+%     wholeStore(whileInd,1) = findNext;
+%     wholeStore(whileInd,2) = findBottom;
+%     wholeStore(whileInd,3) = findLim;
+%     wholeStore(whileInd,4) = whileCounter;
+% %     disp('Storing whole')
+%     
+%     whileInd = whileInd + 1;  
+% end
+% 
+% 
+% figure
+% plot(magData,'k')
+% hold on
+% plot(onsetStore,magData(onsetStore),'r*')
+% plot([1 length(magData)],[1000 1000],'r')
+% plot([1 length(magData)],[200 200],'c')
+% plot(magDiff,'g')
+% plot([1 length(magData)],[0 0],'k')
+% title('EDR Peak Detection')
+% 
+% edrOnsetTimes = edrMagTimes(onsetStore);
+% edrOnsetTimes(isnan(edrOnsetTimes)) = [];
+% 
+% s.EDR.OnsetTimes = edrOnsetTimes;
+% s.EDR.MagData = magData;
+% s.EDR.TimeVector = edrMagTimes;
 
 
 %% Now process spiking data aligned to various points
@@ -321,6 +469,14 @@ for i = 1:numUnits
     s.(desigNames{i}).FineSessionVector = [s.RotaryData.Velocity(1,1):0.01:s.RotaryData.Velocity(end,1)];
     s.(desigNames{i}).HistBinVector = histBinVector;
     s.(desigNames{i}).AverageRate = averageRate;
+
+%     %% Now do rasters aligned to significant deviations based on EDR
+%     [rastersEDR] = functionBasicRaster(spikeTimes,edrOnsetTimes,s.Parameters.RasterWindow);
+%     [histCounts histCenters] = hist(rastersEDR(:,1),histBinVector);
+%     histEDR = histCounts'/length(edrOnsetTimes)/s.Parameters.histBin;
+%     s.(desigNames{i}).EDRRaster = rastersEDR;
+%     s.(desigNames{i}).EDRHist = histEDR;
+%     bigHistEDR(:,i) = histEDR; %for plotting purposes!
     
     %% Now do rasters aligned to locomotion bout onsets
     [rastersLocoStart] = functionBasicRaster(spikeTimes,s.RotaryData.Velocity(s.RotaryData.PosStartsEnds(:,1),1),s.Parameters.RasterWindow);
@@ -350,7 +506,7 @@ for i = 1:numUnits
     %and offsets
     [rastersLocoEnd] = functionBasicRaster(spikeTimes,s.RotaryData.Velocity(s.RotaryData.PosStartsEnds(:,2),1),s.Parameters.RasterWindow);
     [histCounts histCenters] = hist(rastersLocoEnd(:,1),histBinVector);
-    histLocoEnd = histCounts'/length(s.RotaryData.PosStartsEnds(:,1))/s.Parameters.histBin;
+    histLocoEnd = histCounts'/length(s.RotaryData.PosStartsEnds(:,2))/s.Parameters.histBin;
     s.(desigNames{i}).locoEndRaster = rastersLocoEnd;
     s.(desigNames{i}).locoEndHist = histLocoEnd;
     bigHistLocoEnd(:,i) = histLocoEnd; %for plotting purposes!
@@ -434,10 +590,11 @@ floco = Fs*(0:(L/2))/L;
 % convertWindow = round(s.Parameters.RasterWindow/meanJump);
 % edrVect = [s.Parameters.RasterWindow(1):meanJump:s.Parameters.RasterWindow(2)];
 % % avEDRstore = zeros(length(edrOnsetTimes),length(edrVect));
+% avEDRstore = [];
 % for i = 1:length(edrOnsetTimes)
 %     %find target
-% %     tarTime = find(edrMagTimes - edrOnsetTimes(i) > 0, 1, 'first');
-% %     avEDRstore(i,:) = magData(tarTime + convertWindow(1):tarTime + convertWindow(2)-1);
+%     tarTime = find(edrMagTimes - edrOnsetTimes(i) > 0, 1, 'first');
+%     avEDRstore(i,:) = magData(tarTime + convertWindow(1):tarTime + convertWindow(2));
 % end
 % 
 % avEDR = mean(avEDRstore);
@@ -491,7 +648,7 @@ colormap('parula')
 colorbar
 
 
-%plot out responses to loco end
+%plot out responses to loco start
 subplot(2,3,3)
 imagesc(bigHistLocoEndNorm(:,findFirst)')
 title('Shank1 Resp LocoEnd')
@@ -579,7 +736,18 @@ for i = 1:numUnits
     
     subplot(4,8,10)
     hold on
-    X = s.(desigNames{i}).FineSession;
+%     X = s.(desigNames{i}).FineSession;
+%     Fs = 100;
+%     L = length(X);
+%     Y = fft(X);
+%     P2 = abs(Y/L);
+%     P1 = P2(1:L/2+1);
+%     P1(2:end-1) = 2*P1(2:end-1);
+%     f = Fs*(0:(L/2))/L;
+%     plot(f,smooth(P1,41)/max(smooth(P1,41)),'r') %180612, removing
+%     general, going to put in just the temp. 
+    posLocoFind = find(s.RotaryData.NewSimp == 0);
+    X = s.(desigNames{i}).FineSession(posLocoFind);
     Fs = 100;
     L = length(X);
     Y = fft(X);
@@ -588,7 +756,7 @@ for i = 1:numUnits
     P1(2:end-1) = 2*P1(2:end-1);
     f = Fs*(0:(L/2))/L;
     plot(f,smooth(P1,41)/max(smooth(P1,41)),'r') 
-    plot(f,smooth(P1floco,41)/max(smooth(P1floco,41)),'k')
+    plot(floco,smooth(P1floco,41)/max(smooth(P1floco,41)),'k')
     posLocoFind = find(s.RotaryData.NewSimp == 1);
     X = s.(desigNames{i}).FineSession(posLocoFind);
     Fs = 100;
@@ -622,7 +790,7 @@ for i = 1:numUnits
     %restrict timeframe to EDR times.
 %     edrStart = edrMagTimes(find(~isnan(edrMagTimes),1,'first'));
 %     edrEnd = edrMagTimes(find(~isnan(edrMagTimes),1,'last'));
-%     xlim([edrStart edrEnd])
+    xlim([s.RotaryData.Velocity(1,1) s.RotaryData.Velocity(end,1)])
     if toggleROC == 1
         title(strcat('Normalized Vel (k) and Firing Rate (r) 10ms bin 300ms smooth AUC:',num2str(s.(desigNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
     else
@@ -694,7 +862,6 @@ end
 
 
 %% Saving
-% s.AuxData = 
 save(fullfile(pname,fname),'s','masterData','masterHeader');
 
 
