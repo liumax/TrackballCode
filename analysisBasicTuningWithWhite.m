@@ -1046,6 +1046,9 @@ end
 % [lfpStruct] = functionLFPaverage(master, s.Parameters.LFPWindow, s,homeFolder,fileName, uniqueFreqs, uniqueDBs, numFreqs, numDBs);
 % s.LFP = lfpStruct;
 
+%% Saving
+save(fullfile(pname,fname),'s','masterData','masterHeader');
+
 %% Plotting!!
 
 %% first plot general figure. 
@@ -1724,7 +1727,6 @@ for i = 1:numUnits
 
 end
 
-%% Saving
-save(fullfile(pname,fname),'s','masterData','masterHeader');
+
 
 end
