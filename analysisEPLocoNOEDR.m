@@ -1,6 +1,6 @@
 
 
-function [s] = analysisEPLoco(fileName);
+function [s] = analysisEPLocoNOEDR(fileName);
 
 %set other things
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
