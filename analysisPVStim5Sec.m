@@ -8,7 +8,7 @@ function [s] = analysisPVStim5Sec(fileName);
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
-toggleROCLoco = 1;
+toggleROCLoco = 0;
 
 
 s.Parameters.RasterWindow = [-5 10]; %seconds for raster window. 
@@ -369,6 +369,11 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01])
 [indPValResPostLaser] = functionCellStringFind(masterHeader,'pValResPostLaser');
 [indPValResPrePost] = functionCellStringFind(masterHeader,'pValResPrePost');
 
+%Find pv and msn
+findPV = find(master(:,1) == 1);
+findMSN = find(master(:,1) == 0);
+
+
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
 
@@ -407,40 +412,80 @@ title('Peak Trough vs Baseline Rate, PV in red')
 
 %plot modulation index of pre vs laser for laser only trials
 subplot(3,3,5)
+hold on
 %calculate modulation index, which is (laser - pre)/(pre + laser)
 modInd1 = (master(:,indLaserAverage)-master(:,indPreAverage))./(master(:,indLaserAverage) + master(:,indPreAverage));
-hist(modInd1,[-1:0.1:1])
+if findPV
+    histPV = hist(modInd1(findPV),[-1:0.1:1]);
+    plot([-1:0.1:1],histPV,'r')
+end
+if findMSN
+    histMSN = hist(modInd1(findMSN),[-1:0.1:1]);
+    plot([-1:0.1:1],histMSN,'k')
+end
 xlim([-1 1]);
-title('Modulation Index For Laser Only Trials')
+title('Modulation Index, Red PV Black MSN')
 
-%plot p values!
+%plot normalized firing rate changes!
 %First for normal bins
 subplot(3,6,15)
 hold on
 for i = 1:numUnits
-    plot(master(i,indPValPreLaser:indPValPrePost),'b.-')
+    if ismember(i,findPV)
+        %generate the numbers
+        normFire = [master(i,indPreAverage)/master(i,indPreAverage),master(i,indLaserAverage)/master(i,indPreAverage),master(i,indPostAverage)/master(i,indPreAverage)];
+        plot(normFire,'r.-')
+    elseif ismember(i,findMSN)
+        %generate the numbers
+        normFire = [master(i,indPreAverage)/master(i,indPreAverage),master(i,indLaserAverage)/master(i,indPreAverage),master(i,indPostAverage)/master(i,indPreAverage)];
+        plot(normFire,'k.-')
+    end
+    if master(i,indPValPreLaser) < 0.05
+        plot(2,normFire(2),'co')
+    elseif master(i,indPValPrePost) < 0.05
+        plot(3,normFire(3),'co')
+    end
+    
 end
 set(gca,'XTick',[1:3]);
-set(gca,'XTickLabel',{'PreLaser','PostLaser','PrePost'});
-title('P Values for Comparisons of Timing')
-
+set(gca,'XTickLabel',{'Pre','Laser','Post'});
+title('Normalized Firing Rate Normal Window')
 
 %now for restricted bins
 subplot(3,6,16)
 hold on
 for i = 1:numUnits
-    plot(master(i,indPValResPreLaser:indPValResPrePost),'b.-')
+    if ismember(i,findPV)
+        %generate the numbers
+        normFire = [master(i,indResPre)/master(i,indResPre),master(i,indResLaser)/master(i,indResPre),master(i,indResPost)/master(i,indResPre)];
+        plot(normFire,'r.-')
+    elseif ismember(i,findMSN)
+        %generate the numbers
+        normFire = [master(i,indResPre)/master(i,indResPre),master(i,indResLaser)/master(i,indResPre),master(i,indResPost)/master(i,indResPre)];
+        plot(normFire,'k.-')
+    end
+    if master(i,indPValResPreLaser) < 0.05
+        plot(2,normFire(2),'co')
+    elseif master(i,indPValResPrePost) < 0.05
+        plot(3,normFire(3),'co')
+    end
+    
 end
 set(gca,'XTick',[1:3]);
-set(gca,'XTickLabel',{'PreLaser','PostLaser','PrePost'});
-title('P Values for Comparisons of Restricted Timing')
+set(gca,'XTickLabel',{'Pre','Laser','Post'});
+title('Normalized Firing Rate Restricted Window')
 
 %plot out modulation indices by unit
 subplot(3,3,3)
 hold on
 plot([0 0],[0 numUnits],'k')
 for i = 1:numUnits
-    plot([0 modInd1(i)],[i i],'b','LineWidth',2)
+    if ismember(i,findPV)
+        plot([0 modInd1(i)],[i i],'r','LineWidth',2)
+    elseif ismember(i,findMSN)
+        plot([0 modInd1(i)],[i i],'k','LineWidth',2)
+    end
+    
 end
 ylim([0 numUnits+1])
 xlim([-1 1])
@@ -454,9 +499,18 @@ plot([0 0],[0 -s.ShankLength],'k')
 firstFind = find(posArray(:,2) == 1); %find units belonging to first shank
 firstArray = posArray(firstFind,:);
 for i = 1:length(firstFind)
+    
     findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
-    plot([0 modInd1(findOrder)],[firstArray(i,1) firstArray(i,1)],'b')
-    plot(modInd1(findOrder),firstArray(i,1),'b.')
+    if ismember(firstFind(i),findPV)
+        plot([0 modInd1(findOrder)],[firstArray(i,1) firstArray(i,1)],'r')
+        plot(modInd1(findOrder),firstArray(i,1),'r.')
+    elseif ismember(firstFind(i),findMSN)
+        plot([0 modInd1(findOrder)],[firstArray(i,1) firstArray(i,1)],'k')
+        plot(modInd1(findOrder),firstArray(i,1),'k.')
+    end
+    if master(firstFind(i),indPValPreLaser) < 0.05
+        plot(modInd1(findOrder),firstArray(i,1),'co')
+    end
 end
 xlim([-1 1])
 title('Shank 1 Sorted By Position')
@@ -467,10 +521,20 @@ hold on
 plot([0 0],[0 -s.ShankLength],'k')
 secondFind = find(posArray(:,2) == 2); %find units belonging to first shank
 secondArray = posArray(secondFind,:);
+
 for i = 1:length(secondFind)
+    
     findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
-    plot([0 modInd1(findOrder)],[secondArray(i,1) secondArray(i,1)],'b')
-    plot(modInd1(findOrder),secondArray(i,1),'b.')
+    if ismember(secondFind(i),findPV)
+        plot([0 modInd1(findOrder)],[secondArray(i,1) secondArray(i,1)],'r')
+        plot(modInd1(findOrder),secondArray(i,1),'r.')
+    elseif ismember(secondFind(i),findMSN)
+        plot([0 modInd1(findOrder)],[secondArray(i,1) secondArray(i,1)],'k')
+        plot(modInd1(findOrder),secondArray(i,1),'k.')
+    end
+    if master(secondFind(i),indPValPreLaser) < 0.05
+        plot(modInd1(findOrder),secondArray(i,1),'co')
+    end
 end
 xlim([-1 1])
 title('Shank 2 Sorted By Position')
@@ -486,106 +550,106 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-
-%% Now we need to plot out individual traces!
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
-
-for i = 1:numUnits
-    hFig = figure;
-    set(hFig, 'Position', [10 80 1240 850])
-    %plots average waveform
-    subplot(3,6,1)
-    hold on
-    plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
-    title(strcat('OverallRate:',num2str(s.(desigNames{i}).OverallFiringRate)))
-    %plots ISI
-    subplot(3,6,2)
-    hist(s.(desigNames{i}).ISIGraph,1000)
-    histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
-    line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-    xlim(s.Parameters.ClusterWindow)
-    title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
-        strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-    
-    %plot velocity and firing rate
-    subplot(3,3,4)
-    hold on
-    plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
-    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
-    xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
-    ylim([-0.1,1])
-    title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'-99.9%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
-    
-    
-    %plot histograms
-    subplot(3,3,7)
-    hold on
-    plot(histBinVector,s.(desigNames{i}).HistogramLaser,'k','LineWidth',2)
-    plot([0 0],[ylim],'b');
-    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+% 
+% %% Now we need to plot out individual traces!
+% subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+% 
+% for i = 1:numUnits
+%     hFig = figure;
+%     set(hFig, 'Position', [10 80 1240 850])
+%     %plots average waveform
+%     subplot(3,6,1)
+%     hold on
+%     plot(s.(desigNames{i}).AverageWaveForms,'LineWidth',2)
+%     title(strcat('OverallRate:',num2str(s.(desigNames{i}).OverallFiringRate)))
+%     %plots ISI
+%     subplot(3,6,2)
+%     hist(s.(desigNames{i}).ISIGraph,1000)
+%     histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
+%     line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+%     xlim(s.Parameters.ClusterWindow)
+%     title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+%         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
+%     
+%     %plot velocity and firing rate
+%     subplot(3,3,4)
+%     hold on
+%     plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
+%     plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+%     xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+%     ylim([-0.1,1])
+%     title(strcat('Vel & Firing Rate. AUC:',num2str(s.(desigNames{i}).TrueAUC),'-99.9%Range',num2str(prctile(s.(desigNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(desigNames{i}).ShuffleAUC,1))))
+%     
+%     
+%     %plot histograms
+%     subplot(3,3,7)
+%     hold on
+%     plot(histBinVector,s.(desigNames{i}).HistogramLaser,'k','LineWidth',2)
+%     plot([0 0],[ylim],'b');
+%     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+% %     title({fileName;desigNames{i}})
+%     title('Histograms Tone(k) Laser(b) ToneLaser(bg)')
+%     set(0, 'DefaulttextInterpreter', 'none')
+%     
+%     subplot(3,3,2)
 %     title({fileName;desigNames{i}})
-    title('Histograms Tone(k) Laser(b) ToneLaser(bg)')
-    set(0, 'DefaulttextInterpreter', 'none')
-    
-    subplot(3,3,2)
-    title({fileName;desigNames{i}})
-    set(0, 'DefaulttextInterpreter', 'none')
-    %plot out changes to response over time to laser only
-    subplot(3,3,5)
-    hold on
-    plot(s.(desigNames{i}).TrialBinnedSpikes(:,1),'ko')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,1),11),'k.-')
-    
-    plot(s.(desigNames{i}).TrialBinnedSpikes(:,2),'bo')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,2),11),'b.-')
-    
-    plot(s.(desigNames{i}).TrialBinnedSpikes(:,3),'go')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,3),11),'g.-')
-    smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(:,3),11);
-    plot(avLocoPos,smoothTrace(avLocoPos),'bo')
-    
-    xlim([0 length(dioTimes)])
-
-    title('TimeCourse Of Response to Laser Only Pre(k) Laser(g) Post(r)')
-    
-    %plot out changes over time for restricted time bins
-    subplot(3,3,8)
-    hold on
-    plot(s.(desigNames{i}).TrialBinnedSpikes(:,4),'ko')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,4),11),'k.-')
-    
-    plot(s.(desigNames{i}).TrialBinnedSpikes(:,5),'bo')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,5),11),'b.-')
-    
-    plot(s.(desigNames{i}).TrialBinnedSpikes(:,6),'go')
-    plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,6),11),'g.-')
-    smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(:,6),11);
-    plot(avLocoPos,smoothTrace(avLocoPos),'bo')
-    
-    xlim([0 length(dioTimes)])
-    
-    title('TimeCourse of Restricted Response to Tone noLaser(k) and laser(g)')
-    
-    %plots rasters (chronological)
-    subplot(3,3,3)
-    plot(s.(desigNames{i}).RasterLaser(:,1),...
-        s.(desigNames{i}).RasterLaser(:,2),'k.','markersize',5)
-    hold on
-    ylim([0 length(dioTimes)])
-    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-    plot([0 0],[ylim],'b');
-    title('Laser Response')
-    
-    hold off
-    spikeGraphName = strcat(fileName,desigNames{i},'LaserStimAnalysis');
-    savefig(hFig,spikeGraphName);
-
-    %save as PDF with correct name
-    set(hFig,'Units','Inches');
-    pos = get(hFig,'Position');
-    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-    print(hFig,spikeGraphName,'-dpdf','-r0')
-end
+%     set(0, 'DefaulttextInterpreter', 'none')
+%     %plot out changes to response over time to laser only
+%     subplot(3,3,5)
+%     hold on
+%     plot(s.(desigNames{i}).TrialBinnedSpikes(:,1),'ko')
+%     plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,1),11),'k.-')
+%     
+%     plot(s.(desigNames{i}).TrialBinnedSpikes(:,2),'bo')
+%     plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,2),11),'b.-')
+%     
+%     plot(s.(desigNames{i}).TrialBinnedSpikes(:,3),'go')
+%     plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,3),11),'g.-')
+%     smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(:,3),11);
+%     plot(avLocoPos,smoothTrace(avLocoPos),'bo')
+%     
+%     xlim([0 length(dioTimes)])
+% 
+%     title('TimeCourse Of Response to Laser Only Pre(k) Laser(g) Post(r)')
+%     
+%     %plot out changes over time for restricted time bins
+%     subplot(3,3,8)
+%     hold on
+%     plot(s.(desigNames{i}).TrialBinnedSpikes(:,4),'ko')
+%     plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,4),11),'k.-')
+%     
+%     plot(s.(desigNames{i}).TrialBinnedSpikes(:,5),'bo')
+%     plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,5),11),'b.-')
+%     
+%     plot(s.(desigNames{i}).TrialBinnedSpikes(:,6),'go')
+%     plot(smooth(s.(desigNames{i}).TrialBinnedSpikes(:,6),11),'g.-')
+%     smoothTrace = smooth(s.(desigNames{i}).TrialBinnedSpikes(:,6),11);
+%     plot(avLocoPos,smoothTrace(avLocoPos),'bo')
+%     
+%     xlim([0 length(dioTimes)])
+%     
+%     title('TimeCourse of Restricted Response to Tone noLaser(k) and laser(g)')
+%     
+%     %plots rasters (chronological)
+%     subplot(3,3,3)
+%     plot(s.(desigNames{i}).RasterLaser(:,1),...
+%         s.(desigNames{i}).RasterLaser(:,2),'k.','markersize',5)
+%     hold on
+%     ylim([0 length(dioTimes)])
+%     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+%     plot([0 0],[ylim],'b');
+%     title('Laser Response')
+%     
+%     hold off
+%     spikeGraphName = strcat(fileName,desigNames{i},'LaserStimAnalysis');
+%     savefig(hFig,spikeGraphName);
+% 
+%     %save as PDF with correct name
+%     set(hFig,'Units','Inches');
+%     pos = get(hFig,'Position');
+%     set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+%     print(hFig,spikeGraphName,'-dpdf','-r0')
+% end
 %% Saving
 save(fullfile(pname,fname),'s');
 
