@@ -9,7 +9,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01])
 s.Parameters.toggleRPV = 0; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
 toggleDuplicateElimination = 0; %1 means you want to eliminate duplicates.
-toggleROC = 1; %toggle for tuning on/off ROC analysis
+toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 % %Toggles for different aspects of analysis
 % toggleAuditory = 0;
