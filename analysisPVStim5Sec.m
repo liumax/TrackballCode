@@ -415,14 +415,15 @@ subplot(3,3,5)
 hold on
 %calculate modulation index, which is (laser - pre)/(pre + laser)
 modInd1 = (master(:,indLaserAverage)-master(:,indPreAverage))./(master(:,indLaserAverage) + master(:,indPreAverage));
-if findPV
-    histPV = hist(modInd1(findPV),[-1:0.1:1]);
-    plot([-1:0.1:1],histPV,'r')
-end
 if findMSN
     histMSN = hist(modInd1(findMSN),[-1:0.1:1]);
-    plot([-1:0.1:1],histMSN,'k')
+    bar([-1:0.1:1],histMSN,'k')
 end
+if findPV
+    histPV = hist(modInd1(findPV),[-1:0.1:1]);
+    bar([-1:0.1:1],histPV,'r')
+end
+
 xlim([-1 1]);
 title('Modulation Index, Red PV Black MSN')
 
@@ -489,6 +490,7 @@ for i = 1:numUnits
 end
 ylim([0 numUnits+1])
 xlim([-1 1])
+set(gca,'Ydir','reverse')
 title('Modulation Index Sorted By Unit')
 
 
@@ -500,16 +502,16 @@ firstFind = find(posArray(:,2) == 1); %find units belonging to first shank
 firstArray = posArray(firstFind,:);
 for i = 1:length(firstFind)
     
-    findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
+%     findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
     if ismember(firstFind(i),findPV)
-        plot([0 modInd1(findOrder)],[firstArray(i,1) firstArray(i,1)],'r')
-        plot(modInd1(findOrder),firstArray(i,1),'r.')
+        plot([0 modInd1(firstFind(i))],[firstArray(i,1) firstArray(i,1)],'r')
+        plot(modInd1(firstFind(i)),firstArray(i,1),'r.')
     elseif ismember(firstFind(i),findMSN)
-        plot([0 modInd1(findOrder)],[firstArray(i,1) firstArray(i,1)],'k')
-        plot(modInd1(findOrder),firstArray(i,1),'k.')
+        plot([0 modInd1(firstFind(i))],[firstArray(i,1) firstArray(i,1)],'k')
+        plot(modInd1(firstFind(i)),firstArray(i,1),'k.')
     end
     if master(firstFind(i),indPValPreLaser) < 0.05
-        plot(modInd1(findOrder),firstArray(i,1),'co')
+        plot(modInd1(firstFind(i)),firstArray(i,1),'co')
     end
 end
 xlim([-1 1])
@@ -524,16 +526,16 @@ secondArray = posArray(secondFind,:);
 
 for i = 1:length(secondFind)
     
-    findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
+%     findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
     if ismember(secondFind(i),findPV)
-        plot([0 modInd1(findOrder)],[secondArray(i,1) secondArray(i,1)],'r')
-        plot(modInd1(findOrder),secondArray(i,1),'r.')
+        plot([0 modInd1(secondFind(i))],[secondArray(i,1) secondArray(i,1)],'r')
+        plot(modInd1(secondFind(i)),secondArray(i,1),'r.')
     elseif ismember(secondFind(i),findMSN)
-        plot([0 modInd1(findOrder)],[secondArray(i,1) secondArray(i,1)],'k')
-        plot(modInd1(findOrder),secondArray(i,1),'k.')
+        plot([0 modInd1(secondFind(i))],[secondArray(i,1) secondArray(i,1)],'k')
+        plot(modInd1(secondFind(i)),secondArray(i,1),'k.')
     end
     if master(secondFind(i),indPValPreLaser) < 0.05
-        plot(modInd1(findOrder),secondArray(i,1),'co')
+        plot(modInd1(secondFind(i)),secondArray(i,1),'co')
     end
 end
 xlim([-1 1])
