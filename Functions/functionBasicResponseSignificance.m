@@ -68,6 +68,8 @@ targetHist = smooth(reshape(targetHist,[],1)/sigCalcBin/trialNum,smoothWindow);
 %remove edges after smoothing
 targetHist(1:(round(smoothWindow/2))) = [];
 targetHist(end-round(smoothWindow/2)+1:end) = [];
+targetHistVector(1:(round(smoothWindow/2))) = [];
+targetHistVector(end-round(smoothWindow/2)+1:end) = [];
 % length(targetHist)
 
 %allocate space for information about significance
