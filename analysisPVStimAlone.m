@@ -1,8 +1,6 @@
 
 function [s] = analysisPVStimAlone(fileName);
 
-
-
 %% Constants and things you might want to tweak
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
@@ -369,6 +367,11 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01])
 [indPValResPostLaser] = functionCellStringFind(masterHeader,'pValResPostLaser');
 [indPValResPrePost] = functionCellStringFind(masterHeader,'pValResPrePost');
 
+
+%Find pv and msn
+findPV = find(master(:,1) == 1);
+findMSN = find(master(:,1) == 0);
+
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
 
@@ -454,9 +457,9 @@ plot([0 0],[0 -s.ShankLength],'k')
 firstFind = find(posArray(:,2) == 1); %find units belonging to first shank
 firstArray = posArray(firstFind,:);
 for i = 1:length(firstFind)
-    findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
-    plot([0 modInd1(findOrder)],[firstArray(i,1) firstArray(i,1)],'b')
-    plot(modInd1(findOrder),firstArray(i,1),'b.')
+%     findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
+    plot([0 modInd1(firstFind(i))],[firstArray(i,1) firstArray(i,1)],'b')
+    plot(modInd1(firstFind(i)),firstArray(i,1),'b.')
 end
 xlim([-1 1])
 title('Shank 1 Sorted By Position')
@@ -468,9 +471,9 @@ plot([0 0],[0 -s.ShankLength],'k')
 secondFind = find(posArray(:,2) == 2); %find units belonging to first shank
 secondArray = posArray(secondFind,:);
 for i = 1:length(secondFind)
-    findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
-    plot([0 modInd1(findOrder)],[secondArray(i,1) secondArray(i,1)],'b')
-    plot(modInd1(findOrder),secondArray(i,1),'b.')
+%     findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
+    plot([0 modInd1(secondFind(i))],[secondArray(i,1) secondArray(i,1)],'b')
+    plot(modInd1(secondFind(i)),secondArray(i,1),'b.')
 end
 xlim([-1 1])
 title('Shank 2 Sorted By Position')
