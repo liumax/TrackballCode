@@ -626,8 +626,8 @@ s.NegCont = zeros(numDBs,numUnits,3); %store whether response is contiguous or n
 s.PosEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
 s.NegEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
 s.PosGaussWidth = zeros(numDBs,numUnits,3); % will perform gaussian fit on binned spikes if there is sufficient significant values. Store half-peak width
-
-
+s.RespWidthPos = zeros(numFreqs,numDBs,numUnits,2); %width of firing rate, positive
+widthStore = zeros(numFreqs,numDBs,numUnits);
 
 for i = 1:numUnits
     masterHolder = masterInd;
@@ -766,6 +766,7 @@ for i = 1:numUnits
     probStoreGen = zeros(numFreqs,numDBs);
     freqSpecHist = zeros(numFreqs,histBinNum,1);
     
+    
     for k = 1:numFreqs
         subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(k),3));
         for l = 1:numDBs
@@ -796,6 +797,12 @@ for i = 1:numUnits
             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes(targetTrials),length(targetTrials),...
         s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
             responseHistHolder{k,l} = responseHist;
+            if responseHist.SigSpikePos == 1%if have a significant response, check for width
+                [widthOut] = functionResponseWidth(responseHist);
+                if length(widthOut.Widths) > 0
+                    widthStore(k,l,i) = widthOut.Widths(1);
+                end
+            end
         end
         if numDBs == 1
             freqSpecHist(k,:) = (squeeze(organizedHist(k,:,:)));
@@ -1001,6 +1008,7 @@ for i = 1:numUnits
     masterHolder = masterHolder + 1;
     
 end
+s.WidthData = widthStore;
 
 masterInd = masterHolder;
 
