@@ -96,13 +96,13 @@ for respInd = 1:length(percentileRange)
     targetHist(sigFinder,length(percentileRange)+respInd+1) = 1;
 end
 
-if length(find(targetHist(:,3)>0))>minSigSpikes; %180302 adjusted so that this can work on just the 0.01 percentile values. 
+if length(find(targetHist(:,4)>0))>minSigSpikes; %180714 adjusted so that this can work on just the 0.001 percentile values. 
     sigSpikePos = 1;
 end
-if length(find(targetHist(:,6)>0))>minSigSpikes;
+if length(find(targetHist(:,6)>0))>minSigSpikes; %180714 negatives still will be at 0.01 level. 
     sigSpikeNeg = 1;
 end
-if  length(find(targetHist(:,3)>0))<=minSigSpikes;
+if  length(find(targetHist(:,4)>0))<=minSigSpikes;
     sigSpikePos = 0;
 end
 if  length(find(targetHist(:,6)>0))<=minSigSpikes;
