@@ -838,6 +838,7 @@ for i = 1:numUnits
     s.(desigNames{i}).ProbTone = probStoreTone;
     s.(desigNames{i}).ProbGen = probStoreGen;
     s.(desigNames{i}).BinSigVals = binSigVals;
+    s.(desigNames{i}).WidthData = widthOut;
     
     %store some information about width
     CFTrig = 0;
