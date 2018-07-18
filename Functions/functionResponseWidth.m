@@ -62,7 +62,7 @@ while whileInd == 0
                     checkInd = checkInd + 1; %advance checkInd
                     %now use start and end values to find peak
                     findStart = find(interpTime >= timeVector(startVal),1,'first');
-                    findEnd = find(interpTime >= timeVector(endVal),1,'first');
+                    findEnd = length(interpSmoothResp);
                     [locMax maxInd] = max(interpSmoothResp(findStart:findEnd));
                     maxInd = maxInd + findStart - 1;
                     %find difference of baseline with peak
@@ -75,18 +75,45 @@ while whileInd == 0
                     %find width values
 %                     maxInd
 %                     length(interpSmoothResp)
+%                     maxInd
+%                     length(interpSmoothResp)
                     respStart = find(interpSmoothResp(1:maxInd) <= widthCutoff,1,'last');
-                    
-                    disp('Found Start')
-                    respEnd = find(interpSmoothResp(maxInd:length(interpSmoothResp)) <= widthCutoff,1,'first');
-                    if length(respEnd) == 0
-                        respEnd = length(interpSmoothResp) - maxInd;
+                    if isempty(respStart)
+                        disp('Fail to Find Peak, Killing Process')
+                        break
+                    else
+                        disp('Found Start')
+                        respEnd = find(interpSmoothResp(maxInd:end) <= widthCutoff,1,'first');
+                        if length(respEnd) == 0
+                            disp('End is at End of Hist')
+                            respEnd = length(interpTime) - maxInd;
+                        end
+                        disp('Found End')
+    %                     try
+    %                         respStart
+    %                         respEnd
+    %                         length(interpTime)
+    %                         try
+                                widthStore(respNum) = interpTime(respEnd + maxInd-1) - interpTime(respStart);
+    %                         catch
+    %                             figure
+    %                             plot(interpSmoothResp)
+    %                         end
+                            startEndStore(:,respNum) = [interpTime(respStart),interpTime(respEnd + maxInd-1)];
+    %                     catch
+    %                         disp('BUGGY ISSUE WITH RESPONSE END')
+    % %                         respStart
+    %                         widthStore(respNum) = interpTime(end) - interpTime(respStart);
+    %                         startEndStore(:,respNum) = [interpTime(respStart),interpTime(respEnd + maxInd)];
+    %                         length(interpTime)
+    %                         respEnd + maxInd
+    %                         error('FAILURE')
+    %                     end
+
+                        maxStore(respNum) = interpTime(maxInd);
+                        disp(strcat('Width Measured as:',num2str(widthStore(respNum))))
                     end
-                    disp('Found End')
-                    widthStore(respNum) = interpTime(respEnd + maxInd) - interpTime(respStart);
-                    startEndStore(:,respNum) = [interpTime(respStart),interpTime(respEnd + maxInd)];
-                    maxStore(respNum) = interpTime(maxInd);
-                    disp(strcat('Width Measured as:',num2str(widthStore(respNum))))
+                    
                 end
             end
             break
@@ -165,18 +192,18 @@ while whileInd == 0
 
                 respEnd = find(interpSmoothResp(maxInd:length(interpSmoothResp)) <= widthCutoff,1,'first');
                 if isempty(respEnd)
-                    respEnd = length(interpSmoothResp) - maxInd - 1;
+                    respEnd = length(interpSmoothResp) - maxInd;
                 end
 
 %                 try
 %                 disp('Found End')
-                if (respEnd + maxInd) > length(interpSmoothResp)
-                    widthStore(respNum) = interpTime(end) - interpTime(respStart);
-                    startEndStore(:,respNum) = [interpTime(respStart),interpTime(end)];
-                else
-                    widthStore(respNum) = interpTime(respEnd + maxInd) - interpTime(respStart);
-                    startEndStore(:,respNum) = [interpTime(respStart),interpTime(respEnd + maxInd)];
-                end
+%                 if (respEnd + maxInd) > length(interpSmoothResp)
+%                     widthStore(respNum) = interpTime(end) - interpTime(respStart);
+%                     startEndStore(:,respNum) = [interpTime(respStart),interpTime(end)];
+%                 else
+                    widthStore(respNum) = interpTime(respEnd + maxInd-1) - interpTime(respStart);
+                    startEndStore(:,respNum) = [interpTime(respStart),interpTime(respEnd + maxInd-1)];
+%                 end
                 maxStore(respNum) = interpTime(maxInd);
 %                 catch
 %                     figure
