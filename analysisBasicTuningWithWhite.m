@@ -30,7 +30,7 @@ toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
-s.Parameters.RasterWindow = [-4 3]; %ratio for raster window. will be multiplied by toneDur
+s.Parameters.RasterWindow = [-5 6]; %ratio for raster window. will be multiplied by toneDur
 s.Parameters.ToneWindow = [0 1];
 s.Parameters.GenWindow = [0 2];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
@@ -250,7 +250,7 @@ s.Parameters.ToneWindow = s.Parameters.ToneWindow * toneDur;
 s.Parameters.GenWindow = s.Parameters.GenWindow * toneDur;
 calcWindow = s.Parameters.calcWindow*toneDur;
 rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
-histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin;
+histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin
 histBinVector = [s.Parameters.RasterWindow(1)+s.Parameters.histBin/2:s.Parameters.histBin:s.Parameters.RasterWindow(2)-s.Parameters.histBin/2]; %this is vector with midpoints of all histogram bins
 %histBinVector is for the purposes of graphing. This provides a nice axis
 %for graphing purposes
