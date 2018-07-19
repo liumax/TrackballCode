@@ -52,6 +52,8 @@ for i = 1:numFiles
     intSlowPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((2:end),:,3));
     intSlowNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((2:end),:,3));
     
+    justWidthFast(:,bigMasterInd:bigMasterInd + numUnits - 1) = s.PosWidths(5,:,1);
+    justWidthSlow(:,bigMasterInd:bigMasterInd + numUnits - 1) = s.PosWidths(5,:,3);
     
     bigMasterInd = bigMasterInd + numUnits;
 end
@@ -68,6 +70,8 @@ findPVs = find(bigMaster(:,indCellType) == 1);
 findMSNs = find(bigMaster(:,indCellType) == 0);
 
 findCHATs = find(bigMaster(:,indCellType) == 2);
+
+findSigPos = find(bigMaster(:,9) == 1);
 
 [indPkTr] = functionCellStringFind(masterHeader,'PeakTrough');
 [indISI] = functionCellStringFind(masterHeader,'isiCov');
@@ -107,15 +111,19 @@ legend(labels,'Location','southoutside','Orientation','horizontal')
 
 
 %% Column 2
+%180709 When plotting histograms, this code now selects for units that pass
+%significance based on the general histogram, and also excludes cells with
+%a width of zero. Has been propagated through for PVs as well. 
 
 subplot(3,4,2)
 hold on
-holder = intFastPos(findMSNs);
+sigMSNs = intersect(findMSNs,findSigPos);
+holder = intFastPos(sigMSNs);
 hist(holder(holder > 0),widthHistVect)
 xlim([0 widthHistVect(end)])
 title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
 
-%plot distribution of positive, negative, both, and untuned units
+%plot distribution of positive, negative, both, and untuned units. 
 subplot(3,4,6)
 holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
 holder(:,2) = holder(:,2) * -2;
@@ -130,7 +138,7 @@ title(strcat('MSNs n=',num2str(length(findMSNs))))
 
 subplot(3,4,10)
 hold on
-holder = intSlowPos(findMSNs);
+holder = intSlowPos(sigMSNs);
 hist(holder(holder > 0),widthHistVect)
 xlim([0 widthHistVect(end)])
 title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
@@ -139,7 +147,8 @@ if findPVs
     
     subplot(3,4,4)
     hold on
-    holder = intFastPos(findPVs);
+    sigPVs = intersect(findPVs,findSigPos);
+    holder = intFastPos(sigPVs);
     hist(holder(holder > 0),widthHistVect)
     xlim([0 widthHistVect(end)])
     title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
@@ -159,43 +168,61 @@ if findPVs
     
     subplot(3,4,12)
     hold on
-    holder = intSlowPos(findPVs);
+    holder = intSlowPos(sigPVs);
     hist(holder(holder > 0),widthHistVect)
     xlim([0 widthHistVect(end)])
     title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
 end
 
-%% Column 4 CHATs
-if findCHATs
-    
-    subplot(3,4,3)
-    hold on
-    holder = intFastPos(findCHATs);
-    hist(holder(holder > 0),widthHistVect)
-    xlim([0 widthHistVect(end)])
-    title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+%show widths not integrals
+subplot(3,4,3)
+hold on
+holder = justWidthFast(sigMSNs);
+hist(holder(holder > 0),widthHistVect)
+xlim([0 20])
+title(strcat('width fast pos MSNs, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
 
-    %plot distribution of positive, negative, both, and untuned units
-    subplot(3,4,7)
-    holder = bigMaster(findCHATs,[indPosSig,indNegSig]);
-    holder(:,2) = holder(:,2) * -2;
-    det = holder(:,1) + holder(:,2);
-    det = hist(det,[-2:1:1]);
-    pie(det)
-    labels = {'Neg','Mix','None','Pos'};
-    detZero = find(det == 0);
-    labels(detZero) = [];
-    legend(labels,'Location','southoutside','Orientation','horizontal')
-    title(strcat('CHATs n=',num2str(length(findCHATs))))
-    
-    
-    subplot(3,4,11)
-    hold on
-    holder = intSlowPos(findCHATs);
-    hist(holder(holder > 0),widthHistVect)
-    xlim([0 widthHistVect(end)])
-    title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-end
+subplot(3,4,7)
+hold on
+holder = justWidthFast(sigPVs);
+hist(holder(holder > 0),widthHistVect)
+xlim([0 20])
+title(strcat('width fast pos PVs, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+
+
+
+
+% %% Column 4 CHATs
+% if findCHATs
+%     
+%     subplot(3,4,3)
+%     hold on
+%     holder = intFastPos(findCHATs);
+%     hist(holder(holder > 0),widthHistVect)
+%     xlim([0 widthHistVect(end)])
+%     title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+% 
+%     %plot distribution of positive, negative, both, and untuned units
+%     subplot(3,4,7)
+%     holder = bigMaster(findCHATs,[indPosSig,indNegSig]);
+%     holder(:,2) = holder(:,2) * -2;
+%     det = holder(:,1) + holder(:,2);
+%     det = hist(det,[-2:1:1]);
+%     pie(det)
+%     labels = {'Neg','Mix','None','Pos'};
+%     detZero = find(det == 0);
+%     labels(detZero) = [];
+%     legend(labels,'Location','southoutside','Orientation','horizontal')
+%     title(strcat('CHATs n=',num2str(length(findCHATs))))
+%     
+%     
+%     subplot(3,4,11)
+%     hold on
+%     holder = intSlowPos(findCHATs);
+%     hist(holder(holder > 0),widthHistVect)
+%     xlim([0 widthHistVect(end)])
+%     title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+% end
 
 spikeGraphName = 'WrapperFigure1';
 savefig(hFig,spikeGraphName);
