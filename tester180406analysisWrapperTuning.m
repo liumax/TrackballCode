@@ -51,10 +51,10 @@ for i = 1:numFiles
     intFastNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((2:end),:,1));
     intSlowPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((2:end),:,3));
     intSlowNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((2:end),:,3));
-    
-    justWidthFast(:,bigMasterInd:bigMasterInd + numUnits - 1) = s.PosWidths(5,:,1);
-    justWidthSlow(:,bigMasterInd:bigMasterInd + numUnits - 1) = s.PosWidths(5,:,3);
-    
+    %store positive tuning widths
+    widthStore(:,bigMasterInd:bigMasterInd + numUnits - 1,:) = s.PosWidths;
+    %store BFs
+    bfStore(bigMasterInd:bigMasterInd + numUnits - 1) = masterData(:,12);
     bigMasterInd = bigMasterInd + numUnits;
 end
 
@@ -71,7 +71,143 @@ findMSNs = find(bigMaster(:,indCellType) == 0);
 
 findCHATs = find(bigMaster(:,indCellType) == 2);
 
-findSigPos = find(bigMaster(:,9) == 1);
+%pull widths
+pvWidths = widthStore(:,findPVs,:);
+msnWidths = widthStore(:,findMSNs,:);
+firstWidthMSN = msnWidths(:,:,1);
+firstWidthPV = pvWidths(:,:,1);
+
+%now we need to go through systematically. Store values like threshold
+%value, width 10 dB above threshold, shape of response (monotonic
+%increasing?)
+infoStoreMSN = zeros(length(firstWidthMSN),6);
+for i = 1:length(firstWidthMSN)
+    %store the total number of DB steps with responses
+    infoStoreMSN(i,1) = length(find(firstWidthMSN(:,i) > 0));
+    %next, store the "integral" of responses, collapsing across dB
+    infoStoreMSN(i,2) = sum(firstWidthMSN(:,i));
+    %next, we need to try and look for threshold value. Do this by creeping
+    %across. First, check to see if there are any values at all
+    if length(find(firstWidthMSN(:,i) > 0)) <=1
+        disp('Insufficient Responses Found')
+        %report no threshold
+        infoStoreMSN(i,3) = 0;
+        %report no width
+        infoStoreMSN(i,4) = 0;
+        %report no shape
+        infoStoreMSN(i,5) = 0;
+    else
+        disp('Sufficient Responses Found')
+        %this assumes that there is stuff! now try and find things. 
+        currVect = firstWidthMSN(:,i);
+        %calculate threshold value in different ways, one by the first
+        %point after, one at the last zero.
+        threshVal1 = find(currVect > 0,1,'first');
+        threshVal2 = find(currVect == 0,1,'last')+1;
+        if threshVal1 == threshVal2 %if two thresholds are equal, then response is continuous
+            threshVal = threshVal1;
+            %now check to see if monotonic increasing
+            infoStoreMSN(i,3) = threshVal; %store threshold value
+            if threshVal < length(currVect) - 1;
+                infoStoreMSN(i,4) = currVect(threshVal+1);
+            else
+                infoStoreMSN(i,4) = currVect(threshVal);
+            end
+            
+            vectDiff = diff(currVect);
+            findNeg = find(vectDiff < 0);
+            if isempty(findNeg) %no negative changes! yay!
+                infoStoreMSN(i,5) = 1; %store monotonic increasing shape
+            else
+                infoStoreMSN(i,5) = 2; %store value as non-monotonic
+            end
+        elseif threshVal1 == 1 & isempty(threshVal2)
+            infoStoreMSN(i,3) = 1;%store threshold as 1
+            infoStoreMSN(i,4) = currVect(2); %store width
+            
+            vectDiff = diff(currVect);
+            findNeg = find(vectDiff < 0);
+            if isempty(findNeg) %no negative changes! yay!
+                infoStoreMSN(i,5) = 1; %store monotonic increasing shape
+            else
+                infoStoreMSN(i,5) = 2; %store value as non-monotonic
+            end
+        else
+            threshVal = threshVal2;
+            infoStoreMSN(i,3) = threshVal; %store threshold value. This is still useful information
+            infoStoreMSN(i,4) = 0;
+            infoStoreMSN(i,5) = 2;
+        end
+    end
+end
+
+%do the same for PVs
+infoStorePV = zeros(length(firstWidthPV),6);
+for i = 1:length(firstWidthPV)
+    %store the total number of DB steps with responses
+    infoStorePV(i,1) = length(find(firstWidthPV(:,i) > 0));
+    %next, store the "integral" of responses, collapsing across dB
+    infoStorePV(i,2) = sum(firstWidthPV(:,i));
+    %next, we need to try and look for threshold value. Do this by creeping
+    %across. First, check to see if there are any values at all
+    if length(find(firstWidthPV(:,i) > 0)) <=1
+        disp('Insufficient Responses Found')
+        %report no threshold
+        infoStorePV(i,3) = 0;
+        %report no width
+        infoStorePV(i,4) = 0;
+        %report no shape
+        infoStorePV(i,5) = 0;
+    else
+        disp('Sufficient Responses Found')
+        %this assumes that there is stuff! now try and find things. 
+        currVect = firstWidthPV(:,i);
+        %calculate threshold value in different ways, one by the first
+        %point after, one at the last zero.
+        threshVal1 = find(currVect > 0,1,'first');
+        threshVal2 = find(currVect == 0,1,'last')+1;
+        if threshVal1 == threshVal2 %if two thresholds are equal, then response is continuous
+            threshVal = threshVal1;
+            %now check to see if monotonic increasing
+            infoStorePV(i,3) = threshVal; %store threshold value
+            if threshVal < length(currVect) - 1;
+                infoStorePV(i,4) = currVect(threshVal+1);
+            else
+                infoStorePV(i,4) = currVect(threshVal);
+            end
+            
+            vectDiff = diff(currVect);
+            findNeg = find(vectDiff < 0);
+            if isempty(findNeg) %no negative changes! yay!
+                infoStorePV(i,5) = 1; %store monotonic increasing shape
+            else
+                infoStorePV(i,5) = 2; %store value as non-monotonic
+            end
+        elseif threshVal1 == 1 & isempty(threshVal2)
+            infoStorePV(i,3) = 1;%store threshold as 1
+            infoStorePV(i,4) = currVect(2); %store width
+            
+            vectDiff = diff(currVect);
+            findNeg = find(vectDiff < 0);
+            if isempty(findNeg) %no negative changes! yay!
+                infoStorePV(i,5) = 1; %store monotonic increasing shape
+            else
+                infoStorePV(i,5) = 2; %store value as non-monotonic
+            end
+        else
+            threshVal = threshVal2;
+            infoStorePV(i,3) = threshVal; %store threshold value. This is still useful information
+            infoStorePV(i,4) = 0;
+            infoStorePV(i,5) = 2;
+        end
+    end
+end
+
+condensedMSN = infoStoreMSN(infoStoreMSN(:,5) == 1,:);
+
+condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
+
+
 
 [indPkTr] = functionCellStringFind(masterHeader,'PeakTrough');
 [indISI] = functionCellStringFind(masterHeader,'isiCov');
@@ -111,19 +247,15 @@ legend(labels,'Location','southoutside','Orientation','horizontal')
 
 
 %% Column 2
-%180709 When plotting histograms, this code now selects for units that pass
-%significance based on the general histogram, and also excludes cells with
-%a width of zero. Has been propagated through for PVs as well. 
 
 subplot(3,4,2)
 hold on
-sigMSNs = intersect(findMSNs,findSigPos);
-holder = intFastPos(sigMSNs);
+holder = intFastPos(findMSNs);
 hist(holder(holder > 0),widthHistVect)
 xlim([0 widthHistVect(end)])
 title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
 
-%plot distribution of positive, negative, both, and untuned units. 
+%plot distribution of positive, negative, both, and untuned units
 subplot(3,4,6)
 holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
 holder(:,2) = holder(:,2) * -2;
@@ -138,7 +270,7 @@ title(strcat('MSNs n=',num2str(length(findMSNs))))
 
 subplot(3,4,10)
 hold on
-holder = intSlowPos(sigMSNs);
+holder = intSlowPos(findMSNs);
 hist(holder(holder > 0),widthHistVect)
 xlim([0 widthHistVect(end)])
 title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
@@ -147,8 +279,7 @@ if findPVs
     
     subplot(3,4,4)
     hold on
-    sigPVs = intersect(findPVs,findSigPos);
-    holder = intFastPos(sigPVs);
+    holder = intFastPos(findPVs);
     hist(holder(holder > 0),widthHistVect)
     xlim([0 widthHistVect(end)])
     title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
@@ -168,61 +299,43 @@ if findPVs
     
     subplot(3,4,12)
     hold on
-    holder = intSlowPos(sigPVs);
+    holder = intSlowPos(findPVs);
     hist(holder(holder > 0),widthHistVect)
     xlim([0 widthHistVect(end)])
     title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
 end
 
-%show widths not integrals
-subplot(3,4,3)
-hold on
-holder = justWidthFast(sigMSNs);
-hist(holder(holder > 0),widthHistVect)
-xlim([0 20])
-title(strcat('width fast pos MSNs, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+%% Column 4 CHATs
+if findCHATs
+    
+    subplot(3,4,3)
+    hold on
+    holder = intFastPos(findCHATs);
+    hist(holder(holder > 0),widthHistVect)
+    xlim([0 widthHistVect(end)])
+    title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
 
-subplot(3,4,7)
-hold on
-holder = justWidthFast(sigPVs);
-hist(holder(holder > 0),widthHistVect)
-xlim([0 20])
-title(strcat('width fast pos PVs, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-
-
-
-
-% %% Column 4 CHATs
-% if findCHATs
-%     
-%     subplot(3,4,3)
-%     hold on
-%     holder = intFastPos(findCHATs);
-%     hist(holder(holder > 0),widthHistVect)
-%     xlim([0 widthHistVect(end)])
-%     title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-% 
-%     %plot distribution of positive, negative, both, and untuned units
-%     subplot(3,4,7)
-%     holder = bigMaster(findCHATs,[indPosSig,indNegSig]);
-%     holder(:,2) = holder(:,2) * -2;
-%     det = holder(:,1) + holder(:,2);
-%     det = hist(det,[-2:1:1]);
-%     pie(det)
-%     labels = {'Neg','Mix','None','Pos'};
-%     detZero = find(det == 0);
-%     labels(detZero) = [];
-%     legend(labels,'Location','southoutside','Orientation','horizontal')
-%     title(strcat('CHATs n=',num2str(length(findCHATs))))
-%     
-%     
-%     subplot(3,4,11)
-%     hold on
-%     holder = intSlowPos(findCHATs);
-%     hist(holder(holder > 0),widthHistVect)
-%     xlim([0 widthHistVect(end)])
-%     title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-% end
+    %plot distribution of positive, negative, both, and untuned units
+    subplot(3,4,7)
+    holder = bigMaster(findCHATs,[indPosSig,indNegSig]);
+    holder(:,2) = holder(:,2) * -2;
+    det = holder(:,1) + holder(:,2);
+    det = hist(det,[-2:1:1]);
+    pie(det)
+    labels = {'Neg','Mix','None','Pos'};
+    detZero = find(det == 0);
+    labels(detZero) = [];
+    legend(labels,'Location','southoutside','Orientation','horizontal')
+    title(strcat('CHATs n=',num2str(length(findCHATs))))
+    
+    
+    subplot(3,4,11)
+    hold on
+    holder = intSlowPos(findCHATs);
+    hist(holder(holder > 0),widthHistVect)
+    xlim([0 widthHistVect(end)])
+    title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+end
 
 spikeGraphName = 'WrapperFigure1';
 savefig(hFig,spikeGraphName);
