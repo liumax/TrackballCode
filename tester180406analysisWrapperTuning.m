@@ -19,7 +19,7 @@ numFiles = length(targetFiles);
 bigMaster = [];
 bigMasterInd = 1;
 respVect = [];
-
+pkTroughRatioStore = [];
 %actually extract files. 
 for i = 1:numFiles
     %load the target file
@@ -36,7 +36,35 @@ for i = 1:numFiles
     holder = masterData(:,[indPosSig,indNegSig]);
     holder(:,2) = holder(:,2) * -2;
     respVect(:,bigMasterInd:bigMasterInd + numUnits - 1) = (holder(:,1) + holder(:,2))'; %note that here, -2 = neg, -1 = mix, 0 = no, 1 = pos
-    
+    %find the peak to trough value ratio in waveforms. 
+    numCells = length(s.DesignationName);
+    desigName = s.DesignationName;
+    pkTroughRatio = [];
+    interpWaves = [];;
+    for j = 1:numCells
+        %pull up cell average waveforms
+        cellWaves = s.(desigName{j}).AverageWaveForms;
+        %now pull up which one is biggest
+        waveMax = max(cellWaves);
+        [maxVal maxInd] = max(waveMax);
+        %now generate finely sampled version
+        chosenWave = cellWaves(:,maxInd);
+        interpVect = [1:0.1:40];
+        interpWave = interp1(1:40,chosenWave,interpVect,'spline');
+        %now find peak value
+        
+        [pkVal pkInd] = max(interpWave(100:end));
+        pkInd = pkInd + 100 - 1;
+        %now we need to find the minimum following the peak
+
+        [troughVal troughInd] = min(interpWave(pkInd:end));
+        troughInd = troughInd + pkInd - 1;
+        pkTroughRatio(j) = pkVal/troughVal;
+        interpWaves(j,:) = interpWave;
+        
+    end
+    pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
+    interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
     %for "integral" of responses, we'll have to go into individual units,
     %and save both for short period and long period
 %     tempInd = 1;
@@ -211,6 +239,7 @@ condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
 
 [indPkTr] = functionCellStringFind(masterHeader,'PeakTrough');
 [indISI] = functionCellStringFind(masterHeader,'isiCov');
+[indBaseFire] = functionCellStringFind(masterHeader,'BaselineRate');
 [indPosSig] = functionCellStringFind(masterHeader,'PosSigGenHist');
 [indNegSig] = functionCellStringFind(masterHeader,'NegSigGenHist');
 
@@ -218,13 +247,16 @@ condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
 %16, or 80. 
 widthHistVect = [0:1:80];
 
+%% NOW LETS DO PLOTTING
 
+%% first figure, looking at broad general things, like numbers of cells and firing rates
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
-%% Column 1
+
+%column 1
 %plot spike width vs coefficient of variation
-subplot(3,4,1)
+subplot(4,4,1)
 hold on
 
 plot(bigMaster(:,indPkTr),bigMaster(:,indISI),'k.')
@@ -232,31 +264,47 @@ plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indC
 plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indISI),'g.')
 xlabel('Peak Trough (ms)')
 ylabel('ISI Coefficient of Variation')
-% title(fileName,'fontweight','bold', 'Interpreter', 'none');
 
-%plot out proportion of each cell type
+%now plot out spike width vs peak trough ratio
+subplot(4,4,5)
+hold on
 
-subplot(3,4,9)
+plot(bigMaster(:,indPkTr),pkTroughRatioStore(:),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),pkTroughRatioStore(bigMaster(:,indCellType) == 1),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),pkTroughRatioStore(bigMaster(:,indCellType) == 2),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('Peak Trough Amplitude Ratio')
+
+%plot out spike width with FR
+subplot(4,4,9)
+hold on
+
+plot(bigMaster(:,indPkTr),bigMaster(:,indBaseFire),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indBaseFire),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indBaseFire),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('Baseline Firing Rate')
+
+%plot out pie chart of difference cells
+subplot(4,4,13)
 cellDist = [length(findMSNs),length(findPVs),length(findCHATs)];
 pie(cellDist)
-labels = {'MSNs','PVs','ChATs'};
+labels = {strcat('MSNs(',num2str(length(findMSNs)),')'),strcat('PVs(',num2str(length(findPVs)),')'),strcat('ChATs(',num2str(length(findCHATs)),')')};
 detZero = find(cellDist == 0);
 labels(detZero) = [];
-legend(labels,'Location','southoutside','Orientation','horizontal')
+legend(labels,'Location','eastoutside','Orientation','vertical')
 
+%column 2, plot out pie charts of MSNs
 
-
-%% Column 2
-
-subplot(3,4,2)
+subplot(4,4,2)
 hold on
-holder = intFastPos(findMSNs);
-hist(holder(holder > 0),widthHistVect)
-xlim([0 widthHistVect(end)])
-title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+waveHolder = [];
+waveHolder = interpWaveStore(findMSNs,:);
+plot(waveHolder')
+title('MSN Waveforms')
 
-%plot distribution of positive, negative, both, and untuned units
-subplot(3,4,6)
+%plot distribution of response types
+subplot(4,4,6)
 holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
 holder(:,2) = holder(:,2) * -2;
 det = holder(:,1) + holder(:,2);
@@ -265,79 +313,99 @@ pie(det)
 labels = {'Neg','Mix','None','Pos'};
 detZero = find(det == 0);
 labels(detZero) = [];
-legend(labels,'Location','southoutside','Orientation','horizontal')
+legend(labels,'Location','eastoutside','Orientation','vertical')
 title(strcat('MSNs n=',num2str(length(findMSNs))))
 
-subplot(3,4,10)
+%plot out integrals of response plots
+subplot(4,4,10)
+holder = intFastPos(findMSNs);
+hist(holder(holder > 0),widthHistVect)
+xlim([0 widthHistVect(end)])
+title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+
+
+subplot(4,4,14)
 hold on
 holder = intSlowPos(findMSNs);
 hist(holder(holder > 0),widthHistVect)
 xlim([0 widthHistVect(end)])
 title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-%% Column 3 PV CELLS
-if findPVs
-    
-    subplot(3,4,4)
-    hold on
-    holder = intFastPos(findPVs);
-    hist(holder(holder > 0),widthHistVect)
-    xlim([0 widthHistVect(end)])
-    title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
 
-    %plot distribution of positive, negative, both, and untuned units
-    subplot(3,4,8)
-    holder = bigMaster(findPVs,[indPosSig,indNegSig]);
-    holder(:,2) = holder(:,2) * -2;
-    det = holder(:,1) + holder(:,2);
-    det = hist(det,[-2:1:1]);
-    pie(det)
-    labels = {'Neg','Mix','None','Pos'};
-    detZero = find(det == 0);
-    labels(detZero) = [];
-    legend(labels,'Location','southoutside','Orientation','horizontal')
-    title(strcat('PVs n=',num2str(length(findPVs))))
-    
-    subplot(3,4,12)
-    hold on
-    holder = intSlowPos(findPVs);
-    hist(holder(holder > 0),widthHistVect)
-    xlim([0 widthHistVect(end)])
-    title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-end
 
-%% Column 4 CHATs
-if findCHATs
-    
-    subplot(3,4,3)
-    hold on
-    holder = intFastPos(findCHATs);
-    hist(holder(holder > 0),widthHistVect)
-    xlim([0 widthHistVect(end)])
-    title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+%column 3, plot out PV stuff
 
-    %plot distribution of positive, negative, both, and untuned units
-    subplot(3,4,7)
-    holder = bigMaster(findCHATs,[indPosSig,indNegSig]);
-    holder(:,2) = holder(:,2) * -2;
-    det = holder(:,1) + holder(:,2);
-    det = hist(det,[-2:1:1]);
-    pie(det)
-    labels = {'Neg','Mix','None','Pos'};
-    detZero = find(det == 0);
-    labels(detZero) = [];
-    legend(labels,'Location','southoutside','Orientation','horizontal')
-    title(strcat('CHATs n=',num2str(length(findCHATs))))
-    
-    
-    subplot(3,4,11)
-    hold on
-    holder = intSlowPos(findCHATs);
-    hist(holder(holder > 0),widthHistVect)
-    xlim([0 widthHistVect(end)])
-    title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-end
+subplot(4,4,3)
+hold on
+waveHolder = [];
+waveHolder = interpWaveStore(findPVs,:);
+plot(waveHolder')
+title('PV Waveforms')
 
-spikeGraphName = 'WrapperFigure1';
+%plot distribution of response types
+subplot(4,4,7)
+holder = bigMaster(findPVs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+det = hist(det,[-2:1:1]);
+pie(det)
+labels = {'Neg','Mix','None','Pos'};
+detZero = find(det == 0);
+labels(detZero) = [];
+legend(labels,'Location','eastoutside','Orientation','vertical')
+title(strcat('PVs n=',num2str(length(findPVs))))
+
+%plot out integrals of response plots
+subplot(4,4,11)
+holder = intFastPos(findPVs);
+hist(holder(holder > 0),widthHistVect)
+xlim([0 widthHistVect(end)])
+title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+
+subplot(4,4,15)
+hold on
+holder = intSlowPos(findPVs);
+hist(holder(holder > 0),widthHistVect)
+xlim([0 widthHistVect(end)])
+title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+
+%column 4, plot out pie charts of CHATs
+
+subplot(4,4,4)
+hold on
+waveHolder = [];
+waveHolder = interpWaveStore(findCHATs,:);
+plot(waveHolder')
+title('CHAT Waveforms')
+
+%plot distribution of response types
+subplot(4,4,8)
+holder = bigMaster(findCHATs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+det = hist(det,[-2:1:1]);
+pie(det)
+labels = {'Neg','Mix','None','Pos'};
+detZero = find(det == 0);
+labels(detZero) = [];
+legend(labels,'Location','eastoutside','Orientation','vertical')
+title(strcat('CHATs n=',num2str(length(findCHATs))))
+
+%plot out integrals of response plots
+subplot(4,4,12)
+holder = intFastPos(findCHATs);
+hist(holder(holder > 0),widthHistVect)
+xlim([0 widthHistVect(end)])
+title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+
+subplot(4,4,16)
+hold on
+holder = intSlowPos(findCHATs);
+hist(holder(holder > 0),widthHistVect)
+xlim([0 widthHistVect(end)])
+title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
+
+
+spikeGraphName = 'WrapperFigure1Overview';
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -345,6 +413,18 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
