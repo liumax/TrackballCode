@@ -20,6 +20,8 @@ bigMaster = [];
 bigMasterInd = 1;
 respVect = [];
 pkTroughRatioStore = [];
+binValBigStore = [];
+sigValBigStore = [];
 %actually extract files. 
 for i = 1:numFiles
     %load the target file
@@ -40,7 +42,9 @@ for i = 1:numFiles
     numCells = length(s.DesignationName);
     desigName = s.DesignationName;
     pkTroughRatio = [];
-    interpWaves = [];;
+    interpWaves = [];
+    tempBinStore = [];
+    tempSigStore = [];
     for j = 1:numCells
         %pull up cell average waveforms
         cellWaves = s.(desigName{j}).AverageWaveForms;
@@ -62,9 +66,16 @@ for i = 1:numFiles
         pkTroughRatio(j) = pkVal/troughVal;
         interpWaves(j,:) = interpWave;
         
+        %pull out binned values for entire tone period, as well as
+        %significance
+        tempBinStore(:,:,j) = s.(desigName{j}).BinTone;
+        tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(:,:,2)
+        
     end
     pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
     interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
+    binValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempBinStore;
+    sigValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempSigStore;
     %for "integral" of responses, we'll have to go into individual units,
     %and save both for short period and long period
 %     tempInd = 1;
@@ -245,7 +256,7 @@ condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
 
 %make vector for width. if neuron responds to everything, that makes 5 *
 %16, or 80. 
-widthHistVect = [0:1:80];
+widthHistVect = [0:1:40];
 
 %% NOW LETS DO PLOTTING
 
@@ -416,15 +427,155 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
+%lets try plotting out binned responses
+% hFig = figure;
+% set(hFig, 'Position', [10 80 1900 1000])
+% subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+% for i = 1:200
+%     subplot(10,20,i)
+%     imagesc(binValBigStore(:,:,i)')
+%     colormap('parula')
+%     set(gca,'YTick',[]);
+%     set(gca,'XTick',[]);
+%     set(gca,'Ydir','reverse')
+% end
+
+%plot without white noise responses
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:200
+    subplot(10,20,i)
+    imagesc(binValBigStore(2:end,:,i)')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
 
 
+%how lets look at sigValBigStore
+sigValConv = sigValBigStore;
+sigValConv(sigValConv <= 0.001) = 4;
+sigValConv(sigValConv <= 0.01) = 3;
+sigValConv(sigValConv <= 0.05) = 2;
+sigValConv(sigValConv <= 1) = 1;
 
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:200
+    subplot(10,20,i)
+    imagesc(sigValConv(2:end,:,i)')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
 
+%just do PVs
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:20
+    subplot(5,4,i)
+    imagesc(binValBigStore(2:end,:,findPVs(i))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
 
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:20
+    subplot(5,4,i)
+    imagesc(sigValConv(2:end,:,findPVs(i))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
 
+%and just MSNs
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:200
+    subplot(10,20,i)
+    imagesc(binValBigStore(2:end,:,findMSNs(i))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
 
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:200
+    subplot(10,20,i)
+    imagesc(sigValConv(2:end,:,findMSNs(i))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
 
+% based on this, it seems like there is something of a difference between
+% FSIs and MSNs
 
+%lets try plotting just white noise responses
+%just do PVs
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:20
+    subplot(1,20,i)
+    imagesc(binValBigStore(1,:,findPVs(i))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:20
+    subplot(1,20,i)
+    imagesc(sigValConv(1,:,findPVs(i))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
+
+%and just MSNs
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:200
+    subplot(10,20,i)
+    imagesc(binValBigStore(1,:,findMSNs(i))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:200
+    subplot(10,20,i)
+    imagesc(sigValConv(1,:,findMSNs(i))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
 
 
 
