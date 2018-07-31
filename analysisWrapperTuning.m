@@ -688,6 +688,57 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-djpeg','-r0')
 
 
+%now lets look at specific amplitudes?
+
+minLatWhitePV = squeeze((latConvWhite(:,5,findPVs)));
+minLatWhiteMSN = squeeze((latConvWhite(:,5,findMSNs)));
+minLatTonePV = squeeze((min(latConvTone(:,5,findPVs))));
+minLatToneMSN = squeeze((min(latConvTone(:,5,findMSNs))));
+
+latHistVect = [0:0.001:0.1];
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+subplot(3,2,1)
+hist(minLatWhitePV,latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(find(~isnan(minLatWhitePV)))), ' FSI Min Latency White Noise'))
+
+subplot(3,2,2)
+hist(minLatTonePV,latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(find(~isnan(minLatTonePV)))),' FSI Min Latency Pure Tone'))
+% title('FSI Min Latency Pure Tone')
+
+subplot(3,2,3)
+hist(minLatWhiteMSN,latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(find(~isnan(minLatWhiteMSN)))),' MSN Min Latency White Noise'))
+% title('MSN Min Latency White Noise')
+
+subplot(3,2,4)
+hist(minLatToneMSN,latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(find(~isnan(minLatToneMSN)))),' MSN Min Latency Pure Tone'))
+% title('MSN Min Latency Pure Tone')
+
+subplot(3,1,3)
+hold on
+bar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],'w')
+errorbar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],[nanstd(minLatWhitePV),nanstd(minLatWhiteMSN),nanstd(minLatTonePV),nanstd(minLatToneMSN)])
+% xticks([1:4])
+% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+
+
+
+
+
+
+
+
+
+
 %lets try plotting out only the "classic" responses 
 
 pvTarget = find(infoStorePV(:,5)==1);
