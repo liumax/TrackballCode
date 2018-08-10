@@ -628,7 +628,7 @@ s.NegEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses a
 s.PosGaussWidth = zeros(numDBs,numUnits,3); % will perform gaussian fit on binned spikes if there is sufficient significant values. Store half-peak width
 s.RespWidthPos = zeros(numFreqs,numDBs,numUnits,2); %width of firing rate, positive
 widthStore = zeros(numFreqs,numDBs,numUnits);
-
+bigWidth = [];
 for i = 1:numUnits
     masterHolder = masterInd;
     
@@ -801,6 +801,8 @@ for i = 1:numUnits
                 [widthOut] = functionResponseWidth(responseHist);
                 if length(widthOut.Widths) > 0
                     widthStore(k,l,i) = widthOut.Widths(1);
+                    widthLat(k,l,i) = widthOut.StartsEnds(1);
+                    bigWidth{k,l,i} = widthOut;
                 end
             end
         end
@@ -1010,6 +1012,8 @@ for i = 1:numUnits
     
 end
 s.WidthData = widthStore;
+s.WidthLatData = widthLat;
+s.FullWidth = bigWidth;
 
 masterInd = masterHolder;
 
