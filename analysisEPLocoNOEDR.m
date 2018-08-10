@@ -91,7 +91,7 @@ end
 
 %% Extract trodes timestamps
 disp('Extracting Mountainsort Timestamps')
-fileNames = dir('*timestamps*');
+fileNames = dir('*timestamps.mda');
 timeName = fileNames.name;
 timeStamps = readmda(timeName);
 %all we really care about is the first time point. extract this!
@@ -213,6 +213,35 @@ length(cameraFrameDIOTimes)
 disp('Video Synchronization DIOs detected')
 s.CameraTimes = cameraFrameDIOTimes;
 
+%check to look for laser
+[laserName] = functionFileFinder(subFoldersCell,'DIO','D2');
+if length(laserName) == 0
+    [laserName] = functionFileFinder(subFoldersCell,'DIO','Din2');
+end
+laserName = laserName{1};
+%extracts DIO stuffs! this code is written to extract inputs for d1
+[laserDIO] = readTrodesExtractedDataFile(laserName);
+
+laserDIOtime = double(laserDIO.fields(1).data)/s.Parameters.trodesFS;
+%extracts states. States should be 0 or 1.
+laserDIOstate = double(laserDIO.fields(2).data);
+
+dioDiff = find(diff(laserDIOstate)==1)+1; %finds all points where there is a positive diff. +1 fudge factor for diff()
+dioHigh = find(laserDIOstate == 1); %finds all points at which state is 1
+
+dioTrue = intersect(dioDiff,dioHigh); %finds intersect of dioDiff and dioHigh, which should only be onsets, not offsets or repeat DIO high states
+%what i want is times, so extract dioTimes using dioTrue index.
+laserDIOtime = laserDIOtime(dioTrue);
+
+disp(strcat(num2str(length(laserDIOtime)),'-Laser Pulses Detected'))
+if length(laserDIOtime) > 0
+    disp('Performing Laser Analysis')
+    s.LaserTimes = laserDIOtime;
+    laserTrig = 1;
+else
+    disp('No Laser Found!')
+    laserTrig = 0;
+end
 
 %% Extract data from rotary encoder.
 [funcOut] = functionRotaryExtraction(s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
@@ -442,7 +471,11 @@ for i = 1:numUnits
     masterHolder = masterHolder + 1;
     
 %     spikeWidth
-    masterData(i,masterHolder) = spikeWidth;
+    if spikeWidth
+        masterData(i,masterHolder) = spikeWidth;
+    else
+        masterData(i,masterHolder) = 0;
+    end
     masterHeader{masterHolder} = 'SpikeWidth(ms)';
     masterHolder = masterHolder + 1;
     
@@ -477,6 +510,15 @@ for i = 1:numUnits
 %     s.(desigNames{i}).EDRRaster = rastersEDR;
 %     s.(desigNames{i}).EDRHist = histEDR;
 %     bigHistEDR(:,i) = histEDR; %for plotting purposes!
+    %% Do laser analysis if applicable
+    if laserTrig == 1
+        [rastersLaser] = functionBasicRaster(spikeTimes,laserDIOtime,s.Parameters.RasterWindow);
+        s.(desigNames{i}).rastersLaser = rastersLaser;
+        [histCounts histCenters] = hist(rastersLaser(:,1),histBinVector);
+        histLaser = histCounts'/length(laserDIOtime)/s.Parameters.histBin;
+        s.(desigNames{i}).histLaser = histLaser;
+    end
+        
     
     %% Now do rasters aligned to locomotion bout onsets
     [rastersLocoStart] = functionBasicRaster(spikeTimes,s.RotaryData.Velocity(s.RotaryData.PosStartsEnds(:,1),1),s.Parameters.RasterWindow);
@@ -800,6 +842,19 @@ for i = 1:numUnits
     
     %Column 2: rasters for edr, histogram
     
+    subplot(4,4,2)
+    hold on
+    rasterPlot(s.(desigNames{i}).rastersLaser(:,1),s.(desigNames{i}).rastersLaser(:,2))
+    xlim(s.Parameters.RasterWindow)
+    ylim([0 length(laserDIOtime)]) 
+    title('LASER RASTER')
+    
+    subplot(4,4,6)
+    hold on
+    plot(histBinVector,s.(desigNames{i}).histLaser);
+    xlim(s.Parameters.RasterWindow)
+%     ylim([0 length(laserDIOtime)]) 
+    title('LASER Histogram')
     %EDR raster
 %     subplot(4,4,2)
 %     hold on
