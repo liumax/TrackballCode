@@ -31,6 +31,15 @@ for i = 1:numFiles
     load(targetFiles{i})
     numUnits = size(masterData,1);
     numDBs = s.SoundData.NumDBs;
+    pkTroughRatio = [];
+    interpWaves = [];
+    tempBinStore = [];
+    tempSigStore = [];
+    tempLatStore = [];
+    tempMaxStore = [];
+    tempHist = [];
+    dbStore = [];
+    freqStore = [];
     if numDBs == 5
         %pull from masterData, store in overall. 
         bigMaster(bigMasterInd:bigMasterInd + numUnits - 1,:) = masterData;
@@ -45,13 +54,6 @@ for i = 1:numFiles
         %find the peak to trough value ratio in waveforms. 
         numCells = length(s.DesignationName);
         desigName = s.DesignationName;
-        pkTroughRatio = [];
-        interpWaves = [];
-        tempBinStore = [];
-        tempSigStore = [];
-        tempLatStore = [];
-        tempMaxStore = [];
-        tempHist=  [];
         for j = 1:numCells
             %pull up cell average waveforms
             cellWaves = s.(desigName{j}).AverageWaveForms;
@@ -92,6 +94,8 @@ for i = 1:numFiles
                 dbVal = floor((maxFind-1)/16);
                 freqVal= mod(maxFind,16);
                 tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+1,dbVal+1,:));
+                dbStore(j) = floor((maxFind-1)/16);
+                freqStore(j) = mod(maxFind,16);
             else
                 tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
             end
@@ -105,15 +109,10 @@ for i = 1:numFiles
         widthLatStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = s.WidthLatData;
         bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) = tempMaxStore;
         bigHistStore(:,bigMasterInd:bigMasterInd + numUnits - 1) = tempHist;
-        %for "integral" of responses, we'll have to go into individual units,
-        %and save both for short period and long period
-    %     tempInd = 1;
-    %     sigCutoff = 0.01;
-    %     for j = 1:numUnits
-    %         intFast(bigMasterInd + tempInd - 1) = length(find(squeeze(s.(s.DesignationName{j}).BinSigVals(2:end,:,1))<sigCutoff));
-    %         intBig(bigMasterInd + tempInd - 1) = length(find(squeeze(s.(s.DesignationName{j}).BinSigVals(2:end,:,3))<sigCutoff));
-    %         tempInd = tempInd + 1;
-    %     end
+        bigDBStore(bigMasterInd:bigMasterInd + numUnits - 1) = dbStore;
+        bigFreqStore(bigMasterInd:bigMasterInd + numUnits - 1) = freqStore;
+        recStore(bigMasterInd:bigMasterInd + numUnits - 1) = i;
+        
         %instead, lets just pull from posWidths and negWidths
         intFastPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((2:end),:,1));
         intFastNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((2:end),:,1));
@@ -138,13 +137,7 @@ for i = 1:numFiles
         %find the peak to trough value ratio in waveforms. 
         numCells = length(s.DesignationName);
         desigName = s.DesignationName;
-        pkTroughRatio = [];
-        interpWaves = [];
-        tempBinStore = [];
-        tempSigStore = [];
-        tempLatStore = [];
-        tempMaxStore = [];
-        tempHist = [];
+        
         for j = 1:numCells
             %pull up cell average waveforms
             cellWaves = s.(desigName{j}).AverageWaveForms;
@@ -184,6 +177,8 @@ for i = 1:numFiles
             if length(maxFind) >= 1
                 dbVal = floor((maxFind-1)/16);
                 freqVal= mod(maxFind,16);
+                dbStore(j) = floor((maxFind-1)/16);
+                freqStore(j) = mod(maxFind,16);
                 tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+1,dbVal+2,:));
             else
                 tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
@@ -197,6 +192,9 @@ for i = 1:numFiles
         widthLatStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = s.WidthLatData(:,end-5+1:end,:);
         bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) = tempMaxStore;
         bigHistStore(:,bigMasterInd:bigMasterInd + numUnits - 1) = tempHist;
+        bigDBStore(bigMasterInd:bigMasterInd + numUnits - 1) = dbStore;
+        bigFreqStore(bigMasterInd:bigMasterInd + numUnits - 1) = freqStore;
+        recStore(bigMasterInd:bigMasterInd + numUnits - 1) = i;
         %for "integral" of responses, we'll have to go into individual units,
         %and save both for short period and long period
     %     tempInd = 1;
@@ -748,6 +746,14 @@ end
 
 
 %% now lets look at latency
+%180905 new attempt. Will threshold by units that respond to at least two
+%things during tone period significantly. 
+tester = max(widthStore(:,:,2));
+tarCells = find(tester >= 3);
+
+%now lets pull the 
+
+
 %first, we want to eliminate non-significant latencies
 sigMin = 0.01; %minimum significance value
 binSig = sigValBigStore;
