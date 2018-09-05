@@ -751,9 +751,6 @@ end
 tester = max(widthStore(:,:,2));
 tarCells = find(tester >= 3);
 
-%now lets pull the 
-
-
 %first, we want to eliminate non-significant latencies
 sigMin = 0.01; %minimum significance value
 binSig = sigValBigStore;
@@ -769,6 +766,94 @@ latConv(latConv == 0) = NaN;
 latConvWhite = latConv(1,:,:);
 latConvTone = latConv(2:end,:,:);
 latConvWidthTone = widthLatConv(2:end,:,:);
+
+%now lets extract targeted latencies. 
+for i = 1:length(tarCells);
+    tempLat = latConvTone(:,:,tarCells(i));
+    tarLats(i) = tempLat(bigMaxStore(tarCells(i)));
+end
+%QC check, remove all latencies and tarCells that are NaNs
+nanFind = isnan(tarLats);
+tarLats(nanFind) = [];
+tarCells(nanFind) = [];
+
+[C,tarPVs,ib] = intersect(tarCells,findPVs);
+[C,tarMSNs,ib] = intersect(tarCells,findMSNs);
+
+latHistVect = [0:0.001:0.1];
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+subplot(3,2,1)
+hist(tarLats(tarPVs),latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(tarPVs)), ' FSI Min Latency Tone'))
+
+% subplot(3,2,2)
+% hist(minLatTonePV,latHistVect)
+% xlim([latHistVect(1) latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(minLatTonePV)))),' FSI Min Latency Pure Tone'))
+% % title('FSI Min Latency Pure Tone')
+
+subplot(3,2,3)
+hist(tarLats(tarMSNs),latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(tarMSNs)),' MSN Min Latency Tone'))
+% title('MSN Min Latency White Noise')
+
+% subplot(3,2,4)
+% hist(minLatToneMSN,latHistVect)
+% xlim([latHistVect(1) latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(minLatToneMSN)))),' MSN Min Latency Pure Tone'))
+% % title('MSN Min Latency Pure Tone')
+
+subplot(3,1,3)
+hold on
+bar(1:2,[nanmean(tarLats(tarPVs)),nanmean(tarLats(tarMSNs))],'w')
+errorbar(1:2,[nanmean(tarLats(tarPVs)),nanmean(tarLats(tarMSNs))],[nanstd(tarLats(tarPVs)),nanstd(tarLats(tarMSNs))])
+% xticks([1:4])
+% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+
+spikeGraphName = 'latencyPlotSelected';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
+
+%the results of this demonstrate that there is a weak difference in latency
+%that is insignificant. Looking at histograms, looks like this might be in
+%part due to a number of slower responding PV cells. 
+
+%lets try and look on a recording by recording basis
+tarRec = recStore(tarCells);
+tarRec(:,2) = 0;
+tarRec(tarPVs,2) = 1;
+tarRec(:,3) = 0;
+%check to see if specific recording has both PVs and MSNs
+for i = 1:numFiles
+    tempStore = tarRec(tarRec(:,1) == i,2);
+    if sum(tempStore) == 0 | sum(tempStore) == length(tempStore)
+        disp('Only One Cell Type')
+    else
+        disp('Multiple Cell Types')
+        tarRec(tarRec(:,1) == i,3) = i;
+    end
+end
+
+tarRec(:,4) = tarLats;
+
+figure
+hold on
+plot(mean(bigHistStore(:,tarCells(tarPVs))'))
+plot(mean(bigHistStore(:,tarCells(tarMSNs))'),'r')
+
+%Doesnt look like a per-recording analysis will pull out anything different
+%really. 
+
 
 minLatWhitePV = squeeze(min(latConvWhite(:,:,findPVs)));
 minLatWhiteMSN = squeeze(min(latConvWhite(:,:,findMSNs)));
@@ -912,11 +997,14 @@ errorbar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatToneP
 % xticks([1:4])
 % xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
 
+spikeGraphName = 'latencyPlot70DB';
+savefig(hFig,spikeGraphName);
 
-%pull out the db values for the lowest latency. 
-
-
-
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
 
 
 
