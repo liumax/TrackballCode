@@ -60,7 +60,9 @@ end
 
 %% Now we use the  distribution and percentiles to calculate positive significant responses
 %generate vector for bin centers for histogram
-targetHistVector = [calcWindow(1)-(round(smoothWindow/2)*sigCalcBin) + sigCalcBin/2: sigCalcBin:calcWindow(2)+(round(smoothWindow/2)*sigCalcBin)]; %180302 added in code to have histogram overlap over both edges so that smoothing is more accurate. 
+targetHistVector = [calcWindow(1)+(round(smoothWindow/2)*sigCalcBin) + sigCalcBin/2: sigCalcBin:calcWindow(2)-(round(smoothWindow/2)*sigCalcBin)]; %180302 added in code to have histogram overlap over both edges so that smoothing is more accurate. 
+%180808 fixed minor bug, made shift to windows, to make things more
+%consistent with LatBinPeak code. 
 %calculate histogram
 targetHist = hist(inputRaster,targetHistVector);
 targetHist = smooth(reshape(targetHist,[],1)/sigCalcBin/trialNum,smoothWindow);
