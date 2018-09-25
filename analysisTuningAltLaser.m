@@ -964,6 +964,8 @@ for i = 1:numUnits
     plot([0 0],[ylim],'b');
     plot([toneDur toneDur],[ylim],'b');
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+    histLims = max([max(s.(desigNames{i}).AllHistograms + s.(desigNames{i}).HistogramStandardDeviation),max(s.(desigNames{i}).AllHistogramsLaser + s.(desigNames{i}).HistogramStandardDeviationLaser)]);
+    ylim([0 histLims])
     title('Histogram')
 
     %plot out rasters, organized!
@@ -1030,6 +1032,7 @@ for i = 1:numUnits
     plot([0 0],[ylim],'b');
     plot([toneDur toneDur],[ylim],'b');
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
+    ylim([0 histLims])
     title('Histogram')
 
     %plot out rasters, organized! FOR LASER TRIALS
@@ -1134,7 +1137,7 @@ for i = 1:numUnits
     set(gca,'XTick',octaveRange(:,2));
     set(gca,'XTickLabel',octaveRange(:,1));
     ylabel('Binned Spikes/Fast Period')
-    title('Tuning Curves Across Fast Period')
+    title(strcat('Curve Fast Period, nl width:',num2str(s.NonLaserOverall.PosWidths(3,i,1)),',laser width:',num2str(s.LaserOverall.PosWidths(3,i,1))))
 
     %plot out binned spikes (tone)
     subplot(4,4,8)
@@ -1159,7 +1162,7 @@ for i = 1:numUnits
     set(gca,'XTick',octaveRange(:,2));
     set(gca,'XTickLabel',octaveRange(:,1));
     ylabel('Binned Spikes/Fast Period')
-    title('Tuning Curves Across Tone Period')
+    title(strcat('Curve Tone Period, nl width:',num2str(s.NonLaserOverall.PosWidths(3,i,2)),',laser width:',num2str(s.LaserOverall.PosWidths(3,i,2))))
     
     %plot out binned responses to general period, non laser vs laser
     subplot(4,4,12)
