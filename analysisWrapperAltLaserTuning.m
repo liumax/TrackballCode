@@ -18,7 +18,7 @@ numFiles = length(targetFiles);
 %generate empty things here/store variables
 
 %variables
-sigThresh = 3; %minimum number of significant responses at 0.05 p threshold. 
+sigThresh = 5; %minimum number of significant responses at 0.05 p threshold. 
 tarWin = 2; %target window of analysis. 1 = fast, 2 = tone, 3 = gen. 
 %counters of cells overall
 numCells = 0;
@@ -90,9 +90,14 @@ for i = 1:numFiles
         fullBin{fullCounter} = [s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin),s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin)];
         %now do some calculations
         binDiffs = (s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin) - s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin)).*testMask;
+        %also try and pull a modulation index of response
+        toneMod = (nanmean(s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin).*testMask) - nanmean(s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin).*testMask))/(nanmean(s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin).*testMask) + nanmean(s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin).*testMask));
+        toneModStore(fullCounter) = toneMod;
         realDiffs = binDiffs(binDiffs ~= 0);
         fullMaster(fullCounter,5) = nanmean(realDiffs);
         fullMaster(fullCounter,6) = length(realDiffs);
+        curveStore{fullCounter} = s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin);
+        curveStoreLaser{fullCounter} = s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin);
         %now store latency data. 
         fullLat{fullCounter} = [s.(s.DesignationName{keepList(j)}).LatencyMap,s.(s.DesignationName{keepList(j)}).LatencyMapLaser];
         latDiffs = (s.(s.DesignationName{keepList(j)}).LatencyMapLaser - s.(s.DesignationName{keepList(j)}).LatencyMap).*testMask;
@@ -104,6 +109,12 @@ for i = 1:numFiles
         %now store data from positive widths
         fullMaster(fullCounter,10) = s.NonLaserOverall.PosWidths(3,keepList(j),3);
         fullMaster(fullCounter,11) = s.LaserOverall.PosWidths(3,keepList(j),3);
+        
+        %store modulation indices
+        fullMaster(fullCounter,12) = masterData(keepList(j),end);
+        
+        
+        
         fullCounter = fullCounter + 1;
     end
 end
@@ -125,11 +136,69 @@ nanmean(fullMaster(pvs,7))
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1000 1000])
+subplot(2,3,1)
+hist(fullMaster(msns,12),[-1:0.1:1])
+xlim([-1 1])
+xlabel('Modulation Index')
+ylabel('Number MSNs')
+title('Modulation Index MSNs')
+
+subplot(2,3,4)
+hist(fullMaster(pvs,12),[-1:0.1:1])
+xlim([-1 1])
+xlabel('Modulation Index')
+ylabel('Number PVs')
+title('Modulation Index PVs')
+
+subplot(2,3,2)
+hist(toneModStore(msns),[-1:0.1:1])
+xlim([-1 1])
+xlabel('Modulation Index')
+ylabel('Number MSNs')
+title('Tone Modulation Index MSNs')
+
+subplot(2,3,5)
+hist(toneModStore(pvs),[-1:0.1:1])
+xlim([-1 1])
+xlabel('Modulation Index')
+ylabel('Number PVs')
+title('Tone Modulation Index PVs')
+
+subplot(2,3,3)
+plot(fullMaster(msns,12),toneModStore(msns),'k.')
+hold on
+plot([-1 1],[-1 1],'r')
+xlabel('ModulationIndexBase')
+ylabel('ModulationIndexTone')
+title('MSN ModIndex Comparison')
+
+subplot(2,3,6)
+plot(fullMaster(pvs,12),toneModStore(pvs),'k.')
+hold on
+plot([-1 1],[-1 1],'r')
+xlabel('ModulationIndexBase')
+ylabel('ModulationIndexTone')
+title('PV ModIndex Comparison')
+
+
+spikeGraphName = 'Modulation Indices';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
 subplot(2,1,1)
 hold on
 plot(fullMaster(msns,6),fullMaster(msns,5),'k.')
 plot([0 max(fullMaster(msns,6))],[0 0],'r')
-xlabel('Number of Significant Responses')
+xlabel('Number of Non-Zero Responses')
 ylabel('Mean Change in Spikes/Tone')
 title('Effect of Laser on Size of Responses')
 
@@ -152,10 +221,70 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
+%plot out tuning curves for MSNs
+hFig = figure;
+ampLevel = 2;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:length(msns)
+    subplot(10,10,i)
+    hold on
+    plot([1 length(curveStore{msns(i)})-1],[0 0],'k')
+    plot(curveStore{msns(i)}(2:end,ampLevel),'r')
+    plot(curveStoreLaser{msns(i)}(2:end,ampLevel),'b')
+    xlim([1,length(curveStore{msns(i)})-1])
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+end
 
+hFig = figure;
+% ampLevel = 3;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:length(pvs)
+    subplot(6,6,i)
+    hold on
+    plot([1 length(curveStore{pvs(i)})-1],[0 0],'k')
+    plot(curveStore{pvs(i)}(2:end,ampLevel),'r')
+    plot(curveStoreLaser{pvs(i)}(2:end,ampLevel),'b')
+    xlim([1,length(curveStore{pvs(i)})-1])
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+end
 
+hFig = figure;
+ampLevel = 2;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:length(msns)
+    subplot(10,10,i)
+    imagesc(curveStore{msns(i)}(2:end,:)')
+    colormap('parula')
+%     hold on
+%     plot([1 length(curveStore{msns(i)})-1],[0 0],'k')
+%     plot(curveStore{msns(i)}(2:end,ampLevel),'r')
+%     plot(curveStoreLaser{msns(i)}(2:end,ampLevel),'b')
+%     xlim([1,length(curveStore{msns(i)})-1])
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+end
 
-
+hFig = figure;
+% ampLevel = 2;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:length(pvs)
+    subplot(6,6,i)
+    imagesc(curveStore{pvs(i)}(2:end,:)')
+    colormap('parula')
+%     hold on
+%     plot([1 length(curveStore{msns(i)})-1],[0 0],'k')
+%     plot(curveStore{msns(i)}(2:end,ampLevel),'r')
+%     plot(curveStoreLaser{msns(i)}(2:end,ampLevel),'b')
+%     xlim([1,length(curveStore{msns(i)})-1])
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+end
 
 
 
