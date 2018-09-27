@@ -829,7 +829,7 @@ print(hFig,spikeGraphName,'-djpeg','-r0')
 %part due to a number of slower responding PV cells. 
 
 %lets try and look on a recording by recording basis
-tarRec = recStore(tarCells);
+tarRec = recStore(tarCells)';
 tarRec(:,2) = 0;
 tarRec(tarPVs,2) = 1;
 tarRec(:,3) = 0;
