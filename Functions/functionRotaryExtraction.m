@@ -8,9 +8,14 @@ function [funcOut] = functionRotaryExtraction(sampRate,interpStep,subFoldersCell
 %compensate for differences in how the rotary encoder can compute the
 %distance between up to up, up to down, down to down, and down to up states
 %between the two photodiodes.
-stepNorm = 0.5;
-stepBig = 0.572;
-stepSmall = 0.316;
+% stepNorm = 0.5;
+% stepBig = 0.572;
+% stepSmall = 0.316;
+
+%181002 new 7.5 inch diameter wheel, with 200 pr rotary encoder.
+stepNorm = 0.3;
+stepBig = 0.3;
+stepSmall = 0.3;
 
 %% Data Extraction and Preprocessing: 
 %find the targeted files, extract file names
