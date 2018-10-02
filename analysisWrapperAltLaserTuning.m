@@ -107,13 +107,17 @@ for i = 1:numFiles
         fullMaster(fullCounter,9) = length(findSigTone);
         
         %now store data from positive widths
-        fullMaster(fullCounter,10) = s.NonLaserOverall.PosWidths(3,keepList(j),3);
-        fullMaster(fullCounter,11) = s.LaserOverall.PosWidths(3,keepList(j),3);
+        fullMaster(fullCounter,10) = s.NonLaserOverall.PosWidths(3,keepList(j),tarWin);
+        fullMaster(fullCounter,11) = s.LaserOverall.PosWidths(3,keepList(j),tarWin);
         
         %store modulation indices
-        fullMaster(fullCounter,12) = masterData(keepList(j),end);
+        fullMaster(fullCounter,12) = masterData(keepList(j),22);
         
-        
+        %now store positive width data from lower amplitudes
+        fullMaster(fullCounter,13) = s.NonLaserOverall.PosWidths(1,keepList(j),tarWin);
+        fullMaster(fullCounter,14) = s.LaserOverall.PosWidths(1,keepList(j),tarWin);
+        fullMaster(fullCounter,15) = s.NonLaserOverall.PosWidths(2,keepList(j),tarWin);
+        fullMaster(fullCounter,16) = s.LaserOverall.PosWidths(2,keepList(j),tarWin);
         
         fullCounter = fullCounter + 1;
     end
@@ -193,6 +197,7 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
 set(hFig, 'Position', [10 80 1000 1000])
 subplot(2,1,1)
 hold on
@@ -204,8 +209,10 @@ title('Effect of Laser on Size of Responses')
 
 subplot(2,1,2)
 hold on
-plot(fullMaster(msns,10),fullMaster(msns,11),'k.')
-plot([0 max(max(fullMaster(msns,10:11)))],[0 max(max(fullMaster(msns,10:11)))],'r')
+plot(fullMaster(msns,13),fullMaster(msns,14),'k.')
+plot(fullMaster(msns,15),fullMaster(msns,16),'bo')
+plot(fullMaster(msns,10),fullMaster(msns,11),'m*')
+plot([0 max(max(fullMaster(msns,10:11)))],[0 max(max(fullMaster(msns,10:11)))],'b')
 xlabel('Tuning Width No Laser')
 ylabel('Tuning Width With Laser')
 title('Effect of Laser on Width of Tuning Curve at 70 dB SPL')
@@ -219,11 +226,38 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
+%lets look at the average change in width at different amplitude levels. I
+%want to look at this both as a ratio and as an absolute difference
+ratioLow = fullMaster(msns,14)./fullMaster(msns,13);
+ratioMed = fullMaster(msns,16)./fullMaster(msns,15);
+ratioHi = fullMaster(msns,11)./fullMaster(msns,10);
+
+ratioLow(ratioLow == Inf) = NaN;
+ratioMed(ratioMed == Inf) = NaN;
+ratioHi(ratioHi == Inf) = NaN;
+
+widthDiff(:,1)= fullMaster(msns,14)-fullMaster(msns,13);
+widthDiff(:,2)= fullMaster(msns,16)-fullMaster(msns,15);
+widthDiff(:,3)= fullMaster(msns,11)-fullMaster(msns,10);
+
+%plot out subtraction values
+hFig = figure;
+subplot(3,2,1)
+hist(widthDiff(:,1),[-5:1:10])
+xlim([-5 10])
+subplot(3,2,3)
+hist(widthDiff(:,2),[-5:1:10])
+xlim([-5 10])
+subplot(3,2,5)
+hist(widthDiff(:,3),[-5:1:10])
+xlim([-5 10])
+subplot(1,2,2)
+plot(widthDiff')
 
 
 %plot out tuning curves for MSNs
 hFig = figure;
-ampLevel = 2;
+ampLevel = 1;
 set(hFig, 'Position', [10 80 1000 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(msns)
@@ -252,8 +286,9 @@ for i = 1:length(pvs)
     set(gca,'XTick',[]);
 end
 
+%plot heatmap tuning curves
 hFig = figure;
-ampLevel = 2;
+% ampLevel = 2;
 set(hFig, 'Position', [10 80 1000 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(msns)
