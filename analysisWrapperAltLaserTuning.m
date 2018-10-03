@@ -19,6 +19,7 @@ numFiles = length(targetFiles);
 
 %variables
 sigThresh = 5; %minimum number of significant responses at 0.05 p threshold. 
+sigWin = 2; %minimum width for entry to analysis. 
 tarWin = 2; %target window of analysis. 1 = fast, 2 = tone, 3 = gen. 
 %counters of cells overall
 numCells = 0;
@@ -50,16 +51,22 @@ for i = 1:numFiles
     %here, I pull out the data from binSigVals, since the width data is for
     %contiguous segments, and therefore ignores many units. 
     keepList = zeros(numUnits,1);
-    for j = 1:numUnits
-        for k = 1:numDBs
-            sigVals(k) = length(find(s.(s.DesignationName{j}).BinSigVals(:,:,k) < 0.05));
-            sigValsLaser(k) = length(find(s.(s.DesignationName{j}).BinSigValsLaser(:,:,k) < 0.05));
-        end
-        maxVal = max([max(sigVals),max(sigValsLaser)]);
-        if maxVal > sigThresh
-            keepList(j) = 1;
-        end
-    end
+    %181002 replacing significant responses system with minimum width
+    %system. This is because significant responses system is letting in too
+    %much shit with junky tuning. 
+%     for j = 1:numUnits
+%         for k = 1:numDBs
+%             sigVals(k) = length(find(s.(s.DesignationName{j}).BinSigVals(:,:,k) < 0.05));
+%             sigValsLaser(k) = length(find(s.(s.DesignationName{j}).BinSigValsLaser(:,:,k) < 0.05));
+%         end
+%         maxVal = max([max(sigVals),max(sigValsLaser)]);
+%         if maxVal > sigThresh
+%             keepList(j) = 1;
+%         end
+%     end
+    %also evaluate for width, using non-laser data. 
+    findWidths = find(max(s.NonLaserOverall.PosWidths(:,:,tarWin))>sigWin);
+    keepList(findWidths) = 1;
     %now that I've found significantly responding units, lets keep just
     %these. I'll need to extract relevant information about these units,
     %including their identity (PV vs MSN vs UNK), tuning curve width (with
@@ -72,9 +79,12 @@ for i = 1:numFiles
         trueName = strcat(targetFiles{i}(1:end-4),s.DesignationName{keepList(j)});
         fullNames{fullCounter} = trueName;
         %first store designation and basic info
-        fullMaster(fullCounter,1) = masterData(keepList(j),7); %store PV/MSN desig
-        fullMaster(fullCounter,2) = masterData(keepList(j),5); %store peak trough time
-        fullMaster(fullCounter,3) = masterData(keepList(j),4); %store average rate
+        findMod = functionCellStringFind(masterHeader,'CellType');
+        fullMaster(fullCounter,1) = masterData(keepList(j),findMod(1)); %store PV/MSN desig
+        findMod = functionCellStringFind(masterHeader,'PeakTrough(ms)');
+        fullMaster(fullCounter,2) = masterData(keepList(j),findMod(1)); %store peak trough time
+        findMod = functionCellStringFind(masterHeader,'Average Rate');
+        fullMaster(fullCounter,3) = masterData(keepList(j),findMod(1)); %store average rate
         fullMaster(fullCounter,4) = mean(diff(s.SoundData.UniqueDBs));%store db step size
         %now pull width values for positive responses
         fullWidth(fullCounter,:,:) = [squeeze(s.NonLaserOverall.PosWidths(:,keepList(j),:)),squeeze(s.LaserOverall.PosWidths(:,keepList(j),:))]; 
@@ -111,7 +121,8 @@ for i = 1:numFiles
         fullMaster(fullCounter,11) = s.LaserOverall.PosWidths(3,keepList(j),tarWin);
         
         %store modulation indices
-        fullMaster(fullCounter,12) = masterData(keepList(j),22);
+        findMod = functionCellStringFind(masterHeader,'ModulationIndex');
+        fullMaster(fullCounter,12) = masterData(keepList(j),findMod);
         
         %now store positive width data from lower amplitudes
         fullMaster(fullCounter,13) = s.NonLaserOverall.PosWidths(1,keepList(j),tarWin);
@@ -195,7 +206,7 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-
+%plot out changes in size of response as well as response width. 
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
 set(hFig, 'Position', [10 80 1000 1000])
@@ -209,15 +220,18 @@ title('Effect of Laser on Size of Responses')
 
 subplot(2,1,2)
 hold on
+for i = 1:length(msns)
+    plot([fullMaster(msns(i),13) fullMaster(msns(i),15) fullMaster(msns(i),10)],[fullMaster(msns(i),14) fullMaster(msns(i),16) fullMaster(msns(i),11)])
+end
 plot(fullMaster(msns,13),fullMaster(msns,14),'k.')
 plot(fullMaster(msns,15),fullMaster(msns,16),'bo')
 plot(fullMaster(msns,10),fullMaster(msns,11),'m*')
-plot([0 max(max(fullMaster(msns,10:11)))],[0 max(max(fullMaster(msns,10:11)))],'b')
+plot([0 max(max(fullMaster(msns,10:11)))],[0 max(max(fullMaster(msns,10:11)))],'k')
 xlabel('Tuning Width No Laser')
 ylabel('Tuning Width With Laser')
-title('Effect of Laser on Width of Tuning Curve at 70 dB SPL')
+title('Effect of Laser on Width of Tuning Curve at Different dB SPL')
 
-spikeGraphName = 'PV NpHR Effects';
+spikeGraphName = 'PV NpHR Effects Spikes and Width';
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -235,6 +249,9 @@ ratioHi = fullMaster(msns,11)./fullMaster(msns,10);
 ratioLow(ratioLow == Inf) = NaN;
 ratioMed(ratioMed == Inf) = NaN;
 ratioHi(ratioHi == Inf) = NaN;
+nanmean(ratioLow)
+nanmean(ratioMed)
+nanmean(ratioHi)
 
 widthDiff(:,1)= fullMaster(msns,14)-fullMaster(msns,13);
 widthDiff(:,2)= fullMaster(msns,16)-fullMaster(msns,15);
@@ -245,12 +262,15 @@ hFig = figure;
 subplot(3,2,1)
 hist(widthDiff(:,1),[-5:1:10])
 xlim([-5 10])
+title('Difference Tuning Width lowest DB')
 subplot(3,2,3)
 hist(widthDiff(:,2),[-5:1:10])
 xlim([-5 10])
+title('Difference Tuning Width medium DB')
 subplot(3,2,5)
 hist(widthDiff(:,3),[-5:1:10])
 xlim([-5 10])
+title('Difference Tuning Width high DB')
 subplot(1,2,2)
 plot(widthDiff')
 
@@ -272,7 +292,37 @@ for i = 1:length(msns)
 end
 
 hFig = figure;
-% ampLevel = 3;
+ampLevel = 2;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:length(msns)
+    subplot(10,10,i)
+    hold on
+    plot([1 length(curveStore{msns(i)})-1],[0 0],'k')
+    plot(curveStore{msns(i)}(2:end,ampLevel),'r')
+    plot(curveStoreLaser{msns(i)}(2:end,ampLevel),'b')
+    xlim([1,length(curveStore{msns(i)})-1])
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+end
+
+hFig = figure;
+ampLevel = 3;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:length(msns)
+    subplot(10,10,i)
+    hold on
+    plot([1 length(curveStore{msns(i)})-1],[0 0],'k')
+    plot(curveStore{msns(i)}(2:end,ampLevel),'r')
+    plot(curveStoreLaser{msns(i)}(2:end,ampLevel),'b')
+    xlim([1,length(curveStore{msns(i)})-1])
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+end
+
+hFig = figure;
+ampLevel = 3;
 set(hFig, 'Position', [10 80 1000 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(pvs)
@@ -304,6 +354,8 @@ for i = 1:length(msns)
     set(gca,'XTick',[]);
 end
 
+
+
 hFig = figure;
 % ampLevel = 2;
 set(hFig, 'Position', [10 80 1000 1000])
@@ -320,6 +372,72 @@ for i = 1:length(pvs)
     set(gca,'YTick',[]);
     set(gca,'XTick',[]);
 end
+
+%plot heatmap tuning curves subtracted
+hFig = figure;
+% ampLevel = 2;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+for i = 1:length(msns)
+    subplot(10,10,i)
+    imagesc(curveStoreLaser{msns(i)}(2:end,:)' - curveStore{msns(i)}(2:end,:)')
+    colormap('parula')
+%     hold on
+%     plot([1 length(curveStore{msns(i)})-1],[0 0],'k')
+%     plot(curveStore{msns(i)}(2:end,ampLevel),'r')
+%     plot(curveStoreLaser{msns(i)}(2:end,ampLevel),'b')
+%     xlim([1,length(curveStore{msns(i)})-1])
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+end
+
+
+%% Lets try and look at latency. 
+counter = 1;
+for i = 1:length(msns)
+    %load latency for the target cell
+    tarLats = fullLat{msns(i)};
+    %lets pull the normal (first three columns) and laser (last three).
+    %Only take tones. 
+    latNor = tarLats(2:end,1:3);
+    latLaser = tarLats(2:end,4:6);
+    %we need to match things: only look for things with latency values for
+    %both. 
+    findNor = find(latNor > 0);
+    findLaser = find(latLaser > 0);
+    %find the intersection of things, only take up points at which I have
+    %info for both. 
+    findInts = intersect(findNor,findLaser);
+    %pull latencies from targeted 
+    latVals(counter:counter + length(findInts) - 1,1) = latNor(findInts);
+    latVals(counter:counter + length(findInts) - 1,2) = latLaser(findInts);
+    meanLats(i) = mean(latLaser(findInts) - latNor(findInts));
+    counter = counter + length(findInts);
+end
+
+figure
+hold on
+plot(latVals(:,1),latVals(:,2),'k.')
+plot([0 0.2],[0 0.2],'r')
+
+latSub = latVals(:,2) - latVals(:,1);
+latRatio = latVals(:,2)./latVals(:,1);
+
+
+%looks like a 2 ms latency?? I wonder how much of this is a byproduct of
+%increases in baseline rates? 
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
