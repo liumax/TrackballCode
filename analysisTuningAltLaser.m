@@ -506,7 +506,6 @@ for i = 1:numUnits
     for j = 1:length(fn)
         s.(desigNames{i}).(fn{j}) = indivOut.(desigNames{i}).(fn{j});
     end
-    
 end
 
 [overOut,indivOut,s,masterData,masterHeader,masterInd] = functionTuningDataExtraction(numUnits,numDBs,numFreqs,uniqueFreqs,s,masterData,masterHeader,masterInd,histBinVector,trialNumLaser,masterLaser,desigNames,calcWindow,histBinNum,whiteStatus);
@@ -516,9 +515,9 @@ for i = 1:numUnits
     for j = 1:length(fn)
         s.(desigNames{i}).(strcat(fn{j},'Laser')) = indivOut.(desigNames{i}).(fn{j});
     end
-    
 end
 
+%now lets try and plot out slope of binned responses. 
 
 %% Laser Analysis
 
@@ -739,6 +738,8 @@ if findPVs
     plot(ratioVal,sigValNum,'k.')
     xlim([-1.2 1.2])
     title('PV ModIndexSigResponse Gen Window (x) vs NumSigResp (y)')
+    
+    
 end
 
 
@@ -1186,6 +1187,16 @@ for i = 1:numUnits
 %     xlim(s.Parameters.LaserWindow)
 %     title('Histogram Aligned to Laser Onset')
     
+    subplot(4,4,16)
+    hold on
+    newWin = [-0.02 0.04];
+    newVector = [newWin(1):0.0005:newWin(2)];
+    testRast = s.(desigNames{i}).AllRasters(s.(desigNames{i}).AllRasters >= newWin(1) & s.(desigNames{i}).AllRasters <= newWin(2) ,1);
+    plot(newVector,smooth(hist(testRast,newVector),3),'r')
+    testRast = s.(desigNames{i}).AllRastersLaser(s.(desigNames{i}).AllRastersLaser >= newWin(1) & s.(desigNames{i}).AllRastersLaser <= newWin(2) ,1);
+    plot(newVector,smooth(hist(testRast,newVector),3),'b')
+    xlim(newWin)
+    title('Plot of Latency')
     
     hold off
     spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
