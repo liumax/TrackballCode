@@ -517,7 +517,74 @@ for i = 1:numUnits
     end
 end
 
-%now lets try and plot out slope of binned responses. 
+%now lets try and plot out slope of binned responses. Use tone period only
+
+%pull out significant values only, just for tones.  
+sigVal = 0.05;
+minResp = 5;
+analysisWindow = 2;
+disp('Analyzing Binned Responses for Linear Regression')
+for i = 1:numUnits
+    disp(strcat('Analyzing Unit-',desigNames{i}))
+    findSig = find(s.(desigNames{i}).BinSigVals(2:end,:,analysisWindow)<sigVal);
+    findSigLaser = find(s.(desigNames{i}).BinSigValsLaser(2:end,:,analysisWindow)<sigVal);
+    %find intersection
+    sigInter = intersect(findSig,findSigLaser);
+%     sigInter
+    %now pull those values from binned amounts. 
+    if length(sigInter) < minResp
+        disp('Insufficient Points for Linear Regression')
+        s.(desigNames{i}).RegRawVals = [];
+        s.(desigNames{i}).RegVals = [];
+        s.(desigNames{i}).RegValSig = [];
+        s.(desigNames{i}).RegValSigAlt = [];
+        s.RegressionValueSig(i,1) = 0;
+        s.RegressionValueSig(i,2) = 0;
+        s.RegressionValueSig(i,3) = 0;
+        s.RegressionValueSig(i,4) = 0;
+    else
+        disp('Sufficient Points for Linear Regression')
+        valStore = [];
+        tester = s.(desigNames{i}).BinTone(2:end,:);
+        valStore(:,1) = tester(sigInter);
+        tester = s.(desigNames{i}).BinToneLaser(2:end,:);
+        valStore(:,2) = tester(sigInter);
+        
+        [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigVal); %b1 is for y intercept, b2 is slope. 
+        %for bintr, first row is range for intercept, second row is for range of slope
+%         b
+%         bintr
+        s.(desigNames{i}).RegRawVals = valStore;
+        s.(desigNames{i}).RegVals = b;
+        s.(desigNames{i}).RegValSig = bintr;
+        s.(desigNames{i}).RegValSigAlt = bintr;
+        %store if significant changes.
+        if bintr(1,1)*bintr(1,2) > 0
+            disp('Significant Y Intercept Change!')
+            s.RegressionValueSig(i,1) = 1; %store 1 for significant y intercept change
+            s.RegressionValueSig(i,2) = sign(bintr(1,1)); %store sign of change
+        else
+            disp('Insignificant Y Intercept')
+            s.RegressionValueSig(i,1) = 0; %store 1 for significant y intercept change
+            s.RegressionValueSig(i,2) = 0;
+        end
+        %now look at slope. 
+        if bintr(2,1) > 1 %this indicates range is above 1
+            disp('Significant Positive Slope Change')
+            s.RegressionValueSig(i,3) = 1;
+            s.RegressionValueSig(i,4) = 1;
+        elseif bintr(2,2) < 1 %this indicates range is below 1
+            disp('Significant Negative Slope Change')
+            s.RegressionValueSig(i,3) = 1;
+            s.RegressionValueSig(i,4) = -1;
+        else
+            disp('No Slope Change')
+            s.RegressionValueSig(i,3) = 0;
+            s.RegressionValueSig(i,4) = 0;
+        end
+            
+    end
+end
 
 %% Laser Analysis
 
