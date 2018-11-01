@@ -30,7 +30,7 @@ toggleDuplicateElimination = 1; %1 means you want to eliminate duplicates.
 toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
-s.Parameters.RasterWindow = [-4 4]; %ratio for raster window. will be multiplied by toneDur
+s.Parameters.RasterWindow = [-6 4]; %ratio for raster window. will be multiplied by toneDur
 s.Parameters.ToneWindow = [0 1];
 s.Parameters.GenWindow = [0 2];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
@@ -356,7 +356,7 @@ plot(toneTime - toneTimeLaser)
 hold on
 plot(soundData.DelaysPaired,'r')
 title('Delay between non-laser and laser tones, expected in red')
-pause
+% pause
 
 %pull D2 info (laser ID)
 [D2FileName] = functionFileFinder(subFoldersCell,'DIO','D2');
@@ -557,7 +557,7 @@ for i = 1:numUnits
         s.(desigNames{i}).RegRawVals = valStore;
         s.(desigNames{i}).RegVals = b;
         s.(desigNames{i}).RegValSig = bintr;
-        s.(desigNames{i}).RegValSigAlt = bintr;
+        s.(desigNames{i}).RegValSigAlt = bintjm;
         %store if significant changes.
         if bintr(1,1)*bintr(1,2) > 0
             disp('Significant Y Intercept Change!')
@@ -585,7 +585,13 @@ for i = 1:numUnits
             
     end
 end
-
+masterData(:,masterInd:masterInd+3) = zeros(numUnits,4);
+masterData(:,masterInd:masterInd+3) = s.RegressionValueSig; 
+masterHeader{masterInd} = 'RegYIntSig'; 
+masterHeader{masterInd+1} = 'RegYIntDir';
+masterHeader{masterInd+2} = 'RegSlopeSig';
+masterHeader{masterInd+3} = 'RegSlopeDir';
+masterInd = masterInd + 4;
 %% Laser Analysis
 
 laserBinVect = [s.Parameters.LaserWindow(1):s.Parameters.LaserBin:s.Parameters.LaserWindow(2)-s.Parameters.LaserBin];
