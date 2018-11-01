@@ -844,7 +844,7 @@ for i = 1:numUnits
     
     subplot(4,4,2)
     hold on
-    rasterPlot(s.(desigNames{i}).rastersLaser(:,1),s.(desigNames{i}).rastersLaser(:,2))
+    plot(s.(desigNames{i}).rastersLaser(:,1),s.(desigNames{i}).rastersLaser(:,2),'k.')
     xlim(s.Parameters.RasterWindow)
     ylim([0 length(laserDIOtime)]) 
     title('LASER RASTER')
@@ -873,7 +873,7 @@ for i = 1:numUnits
     %loco raster
     subplot(4,4,3)
     hold on
-    rasterPlot(s.(desigNames{i}).locoStartRaster(:,1),s.(desigNames{i}).locoStartRaster(:,2))
+    plot(s.(desigNames{i}).locoStartRaster(:,1),s.(desigNames{i}).locoStartRaster(:,2),'k.')
     xlim(s.Parameters.RasterWindow)
     ylim([0 length(s.RotaryData.PosStartsEnds)])
     title('LocoStart RASTER')
@@ -889,7 +889,7 @@ for i = 1:numUnits
     %loco raster
     subplot(4,4,4)
     hold on
-    rasterPlot(s.(desigNames{i}).locoEndRaster(:,1),s.(desigNames{i}).locoEndRaster(:,2))
+    plot(s.(desigNames{i}).locoEndRaster(:,1),s.(desigNames{i}).locoEndRaster(:,2),'k.')
     xlim(s.Parameters.RasterWindow)
     ylim([0 length(s.RotaryData.PosStartsEnds)])
     title('LocoEnd RASTER')
