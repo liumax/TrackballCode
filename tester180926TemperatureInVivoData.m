@@ -27,15 +27,16 @@ for i = 1:length(data)
     
 %     meanTimeDiff = 5/avSub(i);
     meanTimeDiff = 0.0031;
-    tenSecWindow = 10/meanTimeDiff;
-    oneSecWindow = 1/meanTimeDiff;
+    tenSecWindow = 15/meanTimeDiff;
+    oneSecWindow = 5/meanTimeDiff;
     raster = [];
     for j = 1:length(bigDiffFind)
         raster(:,j) = data{i}(bigDiffFind(j)-oneSecWindow:bigDiffFind(j)+tenSecWindow,2);
     end
     rasterStore{i} = raster;
     meanResp(:,i) = mean(raster');
-    baseMean(i) = mean(meanResp(1:oneSecWindow,i));
+    steResp(:,i) = std(raster')/sqrt(30);
+    baseMean(i) = mean(meanResp(1614-oneSecWindow:1614,i));
 
 
 end
@@ -48,7 +49,11 @@ end
 % for i = 1:tenSecWindow
 %     respVect(oneSecWindow+i) = 0 - meanTimeDiff*meanScaleVal*(oneSecWindow-i);
 % end
-respVect = [-1:meanTimeDiff:10];
+respVect = [-5:meanTimeDiff:15];
+
+%sketchy fix
+meanResp(1615,:) = mean([meanResp(1614,:);meanResp(1616,:)]);
+steResp(1615,:) = mean([steResp(1614,:);steResp(1616,:)]);
 
 figure
 hold on
@@ -57,9 +62,18 @@ for i = 1:length(data)
     plot(respVect,smooth(meanResp(:,i)-baseMean(i),31),'Color',[i/length(data) 0 0])
 end
 xlabel('Time (s)')
-xlim([-1 10])
+xlim([-5 15])
 ylabel('Change in Temperature (C)')
-title('In Vivo Temperature Change from 473 nm light at 1, 3, 5, 10, 15 mW')
+title('In Vivo Temperature Change from 532 nm light at 1, 3, 5, 10, 15 mW')
+spikeGraphName = strcat('MeasuredChange');
+savefig(hFig,spikeGraphName);
+% 
+% %save as PDF with correct name
+% set(hFig,'Units','Inches');
+% pos = get(hFig,'Position');
+% set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+% print(hFig,spikeGraphName,'-dpdf','-r0')
+
 % plot(meanResp)
 
 % 
@@ -78,16 +92,18 @@ set(hFig, 'Position', [10 80 800 800])
 hold on
 for i = 1:length(data)
     subVals(:,i) = meanResp(:,i)-baseMean(i);
-    plot(respVect,smooth(meanResp(:,i)-baseMean(i),31),'Color',[i/length(data) 0 0])
+    plot(respVect,smooth(subVals(:,i),31) + i,'Color',[i/length(data) 0 0])
+    plot(respVect,smooth(subVals(:,i),31) + i - smooth(steResp(:,i),31),'Color',[i/length(data) 0 0])
+    plot(respVect,smooth(subVals(:,i),31) + i + smooth(steResp(:,i),31),'Color',[i/length(data) 0 0])
 end
-plot(t-1,timeStore)
+% plot(t-1,timeStore)
 xlabel('Time (s)')
-xlim([-1 10])
+xlim([-5 15])
 ylabel('Change in Temperature (C)')
 title('In Vivo Temperature Change from 532 nm light at 1, 3, 5, 10, 15 mW')
+set(gca,'TickDir','out');
 
-
-spikeGraphName = strcat('PlotMeasureVsModel');
+spikeGraphName = strcat('plotMeasuredWithSTE');
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
