@@ -100,6 +100,13 @@ for i = 1:numFiles
         fullBin{fullCounter} = [s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin),s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin)];
         %now do some calculations
         binDiffs = (s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin) - s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin)).*testMask;
+        laserNonZero = s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin).*testMask;
+        laserNonZero(laserNonZero==0) = [];
+        baseNonZero = s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin).*testMask;
+        baseNonZero(baseNonZero==0) = [];
+%         baseNonZero
+        spikeRespStore{fullCounter} = [baseNonZero,laserNonZero];
+        spikeRespMeanStore(fullCounter,:) = [mean(baseNonZero),mean(laserNonZero)];
         %also try and pull a modulation index of response
         toneMod = (nanmean(s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin).*testMask) - nanmean(s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin).*testMask))/(nanmean(s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin).*testMask) + nanmean(s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin).*testMask));
         toneModStore(fullCounter) = toneMod;
@@ -130,6 +137,28 @@ for i = 1:numFiles
         fullMaster(fullCounter,15) = s.NonLaserOverall.PosWidths(2,keepList(j),tarWin);
         fullMaster(fullCounter,16) = s.LaserOverall.PosWidths(2,keepList(j),tarWin);
         
+        %store position on shank.
+        fullMaster(fullCounter,17) = masterData(keepList(j),1);
+        
+        %try and detect threshold.
+        tempData = squeeze(s.(s.DesignationName{keepList(j)}).BinSigVals(2:end,:,tarWin));
+        minData = min(tempData);
+        minData = find(minData < 0.05,1,'first');
+        if minData
+            baseMin(fullCounter) = minData;
+        else
+            baseMin(fullCounter) = 0;
+        end
+        tempData = squeeze(s.(s.DesignationName{keepList(j)}).BinSigValsLaser(2:end,:,tarWin));
+        minData = min(tempData);
+        minData = find(minData < 0.05,1,'first');
+        if minData
+            baseMinLaser(fullCounter) = minData;
+        else
+            baseMinLaser(fullCounter) = 0;
+        end
+        
+        
         fullCounter = fullCounter + 1;
     end
 end
@@ -148,9 +177,34 @@ nanmean(fullMaster(msns,7))
 nanmean(fullMaster(pvs,5))
 nanmean(fullMaster(pvs,7))
 
+%plot out thresholds!
+hFig = figure;
+set(hFig, 'Position', [10 80 500 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.05], [0.07 0.05], [0.07 0.05]);
+subplot(2,1,1)
+hist(baseMin(msns))
+title('PreLaser')
+
+subplot(2,1,2)
+hist(baseMinLaser(msns))
+title('with laser')
+
+spikeGraphName = 'Change in Threshold';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%plot out modulations
+
 
 hFig = figure;
-set(hFig, 'Position', [10 80 1000 1000])
+set(hFig, 'Position', [10 80 1700 1100])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.05], [0.07 0.05], [0.07 0.05]);
 subplot(2,3,1)
 hist(fullMaster(msns,12),[-1:0.1:1])
 xlim([-1 1])
@@ -203,7 +257,58 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
+print(hFig,spikeGraphName,'-djpeg','-r0')
+
+
+%try plotting out with just PV, and see what modulation index looks like vs
+%distance. 
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+plot(fullMaster(pvs,12),fullMaster(pvs,17)*.025,'k.')
+hold on
+for i = 1:length(pvs)
+    plot([fullMaster(pvs(i),12) 0],[fullMaster(pvs(i),17)*.025 fullMaster(pvs(i),17)*.025],'b')
+end
+plot([0 0],[0 -0.800],'b')
+xlim([-1 1])
+xlabel('Modulation Index')
+ylabel('Depth from Fiber Tip')
+title('Modulation Index (Baseline)')
+
+spikeGraphName = 'PVModBaseline';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
+
+
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+plot(toneModStore(pvs),fullMaster(pvs,17)*.025,'k.')
+hold on
+for i = 1:length(pvs)
+    plot([toneModStore(pvs(i)) 0],[fullMaster(pvs(i),17)*.025 fullMaster(pvs(i),17)*.025],'b')
+end
+plot([0 0],[0 -0.800],'b')
+xlim([-1 1])
+xlabel('Modulation Index')
+ylabel('Depth from Fiber Tip')
+title('Modulation Index (Tone)')
+
+spikeGraphName = 'PVModTone';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
+
+
 
 
 %plot out changes in size of response as well as response width. 
@@ -227,6 +332,7 @@ plot(fullMaster(msns,13),fullMaster(msns,14),'k.')
 plot(fullMaster(msns,15),fullMaster(msns,16),'bo')
 plot(fullMaster(msns,10),fullMaster(msns,11),'m*')
 plot([0 max(max(fullMaster(msns,10:11)))],[0 max(max(fullMaster(msns,10:11)))],'k')
+pbaspect([1,1,1])
 xlabel('Tuning Width No Laser')
 ylabel('Tuning Width With Laser')
 title('Effect of Laser on Width of Tuning Curve at Different dB SPL')
@@ -238,6 +344,89 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+set(hFig, 'Position', [10 80 1000 1000])
+% subplot(2,1,1)
+plot(spikeRespMeanStore(msns,1),spikeRespMeanStore(msns,2),'k.')
+hold on
+plot([0 3.5],[0 3.5],'r')
+xlabel('NonLaser Responses')
+ylabel('Laser Responses')
+pbaspect([1,1,1])
+spikeGraphName = 'PV NpHR Effects Spike Scatter';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%plot out changes in size of response as well as response width. ONLY PLOT
+%WIDTH CHANGE FOR 70DB
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+set(hFig, 'Position', [10 80 1000 1000])
+subplot(2,1,1)
+hold on
+plot(fullMaster(msns,6),fullMaster(msns,5),'k.')
+plot([0 max(fullMaster(msns,6))],[0 0],'r')
+xlabel('Number of Non-Zero Responses')
+ylabel('Mean Change in Spikes/Tone')
+title('Effect of Laser on Size of Responses')
+
+subplot(2,1,2)
+hold on
+% for i = 1:length(msns)
+%     plot([fullMaster(msns(i),13) fullMaster(msns(i),15) fullMaster(msns(i),10)],[fullMaster(msns(i),14) fullMaster(msns(i),16) fullMaster(msns(i),11)])
+% end
+% plot(fullMaster(msns,13),fullMaster(msns,14),'k.')
+% plot(fullMaster(msns,15),fullMaster(msns,16),'bo')
+plot(fullMaster(msns,10),fullMaster(msns,11),'r.')
+plot([0 max(max(fullMaster(msns,10:11)))],[0 max(max(fullMaster(msns,10:11)))],'k')
+xlabel('Tuning Width No Laser')
+ylabel('Tuning Width With Laser')
+pbaspect([1,1,1])
+title('Effect of Laser on Width of Tuning Curve at 70 dB SPL')
+
+spikeGraphName = 'PV NpHR Effects Spikes and Width 70DB';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+set(hFig, 'Position', [10 80 1000 1000])
+hold on
+% for i = 1:length(msns)
+%     plot([fullMaster(msns(i),13) fullMaster(msns(i),15) fullMaster(msns(i),10)],[fullMaster(msns(i),14) fullMaster(msns(i),16) fullMaster(msns(i),11)])
+% end
+% plot(fullMaster(msns,13),fullMaster(msns,14),'k.')
+% plot(fullMaster(msns,15),fullMaster(msns,16),'bo')
+plot(fullMaster(msns,10),fullMaster(msns,11),'r.')
+plot([0 max(max(fullMaster(msns,10:11)))],[0 max(max(fullMaster(msns,10:11)))],'k')
+xlabel('Tuning Width No Laser')
+ylabel('Tuning Width With Laser')
+pbaspect([1,1,1])
+title('Effect of Laser on Width of Tuning Curve at 70 dB SPL')
+spikeGraphName = 'PV NpHR Effects Width Scatter';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %lets look at the average change in width at different amplitude levels. I
@@ -423,11 +612,22 @@ plot([0 0.2],[0 0.2],'r')
 latSub = latVals(:,2) - latVals(:,1);
 latRatio = latVals(:,2)./latVals(:,1);
 
-
-%looks like a 2 ms latency?? I wonder how much of this is a byproduct of
+mean(latSub)
+%looks like a 1.6 ms latency difference?? I wonder how much of this is a byproduct of
 %increases in baseline rates? 
 
+hFig = figure;
+% ampLevel = 2;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+subplot(1,2,1)
+hold on
+plot(latVals(:,1),latVals(:,2),'k.')
+plot([0 0.2],[0 0.2],'r')
 
+subplot(1,2,2)
+hold on
+hist(latSub,[-0.2:0.01:0.2])
 
 
 
