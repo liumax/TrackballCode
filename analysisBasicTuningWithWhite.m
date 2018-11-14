@@ -273,9 +273,10 @@ if whiteStatus ==0
         octaveRange (i+1,1) = octaveRange(i,1)*2;
     end
     %next, I find the positions from uniqueFreqs that match octaveRange
-    for i = 1:size(octaveRange,1);
-        octaveRange(i,2) = find(round(uniqueFreqs) == octaveRange(i,1));
-    end
+    octaveRange(:,2) = interp1(round(uniqueFreqs),[1:length(uniqueFreqs)],octaveRange(:,1));
+%     for i = 1:size(octaveRange,1);
+%         octaveRange(i,2) = find(round(uniqueFreqs) == octaveRange(i,1));
+%     end
 elseif whiteStatus == 1;
     % Finds the number of octaves, makes array of octave steps. This will be used for imagesc graphing applications
     totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(2)));
@@ -804,6 +805,8 @@ for i = 1:numUnits
                     widthLat(k,l,i) = widthOut.StartsEnds(1);
                     bigWidth{k,l,i} = widthOut;
                 end
+            else
+                widthOut = [];
             end
         end
         if numDBs == 1
