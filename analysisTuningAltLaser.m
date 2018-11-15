@@ -274,9 +274,7 @@ if whiteStatus ==0
         octaveRange (i+1,1) = octaveRange(i,1)*2;
     end
     %next, I find the positions from uniqueFreqs that match octaveRange
-    for i = 1:size(octaveRange,1);
-        octaveRange(i,2) = find(round(uniqueFreqs) == octaveRange(i,1));
-    end
+    octaveRange(:,2) = interp1(round(uniqueFreqs),[1:length(uniqueFreqs)],octaveRange(:,1));
 elseif whiteStatus == 1;
     % Finds the number of octaves, makes array of octave steps. This will be used for imagesc graphing applications
     totalOctaves = round(log2(uniqueFreqs(end)/uniqueFreqs(2)));
@@ -526,64 +524,102 @@ analysisWindow = 2;
 disp('Analyzing Binned Responses for Linear Regression')
 for i = 1:numUnits
     disp(strcat('Analyzing Unit-',desigNames{i}))
-    findSig = find(s.(desigNames{i}).BinSigVals(2:end,:,analysisWindow)<sigVal);
-    findSigLaser = find(s.(desigNames{i}).BinSigValsLaser(2:end,:,analysisWindow)<sigVal);
-    %find intersection
-    sigInter = intersect(findSig,findSigLaser);
-%     sigInter
-    %now pull those values from binned amounts. 
-    if length(sigInter) < minResp
-        disp('Insufficient Points for Linear Regression')
-        s.(desigNames{i}).RegRawVals = [];
-        s.(desigNames{i}).RegVals = [];
-        s.(desigNames{i}).RegValSig = [];
-        s.(desigNames{i}).RegValSigAlt = [];
-        s.RegressionValueSig(i,1) = 0;
-        s.RegressionValueSig(i,2) = 0;
-        s.RegressionValueSig(i,3) = 0;
-        s.RegressionValueSig(i,4) = 0;
-    else
-        disp('Sufficient Points for Linear Regression')
-        valStore = [];
-        tester = s.(desigNames{i}).BinTone(2:end,:);
-        valStore(:,1) = tester(sigInter);
-        tester = s.(desigNames{i}).BinToneLaser(2:end,:);
-        valStore(:,2) = tester(sigInter);
-        
-        [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigVal); %b1 is for y intercept, b2 is slope. 
-        %for bintr, first row is range for intercept, second row is for range of slope
+    valStore = [];
+    tester = s.(desigNames{i}).BinTone(2:end,:);
+    valStore(:,1) = reshape(tester,1,[]);
+    tester = s.(desigNames{i}).BinToneLaser(2:end,:);
+    valStore(:,2) = reshape(tester,1,[]);
+
+    [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigVal); %b1 is for y intercept, b2 is slope. 
+    %for bintr, first row is range for intercept, second row is for range of slope
 %         b
 %         bintr
-        s.(desigNames{i}).RegRawVals = valStore;
-        s.(desigNames{i}).RegVals = b;
-        s.(desigNames{i}).RegValSig = bintr;
-        s.(desigNames{i}).RegValSigAlt = bintjm;
-        %store if significant changes.
-        if bintr(1,1)*bintr(1,2) > 0
-            disp('Significant Y Intercept Change!')
-            s.RegressionValueSig(i,1) = 1; %store 1 for significant y intercept change
-            s.RegressionValueSig(i,2) = sign(bintr(1,1)); %store sign of change
-        else
-            disp('Insignificant Y Intercept')
-            s.RegressionValueSig(i,1) = 0; %store 1 for significant y intercept change
-            s.RegressionValueSig(i,2) = 0;
-        end
-        %now look at slope. 
-        if bintr(2,1) > 1 %this indicates range is above 1
-            disp('Significant Positive Slope Change')
-            s.RegressionValueSig(i,3) = 1;
-            s.RegressionValueSig(i,4) = 1;
-        elseif bintr(2,2) < 1 %this indicates range is below 1
-            disp('Significant Negative Slope Change')
-            s.RegressionValueSig(i,3) = 1;
-            s.RegressionValueSig(i,4) = -1;
-        else
-            disp('No Slope Change')
-            s.RegressionValueSig(i,3) = 0;
-            s.RegressionValueSig(i,4) = 0;
-        end
-            
+    s.(desigNames{i}).RegRawVals = valStore;
+    s.(desigNames{i}).RegVals = b;
+    s.(desigNames{i}).RegValSig = bintr;
+    s.(desigNames{i}).RegValSigAlt = bintjm;
+    %store if significant changes.
+    if bintr(1,1)*bintr(1,2) > 0
+        disp('Significant Y Intercept Change!')
+        s.RegressionValueSig(i,1) = 1; %store 1 for significant y intercept change
+        s.RegressionValueSig(i,2) = sign(bintr(1,1)); %store sign of change
+    else
+        disp('Insignificant Y Intercept')
+        s.RegressionValueSig(i,1) = 0; %store 1 for significant y intercept change
+        s.RegressionValueSig(i,2) = 0;
     end
+    %now look at slope. 
+    if bintr(2,1) > 1 %this indicates range is above 1
+        disp('Significant Positive Slope Change')
+        s.RegressionValueSig(i,3) = 1;
+        s.RegressionValueSig(i,4) = 1;
+    elseif bintr(2,2) < 1 %this indicates range is below 1
+        disp('Significant Negative Slope Change')
+        s.RegressionValueSig(i,3) = 1;
+        s.RegressionValueSig(i,4) = -1;
+    else
+        disp('No Slope Change')
+        s.RegressionValueSig(i,3) = 0;
+        s.RegressionValueSig(i,4) = 0;
+    end
+%     findSig = find(s.(desigNames{i}).BinSigVals(2:end,:,analysisWindow)<sigVal);
+%     findSigLaser = find(s.(desigNames{i}).BinSigValsLaser(2:end,:,analysisWindow)<sigVal);
+%     %find intersection
+%     sigInter = intersect(findSig,findSigLaser);
+%     sigInter
+    %now pull those values from binned amounts. 
+%     if length(sigInter) < minResp
+%         disp('Insufficient Points for Linear Regression')
+%         s.(desigNames{i}).RegRawVals = [];
+%         s.(desigNames{i}).RegVals = [];
+%         s.(desigNames{i}).RegValSig = [];
+%         s.(desigNames{i}).RegValSigAlt = [];
+%         s.RegressionValueSig(i,1) = 0;
+%         s.RegressionValueSig(i,2) = 0;
+%         s.RegressionValueSig(i,3) = 0;
+%         s.RegressionValueSig(i,4) = 0;
+%     else
+%         disp('Sufficient Points for Linear Regression')
+%         valStore = [];
+%         tester = s.(desigNames{i}).BinTone(2:end,:);
+%         valStore(:,1) = tester(sigInter);
+%         tester = s.(desigNames{i}).BinToneLaser(2:end,:);
+%         valStore(:,2) = tester(sigInter);
+%         
+%         [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigVal); %b1 is for y intercept, b2 is slope. 
+%         %for bintr, first row is range for intercept, second row is for range of slope
+% %         b
+% %         bintr
+%         s.(desigNames{i}).RegRawVals = valStore;
+%         s.(desigNames{i}).RegVals = b;
+%         s.(desigNames{i}).RegValSig = bintr;
+%         s.(desigNames{i}).RegValSigAlt = bintjm;
+%         %store if significant changes.
+%         if bintr(1,1)*bintr(1,2) > 0
+%             disp('Significant Y Intercept Change!')
+%             s.RegressionValueSig(i,1) = 1; %store 1 for significant y intercept change
+%             s.RegressionValueSig(i,2) = sign(bintr(1,1)); %store sign of change
+%         else
+%             disp('Insignificant Y Intercept')
+%             s.RegressionValueSig(i,1) = 0; %store 1 for significant y intercept change
+%             s.RegressionValueSig(i,2) = 0;
+%         end
+%         %now look at slope. 
+%         if bintr(2,1) > 1 %this indicates range is above 1
+%             disp('Significant Positive Slope Change')
+%             s.RegressionValueSig(i,3) = 1;
+%             s.RegressionValueSig(i,4) = 1;
+%         elseif bintr(2,2) < 1 %this indicates range is below 1
+%             disp('Significant Negative Slope Change')
+%             s.RegressionValueSig(i,3) = 1;
+%             s.RegressionValueSig(i,4) = -1;
+%         else
+%             disp('No Slope Change')
+%             s.RegressionValueSig(i,3) = 0;
+%             s.RegressionValueSig(i,4) = 0;
+%         end
+%             
+%     end
 end
 masterData(:,masterInd:masterInd+3) = zeros(numUnits,4);
 masterData(:,masterInd:masterInd+3) = s.RegressionValueSig; 
@@ -1164,27 +1200,34 @@ for i = 1:numUnits
     
     clims = [min([min(min(s.(desigNames{i}).BinGen)),min(min(s.(desigNames{i}).BinGenLaser))]),...
         max([max(max(s.(desigNames{i}).BinGen)),max(max(s.(desigNames{i}).BinGenLaser))])];
-    %Plot binned response during general period
-    subplot(4,4,11)
-    imagesc(s.(desigNames{i}).BinGen',clims)
-    colormap(parula)
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean Binned Response (general), nL')
-    
-    %Plot binned response during general period LASER
-    subplot(4,4,15)
-    imagesc(s.(desigNames{i}).BinGenLaser',clims)
-    colormap(parula)
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean Binned Response (general), LASER')
+%     %Plot binned response during general period
+%     subplot(4,4,11)
+%     imagesc(s.(desigNames{i}).BinGen',clims)
+%     colormap(parula)
+%     colorbar
+%     set(gca,'XTick',octaveRange(:,2));
+%     set(gca,'XTickLabel',octaveRange(:,1));
+%     set(gca,'YTick',dbRange(:,2));
+%     set(gca,'YTickLabel',dbRange(:,1));
+%     title('Mean Binned Response (general), nL')
+%     
+%     %Plot binned response during general period LASER
+%     subplot(4,4,15)
+%     imagesc(s.(desigNames{i}).BinGenLaser',clims)
+%     colormap(parula)
+%     colorbar
+%     set(gca,'XTick',octaveRange(:,2));
+%     set(gca,'XTickLabel',octaveRange(:,1));
+%     set(gca,'YTick',dbRange(:,2));
+%     set(gca,'YTickLabel',dbRange(:,1));
+%     title('Mean Binned Response (general), LASER')
+%plot out responses by frequency, with x axis being amplitude
+    subplot(2,4,7)
+    hold on
+    for j = 1:numFreqs
+        plot((s.(desigNames{i}).BinTone(j,:)-s.(desigNames{i}).BinTone(j,1))/(max(max(s.(desigNames{i}).BinTone))-s.(desigNames{i}).BinTone(j,1))+j,'k.-')
+        plot((s.(desigNames{i}).BinToneLaser(j,:)-s.(desigNames{i}).BinTone(j,1))/(max(max(s.(desigNames{i}).BinTone))-s.(desigNames{i}).BinTone(j,1))+j,'g.-')
+    end
 
     %% Column 4
 
