@@ -537,6 +537,7 @@ for i = 1:numUnits
     s.(desigNames{i}).RegRawVals = valStore;
     s.(desigNames{i}).RegVals = b;
     s.(desigNames{i}).RegValSig = bintr;
+    bigRegStore(:,i) = b;
     s.(desigNames{i}).RegValSigAlt = bintjm;
     %store if significant changes.
     if bintr(1,1)*bintr(1,2) > 0
@@ -623,11 +624,15 @@ for i = 1:numUnits
 end
 masterData(:,masterInd:masterInd+3) = zeros(numUnits,4);
 masterData(:,masterInd:masterInd+3) = s.RegressionValueSig; 
+masterData(:,masterInd+4:masterInd+5) = zeros(numUnits,2);
+masterData(:,masterInd + 4:masterInd + 5) =  bigRegStore';
 masterHeader{masterInd} = 'RegYIntSig'; 
 masterHeader{masterInd+1} = 'RegYIntDir';
 masterHeader{masterInd+2} = 'RegSlopeSig';
 masterHeader{masterInd+3} = 'RegSlopeDir';
-masterInd = masterInd + 4;
+masterHeader{masterInd + 4} = 'YintVal';
+masterHeader{masterInd + 5} = 'SlopeVal';
+masterInd = masterInd + 6;
 %% Laser Analysis
 
 laserBinVect = [s.Parameters.LaserWindow(1):s.Parameters.LaserBin:s.Parameters.LaserWindow(2)-s.Parameters.LaserBin];
