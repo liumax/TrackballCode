@@ -41,7 +41,11 @@ end
 homeFolder = pwd;
 subFolders = genpath(homeFolder);
 addpath(subFolders)
-subFoldersCell = strsplit(subFolders,';')';
+if ismac
+    subFoldersCell = strsplit(subFolders,':')';
+elseif ispc
+    subFoldersCell = strsplit(subFolders,';')';
+end
 
 %finds DIO folder, extracts D2 specifically
 
