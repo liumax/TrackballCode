@@ -31,6 +31,7 @@ toggleROC = 0; %toggle for tuning on/off ROC analysis
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
 s.Parameters.RasterWindow = [-6 4]; %ratio for raster window. will be multiplied by toneDur
+s.Parameters.BaseWindow = [-4 0];
 s.Parameters.ToneWindow = [0 1];
 s.Parameters.GenWindow = [0 2];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
@@ -99,7 +100,11 @@ end
 homeFolder = pwd;
 subFolders = genpath(homeFolder);
 addpath(subFolders)
-subFoldersCell = strsplit(subFolders,';')';
+if ismac
+    subFoldersCell = strsplit(subFolders,':')';
+elseif ispc
+    subFoldersCell = strsplit(subFolders,';')';
+end
 
 %% Find and ID Matclust Files for Subsequent Analysis. Generates Structured Array for Data Storage
 %pull matclust file names
@@ -249,6 +254,7 @@ totalTrialNum = length(soundData.Frequencies);
 s.Parameters.RasterWindow = s.Parameters.RasterWindow * toneDur;
 s.Parameters.ToneWindow = s.Parameters.ToneWindow * toneDur;
 s.Parameters.GenWindow = s.Parameters.GenWindow * toneDur;
+s.Parameters.BaseWindow = s.Parameters.BaseWindow * toneDur;
 calcWindow = s.Parameters.calcWindow*toneDur;
 rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
 histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin
@@ -1236,31 +1242,35 @@ for i = 1:numUnits
 
     %% Column 4
 
-    %plot out binned spikes (tone)
+%     %plot out binned spikes (fast)
+%     subplot(4,4,4)
+%     hold on
+%     for cInd = 1:numDBs
+%         plot(s.(desigNames{i}).BinDiff(:,cInd,1),'Color',[cInd/numDBs 0 0])
+%         %find significant points, by p < 0.05
+%         findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.05);
+%         plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,1),'r*')
+%         %find significant points, by p < 0.01
+%         findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.01);
+%         plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,1),'ro')
+%         %now plot laser related. 
+%         plot(s.(desigNames{i}).BinDiffLaser(:,cInd,1),'Color',[0 cInd/numDBs 0])
+%         %find significant points, by p < 0.05
+%         findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd,1)<0.05);
+%         plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd,1),'g*')
+%         %find significant points, by p < 0.01
+%         findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd,1)<0.01);
+%         plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd,1),'go')
+%     end
+%     set(gca,'XTick',octaveRange(:,2));
+%     set(gca,'XTickLabel',octaveRange(:,1));
+%     ylabel('Binned Spikes/Fast Period')
+%     title(strcat('Curve Fast Period, nl width:',num2str(s.NonLaserOverall.PosWidths(3,i,1)),',laser width:',num2str(s.LaserOverall.PosWidths(3,i,1))))
     subplot(4,4,4)
     hold on
-    for cInd = 1:numDBs
-        plot(s.(desigNames{i}).BinDiff(:,cInd,1),'Color',[cInd/numDBs 0 0])
-        %find significant points, by p < 0.05
-        findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.05);
-        plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,1),'r*')
-        %find significant points, by p < 0.01
-        findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.01);
-        plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,1),'ro')
-        %now plot laser related. 
-        plot(s.(desigNames{i}).BinDiffLaser(:,cInd,1),'Color',[0 cInd/numDBs 0])
-        %find significant points, by p < 0.05
-        findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd,1)<0.05);
-        plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd,1),'g*')
-        %find significant points, by p < 0.01
-        findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd,1)<0.01);
-        plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd,1),'go')
+    for j = 1:numFreqs
+        plot((s.(desigNames{i}).BinToneLaser(j,:)-s.(desigNames{i}).BinTone(j,1)),'LineWidth',2,'Color',[j/numFreqs 0 0])
     end
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    ylabel('Binned Spikes/Fast Period')
-    title(strcat('Curve Fast Period, nl width:',num2str(s.NonLaserOverall.PosWidths(3,i,1)),',laser width:',num2str(s.LaserOverall.PosWidths(3,i,1))))
-
     %plot out binned spikes (tone)
     subplot(4,4,8)
     hold on
@@ -1291,7 +1301,22 @@ for i = 1:numUnits
     hold on
     plot(reshape(s.(desigNames{i}).BinDiff(:,:,3),[],1),reshape(s.(desigNames{i}).BinDiffLaser(:,:,3),[],1),'r.')
     plot([0 max(max(s.(desigNames{i}).BinDiffLaser(:,:,3)))],[0 max(max(s.(desigNames{i}).BinDiffLaser(:,:,3)))],'k')
-    title('normal (x) vs Laser (y)')
+    %now plot regression line?
+    if ~isnan(s.(desigNames{i}).RegVals(1)) & ~isnan(s.(desigNames{i}).RegVals(2))
+        plot([0 max(max(s.(desigNames{i}).BinDiffLaser(:,:,3)))],[s.(desigNames{i}).RegVals(1) max(max(s.(desigNames{i}).BinDiffLaser(:,:,3)))*s.(desigNames{i}).RegVals(2)],'c')
+        if s.(desigNames{i}).RegValSig(1,1) > 0
+            plot(0,s.(desigNames{i}).RegVals(1),'c*')
+        elseif s.(desigNames{i}).RegValSig(1,2) < 0
+            plot(0,s.(desigNames{i}).RegVals(1),'c*')
+        end
+    end
+    
+    if s.(desigNames{i}).RegValSig(2,1) > 1
+        title('Bin Tone nl(x) vs lsr(y) Sig Pos Slope')
+    elseif s.(desigNames{i}).RegValSig(2,2) <1
+        title('Bin Tone nl(x) vs lsr(y) Sig Neg Slope')
+    end
+%     title('normal (x) vs Laser (y)')
     axis equal
 %     %plot rasters to laser
 %     subplot(4,4,12)

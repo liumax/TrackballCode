@@ -32,10 +32,10 @@ for i = 1:numUnits
     %the number of these spikes for calculation of average rate and std.
     averageSpikeHolder = zeros(totalTrialNum,1);
     for k = 1:totalTrialNum
-        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > s.Parameters.RasterWindow(1) & rasters(:,1) < 0),1);
+        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > s.Parameters.BaseWindow(1) & rasters(:,1) < 0),1);
     end
-    averageRate = mean(averageSpikeHolder/(-s.Parameters.RasterWindow(1)));
-    averageSTD = std(averageSpikeHolder/(-s.Parameters.RasterWindow(1)));
+    averageRate = mean(averageSpikeHolder/(-s.Parameters.BaseWindow(1)));
+    averageSTD = std(averageSpikeHolder/(-s.Parameters.BaseWindow(1)));
     averageSTE = averageSTD/(sqrt(totalTrialNum-1));
     
     %store average rate into master
@@ -114,7 +114,7 @@ for i = 1:numUnits
     %to all sounds.    
 %     [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master));
     [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,totalTrialNum,...
-        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
+        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.BaseWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
     
     disp(strcat('Baseline Spikes:',num2str(generalResponseHist.SpikeNumber),' Unit:',(desigNames{i})))
     s.BaselineSpikes = generalResponseHist.SpikeNumber;
@@ -177,7 +177,7 @@ for i = 1:numUnits
             latPeakBinOut = [];
 %             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes(targetTrials),length(targetTrials),...
-        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
+        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.BaseWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
             responseHistHolder{k,l} = responseHist;
             if responseHist.SigSpikePos == 1%if have a significant response, check for width
                 [widthOut] = functionResponseWidth(responseHist);
