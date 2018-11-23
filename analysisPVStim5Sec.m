@@ -3,7 +3,7 @@ function [s] = analysisPVStim5Sec(fileName);
 
 
 
-%% Constants and things you might want to tweak
+%% Constants and things you might want to tweak add test
 %lets set some switches to toggle things on and off.
 s.Parameters.toggleRPV = 1; %1 means you use RPVs to eliminate units. 0 means not using RPVs
 toggleTuneSelect = 0; %1 means you want to select tuning manually, 0 means no selection.
