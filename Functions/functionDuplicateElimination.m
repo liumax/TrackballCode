@@ -204,6 +204,8 @@ for shnkInd = 1:shanks
                             s.DesignationArray(nameInd,:) = [];
                             %increment compFinder
                             compFinder(1) = [];
+                            %adust indNeighbor
+                            indNeighbor = indNeighbor - 1;
                             %if statement is to protect against cases with
                             %multiple comparisons.
                             if isempty(compFinder)
