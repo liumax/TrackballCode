@@ -706,7 +706,7 @@ avMSN = mean(msnStores');
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
-%% Column 1
+%Column 1
 %plot spike width vs coefficient of variation
 subplot(6,4,1)
 hold on
@@ -740,7 +740,7 @@ labels(detZero) = [];
 legend(labels,'Location','southoutside','Orientation','horizontal')
 
 
-%% Column 2
+%Column 2
 
 subplot(3,4,2)
 hold on
@@ -801,7 +801,7 @@ plot(ratioVal,sigValNum,'ko')
 xlim([-1.2 1.2])
 title('MSN ModIndexSigResponse Gen Window (x) vs NumSigResp (y)')
 
-%% Column 3 PV CELLS
+%Column 3 PV CELLS
 if findPVs
     subplot(3,4,4)
     hold on
@@ -1035,7 +1035,7 @@ for i = 1:numUnits
     hFig = figure;
     set(hFig, 'Position', [10 80 1900 1000])
 
-    %% Column 1
+    % Column 1
     %plots average waveform
     subplot(4,8,1)
     hold on
@@ -1117,7 +1117,7 @@ for i = 1:numUnits
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Descending = increase in amplitude and freq')
 
-    %% Column 2
+    % Column 2
     %plot FR and velocity
     subplot(4,4,2)
     hold on
@@ -1184,12 +1184,12 @@ for i = 1:numUnits
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Descending = increase in amplitude and freq')
     
-    %% Column 3: binned responses and tuning curves
+    % Column 3: binned responses and tuning curves
     clims = [min([min(min(s.(desigNames{i}).BinTone)),min(min(s.(desigNames{i}).BinToneLaser))]),...
         max([max(max(s.(desigNames{i}).BinTone)),max(max(s.(desigNames{i}).BinToneLaser))])];
     %Plot binned response during tone period
     subplot(4,4,3)
-    imagesc(s.(desigNames{i}).BinTone',clims)
+    imagesc(s.(desigNames{i}).BinDiff(:,:,2)',clims)
     colormap(parula)
     colorbar
     set(gca,'XTick',octaveRange(:,2));
@@ -1200,7 +1200,7 @@ for i = 1:numUnits
     
     %Plot binned response during tone period LASER
     subplot(4,4,7)
-    imagesc(s.(desigNames{i}).BinToneLaser',clims)
+    imagesc(s.(desigNames{i}).BinDiffLaser(:,:,2)',clims)
     colormap(parula)
     colorbar
     set(gca,'XTick',octaveRange(:,2));
@@ -1236,11 +1236,11 @@ for i = 1:numUnits
     subplot(2,4,7)
     hold on
     for j = 1:numFreqs
-        plot((s.(desigNames{i}).BinTone(j,:)-s.(desigNames{i}).BinTone(j,1))/(max(max(s.(desigNames{i}).BinTone))-s.(desigNames{i}).BinTone(j,1))+j,'k.-')
-        plot((s.(desigNames{i}).BinToneLaser(j,:)-s.(desigNames{i}).BinTone(j,1))/(max(max(s.(desigNames{i}).BinTone))-s.(desigNames{i}).BinTone(j,1))+j,'g.-')
+        plot((s.(desigNames{i}).BinDiff(j,:,2)-s.(desigNames{i}).BinDiff(j,1,2))/(max(max(s.(desigNames{i}).BinDiff(:,:,2)))-s.(desigNames{i}).BinDiff(j,1,2))+j,'k.-')
+        plot((s.(desigNames{i}).BinDiffLaser(j,:,2)-s.(desigNames{i}).BinDiffLaser(j,1,2))/(max(max(s.(desigNames{i}).BinDiff(:,:,2)))-s.(desigNames{i}).BinDiff(j,1,2))+j,'g.-')
     end
 
-    %% Column 4
+    % Column 4
 
 %     %plot out binned spikes (fast)
 %     subplot(4,4,4)
@@ -1269,7 +1269,7 @@ for i = 1:numUnits
     subplot(4,4,4)
     hold on
     for j = 1:numFreqs
-        plot((s.(desigNames{i}).BinToneLaser(j,:)-s.(desigNames{i}).BinTone(j,1)),'LineWidth',2,'Color',[j/numFreqs 0 0])
+        plot((s.(desigNames{i}).BinDiffLaser(j,:,2)-s.(desigNames{i}).BinDiff(j,1,2)),'LineWidth',2,'Color',[j/numFreqs 0 0])
     end
     %plot out binned spikes (tone)
     subplot(4,4,8)
