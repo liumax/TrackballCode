@@ -872,7 +872,6 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-close
 
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
@@ -1026,8 +1025,6 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
-
-close
 
 
 %% now plot individual cells. 
@@ -1269,7 +1266,7 @@ for i = 1:numUnits
     subplot(4,4,4)
     hold on
     for j = 1:numFreqs
-        plot((s.(desigNames{i}).BinDiffLaser(j,:,2)-s.(desigNames{i}).BinDiff(j,1,2)),'LineWidth',2,'Color',[j/numFreqs 0 0])
+        plot((s.(desigNames{i}).BinDiffLaser(j,:,2)-s.(desigNames{i}).BinDiff(j,:,2)),'LineWidth',2,'Color',[j/numFreqs 0 0])
     end
     %plot out binned spikes (tone)
     subplot(4,4,8)
