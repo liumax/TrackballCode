@@ -25,6 +25,7 @@ sigValBigStore = [];
 %actually extract files. 
 for i = 1:numFiles
     %load the target file
+    disp(strcat('Loading File-',num2str(i)))
     load(targetFiles{i})
     numUnits = size(masterData,1);
     
@@ -45,6 +46,7 @@ for i = 1:numFiles
     interpWaves = [];
     tempBinStore = [];
     tempSigStore = [];
+    tempHistStore = [];
     for j = 1:numCells
         %pull up cell average waveforms
         cellWaves = s.(desigName{j}).AverageWaveForms;
@@ -68,8 +70,15 @@ for i = 1:numFiles
         
         %pull out binned values for entire tone period, as well as
         %significance
-        tempBinStore(:,:,j) = s.(desigName{j}).BinTone;
-        tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(:,:,2)
+        if size(s.(desigName{j}).BinTone,2) ==5
+            tempBinStore(:,:,j) = s.(desigName{j}).BinTone;
+            tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(:,:,2);
+            tempHistStore(:,j) = mean(s.(desigName{j}).FrequencyHistograms(2:end,:));
+        else
+            tempBinStore(:,:,j) = s.(desigName{j}).BinTone(:,end-4:end,:);
+            tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(:,end-4:end,2);
+            tempHistStore(:,j) = mean(s.(desigName{j}).FrequencyHistograms(2:end,:));
+        end
         
     end
     pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
@@ -91,9 +100,16 @@ for i = 1:numFiles
     intSlowPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((2:end),:,3));
     intSlowNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((2:end),:,3));
     %store positive tuning widths
-    widthStore(:,bigMasterInd:bigMasterInd + numUnits - 1,:) = s.PosWidths;
+    if size(s.RepArray,2) == 6
+        widthStore(:,bigMasterInd:bigMasterInd + numUnits - 1,:) = s.PosWidths(end-4:end,:,:);
+    else
+        widthStore(:,bigMasterInd:bigMasterInd + numUnits - 1,:) = s.PosWidths;
+    end
     %store BFs
     bfStore(bigMasterInd:bigMasterInd + numUnits - 1) = masterData(:,12);
+    %store overall histograms (exclude white noise)
+    bigHistStore(:,bigMasterInd:bigMasterInd + numUnits - 1) = tempHistStore;
+    
     bigMasterInd = bigMasterInd + numUnits;
 end
 
@@ -577,5 +593,44 @@ for i = 1:200
     set(gca,'Ydir','reverse')
 end
 
+
+%now lets try pulling different components of the overall histograms. What
+%we want to do is baseline subtract first, then pull max and mean from
+%various time bins.
+
+histBinVect = s.nt15cluster3.HistBinVector;
+baseBin = [50,100];
+firstBin = [101:110];
+secondBin = [111:120];
+postBin = [121:130];
+
+normHists = bigHistStore;
+for i = 1:size(bigHistStore,2)
+    normHists(:,i) = bigHistStore(:,i) - mean(bigHistStore(baseBin(1):baseBin(2),i));
+end
+
+%now lets go through normHists, and pull max and mean values from each bin
+storeVals(:,1) = mean(normHists(firstBin,:));
+storeVals(:,2) = max(normHists(firstBin,:));
+
+storeVals(:,3) = mean(normHists(secondBin,:));
+storeVals(:,4) = max(normHists(secondBin,:));
+
+storeVals(:,5) = mean(normHists(postBin,:));
+storeVals(:,6) = max(normHists(postBin,:));
+
+%find all significant MSNs
+findSigs = bigMaster(:,[indPosSig,indNegSig]);
+findSigs = findSigs(:,1) + findSigs(:,2);
+findSigs = find(findSigs > 0);
+findSigMSNs = intersect(findMSNs,findSigs);
+findSigPVs = intersect(findPVs,findSigs);
+figure
+scatter3(storeVals(findSigMSNs,1),storeVals(findSigMSNs,3),storeVals(findSigMSNs,5))
+
+figure
+scatter3(storeVals(findSigPVs,1),storeVals(findSigPVs,3),storeVals(findSigPVs,5))
+
+%dont seem to see much in the way of clustering. 
 
 
