@@ -1,4 +1,4 @@
-
+%lets look at overall plots! 
 testNames = what;
 testNames = testNames.mat;
 [findString] = functionCellStringFind(testNames,'Analysis');
@@ -88,6 +88,266 @@ for i = 1:length(msns)
 end
 maxVal = max(max(bigIntLaser(:,msns)));
 plot([0 maxVal],[0 maxVal],'r')
+
+%lets look at average effects for FSIs
+
+% [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigVal);
+sigVal = 0.05;
+counter = 1;
+slopeStore = [];
+intStore = [];
+for i = 1:length(fsis)
+    [b,bintr,bintjm] = gmregress(bigInt(:,fsis(i)),bigIntLaser(:,fsis(i)),sigVal);
+    %lets also store the values.
+    valueStore(counter:counter + size(bigInt,1) - 1,:) = [bigInt(:,fsis(i)),bigIntLaser(:,fsis(i))];
+    counter = counter + size(bigInt,1);
+    slopeStore(i) = b(2);
+    intStore(i) = b(1);
+end
+
+%now we can generate an average based on the slopes and also based on all
+%the points
+
+avSlope = nanmean(slopeStore);
+avInt = nanmean(intStore);
+[b,bintr,bintjm] = gmregress(valueStore(:,1),valueStore(:,2),sigVal);
+
+%lets look at average effects for MSNs
+
+% [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigVal);
+sigVal = 0.05;
+counter = 1;
+slopeStore = [];
+intStore = [];
+for i = 1:length(msns)
+    [b,bintr,bintjm] = gmregress(bigInt(:,msns(i)),bigIntLaser(:,msns(i)),sigVal);
+    %lets also store the values.
+    valueStore(counter:counter + size(bigInt,1) - 1,:) = [bigInt(:,msns(i)),bigIntLaser(:,msns(i))];
+    counter = counter + size(bigInt,1);
+    slopeStore(i) = b(2);
+    intStore(i) = b(1);
+end
+
+%now we can generate an average based on the slopes and also based on all
+%the points
+
+avSlope = nanmean(slopeStore);
+avInt = nanmean(intStore);
+[b,bintr,bintjm] = gmregress(valueStore(:,1),valueStore(:,2),sigVal);
+
+
+
+
+
+clear
+
+%% now lets look at some individual files. 
+load('181114_ML180820I_L_AudStr_pen2_3320_3mWPVHaloTuningAltLaserFullTuningAnalysis (1).mat')
+
+%lets start with 13 cluster 2
+baseline = s.nt13cluster2.BinDiff(:,:,2);
+laser = s.nt13cluster2.BinDiffLaser(:,:,2);
+baselineSig = s.nt13cluster2.BinSigVals(:,:,2);
+laserSig = s.nt13cluster2.BinSigValsLaser(:,:,2);
+%lets threshold to some value
+tarSig = 0.05;
+baselineSig(baselineSig < tarSig) = 0;
+baselineSig(baselineSig > 0) = 1;
+laserSig(laserSig < tarSig) = 0;
+laserSig(laserSig > 0) = 1;
+maxval = max([max(max(baseline)),max(max(laser))]);
+minval = min([min(min(baseline)),min(min(laser))]);
+
+figure
+%plot baseline subtracted values
+subplot(4,2,1)
+imagesc(baseline,[minval,maxval])
+colormap('parula')
+colorbar
+title('BaseSub NoLaser')
+subplot(4,2,3)
+imagesc(laser,[minval,maxval])
+colormap('parula')
+colorbar
+title('BaseSub WithLaser')
+
+for i = 1:6
+    subplot(12,2,11+2*i)
+    hold on
+    plot(baseline(i,:),'k.-')
+    %now find significant responses
+    testFind = find(baselineSig(i,:) == 0);
+    plot(testFind,baseline(i,testFind),'k*')
+    plot(laser(i,:),'g.-')
+    %now find significant responses
+    testFind = find(laserSig(i,:) == 0);
+    plot(testFind,laser(i,testFind),'g*')
+end
+%now plot non-baseline subtracted
+baseline = s.nt13cluster2.BinTone(:,:);
+laser = s.nt13cluster2.BinToneLaser(:,:);
+baselineSig = s.nt13cluster2.BinSigVals(:,:,2);
+laserSig = s.nt13cluster2.BinSigValsLaser(:,:,2);
+%lets threshold to some value
+tarSig = 0.05;
+baselineSig(baselineSig < tarSig) = 0;
+baselineSig(baselineSig > 0) = 1;
+laserSig(laserSig < tarSig) = 0;
+laserSig(laserSig > 0) = 1;
+maxval = max([max(max(baseline)),max(max(laser))]);
+minval = min([min(min(baseline)),min(min(laser))]);
+
+subplot(4,2,2)
+imagesc(baseline,[minval,maxval])
+colormap('parula')
+colorbar
+title('NoBaseSub NoLaser')
+subplot(4,2,4)
+imagesc(laser,[minval,maxval])
+colormap('parula')
+colorbar
+title('NoBaseSub WithLaser')
+
+for i = 1:6
+    subplot(12,2,12+2*i)
+    hold on
+    plot(baseline(i,:),'k.-')
+    %now find significant responses
+    testFind = find(baselineSig(i,:) == 0);
+    plot(testFind,baseline(i,testFind),'k*')
+    plot(laser(i,:),'g.-')
+    %now find significant responses
+    testFind = find(laserSig(i,:) == 0);
+    plot(testFind,laser(i,testFind),'g*')
+end
+
+%now 14.1
+baseline = s.nt14cluster1.BinDiff(:,:,2);
+laser = s.nt14cluster1.BinDiffLaser(:,:,2);
+baselineSig = s.nt14cluster1.BinSigVals(:,:,2);
+laserSig = s.nt14cluster1.BinSigValsLaser(:,:,2);
+%lets threshold to some value
+tarSig = 0.05;
+baselineSig(baselineSig < tarSig) = 0;
+baselineSig(baselineSig > 0) = 1;
+laserSig(laserSig < tarSig) = 0;
+laserSig(laserSig > 0) = 1;
+maxval = max([max(max(baseline)),max(max(laser))]);
+minval = min([min(min(baseline)),min(min(laser))]);
+
+figure
+subplot(2,1,1)
+imagesc(baseline,[minval,maxval])
+colormap('parula')
+colorbar
+subplot(2,1,2)
+imagesc(laser,[minval,maxval])
+colormap('parula')
+colorbar
+
+figure
+for i = 1:6
+    subplot(6,1,i)
+    hold on
+    plot(baseline(i,:),'k.-')
+    %now find significant responses
+    testFind = find(baselineSig(i,:) == 0);
+    plot(testFind,baseline(i,testFind),'k*')
+    plot(laser(i,:),'g.-')
+    %now find significant responses
+    testFind = find(laserSig(i,:) == 0);
+    plot(testFind,laser(i,testFind),'g*')
+end
+
+
+%now 15.1
+baseline = s.nt15cluster1.BinDiff(:,:,2);
+laser = s.nt15cluster1.BinDiffLaser(:,:,2);
+baselineSig = s.nt15cluster1.BinSigVals(:,:,2);
+laserSig = s.nt15cluster1.BinSigValsLaser(:,:,2);
+%lets threshold to some value
+tarSig = 0.05;
+baselineSig(baselineSig < tarSig) = 0;
+baselineSig(baselineSig > 0) = 1;
+laserSig(laserSig < tarSig) = 0;
+laserSig(laserSig > 0) = 1;
+maxval = max([max(max(baseline)),max(max(laser))]);
+minval = min([min(min(baseline)),min(min(laser))]);
+
+figure
+subplot(2,1,1)
+imagesc(baseline,[minval,maxval])
+colormap('parula')
+colorbar
+subplot(2,1,2)
+imagesc(laser,[minval,maxval])
+colormap('parula')
+colorbar
+
+figure
+for i = 1:6
+    subplot(6,1,i)
+    hold on
+    plot(baseline(i,:),'k.-')
+    %now find significant responses
+    testFind = find(baselineSig(i,:) == 0);
+    plot(testFind,baseline(i,testFind),'k*')
+    plot(laser(i,:),'g.-')
+    %now find significant responses
+    testFind = find(laserSig(i,:) == 0);
+    plot(testFind,laser(i,testFind),'g*')
+end
+
+
+%now 16.4
+baseline = s.nt16cluster4.BinDiff(:,:,2);
+laser = s.nt16cluster4.BinDiffLaser(:,:,2);
+baselineSig = s.nt16cluster4.BinSigVals(:,:,2);
+laserSig = s.nt16cluster4.BinSigValsLaser(:,:,2);
+%lets threshold to some value
+tarSig = 0.05;
+baselineSig(baselineSig < tarSig) = 0;
+baselineSig(baselineSig > 0) = 1;
+laserSig(laserSig < tarSig) = 0;
+laserSig(laserSig > 0) = 1;
+maxval = max([max(max(baseline)),max(max(laser))]);
+minval = min([min(min(baseline)),min(min(laser))]);
+
+figure
+subplot(2,1,1)
+imagesc(baseline,[minval,maxval])
+colormap('parula')
+colorbar
+subplot(2,1,2)
+imagesc(laser,[minval,maxval])
+colormap('parula')
+colorbar
+
+figure
+for i = 1:6
+    subplot(6,1,i)
+    hold on
+    plot(baseline(i,:),'k.-')
+    %now find significant responses
+    testFind = find(baselineSig(i,:) == 0);
+    plot(testFind,baseline(i,testFind),'k*')
+    plot(laser(i,:),'g.-')
+    %now find significant responses
+    testFind = find(laserSig(i,:) == 0);
+    plot(testFind,laser(i,testFind),'g*')
+end
+
+
+%based on these data, it seems like i'll have a hard time making a case
+%that there is a creep of the amplitude threshold. See this on rare
+%occasion, but doesnt seem to be a common pattern. 
+
+
+
+
+
+
+
 
 %% Lets make a version to apply to baseline recording data.
 
