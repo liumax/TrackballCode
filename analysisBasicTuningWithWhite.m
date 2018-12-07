@@ -1104,7 +1104,7 @@ end
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
-%% Column 1
+% Column 1
 %plot spike width vs coefficient of variation
 subplot(3,4,1)
 hold on
@@ -1138,7 +1138,7 @@ labels(detZero) = [];
 legend(labels,'Location','southoutside','Orientation','horizontal')
 
 
-%% Column 2
+% Column 2
 
 subplot(3,4,2)
 hold on
@@ -1170,7 +1170,7 @@ detZero = find(det == 0);
 labels(detZero) = [];
 legend(labels,'Location','southoutside','Orientation','horizontal')
 
-%% Column 3 PV CELLS
+% Column 3 PV CELLS
 if findPVs
     subplot(3,4,4)
     hold on
@@ -1200,7 +1200,7 @@ if findPVs
     legend(labels,'Location','southoutside','Orientation','horizontal')
 end
 
-%% Column 4 CHATs
+% Column 4 CHATs
 if findCHATs
     subplot(3,4,3)
     hold on
