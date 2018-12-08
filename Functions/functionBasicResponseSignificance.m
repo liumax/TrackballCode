@@ -60,7 +60,8 @@ end
 
 %% Now we use the  distribution and percentiles to calculate positive significant responses
 %generate vector for bin centers for histogram
-targetHistVector = [calcWindow(1)+(round(smoothWindow/2)*sigCalcBin) + sigCalcBin/2: sigCalcBin:calcWindow(2)-(round(smoothWindow/2)*sigCalcBin)]; %180302 added in code to have histogram overlap over both edges so that smoothing is more accurate. 
+% targetHistVector = [calcWindow(1)+(round(smoothWindow/2)*sigCalcBin) + sigCalcBin/2: sigCalcBin:calcWindow(2)-(round(smoothWindow/2)*sigCalcBin)]; %180302 added in code to have histogram overlap over both edges so that smoothing is more accurate. 
+targetHistVector = [calcWindow(1)-(round(smoothWindow/2)*sigCalcBin) + sigCalcBin/2: sigCalcBin:calcWindow(2)+(round(smoothWindow/2)*sigCalcBin)];%181207 found bug! Turns out had operations reversed. This histogram was generating too small of a vector. Fixing.
 %180808 fixed minor bug, made shift to windows, to make things more
 %consistent with LatBinPeak code. 
 %calculate histogram
