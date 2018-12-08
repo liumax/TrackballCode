@@ -20,7 +20,7 @@
 %SoundData: all the sound data from the tuning curve, with addition of
 %unique frequencies/dbs and number of frequencies/dbs.
 
-% function [s] = analysisBasicTuningWithWhiteAltLaser(fileName);
+function [s] = analysisAltLaser(fileName);
 %% Constants and things you might want to tweak
 
 %TOGGLES FOR ENABLING/DISABLING FEATURES
@@ -143,15 +143,21 @@ elseif prevFile == 1
     disp('Using Existing Analysis for Duplicate Elimination')
     n = load(saveName);
     %load deleted units
-    s.DeletedUnits = n.s.DeletedUnits;
-    %now delete bad units
-    delUnits = fields(s.DeletedUnits);
-    for indCount = 1:length(delUnits)
-        s = rmfield(s,delUnits{indCount});
+    if isfield(n.s,'DeletedUnits')
+        s.DeletedUnits = n.s.DeletedUnits;
+        %now delete bad units
+        delUnits = fields(s.DeletedUnits);
+        for indCount = 1:length(delUnits)
+            s = rmfield(s,delUnits{indCount});
+        end
+        %replace designation array and names. 
+        s.DesignationArray = n.s.DesignationArray;
+        s.DesignationName = n.s.DesignationName;
+    else
+        %replace designation array and names. 
+        s.DesignationArray = n.s.DesignationArray;
+        s.DesignationName = n.s.DesignationName;
     end
-    %replace designation array and names. 
-    s.DesignationArray = n.s.DesignationArray;
-    s.DesignationName = n.s.DesignationName;
     
     disp('Finished! Closing original file')
     clear n
@@ -693,10 +699,12 @@ if findPVs
 end
 
 findMSNs = find(masterData(:,indCellType) == 0);
-for i = 1:length(findMSNs)
-    msnStores(:,i) = s.(s.DesignationName{findMSNs(i)}).SessionFiring;
+if findMSNs
+    for i = 1:length(findMSNs)
+        msnStores(:,i) = s.(s.DesignationName{findMSNs(i)}).SessionFiring;
+    end
+    avMSN = mean(msnStores');
 end
-avMSN = mean(msnStores');
 
 [indPkTr] = functionCellStringFind(masterHeader,'PeakTrough');
 [indISI] = functionCellStringFind(masterHeader,'isiCov');
@@ -706,7 +714,7 @@ avMSN = mean(msnStores');
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
-%% Column 1
+%Column 1
 %plot spike width vs coefficient of variation
 subplot(6,4,1)
 hold on
@@ -722,7 +730,9 @@ title(fileName,'fontweight','bold', 'Interpreter', 'none');
 subplot(6,4,5)
 hold on
 plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'g')
-plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],avMSN/max(avMSN),'k')
+if findMSNs
+    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],avMSN/max(avMSN),'k')
+end
 if findPVs
     plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],avPV/max(avPV),'r')
 end
@@ -740,68 +750,72 @@ labels(detZero) = [];
 legend(labels,'Location','southoutside','Orientation','horizontal')
 
 
-%% Column 2
+%Column 2
+if findMSNs
+    subplot(3,4,2)
 
-subplot(3,4,2)
-hold on
-
-hold on
-holder = masterData(findMSNs,[indPosSig,indNegSig]);
-holder(:,2) = holder(:,2) * -2;
-posResp = find(holder(:,1) == 1);
+    hold on
+    holder = masterData(findMSNs,[indPosSig,indNegSig]);
+    holder(:,2) = holder(:,2) * -2;
+    posResp = find(holder(:,1) == 1);
 
 
-plot(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),1),'k.')
-plot(mean(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),1)'),'k-')
-plot(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),2),'b.')
-plot(mean(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),2)'),'b-')
-plot(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),3),'m.')
-plot(mean(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),3)'),'m-')
-xlim([0 size(s.NonLaserOverall.PosWidths,1) + 1])
-title(strcat(num2str(length(findMSNs)),'-MSN Tuning Width Responses fast(k) tone(b) gen(m)'))
+    plot(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),1),'k.')
+    plot(mean(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),1)'),'k-')
+    plot(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),2),'b.')
+    plot(mean(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),2)'),'b-')
+    plot(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),3),'m.')
+    plot(mean(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),3)'),'m-')
+    xlim([0 size(s.NonLaserOverall.PosWidths,1) + 1])
+    title(strcat(num2str(length(findMSNs)),'-MSN Tuning Width Responses fast(k) tone(b) gen(m)'))
 
-%plot distribution of positive, negative, both, and untuned units
-subplot(3,4,6)
-holder = masterData(findMSNs,[indPosSig,indNegSig]);
-holder(:,2) = holder(:,2) * -2;
-det = holder(:,1) + holder(:,2);
-det = hist(det,[-2:1:1]);
-pie(det)
-labels = {'Neg','Mix','None','Pos'};
-detZero = find(det == 0);
-labels(detZero) = [];
-legend(labels,'Location','southoutside','Orientation','horizontal')
 
-subplot(3,4,10)
-hold on
-plot(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),2),s.LaserOverall.PosWidths(:,findMSNs(posResp),2),'r.')
-plot([0 max(max(max(s.LaserOverall.PosWidths)))],[0 max(max(max(s.LaserOverall.PosWidths)))],'k')
-title('MSN Width Change with Laser x normal y laser')
+    %plot distribution of positive, negative, both, and untuned units
+    subplot(3,4,6)
 
-%plot out modulation index. 
-subplot(3,4,3)
-hold on
-hist(masterData(findMSNs,indModInd),[-1:0.1:1])
-title('Laser Mod Index MSNs')
+    holder = masterData(findMSNs,[indPosSig,indNegSig]);
+    holder(:,2) = holder(:,2) * -2;
+    det = holder(:,1) + holder(:,2);
+    det = hist(det,[-2:1:1]);
 
-%plot out average change to firing rate of responses
-subplot(3,4,9)
-hold on
-for i = 1:length(findMSNs)
-    %first find significant responses in baseline
-    findBaseSig = find(s.(desigNames{findMSNs(i)}).BinSigVals(:,:,3) <= 0.05); 
-    sigFilter = NaN(size(s.(desigNames{findMSNs(i)}).BinSigVals(:,:,3)));
-    sigFilter(findBaseSig) = 1;
-    preResp = s.(desigNames{findMSNs(i)}).BinDiff(:,:,3).*sigFilter;
-    postResp = s.(desigNames{findMSNs(i)}).BinDiffLaser(:,:,3).*sigFilter;
-    ratioVal(i) = nanmean(nanmean((postResp-preResp)./(postResp+preResp)));
-    sigValNum(i) = nansum(nansum(sigFilter));
+    pie(det)
+    labels = {'Neg','Mix','None','Pos'};
+    detZero = find(det == 0);
+    labels(detZero) = [];
+    legend(labels,'Location','southoutside','Orientation','horizontal')
+
+
+
+    subplot(3,4,10)
+    hold on
+    plot(s.NonLaserOverall.PosWidths(:,findMSNs(posResp),2),s.LaserOverall.PosWidths(:,findMSNs(posResp),2),'r.')
+    plot([0 max(max(max(s.LaserOverall.PosWidths)))],[0 max(max(max(s.LaserOverall.PosWidths)))],'k')
+    title('MSN Width Change with Laser x normal y laser')
+
+    %plot out modulation index. 
+    subplot(3,4,3)
+    hold on
+    hist(masterData(findMSNs,indModInd),[-1:0.1:1])
+    title('Laser Mod Index MSNs')
+
+    %plot out average change to firing rate of responses
+    subplot(3,4,9)
+    hold on
+    for i = 1:length(findMSNs)
+        %first find significant responses in baseline
+        findBaseSig = find(s.(desigNames{findMSNs(i)}).BinSigVals(:,:,3) <= 0.05); 
+        sigFilter = NaN(size(s.(desigNames{findMSNs(i)}).BinSigVals(:,:,3)));
+        sigFilter(findBaseSig) = 1;
+        preResp = s.(desigNames{findMSNs(i)}).BinDiff(:,:,3).*sigFilter;
+        postResp = s.(desigNames{findMSNs(i)}).BinDiffLaser(:,:,3).*sigFilter;
+        ratioVal(i) = nanmean(nanmean((postResp-preResp)./(postResp+preResp)));
+        sigValNum(i) = nansum(nansum(sigFilter));
+    end
+    plot(ratioVal,sigValNum,'ko')
+    xlim([-1.2 1.2])
+    title('MSN ModIndexSigResponse Gen Window (x) vs NumSigResp (y)')
 end
-plot(ratioVal,sigValNum,'ko')
-xlim([-1.2 1.2])
-title('MSN ModIndexSigResponse Gen Window (x) vs NumSigResp (y)')
-
-%% Column 3 PV CELLS
+%Column 3 PV CELLS
 if findPVs
     subplot(3,4,4)
     hold on
@@ -872,7 +886,6 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-close
 
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 
@@ -1027,15 +1040,13 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-close
-
 
 %% now plot individual cells. 
 for i = 1:numUnits
     hFig = figure;
     set(hFig, 'Position', [10 80 1900 1000])
 
-    %% Column 1
+    % Column 1
     %plots average waveform
     subplot(4,8,1)
     hold on
@@ -1117,7 +1128,7 @@ for i = 1:numUnits
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Descending = increase in amplitude and freq')
 
-    %% Column 2
+    % Column 2
     %plot FR and velocity
     subplot(4,4,2)
     hold on
@@ -1184,12 +1195,12 @@ for i = 1:numUnits
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Descending = increase in amplitude and freq')
     
-    %% Column 3: binned responses and tuning curves
+    % Column 3: binned responses and tuning curves
     clims = [min([min(min(s.(desigNames{i}).BinTone)),min(min(s.(desigNames{i}).BinToneLaser))]),...
         max([max(max(s.(desigNames{i}).BinTone)),max(max(s.(desigNames{i}).BinToneLaser))])];
-    %Plot binned response during tone period
+    %Plot binned response during tone period %%%%HERE WE WANT OUTLINE
     subplot(4,4,3)
-    imagesc(s.(desigNames{i}).BinTone',clims)
+    imagesc(s.(desigNames{i}).BinDiff(:,:,2)',clims)
     colormap(parula)
     colorbar
     set(gca,'XTick',octaveRange(:,2));
@@ -1200,7 +1211,7 @@ for i = 1:numUnits
     
     %Plot binned response during tone period LASER
     subplot(4,4,7)
-    imagesc(s.(desigNames{i}).BinToneLaser',clims)
+    imagesc(s.(desigNames{i}).BinDiffLaser(:,:,2)',clims)
     colormap(parula)
     colorbar
     set(gca,'XTick',octaveRange(:,2));
@@ -1235,12 +1246,40 @@ for i = 1:numUnits
 %plot out responses by frequency, with x axis being amplitude
     subplot(2,4,7)
     hold on
+    plotThresh = 0.01; %significance threshold for plotting stars. 
+    maxval = max([max(max(s.(desigNames{i}).BinDiff(:,:,2))),max(max(s.(desigNames{i}).BinDiffLaser(:,:,2)))]);
+    plot([0 maxval],[0 maxval],'k','LineWidth',2)
     for j = 1:numFreqs
-        plot((s.(desigNames{i}).BinTone(j,:)-s.(desigNames{i}).BinTone(j,1))/(max(max(s.(desigNames{i}).BinTone))-s.(desigNames{i}).BinTone(j,1))+j,'k.-')
-        plot((s.(desigNames{i}).BinToneLaser(j,:)-s.(desigNames{i}).BinTone(j,1))/(max(max(s.(desigNames{i}).BinTone))-s.(desigNames{i}).BinTone(j,1))+j,'g.-')
+        %first determine if by linear fit there is a change to the slope or
+        %yint. 
+        [b,bintr,bintjm] = gmregress(s.(desigNames{i}).BinDiff(j,:,2),s.(desigNames{i}).BinDiffLaser(j,:,2),sigVal); %b1 is for y intercept, b2 is slope. 
+        %for bintr, first row is range for intercept, second row is for range of slope
+        
+        %if significant slope, then plot the line thicker
+        if 1 >= bintr(2,1) && 1 <= bintr(2,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+             plot(s.(desigNames{i}).BinDiff(j,:,2),s.(desigNames{i}).BinDiffLaser(j,:,2),'g.-','Color',[0 j/numFreqs 0])
+        else
+            plot(s.(desigNames{i}).BinDiff(j,:,2),s.(desigNames{i}).BinDiffLaser(j,:,2),'g.-','LineWidth',2,'Color',[0 j/numFreqs 0])
+        end
+        
+        %if intercept is significant change, mark this
+        if 0 >= bintr(1,1) && 0 <= bintr(1,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+             plot(s.(desigNames{i}).BinDiff(j,1,2),s.(desigNames{i}).BinDiffLaser(j,1,2),'o','Color',[0 j/numFreqs 0])
+        else
+            plot(s.(desigNames{i}).BinDiff(j,1,2),s.(desigNames{i}).BinDiffLaser(j,1,2),'o','Color',[0 j/numFreqs 0])
+        end
+        %now see if differences significant
+        for k = 1:numDBs
+            nlVal = s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesToneBase;
+            laserVal = s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesToneBase;
+            testVal = ranksum(nlVal,laserVal);
+            if testVal < plotThresh
+                plot(s.(desigNames{i}).BinDiff(j,k,2),s.(desigNames{i}).BinDiffLaser(j,k,2),'r*')
+            end
+        end
     end
 
-    %% Column 4
+    % Column 4
 
 %     %plot out binned spikes (fast)
 %     subplot(4,4,4)
@@ -1269,7 +1308,7 @@ for i = 1:numUnits
     subplot(4,4,4)
     hold on
     for j = 1:numFreqs
-        plot((s.(desigNames{i}).BinToneLaser(j,:)-s.(desigNames{i}).BinTone(j,1)),'LineWidth',2,'Color',[j/numFreqs 0 0])
+        plot((s.(desigNames{i}).BinDiffLaser(j,:,2)-s.(desigNames{i}).BinDiff(j,:,2)),'LineWidth',2,'Color',[j/numFreqs 0 0])
     end
     %plot out binned spikes (tone)
     subplot(4,4,8)
@@ -1360,4 +1399,4 @@ end
 
 
 
-% end
+end
