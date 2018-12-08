@@ -780,7 +780,7 @@ for i = 1:numUnits
             specHist = fullHistHolder(:,targetTrials);
             histErr(k,l,:) = std(specHist,0,2)/sqrt(length(targetTrials));
             [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneWindow,s.Parameters.GenWindow,s.Parameters.RasterWindow,...
-                targetRasters,length(targetTrials),2,targetTrials,s.Parameters.latBin,s.Parameters.histBin,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
+                targetRasters,length(targetTrials),2,targetTrials,s.Parameters.latBin,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
             latePeakBinStore{k,l} = latPeakBinOut;
             latStore(k,l) = latPeakBinOut.ResponseLatency;
             peakStoreFast(k,l) = latPeakBinOut.PeakRespFast;
