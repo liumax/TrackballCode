@@ -61,8 +61,8 @@
 % PeakRespGenTime: time of general peak response, in ms.
 
 
-function [latPeakBinOut] = functionLatPeakBinCalculation(toneWindow,generalWindow,fullWindow,alignedSpikes,numTrials,trialColumn,trialNumbers,latBins,peakBins,percentCutoff,baselineCutoff);
-
+function [latPeakBinOut] = functionLatPeakBinCalculation(toneWindow,generalWindow,fullWindow,alignedSpikes,numTrials,trialColumn,trialNumbers,latBins,percentCutoff,baselineCutoff);
+smoothWindow = 9;
 %% Calculate binned spikes occurring during tone or general period
 binSpikeTone = zeros(numTrials,1);
 binSpikeGen = zeros(numTrials,1);
@@ -117,8 +117,8 @@ probSpikeGen = (numTrials - zeroFindGen)/numTrials;
 
 %% Calculate peak response, using peakBins, which will be larger than latBins
 %First, calculate histogram
-peakBinVector = [fullWindow(1)+ peakBins/2:peakBins:fullWindow(2) - peakBins/2];
-peakHist = hist(alignedSpikes(:,1),peakBinVector);
+peakBinVector = [fullWindow(1)+ latBins/2:latBins:fullWindow(2) - latBins/2];
+peakHist = smooth(hist(alignedSpikes(:,1),peakBinVector),smoothWindow);
 %then, find indices for windows I care about
 [~,genStart] = min(abs((peakBinVector - generalWindow(1))));
 [~,genEnd] = min(abs((peakBinVector - generalWindow(2))));
@@ -131,9 +131,9 @@ peakHist = hist(alignedSpikes(:,1),peakBinVector);
 [peakToneVal,peakToneTime]= max(peakHist(toneStart:toneEnd));
 [peakFastVal,peakFastTime]= max(peakHist(fastStart:fastEnd));
 %compensate for bin size and number of trials
-peakGenVal = peakGenVal/peakBins/numTrials;
-peakToneVal = peakToneVal/peakBins/numTrials;
-peakFastVal = peakFastVal/peakBins/numTrials;
+peakGenVal = peakGenVal/latBins/numTrials;
+peakToneVal = peakToneVal/latBins/numTrials;
+peakFastVal = peakFastVal/latBins/numTrials;
 %supplement indices for time with the correct offsets
 peakGenTime = peakBinVector(peakGenTime + genStart - 1);
 peakToneTime = peakBinVector(peakToneTime + toneStart - 1);
