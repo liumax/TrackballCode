@@ -20,7 +20,7 @@
 %SoundData: all the sound data from the tuning curve, with addition of
 %unique frequencies/dbs and number of frequencies/dbs.
 
-% function [s] = analysisBasicTuningWithWhiteAltLaser(fileName);
+function [s] = analysisAltLaser(fileName);
 %% Constants and things you might want to tweak
 
 %TOGGLES FOR ENABLING/DISABLING FEATURES
@@ -1399,4 +1399,4 @@ end
 
 
 
-% end
+end
