@@ -119,6 +119,7 @@ probSpikeGen = (numTrials - zeroFindGen)/numTrials;
 %First, calculate histogram
 peakBinVector = [fullWindow(1)+ latBins/2:latBins:fullWindow(2) - latBins/2];
 peakHist = smooth(hist(alignedSpikes(:,1),peakBinVector),smoothWindow);
+% peakHist = smooth(hist(alignedSpikes(:,1),peakBinVector)/latBins/numTrials,smoothWindow);
 %then, find indices for windows I care about
 [~,genStart] = min(abs((peakBinVector - generalWindow(1))));
 [~,genEnd] = min(abs((peakBinVector - generalWindow(2))));
