@@ -29,6 +29,8 @@ intStore = [];
 slopeSpreadStore = [];
 intSpreadStore = [];
 counter = 1;
+fullCount = 1;
+fullType = [];
 
 for i = 1:numFiles
     load(targetFiles{i})
@@ -39,6 +41,8 @@ for i = 1:numFiles
         disp(strcat('Examining Unit',s.DesignationName{j}))
         %now I need to go in and find significant responses that are also
         %positive
+        fullType(fullCount) = masterData(j,7);
+        fullCount = fullCount + 1;
         sigVals = find(s.(s.DesignationName{j}).BinSigVals(2:end,tarDB,toneTarget) < sigCutoff);
         sigValsLaser = find(s.(s.DesignationName{j}).BinSigValsLaser(2:end,tarDB,toneTarget) < sigCutoff);
         posVals = find(s.(s.DesignationName{j}).BinDiff(2:end,tarDB,toneTarget) > 0);
