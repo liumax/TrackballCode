@@ -77,6 +77,9 @@ s.Parameters.LaserBin = 0.01; %histogram bin size
 s.Parameters.LaserAnalysis = [-0.2,0;0.1,0.3];
 % s.Parameters.LaserLim = 0.015; %maximum lag value for calculation.
 
+%for looking at target window
+toneTarget = 2; %this selects for which part of response I care about. 1 is fast, 2 is tone, 3 is general
+sigCutoff = 0.05;
 %set other things
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 % format short
@@ -530,19 +533,28 @@ end
 %now lets try and plot out slope of binned responses. Use tone period only
 
 %pull out significant values only, just for tones.  
-sigVal = 0.05;
+% sigCutoff = 0.05;
 minResp = 5;
 analysisWindow = 2;
 disp('Analyzing Binned Responses for Linear Regression')
 for i = 1:numUnits
     disp(strcat('Analyzing Unit-',desigNames{i}))
     valStore = [];
-    tester = s.(desigNames{i}).BinTone(2:end,:);
-    valStore(:,1) = reshape(tester,1,[]);
-    tester = s.(desigNames{i}).BinToneLaser(2:end,:);
-    valStore(:,2) = reshape(tester,1,[]);
+    if s.SoundData.WhiteNoise == 0
+        tester = s.(desigNames{i}).BinTone;
+        valStore(:,1) = reshape(tester,1,[]);
+        tester = s.(desigNames{i}).BinToneLaser;
+        valStore(:,2) = reshape(tester,1,[]);
 
-    [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigVal); %b1 is for y intercept, b2 is slope. 
+        [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigCutoff); %b1 is for y intercept, b2 is slope.
+    elseif s.SoundData.WhiteNoise == 1
+        tester = s.(desigNames{i}).BinTone(2:end,:);
+        valStore(:,1) = reshape(tester,1,[]);
+        tester = s.(desigNames{i}).BinToneLaser(2:end,:);
+        valStore(:,2) = reshape(tester,1,[]);
+
+        [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigCutoff); %b1 is for y intercept, b2 is slope.
+    end
     %for bintr, first row is range for intercept, second row is for range of slope
 %         b
 %         bintr
@@ -1196,32 +1208,32 @@ for i = 1:numUnits
     title('Descending = increase in amplitude and freq')
     
     % Column 3: binned responses and tuning curves
-    clims = [min([min(min(s.(desigNames{i}).BinTone)),min(min(s.(desigNames{i}).BinToneLaser))]),...
-        max([max(max(s.(desigNames{i}).BinTone)),max(max(s.(desigNames{i}).BinToneLaser))])];
-    %Plot binned response during tone period %%%%HERE WE WANT OUTLINE
-    subplot(4,4,3)
-    imagesc(s.(desigNames{i}).BinDiff(:,:,2)',clims)
-    colormap(parula)
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean Binned Response (tone), nL');
-    
-    %Plot binned response during tone period LASER
-    subplot(4,4,7)
-    imagesc(s.(desigNames{i}).BinDiffLaser(:,:,2)',clims)
-    colormap(parula)
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean Binned Response (tone), LASER');
-    
-    clims = [min([min(min(s.(desigNames{i}).BinGen)),min(min(s.(desigNames{i}).BinGenLaser))]),...
-        max([max(max(s.(desigNames{i}).BinGen)),max(max(s.(desigNames{i}).BinGenLaser))])];
+%     clims = [min([min(min(s.(desigNames{i}).BinTone)),min(min(s.(desigNames{i}).BinToneLaser))]),...
+%         max([max(max(s.(desigNames{i}).BinTone)),max(max(s.(desigNames{i}).BinToneLaser))])];
+%     %Plot binned response during tone period %%%%HERE WE WANT OUTLINE
+%     subplot(4,4,3)
+%     imagesc(s.(desigNames{i}).BinDiff(:,:,2)',clims)
+%     colormap(parula)
+%     colorbar
+%     set(gca,'XTick',octaveRange(:,2));
+%     set(gca,'XTickLabel',octaveRange(:,1));
+%     set(gca,'YTick',dbRange(:,2));
+%     set(gca,'YTickLabel',dbRange(:,1));
+%     title('Mean Binned Response (tone), nL');
+%     
+%     %Plot binned response during tone period LASER
+%     subplot(4,4,7)
+%     imagesc(s.(desigNames{i}).BinDiffLaser(:,:,2)',clims)
+%     colormap(parula)
+%     colorbar
+%     set(gca,'XTick',octaveRange(:,2));
+%     set(gca,'XTickLabel',octaveRange(:,1));
+%     set(gca,'YTick',dbRange(:,2));
+%     set(gca,'YTickLabel',dbRange(:,1));
+%     title('Mean Binned Response (tone), LASER');
+%     
+%     clims = [min([min(min(s.(desigNames{i}).BinGen)),min(min(s.(desigNames{i}).BinGenLaser))]),...
+%         max([max(max(s.(desigNames{i}).BinGen)),max(max(s.(desigNames{i}).BinGenLaser))])];
 %     %Plot binned response during general period
 %     subplot(4,4,11)
 %     imagesc(s.(desigNames{i}).BinGen',clims)
@@ -1244,40 +1256,111 @@ for i = 1:numUnits
 %     set(gca,'YTickLabel',dbRange(:,1));
 %     title('Mean Binned Response (general), LASER')
 %plot out responses by frequency, with x axis being amplitude
-    subplot(2,4,7)
+    subplot(2,4,3)
+    %plot things linked by frequency
     hold on
     plotThresh = 0.01; %significance threshold for plotting stars. 
-    maxval = max([max(max(s.(desigNames{i}).BinDiff(:,:,2))),max(max(s.(desigNames{i}).BinDiffLaser(:,:,2)))]);
+    maxval = max([max(max(s.(desigNames{i}).BinDiff(:,:,toneTarget))),max(max(s.(desigNames{i}).BinDiffLaser(:,:,toneTarget)))]);
     plot([0 maxval],[0 maxval],'k','LineWidth',2)
     for j = 1:numFreqs
         %first determine if by linear fit there is a change to the slope or
-        %yint. 
-        [b,bintr,bintjm] = gmregress(s.(desigNames{i}).BinDiff(j,:,2),s.(desigNames{i}).BinDiffLaser(j,:,2),sigVal); %b1 is for y intercept, b2 is slope. 
-        %for bintr, first row is range for intercept, second row is for range of slope
-        
-        %if significant slope, then plot the line thicker
-        if 1 >= bintr(2,1) && 1 <= bintr(2,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
-             plot(s.(desigNames{i}).BinDiff(j,:,2),s.(desigNames{i}).BinDiffLaser(j,:,2),'g.-','Color',[0 j/numFreqs 0])
-        else
-            plot(s.(desigNames{i}).BinDiff(j,:,2),s.(desigNames{i}).BinDiffLaser(j,:,2),'g.-','LineWidth',2,'Color',[0 j/numFreqs 0])
-        end
-        
-        %if intercept is significant change, mark this
-        if 0 >= bintr(1,1) && 0 <= bintr(1,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
-             plot(s.(desigNames{i}).BinDiff(j,1,2),s.(desigNames{i}).BinDiffLaser(j,1,2),'o','Color',[0 j/numFreqs 0])
-        else
-            plot(s.(desigNames{i}).BinDiff(j,1,2),s.(desigNames{i}).BinDiffLaser(j,1,2),'o','Color',[0 j/numFreqs 0])
-        end
-        %now see if differences significant
-        for k = 1:numDBs
-            nlVal = s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesToneBase;
-            laserVal = s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesToneBase;
-            testVal = ranksum(nlVal,laserVal);
-            if testVal < plotThresh
-                plot(s.(desigNames{i}).BinDiff(j,k,2),s.(desigNames{i}).BinDiffLaser(j,k,2),'r*')
+        %yint. Only use significant values and positive values
+        sigVals = find(s.(desigNames{i}).BinSigVals(j,:,toneTarget) < sigCutoff);
+        sigValsLaser = find(s.(desigNames{i}).BinSigValsLaser(j,:,toneTarget) < sigCutoff);
+        posVals = find(s.(desigNames{i}).BinDiff(j,:,toneTarget) > 0);
+        posValsLaser = find(s.(desigNames{i}).BinDiffLaser(j,:,toneTarget) > 0);
+        %now find intersect of these!
+        intersectNorm = intersect(sigVals,posVals);
+        intersectLaser = intersect(sigValsLaser,posValsLaser);
+        fullIntersect = intersect(intersectNorm,intersectLaser);
+        if length(fullIntersect) > 3
+            %now pull values
+            disp('At Least 3 Significant Positive Responses')
+            normVals = s.(desigNames{i}).BinDiff(j,:,toneTarget);
+            laserVals = s.(desigNames{i}).BinDiffLaser(j,:,toneTarget);
+            normVals = normVals(fullIntersect);
+            laserVals = laserVals(fullIntersect);
+            [b,bintr,bintjm] = gmregress(normVals,laserVals,sigCutoff); %b1 is for y intercept, b2 is slope. 
+            %for bintr, first row is range for intercept, second row is for range of slope
+
+            %if significant slope, then plot the line thicker
+            if 1 >= bintr(2,1) && 1 <= bintr(2,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+                 plot(normVals,laserVals,'g.-','Color',[0 j/numFreqs 0])
+            else
+                plot(normVals,laserVals,'g.-','LineWidth',2,'Color',[0 j/numFreqs 0])
+            end
+
+            %if intercept is significant change, mark this
+            if 0 >= bintr(1,1) && 0 <= bintr(1,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+                 plot(s.(desigNames{i}).BinDiff(j,1,toneTarget),s.(desigNames{i}).BinDiffLaser(j,1,toneTarget),'o','Color',[0 j/numFreqs 0])
+            else
+                plot(s.(desigNames{i}).BinDiff(j,1,toneTarget),s.(desigNames{i}).BinDiffLaser(j,1,toneTarget),'o','Color',[0 j/numFreqs 0])
+            end
+            %now see if differences significant
+            for k = 1:numDBs
+                nlVal = s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesToneBase;
+                laserVal = s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesToneBase;
+                testVal = ranksum(nlVal,laserVal);
+                if testVal < plotThresh
+                    plot(s.(desigNames{i}).BinDiff(j,k,toneTarget),s.(desigNames{i}).BinDiffLaser(j,k,toneTarget),'r*')
+                end
             end
         end
     end
+    title('Plotting Responses linked by Frequency Value')
+    
+    %plot things linked by amplitude
+    subplot(2,4,7)
+    hold on
+    plotThresh = 0.01; %significance threshold for plotting stars. 
+    maxval = max([max(max(s.(desigNames{i}).BinDiff(:,:,toneTarget))),max(max(s.(desigNames{i}).BinDiffLaser(:,:,toneTarget)))]);
+    plot([0 maxval],[0 maxval],'k','LineWidth',2)
+    for j = 1:numDBs
+        %first determine if by linear fit there is a change to the slope or
+        %yint. Only use significant values and positive values
+        sigVals = find(s.(desigNames{i}).BinSigVals(:,j,toneTarget) < sigCutoff);
+        sigValsLaser = find(s.(desigNames{i}).BinSigValsLaser(:,j,toneTarget) < sigCutoff);
+        posVals = find(s.(desigNames{i}).BinDiff(:,j,toneTarget) > 0);
+        posValsLaser = find(s.(desigNames{i}).BinDiffLaser(:,j,toneTarget) > 0);
+        %now find intersect of these!
+        intersectNorm = intersect(sigVals,posVals);
+        intersectLaser = intersect(sigValsLaser,posValsLaser);
+        fullIntersect = intersect(intersectNorm,intersectLaser);
+        if length(fullIntersect) > 3
+            disp('At Least 3 Positive Significant Responses!')
+            %now pull values
+            normVals = s.(desigNames{i}).BinDiff(:,j,toneTarget);
+            laserVals = s.(desigNames{i}).BinDiffLaser(:,j,toneTarget);
+            normVals = normVals(fullIntersect);
+            laserVals = laserVals(fullIntersect);
+            [b,bintr,bintjm] = gmregress(normVals,laserVals,sigCutoff); %b1 is for y intercept, b2 is slope. 
+            %for bintr, first row is range for intercept, second row is for range of slope
+
+            %if significant slope, then plot the line thicker
+            if 1 >= bintr(2,1) && 1 <= bintr(2,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+                 plot(normVals,laserVals,'g.-','Color',[0 j/numDBs 0])
+            else
+                plot(normVals,laserVals,'g.-','LineWidth',2,'Color',[0 j/numDBs 0])
+            end
+
+            %if intercept is significant change, mark this
+            if 0 >= bintr(1,1) && 0 <= bintr(1,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+                 plot(normVals,laserVals,'o','Color',[0 j/numDBs 0])
+            else
+                plot(normVals,laserVals,'o','Color',[0 j/numDBs 0])
+            end
+            %now see if differences significant
+            for k = 1:numFreqs
+                nlVal = s.(desigNames{i}).LatPeakBin{k,j}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBin{k,j}.BinnedSpikesToneBase;
+                laserVal = s.(desigNames{i}).LatPeakBinLaser{k,j}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBinLaser{k,j}.BinnedSpikesToneBase;
+                testVal = signrank(nlVal,laserVal);
+                if testVal < plotThresh
+                    plot(s.(desigNames{i}).BinDiff(k,j,toneTarget),s.(desigNames{i}).BinDiffLaser(k,j,toneTarget),'r*')
+                end
+            end
+        end
+    end
+    title('Plotting Responses linked by DB Level')
 
     % Column 4
 
@@ -1333,7 +1416,7 @@ for i = 1:numUnits
     set(gca,'XTick',octaveRange(:,2));
     set(gca,'XTickLabel',octaveRange(:,1));
     ylabel('Binned Spikes/Fast Period')
-    title(strcat('Curve Tone Period, nl width:',num2str(s.NonLaserOverall.PosWidths(3,i,2)),',laser width:',num2str(s.LaserOverall.PosWidths(3,i,2))))
+    title(strcat('Curve Tone Period, nl width:',num2str(s.NonLaserOverall.PosWidths(end,i,2)),',laser width:',num2str(s.LaserOverall.PosWidths(end,i,2))))
     
     %plot out binned responses to general period, non laser vs laser
     subplot(4,4,12)
