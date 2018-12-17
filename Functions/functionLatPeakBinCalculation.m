@@ -115,7 +115,7 @@ zeroFindGen = length(find(binSpikeGen == 0));
 probSpikeTone = (numTrials - zeroFindTone)/numTrials;
 probSpikeGen = (numTrials - zeroFindGen)/numTrials;
 
-%% Calculate peak response, using peakBins, which will be larger than latBins
+%% Calculate peak response, using latBins
 %First, calculate histogram
 peakBinVector = [fullWindow(1)+ latBins/2:latBins:fullWindow(2) - latBins/2];
 peakHist = smooth(hist(alignedSpikes(:,1),peakBinVector),smoothWindow);
