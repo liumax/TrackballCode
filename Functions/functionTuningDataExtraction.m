@@ -19,7 +19,7 @@ for i = 1:numUnits
     alignTimes = master(:,1);
     
     %make a plot of firing rate over time. 
-    sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
+    sessionFiring = hist(spikeTimes,[s.RotaryData.Distance(1,1)/s.Parameters.trodesFS:s.Parameters.SpeedFiringBins:s.RotaryData.Distance(end,1)/s.Parameters.trodesFS]);
     sessionFiring(end) = 0; %this is to compensate for problems with spikes coming after the period
     sessionFiring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
     

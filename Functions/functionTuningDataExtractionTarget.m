@@ -19,7 +19,7 @@ for i = 1:numUnits
     alignTimes = master(:,1);
     
     %make a plot of firing rate over time. 
-    sessionFiring = hist(spikeTimes,[s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)]);
+    sessionFiring = hist(spikeTimes,[s.RotaryData.Distance(1,1)/s.Parameters.trodesFS:s.Parameters.SpeedFiringBins:s.RotaryData.Distance(end,1)/s.Parameters.trodesFS]);
     sessionFiring(end) = 0; %this is to compensate for problems with spikes coming after the period
     sessionFiring(1) = 0; %this is to compensate for spikes coming before the tuning period. 
     
@@ -134,8 +134,46 @@ for i = 1:numUnits
     masterHeader{masterHolder} = 'NegSigGenHist';
     masterHolder = masterHolder + 1;
     
-    #### targetWindow
-    
+    %now we need to find the target window! Do this off the general
+    %response, since this is the most likely to be accurate. Start with
+    %using the 0.05 significance level for positive responses. 
+    if isfield(s.(desigNames{i}),'TargetWindow')
+        targetWindow = s.(desigNames{i}).TargetWindow;
+    else
+        %We will find the first major response window by taking difference of
+        %the significance vector, which produces + 1 and -1 values. We can then
+        %find  the starts and ends of each response. 
+        minRespNum = 10;
+        if sum(generalResponseHist.Histogram(:,3)) >=minRespNum
+            disp('Sufficient Significant Responses to Generate Target Window')
+            findSigDiff = diff(generalResponseHist.Histogram(:,3));
+            findPosShift = find(findSigDiff == 1);
+            findNegShift = find(findSigDiff == -1);
+            %now we need to clean this up. 
+            if length(findPosShift) < length(findNegShift) && generalResponseHist.Histogram(1,3) == 1 %in the case of starting with significant values
+                disp('Starting with a significant value! Deleting first window')
+                findNegShift(1) = [];
+            elseif length(findNegShift) == 0 | findNegShift(end) < findPosShift(end) %The case of having significant values to the end
+                disp('Significant values to end of window!')
+                findNegShift(end+1) = length(generalResponseHist.Histogram(:,3))-1;
+            end
+
+            %now lets find the length of different responses
+            respLengths = reshape(findNegShift,[],1) - reshape(findPosShift,[],1);
+            %find response that is sufficiently long
+            findLongResp = find(respLengths >= minRespNum,1,'first');
+            if findLongResp
+                disp('Target Window Found!')
+                targetWindow = [generalResponseHist.Centers(findPosShift(findLongResp) + 1) generalResponseHist.Centers(findNegShift(findLongResp))];
+            else
+                disp('No Target Window Sufficient, Default to Tone Window')
+                targetWindow = [0 0.1];
+            end
+        else
+            disp('Insufficient Significant Responses to Generate Target Window, Default to Tone Window')
+            targetWindow = [0 0.1];
+        end
+    end
     %allocates empty array.
     organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
     organizedRasters = cell(numFreqs,numDBs);
@@ -167,7 +205,7 @@ for i = 1:numUnits
             latePeakBinStore{k,l} = latPeakBinOut;
             latStore(k,l) = latPeakBinOut.ResponseLatency;
             peakStoreTar(k,l) = latPeakBinOut.PeakTarVal;
-            binStoreTar(k,l) = mean(latPeakBinOut.binSpikeTar);
+            binStoreTar(k,l) = mean(latPeakBinOut.BinnedSpikesTar);
             probSpikeTar(k,l) = latPeakBinOut.ProbSpikeTar;
             binSigVals(k,l) = latPeakBinOut.BinSigVals;
             binDiff(k,l) = latPeakBinOut.BinDiff;
@@ -192,7 +230,8 @@ for i = 1:numUnits
         end
         
     end
-        disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
+    disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
+    indivOut.(desigNames{i}).TargetWindow = targetWindow;
     indivOut.(desigNames{i}).AllRasters = fullRasterData;
     indivOut.(desigNames{i}).AllHistograms = fullHistData;
     indivOut.(desigNames{i}).IndividualHistograms = fullHistHolder; 
@@ -230,12 +269,12 @@ for i = 1:numUnits
         if whiteStatus == 1
             targetSig = squeeze(binSigVals(2:end,j));
             targetSign = squeeze(binDiff(2:end,j));
-            targetBins = squeeze(binStoreFast(2:end,j));
+            targetBins = squeeze(binStoreTar(2:end,j));
             
         else
             targetSig = squeeze(binSigVals(:,j));
             targetSign = squeeze(binDiff(:,j));
-            targetBins = squeeze(binStoreFast(:,j));
+            targetBins = squeeze(binStoreTar(:,j));
         end
 
         for kk = 1:size(targetSig,2)
