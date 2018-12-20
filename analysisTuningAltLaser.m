@@ -371,6 +371,20 @@ plot(soundData.DelaysPaired,'r')
 title('Delay between non-laser and laser tones, expected in red')
 % pause
 
+%cleanup! 
+findSmall = find(toneTime - toneTimeLaser < 0.4);
+if findSmall
+    disp('FOUND SMALL PULSE DURATION, FIXING')
+    toneTime(findSmall) = [];
+    toneTimeLaser(findSmall) = [];
+    figure
+    plot(toneTime - toneTimeLaser)
+    hold on
+    plot(soundData.DelaysPaired,'r')
+    title('FIXED Delay between non-laser and laser tones, expected in red')
+end
+
+
 %pull D2 info (laser ID)
 [D2FileName] = functionFileFinder(subFoldersCell,'DIO','D2');
 if length(D2FileName) == 0
@@ -472,9 +486,30 @@ for i = 1:numFreqs
 end
 
 %% Extract data from rotary encoder.
-[funcOut] = functionRotaryExtraction(s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
+
+
+[D3FileName] = functionFileFinder(subFoldersCell,'DIO','D3');
+if length(D3FileName) == 0
+    [D3FileName] = functionFileFinder(subFoldersCell,'DIO','Din3');
+end
+D3FileName = D3FileName{1};
+
+[D4FileName] = functionFileFinder(subFoldersCell,'DIO','D4');
+if length(D4FileName) == 0
+    [D4FileName] = functionFileFinder(subFoldersCell,'DIO','Din4');
+end
+D4FileName = D4FileName{1};
+
+[funcOut] = functionNewRotaryExtraction(D3FileName,D4FileName);
 s.RotaryData = funcOut;
+funcOut = [];
 disp('Rotary Encoder Data Extracted')
+%181217 data output is now in trodes samples, at 1ms intervals. Need to fix this! 
+% newTimes = [(round(timeMin*(1/interpStep)))*interpStep:interpStep:(round(timeMax*(1/interpStep)))*interpStep];
+newTimeVector = [s.RotaryData.Distance(1,1)/s.Parameters.trodesFS:s.Parameters.InterpolationStepRotary:s.RotaryData.Distance(end,1)/s.Parameters.trodesFS];
+newDistVector = interp1(s.RotaryData.Distance(:,1),s.RotaryData.Distance(:,2),newTimeVector);
+newVelVector = interp1(s.RotaryData.Distance(1:end-1,1)/s.Parameters.trodesFS,s.RotaryData.Velocity,newTimeVector);
+
 %rasterize this data
 jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
 jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
@@ -482,9 +517,13 @@ velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
 length(s.RotaryData.Velocity);
 for i = 1:length(allToneTime)
     %find the time from the velocity trace closest to the actual stim time
-    targetInd = find(s.RotaryData.Velocity(:,1) - dioTimes(allToneTime(i)) > 0,1,'first');
+    targetInd = find(newTimeVector - dioTimes(allToneTime(i)) > 0,1,'first');
     %pull appropriate velocity data
-    velRaster(:,i) = s.RotaryData.Velocity([targetInd+jumpsBack:targetInd+jumpsForward],2);
+    if targetInd < length(newTimeVector) - jumpsForward
+        velRaster(:,i) = newVelVector([targetInd+jumpsBack:targetInd+jumpsForward]);
+    else
+        velRaster(:,i) = zeros(jumpsForward-jumpsBack+1,1);
+    end
 end
 %make average trace:
 averageVel = mean(velRaster,2);
@@ -492,7 +531,7 @@ velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s
 velZero = find(velVector >= 0,1,'first');
 
 %Change toggle for ROC analysis if insufficient running is found
-if s.RotaryData.RawDistance(end,2) < 10;
+if s.RotaryData.Distance(end,2) < 10;
     toggleROC = 0;
     disp('Resetting ROC Toggle Due to Lack of Movement')
 end
@@ -500,8 +539,8 @@ end
 
 figure
 subplot(2,1,1)
-plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2))
-xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+plot(newTimeVector,newVelVector)
+xlim([newTimeVector(1),newTimeVector(end)])
 title('Velocity Over Session (cm/s)')
 subplot(2,1,2)
 hold on
@@ -509,6 +548,7 @@ plot(velVector,averageVel,'r','LineWidth',2)
 plot([0 0],[ylim],'b');
 xlim([velVector(1) velVector(end)])
 title('Average Velocity Traces')
+
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
 
@@ -741,14 +781,14 @@ title(fileName,'fontweight','bold', 'Interpreter', 'none');
 %plot loco speed vs firing rates
 subplot(6,4,5)
 hold on
-plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'g')
+plot(newTimeVector,newVelVector/max(newVelVector),'g')
 if findMSNs
-    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],avMSN/max(avMSN),'k')
+    plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],avMSN/max(avMSN),'k')
 end
 if findPVs
-    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],avPV/max(avPV),'r')
+    plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],avPV/max(avPV),'r')
 end
-xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+xlim([newTimeVector(1),newTimeVector(end)])
 ylim([-0.1,1])
 
 %plot out proportion of each cell type
@@ -1144,9 +1184,9 @@ for i = 1:numUnits
     %plot FR and velocity
     subplot(4,4,2)
     hold on
-    plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
-    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
-    xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+    plot(newTimeVector,newVelVector/max(newVelVector),'b')
+    plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+    xlim([newTimeVector(1),newTimeVector(end)])
     ylim([-0.1,1])
     title({fileName;desigNames{i}},'fontweight','bold', 'Interpreter', 'none');
     
