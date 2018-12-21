@@ -20,7 +20,7 @@
 %SoundData: all the sound data from the tuning curve, with addition of
 %unique frequencies/dbs and number of frequencies/dbs.
 
-% function [s] = analysisBasicTuningWithWhiteAltLaser(fileName);
+function [s] = analysisTuningAltLaserTarWin(fileName);
 %% Constants and things you might want to tweak
 
 %TOGGLES FOR ENABLING/DISABLING FEATURES
@@ -499,7 +499,11 @@ for i = 1:length(allToneTime)
     %find the time from the velocity trace closest to the actual stim time
     targetInd = find(newTimeVector - dioTimes(allToneTime(i)) > 0,1,'first');
     %pull appropriate velocity data
-    velRaster(:,i) = newVelVector([targetInd+jumpsBack:targetInd+jumpsForward]);
+    if targetInd < length(newTimeVector) - jumpsForward
+        velRaster(:,i) = newVelVector([targetInd+jumpsBack:targetInd+jumpsForward]);
+    else
+        velRaster(:,i) = zeros(jumpsForward-jumpsBack+1,1);
+    end
 end
 %make average trace:
 averageVel = mean(velRaster,2);

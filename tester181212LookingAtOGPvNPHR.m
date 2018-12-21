@@ -186,6 +186,8 @@ slopeStore = [];
 intStore = [];
 slopeSpreadStore = [];
 intSpreadStore = [];
+bfStore = [];
+valStore = [];
 
 counter = 1;
 for i = 1:numFiles
@@ -210,6 +212,10 @@ for i = 1:numFiles
             intStore(bigCount) = b(1);
             slopeSpreadStore(bigCount,:) = bintr(2,:);
             intSpreadStore(bigCount,:) = bintr(1,:);
+            bfStore(bigCount,1) = masterData(j,12);
+            bfStore(bigCount,2) = masterData(j,21);
+            valStore(bigCount,1) = mean(mean(normVals));
+            valStore(bigCount,2) = mean(mean(laserVals));
             bigCount = bigCount + 1;
         end
     end
@@ -243,9 +249,25 @@ sigIntFSIs = intersect(fsis,checkSigInt);
 doubleSigMSNs = intersect(sigSlopeMSNs,sigIntMSNs);
 doubleSigFSIs = intersect(sigSlopeFSIs,sigIntFSIs);
 
+%lets try and categorize these units?
 
+hFig = figure;
+plot(valStore(msns,1),valStore(msns,2),'r.')
+hold on
+plot([-0.5 max(max(valStore(msns)))],[-0.5 max(max(valStore(msns)))],'b')
+xlim([-0.5 2])
+ylim([-0.5 2])
+xlabel('No Laser Average')
+ylabel('Laser Average')
 
+spikeGraphName = 'msnSpikeScatterAverageAllResponses';
+savefig(hFig,spikeGraphName);
 
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
 
 
 

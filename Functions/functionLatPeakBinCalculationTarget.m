@@ -71,6 +71,7 @@ for latCount = 1:numTrials
         end
     end
 end
+binSpikeTar = binSpikeTar/(targetWindow(2)-targetWindow(1));
 
 binSpikeTarBase = zeros(numTrials,1);
 
@@ -84,6 +85,8 @@ for latCount = 1:numTrials
     end
 end
 
+binSpikeTarBase = binSpikeTarBase/(targetWindow(2)-targetWindow(1));
+
 %% Calculate probability of a spike falling in the tone or general period
 
 zeroFindTar = length(find(binSpikeTar == 0));
@@ -96,12 +99,11 @@ peakBinVector = [fullWindow(1)+ latBins/2:latBins:fullWindow(2) - latBins/2];
 peakHist = smooth(hist(alignedSpikes(:,1),peakBinVector)/latBins/numTrials,smoothWindow);
 % peakHist = smooth(hist(alignedSpikes(:,1),peakBinVector)/latBins/numTrials,smoothWindow);
 %then, find indices for target window
-[~,tarStart] = min(abs((peakBinVector - generalWindow(1))));
-[~,tarEnd] = min(abs((peakBinVector - generalWindow(2))));
+[~,tarStart] = min(abs((peakBinVector - targetWindow(1))));
+[~,tarEnd] = min(abs((peakBinVector - targetWindow(2))));
 %finally, find max values during this window
 [peakTarVal,peakTarTime]= max(peakHist(tarStart:tarEnd));
 [peakOverallVal,peakOverallTime]= max(peakHist);
-[peakFastVal,peakFastTime]= max(peakHist(fastStart:fastEnd));
 %compensate for bin size and number of trials
 peakTarVal = peakTarVal/latBins/numTrials;
 peakOverallVal = peakOverallVal/latBins/numTrials;
@@ -116,8 +118,8 @@ latBinVector = [fullWindow(1)+ latBins/2:latBins:fullWindow(2) - latBins/2];
 latHist = smooth(hist(alignedSpikes(:,1),latBinVector),3); %smooth over three bins to reduce craziness
 
 %recalculate indices for windows I care about
-tarStart = find(latBinVector > generalWindow(1),1,'first');
-tarEnd = find(latBinVector < generalWindow(2),1,'last');
+tarStart = find(latBinVector > targetWindow(1),1,'first');
+tarEnd = find(latBinVector < targetWindow(2),1,'last');
 
 %calculate percentile cutoffs
 percentLimit = prctile(latHist(1:tarStart),percentCutoff);

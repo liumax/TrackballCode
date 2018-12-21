@@ -43,6 +43,8 @@ dio4Init = dio4States(1); %NOTE ADJUSTED FROM 2
 %170726 Having problem where there is probably overlap of times between
 %dio3 and dio4. Trying to resolve with code that detects the same time
 %across both and deletes extraneous pulses.
+% timeMin = dio3Times(1);
+% timeMax = dio3Times(end);
 [C,ia,ib] = intersect(dio3Times,dio4Times);
 if length(ia) > 1 | length(ib) >1
     %delete first value, because this is always the first time point
@@ -199,53 +201,6 @@ smoothVel = reshape(smoothVel,[],1);
 
 disp('Finished Interpolation And Remapping of Velocity/Distance')
 
-%find start times of velocity
-binCut = 5; %minimum speed to register for binary representation of locomotion
-locoBinary = zeros(length(smoothVel),1);
-locoBinary(abs(smoothVel)>binCut) = 1; 
-
-locoSimp = zeros(length(smoothVel),1);
-locoSimp(smoothVel > binCut) = 1;
-locoSimp(smoothVel < -binCut) = -2;
-
-locoStarts = find(diff(locoBinary) == 1)+1;
-locoEnds = find(diff(locoBinary) == -1);
-disp('Finding Locomotion Starts')
-loopTrig = 0;
-if failTrigger == 0
-    while loopTrig == 0;
-        %combine these two to generate a single timeline. 
-        [fullLocoTrace,iLoco,iC] = unique([locoStarts;locoEnds],'rows');
-        %since locoStarts come first, I can separate iC out into starts and
-        %ends. 
-        iStarts = iC(1:length(locoStarts));
-        iEnds = iC(length(locoStarts)+1:end);
-        %now i need to see if the animal was locomoting to being with. If so, then
-        %the first even will be a locomotion end without a preceding locomotion
-        %start.
-        if iEnds(1) == 1
-            locoStarts(2:end+1) = locoStarts(1:end);
-            locoStarts(1) = 1;
-        end
-
-        %now i need to check and see if the last value is an end or a start. If a
-        %start, then I need to insert an end at the final value for locomotion. 
-        if iStarts(end) == length(fullLocoTrace);
-            %add additional time point to the end of locoEnds.
-            locoEnds(end+1) = length(locoBinary);
-        end
-
-        if iStarts(1) == 1 & iEnds(end) == length(fullLocoTrace);
-            loopTrig = 1;
-        end
-
-    end
-    
-elseif failTrigger == 1
-    iStarts = 0;
-    iEnds = 0;
-end
-
 
 
 disp('Finished Finding Locomotion Starts')
@@ -254,11 +209,11 @@ disp('Finished Finding Locomotion Starts')
 funcOut=struct;
 funcOut.Distance = [smoothDistTime,smoothDist];
 funcOut.Velocity = [smoothVel];
-funcOut.BinaryLocomotion = locoBinary;
-funcOut.SimpleLocomotion = locoSimp;
+% funcOut.BinaryLocomotion = locoBinary;
+% funcOut.SimpleLocomotion = locoSimp;
 % x.BinaryLocoRev = revBinary;
-funcOut.LocoStarts = smoothDistTime(locoStarts);
-funcOut.LocoEnds = smoothDistTime(locoEnds);
+% funcOut.LocoStarts = smoothDistTime(locoStarts);
+% funcOut.LocoEnds = smoothDistTime(locoEnds);
 
 
 end
