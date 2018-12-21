@@ -32,8 +32,6 @@ toggleROC = 0; %toggle for tuning on/off ROC analysis
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
 s.Parameters.RasterWindow = [-6 4]; %ratio for raster window. will be multiplied by toneDur
 s.Parameters.BaseWindow = [-4 0];
-s.Parameters.ToneWindow = [0 1];
-s.Parameters.GenWindow = [0 2];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
 s.Parameters.histBin = 0.005; %histogram bin size in seconds
@@ -76,7 +74,7 @@ s.Parameters.LaserWindow = [-0.3 0.4]; %plotting window for rasters
 s.Parameters.LaserBin = 0.01; %histogram bin size
 s.Parameters.LaserAnalysis = [-0.2,0;0.1,0.3];
 % s.Parameters.LaserLim = 0.015; %maximum lag value for calculation.
-
+sigCutoff = 0.05;
 %set other things
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 % format short
@@ -230,37 +228,35 @@ soundName = strcat(fileName,'.mat');
 soundFile = open(soundName);
 soundData = soundFile.soundData; %pulls sound data info
 s.SoundData = soundData;
-
+soundData = [];
+soundFile = [];
 %check for presence of white noise
 try
-    whiteStatus = soundData.WhiteNoise;
+    whiteStatus = s.SoundData.WhiteNoise;
 catch
     whiteStatus = 0;
 end
 
 %pull important sound and trial information
-uniqueFreqs = unique(soundData.Frequencies);
-uniqueDBs = unique(soundData.TrialMatrix(soundData.TrialMatrix(:,2)==uniqueFreqs(1),3));
-uniqueDBSteps = unique(soundData.TrialMatrix(soundData.TrialMatrix(:,2)==uniqueFreqs(1),3));
+uniqueFreqs = unique(s.SoundData.Frequencies);
+uniqueDBs = unique(s.SoundData.TrialMatrix(s.SoundData.TrialMatrix(:,2)==uniqueFreqs(1),3));
+uniqueDBSteps = unique(s.SoundData.TrialMatrix(s.SoundData.TrialMatrix(:,2)==uniqueFreqs(1),3));
 numFreqs = length(uniqueFreqs);
 numDBs = length(uniqueDBs);
-trialMatrix = soundData.TrialMatrix;
-trialMatrixLaser = soundData.TrialMatrixPaired;
+trialMatrix = s.SoundData.TrialMatrix;
+trialMatrixLaser = s.SoundData.TrialMatrixPaired;
 %store these in structured array
 s.SoundData.UniqueFrequencies = uniqueFreqs;
 s.SoundData.UniqueDBs = uniqueDBs;
 s.SoundData.NumFreqs = numFreqs;
 s.SoundData.NumDBs = numDBs;
 
-toneDur = soundData.ToneDuration;
-toneReps = soundData.ToneRepetitions;
-totalTrialNum = length(soundData.Frequencies);
+toneDur = s.SoundData.ToneDuration;
+toneReps = s.SoundData.ToneRepetitions;
+totalTrialNum = length(s.SoundData.Frequencies);
 
 %Recalculate raster window and such
 s.Parameters.RasterWindow = s.Parameters.RasterWindow * toneDur;
-s.Parameters.ToneWindow = s.Parameters.ToneWindow * toneDur;
-s.Parameters.GenWindow = s.Parameters.GenWindow * toneDur;
-s.Parameters.BaseWindow = s.Parameters.BaseWindow * toneDur;
 calcWindow = s.Parameters.calcWindow*toneDur;
 rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
 histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin
@@ -340,6 +336,7 @@ D1FileName = D1FileName{1};
 
 %pulls out DIO up state onsets.
 [dioTimes,dioTimeDiff] = functionBasicDIOCheck(DIOData,s.Parameters.trodesFS);
+DIOData = [];
 s.SoundData.ToneTimes = dioTimes;
 s.SoundData.ToneTimeDiff = dioTimeDiff;
 
@@ -364,7 +361,7 @@ toneTime = dioTimes(toneTime);
 figure
 plot(toneTime - toneTimeLaser)
 hold on
-plot(soundData.DelaysPaired,'r')
+plot(s.SoundData.DelaysPaired,'r')
 title('Delay between non-laser and laser tones, expected in red')
 % pause
 
@@ -379,7 +376,9 @@ D2FileName = D2FileName{1};
 
 %pulls out DIO up state onsets.
 [dio2Times,dio2TimeDiff] = functionBasicDIOCheck(DIO2Data,s.Parameters.trodesFS);
-
+DIO2Data = [];
+dio2Times = [];
+dio2TimeDiff =[];
 laserOnsetTimes = dio2Times;
 
 timeFinder = find(toneTimeLaser > s.TimeFilterRange(2));
@@ -469,9 +468,28 @@ for i = 1:numFreqs
 end
 
 %% Extract data from rotary encoder.
-[funcOut] = functionRotaryExtraction(s.Parameters.trodesFS,s.Parameters.InterpolationStepRotary,subFoldersCell);
+[D3FileName] = functionFileFinder(subFoldersCell,'DIO','D3');
+if length(D3FileName) == 0
+    [D3FileName] = functionFileFinder(subFoldersCell,'DIO','Din3');
+end
+D3FileName = D3FileName{1};
+
+[D4FileName] = functionFileFinder(subFoldersCell,'DIO','D4');
+if length(D4FileName) == 0
+    [D4FileName] = functionFileFinder(subFoldersCell,'DIO','Din4');
+end
+D4FileName = D4FileName{1};
+
+[funcOut] = functionNewRotaryExtraction(D3FileName,D4FileName);
 s.RotaryData = funcOut;
+funcOut = [];
 disp('Rotary Encoder Data Extracted')
+%181217 data output is now in trodes samples, at 1ms intervals. Need to fix this! 
+% newTimes = [(round(timeMin*(1/interpStep)))*interpStep:interpStep:(round(timeMax*(1/interpStep)))*interpStep];
+newTimeVector = [s.RotaryData.Distance(1,1)/s.Parameters.trodesFS:s.Parameters.InterpolationStepRotary:s.RotaryData.Distance(end,1)/s.Parameters.trodesFS];
+newDistVector = interp1(s.RotaryData.Distance(:,1),s.RotaryData.Distance(:,2),newTimeVector);
+newVelVector = interp1(s.RotaryData.Distance(1:end-1,1)/s.Parameters.trodesFS,s.RotaryData.Velocity,newTimeVector);
+
 %rasterize this data
 jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
 jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
@@ -479,9 +497,9 @@ velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
 length(s.RotaryData.Velocity);
 for i = 1:length(allToneTime)
     %find the time from the velocity trace closest to the actual stim time
-    targetInd = find(s.RotaryData.Velocity(:,1) - dioTimes(allToneTime(i)) > 0,1,'first');
+    targetInd = find(newTimeVector - dioTimes(allToneTime(i)) > 0,1,'first');
     %pull appropriate velocity data
-    velRaster(:,i) = s.RotaryData.Velocity([targetInd+jumpsBack:targetInd+jumpsForward],2);
+    velRaster(:,i) = newVelVector([targetInd+jumpsBack:targetInd+jumpsForward]);
 end
 %make average trace:
 averageVel = mean(velRaster,2);
@@ -489,7 +507,7 @@ velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s
 velZero = find(velVector >= 0,1,'first');
 
 %Change toggle for ROC analysis if insufficient running is found
-if s.RotaryData.RawDistance(end,2) < 10;
+if s.RotaryData.Distance(end,2) < 10;
     toggleROC = 0;
     disp('Resetting ROC Toggle Due to Lack of Movement')
 end
@@ -497,8 +515,8 @@ end
 
 figure
 subplot(2,1,1)
-plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2))
-xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+plot(newTimeVector,newVelVector)
+xlim([newTimeVector(1),newTimeVector(end)])
 title('Velocity Over Session (cm/s)')
 subplot(2,1,2)
 hold on
@@ -509,7 +527,7 @@ title('Average Velocity Traces')
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
 
-[overOut,indivOut,s,masterData,masterHeader,masterInd] = functionTuningDataExtraction(numUnits,numDBs,numFreqs,uniqueFreqs,s,masterData,masterHeader,masterInd,histBinVector,trialNum,master,desigNames,calcWindow,histBinNum,whiteStatus);
+[overOut,indivOut,s,masterData,masterHeader,masterInd] = functionTuningDataExtractionTarget(numUnits,numDBs,numFreqs,uniqueFreqs,s,masterData,masterHeader,masterInd,histBinVector,trialNum,master,desigNames,calcWindow,histBinNum,whiteStatus);
 s.NonLaserOverall = overOut;
 for i = 1:numUnits
     fn = fieldnames(indivOut.(desigNames{i}));
@@ -518,7 +536,7 @@ for i = 1:numUnits
     end
 end
 
-[overOut,indivOut,s,masterData,masterHeader,masterInd] = functionTuningDataExtraction(numUnits,numDBs,numFreqs,uniqueFreqs,s,masterData,masterHeader,masterInd,histBinVector,trialNumLaser,masterLaser,desigNames,calcWindow,histBinNum,whiteStatus);
+[overOut,indivOut,s,masterData,masterHeader,masterInd] = functionTuningDataExtractionTarget(numUnits,numDBs,numFreqs,uniqueFreqs,s,masterData,masterHeader,masterInd,histBinVector,trialNumLaser,masterLaser,desigNames,calcWindow,histBinNum,whiteStatus);
 s.LaserOverall = overOut;
 for i = 1:numUnits
     fn = fieldnames(indivOut.(desigNames{i}));
@@ -532,15 +550,21 @@ end
 %pull out significant values only, just for tones.  
 sigVal = 0.05;
 minResp = 5;
-analysisWindow = 2;
 disp('Analyzing Binned Responses for Linear Regression')
 for i = 1:numUnits
     disp(strcat('Analyzing Unit-',desigNames{i}))
     valStore = [];
-    tester = s.(desigNames{i}).BinTone(2:end,:);
-    valStore(:,1) = reshape(tester,1,[]);
-    tester = s.(desigNames{i}).BinToneLaser(2:end,:);
-    valStore(:,2) = reshape(tester,1,[]);
+    if whiteStatus == 1
+        tester = s.(desigNames{i}).BinDiff(2:end,:);
+        valStore(:,1) = reshape(tester,1,[]);
+        tester = s.(desigNames{i}).BinDiffLaser(2:end,:);
+        valStore(:,2) = reshape(tester,1,[]);
+    else
+        tester = s.(desigNames{i}).BinDiff;
+        valStore(:,1) = reshape(tester,1,[]);
+        tester = s.(desigNames{i}).BinDiffLaser;
+        valStore(:,2) = reshape(tester,1,[]);
+    end
 
     [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigVal); %b1 is for y intercept, b2 is slope. 
     %for bintr, first row is range for intercept, second row is for range of slope
@@ -575,64 +599,6 @@ for i = 1:numUnits
         s.RegressionValueSig(i,3) = 0;
         s.RegressionValueSig(i,4) = 0;
     end
-%     findSig = find(s.(desigNames{i}).BinSigVals(2:end,:,analysisWindow)<sigVal);
-%     findSigLaser = find(s.(desigNames{i}).BinSigValsLaser(2:end,:,analysisWindow)<sigVal);
-%     %find intersection
-%     sigInter = intersect(findSig,findSigLaser);
-%     sigInter
-    %now pull those values from binned amounts. 
-%     if length(sigInter) < minResp
-%         disp('Insufficient Points for Linear Regression')
-%         s.(desigNames{i}).RegRawVals = [];
-%         s.(desigNames{i}).RegVals = [];
-%         s.(desigNames{i}).RegValSig = [];
-%         s.(desigNames{i}).RegValSigAlt = [];
-%         s.RegressionValueSig(i,1) = 0;
-%         s.RegressionValueSig(i,2) = 0;
-%         s.RegressionValueSig(i,3) = 0;
-%         s.RegressionValueSig(i,4) = 0;
-%     else
-%         disp('Sufficient Points for Linear Regression')
-%         valStore = [];
-%         tester = s.(desigNames{i}).BinTone(2:end,:);
-%         valStore(:,1) = tester(sigInter);
-%         tester = s.(desigNames{i}).BinToneLaser(2:end,:);
-%         valStore(:,2) = tester(sigInter);
-%         
-%         [b,bintr,bintjm] = gmregress(valStore(:,1),valStore(:,2),sigVal); %b1 is for y intercept, b2 is slope. 
-%         %for bintr, first row is range for intercept, second row is for range of slope
-% %         b
-% %         bintr
-%         s.(desigNames{i}).RegRawVals = valStore;
-%         s.(desigNames{i}).RegVals = b;
-%         s.(desigNames{i}).RegValSig = bintr;
-%         s.(desigNames{i}).RegValSigAlt = bintjm;
-%         %store if significant changes.
-%         if bintr(1,1)*bintr(1,2) > 0
-%             disp('Significant Y Intercept Change!')
-%             s.RegressionValueSig(i,1) = 1; %store 1 for significant y intercept change
-%             s.RegressionValueSig(i,2) = sign(bintr(1,1)); %store sign of change
-%         else
-%             disp('Insignificant Y Intercept')
-%             s.RegressionValueSig(i,1) = 0; %store 1 for significant y intercept change
-%             s.RegressionValueSig(i,2) = 0;
-%         end
-%         %now look at slope. 
-%         if bintr(2,1) > 1 %this indicates range is above 1
-%             disp('Significant Positive Slope Change')
-%             s.RegressionValueSig(i,3) = 1;
-%             s.RegressionValueSig(i,4) = 1;
-%         elseif bintr(2,2) < 1 %this indicates range is below 1
-%             disp('Significant Negative Slope Change')
-%             s.RegressionValueSig(i,3) = 1;
-%             s.RegressionValueSig(i,4) = -1;
-%         else
-%             disp('No Slope Change')
-%             s.RegressionValueSig(i,3) = 0;
-%             s.RegressionValueSig(i,4) = 0;
-%         end
-%             
-%     end
 end
 masterData(:,masterInd:masterInd+3) = zeros(numUnits,4);
 masterData(:,masterInd:masterInd+3) = s.RegressionValueSig; 
@@ -652,7 +618,7 @@ laserBinVect = [s.Parameters.LaserWindow(1):s.Parameters.LaserBin:s.Parameters.L
 for i = 1:numUnits
     %pulls spike times and times for alignment
     spikeTimes = s.(desigNames{i}).SpikeTimes;
-    alignTimes = dio2Times;
+    alignTimes = laserOnsetTimes;
     %now align spikes trial by trial
     [laserRasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.LaserWindow);
     %generate overall histogram and compensate
@@ -729,14 +695,14 @@ title(fileName,'fontweight','bold', 'Interpreter', 'none');
 %plot loco speed vs firing rates
 subplot(6,4,5)
 hold on
-plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'g')
+plot(newTimeVector,newVelVector/max(newVelVector),'g')
 if findMSNs
-    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],avMSN/max(avMSN),'k')
+    plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],avMSN/max(avMSN),'k')
 end
 if findPVs
-    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],avPV/max(avPV),'r')
+    plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],avPV/max(avPV),'r')
 end
-xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+xlim([newTimeVector(1) newTimeVector(end)])
 ylim([-0.1,1])
 
 %plot out proportion of each cell type
@@ -803,11 +769,11 @@ if findMSNs
     hold on
     for i = 1:length(findMSNs)
         %first find significant responses in baseline
-        findBaseSig = find(s.(desigNames{findMSNs(i)}).BinSigVals(:,:,3) <= 0.05); 
-        sigFilter = NaN(size(s.(desigNames{findMSNs(i)}).BinSigVals(:,:,3)));
+        findBaseSig = find(s.(desigNames{findMSNs(i)}).BinSigVals(:,:) <= 0.05); 
+        sigFilter = NaN(size(s.(desigNames{findMSNs(i)}).BinSigVals(:,:)));
         sigFilter(findBaseSig) = 1;
-        preResp = s.(desigNames{findMSNs(i)}).BinDiff(:,:,3).*sigFilter;
-        postResp = s.(desigNames{findMSNs(i)}).BinDiffLaser(:,:,3).*sigFilter;
+        preResp = s.(desigNames{findMSNs(i)}).BinDiff(:,:).*sigFilter;
+        postResp = s.(desigNames{findMSNs(i)}).BinDiffLaser(:,:).*sigFilter;
         ratioVal(i) = nanmean(nanmean((postResp-preResp)./(postResp+preResp)));
         sigValNum(i) = nansum(nansum(sigFilter));
     end
@@ -846,7 +812,7 @@ if findPVs
     
     subplot(3,4,12)
     hold on
-    plot(s.NonLaserOverall.PosWidths(:,findPVs(posResp),2),s.LaserOverall.PosWidths(:,findPVs(posResp),2),'r.')
+    plot(s.NonLaserOverall.PosWidths(:,findPVs(posResp)),s.LaserOverall.PosWidths(:,findPVs(posResp)),'r.')
     plot([0 max(max(max(s.LaserOverall.PosWidths)))],[0 max(max(max(s.LaserOverall.PosWidths)))],'k')
     title('PV Width Change with Laser x normal y laser')
     
@@ -861,11 +827,11 @@ if findPVs
     sigValNum = [];
     for i = 1:length(findPVs)
         %first find significant responses in baseline
-        findBaseSig = find(s.(desigNames{findPVs(i)}).BinSigVals(:,:,3) <= 0.05); 
-        sigFilter = NaN(size(s.(desigNames{findPVs(i)}).BinSigVals(:,:,3)));
+        findBaseSig = find(s.(desigNames{findPVs(i)}).BinSigVals(:,:) <= 0.05); 
+        sigFilter = NaN(size(s.(desigNames{findPVs(i)}).BinSigVals(:,:)));
         sigFilter(findBaseSig) = 1;
-        preResp = s.(desigNames{findPVs(i)}).BinDiff(:,:,3).*sigFilter;
-        postResp = s.(desigNames{findPVs(i)}).BinDiffLaser(:,:,3).*sigFilter;
+        preResp = s.(desigNames{findPVs(i)}).BinDiff(:,:).*sigFilter;
+        postResp = s.(desigNames{findPVs(i)}).BinDiffLaser(:,:).*sigFilter;
         ratioVal(i) = nanmean(nanmean((postResp-preResp)./(postResp+preResp)));
         sigValNum(i) = nansum(nansum(sigFilter));
     end
@@ -915,7 +881,7 @@ for i = 1:numUnits
         genStore(:,i) = NaN(length(s.(desigNames{i}).FrequencyHistograms(1,:)),1);
     end
     %pull overall maps
-    fullDiffs(:,:,i) = squeeze(mean(s.(desigNames{i}).BinDiff,2));
+    fullDiffs(:,i) = squeeze(mean(s.(desigNames{i}).BinDiff,2));
 end
 
 [indShankDes] = functionCellStringFind(masterHeader,'Shank Designation');
@@ -936,19 +902,20 @@ end
 %find PV cells on shank 1
 findPVshank1 = intersect(findPVs,findShank1);
 % findCHATshank1 = intersect(findCHATs,findShank1);
-
-subplot(2,5,1)
-imagesc((whiteStore(:,s.SortedPeakWaveOrder(findShank1))'),[-1 1])
-hold on
-for i = 1:length(findPVshank1)
-    plot([0 length(whiteStore)],[s.SortedPeakWaveOrder(findPVshank1(i)) s.SortedPeakWaveOrder(findPVshank1(i))],'r','LineWidth',2)
+if whiteStatus == 1
+    subplot(2,5,1)
+    imagesc((whiteStore(:,s.SortedPeakWaveOrder(findShank1))'),[-1 1])
+    hold on
+    for i = 1:length(findPVshank1)
+        plot([0 length(whiteStore)],[s.SortedPeakWaveOrder(findPVshank1(i)) s.SortedPeakWaveOrder(findPVshank1(i))],'r','LineWidth',2)
+    end
+    % for i = 1:length(findCHATshank1)
+    %     plot([0 length(whiteStore)],[s.SortedPeakWaveOrder(findCHATshank1(i)) s.SortedPeakWaveOrder(findCHATshank1(i))],'g','LineWidth',2)
+    % end
+    colormap(map)
+    colorbar
+    title('Shank 1 Resp to WN, BaseNorm FR LogScale')
 end
-% for i = 1:length(findCHATshank1)
-%     plot([0 length(whiteStore)],[s.SortedPeakWaveOrder(findCHATshank1(i)) s.SortedPeakWaveOrder(findCHATshank1(i))],'g','LineWidth',2)
-% end
-colormap(map)
-colorbar
-title('Shank 1 Resp to WN, BaseNorm FR LogScale')
 
 subplot(2,5,2)
 imagesc((genStore(:,s.SortedPeakWaveOrder(findShank1))'),[-1 1])
@@ -957,26 +924,10 @@ colorbar
 title('Resp to Tones, BaseNorm FR LogScale')
 
 subplot(2,5,3)
-imagesc(squeeze(fullDiffs(:,1,s.SortedPeakWaveOrder(findShank1)))')
+imagesc(squeeze(fullDiffs(:,s.SortedPeakWaveOrder(findShank1)))')
 colormap parula
 colorbar
-title(strcat(fileName,'Bin Subtracted Fast Period'))
-set(gca,'XTick',octaveRange(:,2));
-set(gca,'XTickLabel',octaveRange(:,1));
-
-subplot(2,5,4)
-imagesc(squeeze(fullDiffs(:,2,s.SortedPeakWaveOrder(findShank1)))')
-colormap parula
-colorbar
-title('Bin Subtracted Tone Period')
-set(gca,'XTick',octaveRange(:,2));
-set(gca,'XTickLabel',octaveRange(:,1));
-
-subplot(2,5,5)
-imagesc(squeeze(fullDiffs(:,3,s.SortedPeakWaveOrder(findShank1)))')
-colormap parula
-colorbar
-title('Bin Subtracted Gen Period')
+title(strcat(fileName,'Bin Subtracted Target Period'))
 set(gca,'XTick',octaveRange(:,2));
 set(gca,'XTickLabel',octaveRange(:,1));
 
@@ -987,19 +938,20 @@ findShank2 = find(masterData(:,indShankDes) == 2);
 %find PV cells on shank 2
 findPVshank2 = intersect(findPVs,findShank2);
 % findCHATshank2 = intersect(findCHATs,findShank2);
-
-subplot(2,5,6)
-imagesc((whiteStore(:,s.SortedPeakWaveOrder(findShank2))'),[-1 1])
-hold on
-for i = 1:length(findPVshank2)
-    plot([0 length(whiteStore)],[s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1) s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1)],'r','LineWidth',2)
+if whiteStatus == 1
+    subplot(2,5,6)
+    imagesc((whiteStore(:,s.SortedPeakWaveOrder(findShank2))'),[-1 1])
+    hold on
+    for i = 1:length(findPVshank2)
+        plot([0 length(whiteStore)],[s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1) s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1)],'r','LineWidth',2)
+    end
+    % for i = 1:length(findCHATshank2)
+    %     plot([0 length(whiteStore)],[s.SortedPeakWaveOrder(findCHATshank2(i))-length(findShank1) s.SortedPeakWaveOrder(findCHATshank2(i))-length(findShank1)],'g','LineWidth',2)
+    % end
+    colormap(map)
+    colorbar
+    title('Shank 2 Resp to WN, BaseNorm FR LogScale')
 end
-% for i = 1:length(findCHATshank2)
-%     plot([0 length(whiteStore)],[s.SortedPeakWaveOrder(findCHATshank2(i))-length(findShank1) s.SortedPeakWaveOrder(findCHATshank2(i))-length(findShank1)],'g','LineWidth',2)
-% end
-colormap(map)
-colorbar
-title('Shank 2 Resp to WN, BaseNorm FR LogScale')
 
 subplot(2,5,7)
 imagesc((genStore(:,s.SortedPeakWaveOrder(findShank2))'),[-1 1])
@@ -1008,28 +960,13 @@ colorbar
 title('Resp to Tones, BaseNorm FR LogScale')
 
 subplot(2,5,8)
-imagesc(squeeze(fullDiffs(:,1,s.SortedPeakWaveOrder(findShank2)))')
+imagesc(squeeze(fullDiffs(:,s.SortedPeakWaveOrder(findShank2)))')
 colormap parula
 colorbar
 title('Bin Subtracted Fast Period')
 set(gca,'XTick',octaveRange(:,2));
 set(gca,'XTickLabel',octaveRange(:,1));
 
-subplot(2,5,9)
-imagesc(squeeze(fullDiffs(:,2,s.SortedPeakWaveOrder(findShank2)))')
-colormap parula
-colorbar
-title('Bin Subtracted Tone Period')
-set(gca,'XTick',octaveRange(:,2));
-set(gca,'XTickLabel',octaveRange(:,1));
-
-subplot(2,5,10)
-imagesc(squeeze(fullDiffs(:,3,s.SortedPeakWaveOrder(findShank2)))')
-colormap parula
-colorbar
-title('Bin Subtracted Gen Period')
-set(gca,'XTick',octaveRange(:,2));
-set(gca,'XTickLabel',octaveRange(:,1));
 
 spikeGraphName = strcat(fileName,'ProbeTopology');
 savefig(hFig,spikeGraphName);
@@ -1093,6 +1030,8 @@ for i = 1:numUnits
         s.(desigNames{i}).AllHistogramSig.Histogram(...
         s.(desigNames{i}).AllHistogramSig.Histogram(:,6) == 1,1),...
         'k*')
+    %plot out response window for analysis
+    plot([s.(desigNames{i}).TargetWindow],[0 0],'r','LineWidth',4)
     plot([0 0],[ylim],'b');
     plot([toneDur toneDur],[ylim],'b');
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
@@ -1132,9 +1071,9 @@ for i = 1:numUnits
     %plot FR and velocity
     subplot(4,4,2)
     hold on
-    plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
-    plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
-    xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+    plot(newTimeVector,newVelVector/max(newVelVector),'b')
+    plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
+    xlim([newTimeVector(1),newTimeVector(end)])
     ylim([-0.1,1])
     title({fileName;desigNames{i}},'fontweight','bold', 'Interpreter', 'none');
     
@@ -1161,6 +1100,7 @@ for i = 1:numUnits
         s.(desigNames{i}).AllHistogramSigLaser.Histogram(...
         s.(desigNames{i}).AllHistogramSigLaser.Histogram(:,6) == 1,1),...
         'k*')
+    plot([s.(desigNames{i}).TargetWindow],[0 0],'r','LineWidth',4)
     plot([0 0],[ylim],'b');
     plot([toneDur toneDur],[ylim],'b');
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
@@ -1196,153 +1136,153 @@ for i = 1:numUnits
     title('Descending = increase in amplitude and freq')
     
     % Column 3: binned responses and tuning curves
-    clims = [min([min(min(s.(desigNames{i}).BinTone)),min(min(s.(desigNames{i}).BinToneLaser))]),...
-        max([max(max(s.(desigNames{i}).BinTone)),max(max(s.(desigNames{i}).BinToneLaser))])];
-    %Plot binned response during tone period %%%%HERE WE WANT OUTLINE
-    subplot(4,4,3)
-    imagesc(s.(desigNames{i}).BinDiff(:,:,2)',clims)
-    colormap(parula)
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean Binned Response (tone), nL');
+    %plot out different db responses linked by frequency
+    if numDBs > 1
+        subplot(2,4,3)
+        %plot things linked by frequency
+        hold on
+        plotThresh = 0.01; %significance threshold for plotting stars. 
+        maxval = max([max(max(s.(desigNames{i}).BinDiff(:,:))),max(max(s.(desigNames{i}).BinDiffLaser(:,:)))]);
+        plot([0 maxval],[0 maxval],'k','LineWidth',2)
+        for j = 1:numFreqs
+            %first determine if by linear fit there is a change to the slope or
+            %yint. Only use significant values and positive values
+            sigVals = find(s.(desigNames{i}).BinSigVals(j,:) < sigCutoff);
+            sigValsLaser = find(s.(desigNames{i}).BinSigValsLaser(j,:) < sigCutoff);
+            posVals = find(s.(desigNames{i}).BinDiff(j,:) > 0);
+            posValsLaser = find(s.(desigNames{i}).BinDiffLaser(j,:) > 0);
+            %now find intersect of these!
+            intersectNorm = intersect(sigVals,posVals);
+            intersectLaser = intersect(sigValsLaser,posValsLaser);
+            fullIntersect = intersect(intersectNorm,intersectLaser);
+            if length(fullIntersect) > 3
+                %now pull values
+                disp('At Least 3 Significant Positive Responses')
+                normVals = s.(desigNames{i}).BinDiff(j,:);
+                laserVals = s.(desigNames{i}).BinDiffLaser(j,:);
+                normVals = normVals(fullIntersect);
+                laserVals = laserVals(fullIntersect);
+                [b,bintr,bintjm] = gmregress(normVals,laserVals,sigCutoff); %b1 is for y intercept, b2 is slope. 
+                %for bintr, first row is range for intercept, second row is for range of slope
+
+                %if significant slope, then plot the line thicker
+                if 1 >= bintr(2,1) && 1 <= bintr(2,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+                     plot(normVals,laserVals,'g.-','Color',[0 j/numFreqs 0])
+                else
+                    plot(normVals,laserVals,'g.-','LineWidth',2,'Color',[0 j/numFreqs 0])
+                end
+
+                %if intercept is significant change, mark this
+                if 0 >= bintr(1,1) && 0 <= bintr(1,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+                     plot(s.(desigNames{i}).BinDiff(j,1),s.(desigNames{i}).BinDiffLaser(j,1),'o','Color',[0 j/numFreqs 0])
+                else
+                    plot(s.(desigNames{i}).BinDiff(j,1),s.(desigNames{i}).BinDiffLaser(j,1),'o','Color',[0 j/numFreqs 0])
+                end
+                %now see if differences significant
+                for k = 1:numDBs
+                    nlVal = s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesTar - s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesTarBase;
+                    laserVal = s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesTar - s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesTarBase;
+                    testVal = ranksum(nlVal,laserVal);
+                    if testVal < plotThresh
+                        plot(s.(desigNames{i}).BinDiff(j,k),s.(desigNames{i}).BinDiffLaser(j,k),'r*')
+                    end
+                end
+            end
+        end
+        title('Plotting Responses linked by Frequency Value')
+    end
     
-    %Plot binned response during tone period LASER
-    subplot(4,4,7)
-    imagesc(s.(desigNames{i}).BinDiffLaser(:,:,2)',clims)
-    colormap(parula)
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean Binned Response (tone), LASER');
-    
-    clims = [min([min(min(s.(desigNames{i}).BinGen)),min(min(s.(desigNames{i}).BinGenLaser))]),...
-        max([max(max(s.(desigNames{i}).BinGen)),max(max(s.(desigNames{i}).BinGenLaser))])];
-%     %Plot binned response during general period
-%     subplot(4,4,11)
-%     imagesc(s.(desigNames{i}).BinGen',clims)
-%     colormap(parula)
-%     colorbar
-%     set(gca,'XTick',octaveRange(:,2));
-%     set(gca,'XTickLabel',octaveRange(:,1));
-%     set(gca,'YTick',dbRange(:,2));
-%     set(gca,'YTickLabel',dbRange(:,1));
-%     title('Mean Binned Response (general), nL')
-%     
-%     %Plot binned response during general period LASER
-%     subplot(4,4,15)
-%     imagesc(s.(desigNames{i}).BinGenLaser',clims)
-%     colormap(parula)
-%     colorbar
-%     set(gca,'XTick',octaveRange(:,2));
-%     set(gca,'XTickLabel',octaveRange(:,1));
-%     set(gca,'YTick',dbRange(:,2));
-%     set(gca,'YTickLabel',dbRange(:,1));
-%     title('Mean Binned Response (general), LASER')
-%plot out responses by frequency, with x axis being amplitude
+    %plot things linked by amplitude
     subplot(2,4,7)
     hold on
     plotThresh = 0.01; %significance threshold for plotting stars. 
-    maxval = max([max(max(s.(desigNames{i}).BinDiff(:,:,2))),max(max(s.(desigNames{i}).BinDiffLaser(:,:,2)))]);
+    maxval = max([max(max(s.(desigNames{i}).BinDiff(:,:))),max(max(s.(desigNames{i}).BinDiffLaser(:,:)))]);
     plot([0 maxval],[0 maxval],'k','LineWidth',2)
-    for j = 1:numFreqs
+    for j = 1:numDBs
         %first determine if by linear fit there is a change to the slope or
-        %yint. 
-        [b,bintr,bintjm] = gmregress(s.(desigNames{i}).BinDiff(j,:,2),s.(desigNames{i}).BinDiffLaser(j,:,2),sigVal); %b1 is for y intercept, b2 is slope. 
-        %for bintr, first row is range for intercept, second row is for range of slope
-        
-        %if significant slope, then plot the line thicker
-        if 1 >= bintr(2,1) && 1 <= bintr(2,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
-             plot(s.(desigNames{i}).BinDiff(j,:,2),s.(desigNames{i}).BinDiffLaser(j,:,2),'g.-','Color',[0 j/numFreqs 0])
-        else
-            plot(s.(desigNames{i}).BinDiff(j,:,2),s.(desigNames{i}).BinDiffLaser(j,:,2),'g.-','LineWidth',2,'Color',[0 j/numFreqs 0])
-        end
-        
-        %if intercept is significant change, mark this
-        if 0 >= bintr(1,1) && 0 <= bintr(1,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
-             plot(s.(desigNames{i}).BinDiff(j,1,2),s.(desigNames{i}).BinDiffLaser(j,1,2),'o','Color',[0 j/numFreqs 0])
-        else
-            plot(s.(desigNames{i}).BinDiff(j,1,2),s.(desigNames{i}).BinDiffLaser(j,1,2),'o','Color',[0 j/numFreqs 0])
-        end
-        %now see if differences significant
-        for k = 1:numDBs
-            nlVal = s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBin{j, k}.BinnedSpikesToneBase;
-            laserVal = s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBinLaser{j, k}.BinnedSpikesToneBase;
-            testVal = ranksum(nlVal,laserVal);
-            if testVal < plotThresh
-                plot(s.(desigNames{i}).BinDiff(j,k,2),s.(desigNames{i}).BinDiffLaser(j,k,2),'r*')
+        %yint. Only use significant values and positive values
+        sigVals = find(s.(desigNames{i}).BinSigVals(:,j) < sigCutoff);
+        sigValsLaser = find(s.(desigNames{i}).BinSigValsLaser(:,j) < sigCutoff);
+        posVals = find(s.(desigNames{i}).BinDiff(:,j) > 0);
+        posValsLaser = find(s.(desigNames{i}).BinDiffLaser(:,j) > 0);
+        %now find intersect of these!
+        intersectNorm = intersect(sigVals,posVals);
+        intersectLaser = intersect(sigValsLaser,posValsLaser);
+        fullIntersect = intersect(intersectNorm,intersectLaser);
+        if length(fullIntersect) > 3
+            disp('At Least 3 Positive Significant Responses!')
+            %now pull values
+            normVals = s.(desigNames{i}).BinDiff(:,j);
+            laserVals = s.(desigNames{i}).BinDiffLaser(:,j);
+            normVals = normVals(fullIntersect);
+            laserVals = laserVals(fullIntersect);
+            [b,bintr,bintjm] = gmregress(normVals,laserVals,sigCutoff); %b1 is for y intercept, b2 is slope. 
+            %for bintr, first row is range for intercept, second row is for range of slope
+
+            %if significant slope, then plot the line thicker
+            if 1 >= bintr(2,1) && 1 <= bintr(2,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+                 plot(normVals,laserVals,'g.-','Color',[0 j/numDBs 0])
+            else
+                plot(normVals,laserVals,'g.-','LineWidth',2,'Color',[0 j/numDBs 0])
+            end
+
+            %if intercept is significant change, mark this
+            if 0 >= bintr(1,1) && 0 <= bintr(1,2) %this is the case in which 1 falls within the confidence bounds, indicating insignificant change in slope
+                 plot(normVals,laserVals,'o','Color',[0 j/numDBs 0])
+            else
+                plot(normVals,laserVals,'o','Color',[0 j/numDBs 0])
+            end
+            %now see if differences significant
+            for k = 1:numFreqs
+                nlVal = s.(desigNames{i}).LatPeakBin{k,j}.BinnedSpikesTar - s.(desigNames{i}).LatPeakBin{k,j}.BinnedSpikesTarBase;
+                laserVal = s.(desigNames{i}).LatPeakBinLaser{k,j}.BinnedSpikesTar - s.(desigNames{i}).LatPeakBinLaser{k,j}.BinnedSpikesTarBase;
+                testVal = signrank(nlVal,laserVal);
+                if testVal < plotThresh
+                    plot(s.(desigNames{i}).BinDiff(k,j),s.(desigNames{i}).BinDiffLaser(k,j),'r*')
+                end
             end
         end
     end
-
+    title('Plotting Responses linked by DB Level')
     % Column 4
-
-%     %plot out binned spikes (fast)
-%     subplot(4,4,4)
-%     hold on
-%     for cInd = 1:numDBs
-%         plot(s.(desigNames{i}).BinDiff(:,cInd,1),'Color',[cInd/numDBs 0 0])
-%         %find significant points, by p < 0.05
-%         findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.05);
-%         plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,1),'r*')
-%         %find significant points, by p < 0.01
-%         findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,1)<0.01);
-%         plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,1),'ro')
-%         %now plot laser related. 
-%         plot(s.(desigNames{i}).BinDiffLaser(:,cInd,1),'Color',[0 cInd/numDBs 0])
-%         %find significant points, by p < 0.05
-%         findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd,1)<0.05);
-%         plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd,1),'g*')
-%         %find significant points, by p < 0.01
-%         findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd,1)<0.01);
-%         plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd,1),'go')
-%     end
-%     set(gca,'XTick',octaveRange(:,2));
-%     set(gca,'XTickLabel',octaveRange(:,1));
-%     ylabel('Binned Spikes/Fast Period')
-%     title(strcat('Curve Fast Period, nl width:',num2str(s.NonLaserOverall.PosWidths(3,i,1)),',laser width:',num2str(s.LaserOverall.PosWidths(3,i,1))))
     subplot(4,4,4)
     hold on
     for j = 1:numFreqs
-        plot((s.(desigNames{i}).BinDiffLaser(j,:,2)-s.(desigNames{i}).BinDiff(j,:,2)),'LineWidth',2,'Color',[j/numFreqs 0 0])
+        plot((s.(desigNames{i}).BinDiffLaser(j,:)-s.(desigNames{i}).BinDiff(j,:)),'LineWidth',2,'Color',[j/numFreqs 0 0])
     end
     %plot out binned spikes (tone)
     subplot(4,4,8)
     hold on
     for cInd = 1:numDBs
-        plot(s.(desigNames{i}).BinDiff(:,cInd,2),'Color',[cInd/numDBs 0 0])
+        plot(s.(desigNames{i}).BinDiff(:,cInd),'Color',[cInd/numDBs 0 0])
         %find significant points, by p < 0.05
-        findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,2)<0.05);
-        plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,2),'r*')
+        findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd)<0.05);
+        plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd),'k*')
         %find significant points, by p < 0.01
-        findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd,2)<0.01);
-        plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd,2),'ro')
+        findSigs = find(s.(desigNames{i}).BinSigVals(:,cInd)<0.01);
+        plot(findSigs,s.(desigNames{i}).BinDiff(findSigs,cInd),'ko')
         %now plot laser related. 
-        plot(s.(desigNames{i}).BinDiffLaser(:,cInd,2),'Color',[0 cInd/numDBs 0])
+        plot(s.(desigNames{i}).BinDiffLaser(:,cInd),'Color',[0 cInd/numDBs 0])
         %find significant points, by p < 0.05
-        findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd,2)<0.05);
-        plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd,2),'g*')
+        findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd)<0.05);
+        plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd),'g*')
         %find significant points, by p < 0.01
-        findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd,2)<0.01);
-        plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd,2),'go')
+        findSigs = find(s.(desigNames{i}).BinSigValsLaser(:,cInd)<0.01);
+        plot(findSigs,s.(desigNames{i}).BinDiffLaser(findSigs,cInd),'go')
     end
     set(gca,'XTick',octaveRange(:,2));
     set(gca,'XTickLabel',octaveRange(:,1));
-    ylabel('Binned Spikes/Fast Period')
-    title(strcat('Curve Tone Period, nl width:',num2str(s.NonLaserOverall.PosWidths(3,i,2)),',laser width:',num2str(s.LaserOverall.PosWidths(3,i,2))))
+    ylabel('Binned Spikes/Target Period')
+    title(strcat('nl width:',num2str(s.NonLaserOverall.PosWidths(end,i,1)),',laser width:',num2str(s.LaserOverall.PosWidths(end,i,1))))
     
-    %plot out binned responses to general period, non laser vs laser
+    %plot out binned responses to target period, non laser vs laser
     subplot(4,4,12)
     hold on
-    plot(reshape(s.(desigNames{i}).BinDiff(:,:,3),[],1),reshape(s.(desigNames{i}).BinDiffLaser(:,:,3),[],1),'r.')
-    plot([0 max(max(s.(desigNames{i}).BinDiffLaser(:,:,3)))],[0 max(max(s.(desigNames{i}).BinDiffLaser(:,:,3)))],'k')
+    plot(reshape(s.(desigNames{i}).BinDiff(:,:),[],1),reshape(s.(desigNames{i}).BinDiffLaser(:,:),[],1),'r.')
+    plot([0 max(max(s.(desigNames{i}).BinDiffLaser(:,:)))],[0 max(max(s.(desigNames{i}).BinDiffLaser(:,:)))],'k')
     %now plot regression line?
     if ~isnan(s.(desigNames{i}).RegVals(1)) & ~isnan(s.(desigNames{i}).RegVals(2))
-        plot([0 max(max(s.(desigNames{i}).BinDiffLaser(:,:,3)))],[s.(desigNames{i}).RegVals(1) max(max(s.(desigNames{i}).BinDiffLaser(:,:,3)))*s.(desigNames{i}).RegVals(2)],'c')
+        plot([0 max(max(s.(desigNames{i}).BinDiffLaser(:,:)))],[s.(desigNames{i}).RegVals(1) max(max(s.(desigNames{i}).BinDiffLaser(:,:)))*s.(desigNames{i}).RegVals(2)],'c')
         if s.(desigNames{i}).RegValSig(1,1) > 0
             plot(0,s.(desigNames{i}).RegVals(1),'c*')
         elseif s.(desigNames{i}).RegValSig(1,2) < 0
@@ -1355,31 +1295,17 @@ for i = 1:numUnits
     elseif s.(desigNames{i}).RegValSig(2,2) <1
         title('Bin Tone nl(x) vs lsr(y) Sig Neg Slope')
     end
-%     title('normal (x) vs Laser (y)')
     axis equal
-%     %plot rasters to laser
-%     subplot(4,4,12)
-%     hold on
-%     plot(s.(desigNames{i}).LaserRasters(:,1),...
-%         s.(desigNames{i}).LaserRasters(:,2),'k.','markersize',4)
-%     xlim(s.Parameters.LaserWindow)
-%     ylim([0 trialNumLaser])
-%     title('Raster Aligned to Laser Onset')
-    
-%     %plot histogram to laser onset.
-%     subplot(4,4,16)
-%     plot(laserBinVect,s.(desigNames{i}).LaserHist)
-%     xlim(s.Parameters.LaserWindow)
-%     title('Histogram Aligned to Laser Onset')
+
     
     subplot(4,4,16)
     hold on
     newWin = [-0.02 0.04];
     newVector = [newWin(1):0.0005:newWin(2)];
     testRast = s.(desigNames{i}).AllRasters(s.(desigNames{i}).AllRasters >= newWin(1) & s.(desigNames{i}).AllRasters <= newWin(2) ,1);
-    plot(newVector,smooth(hist(testRast,newVector),3),'r')
+    plot(newVector,smooth(hist(testRast,newVector),3),'k')
     testRast = s.(desigNames{i}).AllRastersLaser(s.(desigNames{i}).AllRastersLaser >= newWin(1) & s.(desigNames{i}).AllRastersLaser <= newWin(2) ,1);
-    plot(newVector,smooth(hist(testRast,newVector),3),'b')
+    plot(newVector,smooth(hist(testRast,newVector),3),'g')
     xlim(newWin)
     title('Plot of Latency')
     
