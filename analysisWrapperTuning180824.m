@@ -3,7 +3,7 @@
 %information about the population. 
 
 
-%identify files, pull names, set up for loop for extraction
+%% identify files, pull names, set up for loop for extraction
 
 clear
 targets = what;
@@ -40,6 +40,9 @@ for i = 1:numFiles
     tempHist = [];
     dbStore = [];
     freqStore = [];
+    %generate a finder for non-white noise tones
+    toneFinder = find(s.SoundData.Frequencies ~= 0);
+    toneFinder(toneFinder > length(s.SoundData.ToneTimes)) = [];
     if numDBs == 5
         %pull from masterData, store in overall. 
         bigMaster(bigMasterInd:bigMasterInd + numUnits - 1,:) = masterData;
@@ -55,6 +58,7 @@ for i = 1:numFiles
         numCells = length(s.DesignationName);
         desigName = s.DesignationName;
         for j = 1:numCells
+            disp('New Unit')
             %pull up cell average waveforms
             cellWaves = s.(desigName{j}).AverageWaveForms;
             %now pull up which one is biggest
@@ -99,7 +103,10 @@ for i = 1:numFiles
             else
                 tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
             end
-
+        disp('About to do fine histogram')
+        %generate a finer scale histogram across all tones
+        tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.SoundData.ToneTimes(toneFinder),[-0.2 0.4]);
+        fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:0.0005:0.4]);
         end
         pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
         interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
@@ -123,6 +130,8 @@ for i = 1:numFiles
         %store BFs
         bfStore(bigMasterInd:bigMasterInd + numUnits - 1) = masterData(:,12);
         bigMasterInd = bigMasterInd + numUnits;
+        
+        
     elseif numDBs > 5
         %pull from masterData, store in overall. 
         bigMaster(bigMasterInd:bigMasterInd + numUnits - 1,:) = masterData;
@@ -139,6 +148,7 @@ for i = 1:numFiles
         desigName = s.DesignationName;
         
         for j = 1:numCells
+            disp('New Unit, > 6DB steps')
             %pull up cell average waveforms
             cellWaves = s.(desigName{j}).AverageWaveForms;
             %now pull up which one is biggest
@@ -183,7 +193,12 @@ for i = 1:numFiles
             else
                 tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
             end
+            disp('About to do fine histogram')
+            %generate a finer scale histogram across all tones
+            tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.SoundData.ToneTimes(toneFinder),[-0.2 0.4]);
+            fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:0.0005:0.4]);
         end
+        disp('Finished going through individual cells')
         pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
         interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
         binValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempBinStore;
@@ -218,7 +233,7 @@ for i = 1:numFiles
 end
 
 
-
+%% Find cell types
 %now plot things!
 [indCellType] = functionCellStringFind(masterHeader,'CellType');
 
@@ -233,13 +248,14 @@ findCHATs = find(bigMaster(:,indCellType) == 2);
 
 findPVs = find(bigMaster(:,5) < 0.0004);
 findMSNs = find(bigMaster(:,5) > 0.0005);
-
+%% Pull tuning widths
 %pull widths
 pvWidths = widthStore(:,findPVs,:);
 msnWidths = widthStore(:,findMSNs,:);
 firstWidthMSN = msnWidths(:,:,2);
 firstWidthPV = pvWidths(:,:,2);
 
+%% STORE INFO FOR MSNS
 %now we need to go through systematically. Store values like threshold
 %value, width 10 dB above threshold, shape of response (monotonic
 %increasing?)
@@ -305,7 +321,7 @@ for i = 1:length(firstWidthMSN)
         end
     end
 end
-
+%% STORE INFO FOR PVs
 %do the same for PVs
 infoStorePV = zeros(length(firstWidthPV),6);
 for i = 1:length(firstWidthPV)
@@ -367,7 +383,7 @@ for i = 1:length(firstWidthPV)
         end
     end
 end
-
+%% SAVE COMBINED DATA
 condensedMSN = infoStoreMSN(infoStoreMSN(:,5) == 1,:);
 
 condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
@@ -384,9 +400,7 @@ condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
 %16, or 80. 
 widthHistVect = [0:1:40];
 
-%% NOW LETS DO PLOTTING
-
-%% first figure, looking at broad general things, like numbers of cells and firing rates
+%% first figure, OVERVIEW OF FIRING RATES AND PEAK TROUGH, RESPONSE TYPES ETC
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -549,59 +563,21 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-
-%lets try plotting out binned responses
-% hFig = figure;
-% set(hFig, 'Position', [10 80 1900 1000])
-% subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
-% for i = 1:200
-%     subplot(10,20,i)
-%     imagesc(binValBigStore(:,:,i)')
-%     colormap('parula')
-%     set(gca,'YTick',[]);
-%     set(gca,'XTick',[]);
-%     set(gca,'Ydir','reverse')
-% end
-% 
-% %plot without white noise responses
-% hFig = figure;
-% set(hFig, 'Position', [10 80 1900 1000])
-% subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
-% for i = 1:length(findMSNs)
-%     subplot(15,20,i)
-%     imagesc(binValBigStore(2:end,:,i)')
-%     colormap('parula')
-%     set(gca,'YTick',[]);
-%     set(gca,'XTick',[]);
-%     set(gca,'Ydir','reverse')
-% end
-
-
+%% Generate tuning curves that are step functions based on significance.
 %how lets look at sigValBigStore
 sigValConv = sigValBigStore;
 sigValConv(sigValConv <= 0.001) = 4;
 sigValConv(sigValConv <= 0.01) = 3;
 sigValConv(sigValConv <= 0.05) = 2;
 sigValConv(sigValConv <= 1) = 1;
-% 
-% hFig = figure;
-% set(hFig, 'Position', [10 80 1900 1000])
-% subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
-% for i = 1:length(findMSNs)
-%     subplot(15,20,i)
-%     imagesc(sigValConv(2:end,:,i)')
-%     colormap('parula')
-%     set(gca,'YTick',[]);
-%     set(gca,'XTick',[]);
-%     set(gca,'Ydir','reverse')
-% end
+
 
 clims = [1 3];
 
-%% Plot out tuning curves without white noise
+%% Plot out tuning curves without white noise, actual values and step function significance
 %just do PVs
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -622,7 +598,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -642,7 +618,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %and just MSNs
 hFig = figure;
@@ -664,7 +640,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -685,7 +661,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 % based on this, it seems like there is something of a difference between
 % FSIs and MSNs
@@ -745,7 +721,7 @@ for i = 1:length(findMSNs)
 end
 
 
-%% now lets look at latency
+%% now lets select for units with a minimum width of 3 at the tone window.
 %180905 new attempt. Will threshold by units that respond to at least two
 %things during tone period significantly. 
 tester = max(widthStore(:,:,2));%###########
@@ -767,7 +743,7 @@ latConvWhite = latConv(1,:,:);
 latConvTone = latConv(2:end,:,:);
 latConvWidthTone = widthLatConv(2:end,:,:);
 
-%now lets extract targeted latencies. 
+%now lets extract targeted latencies. THIS IS FOR BIGGEST RESPONSE
 for i = 1:length(tarCells);
     tempLat = latConvTone(:,:,tarCells(i));
     tarLats(i) = tempLat(bigMaxStore(tarCells(i)));
@@ -815,14 +791,65 @@ errorbar(1:2,[nanmean(tarLats(tarPVs)),nanmean(tarLats(tarMSNs))],[nanstd(tarLat
 % xticks([1:4])
 % xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
 
-spikeGraphName = 'latencyPlotSelected';
+spikeGraphName = 'width3BigRespLat';
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%lets look at just 70dB
+
+minLatWhitePV = squeeze((latConvWhite(:,5,tarCells(tarPVs))));
+minLatWhiteMSN = squeeze((latConvWhite(:,5,tarCells(tarMSNs))));
+minLatTonePV = squeeze((min(latConvTone(:,5,tarCells(tarPVs)))));
+minLatToneMSN = squeeze((min(latConvTone(:,5,tarCells(tarMSNs)))));
+
+latHistVect = [0:0.001:0.1];
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+subplot(3,2,1)
+hist(minLatWhitePV,latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(find(~isnan(tarPVs)))), ' FSI Min Latency White Noise'))
+
+subplot(3,2,2)
+hist(minLatTonePV,latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(find(~isnan(tarPVs)))),' FSI Min Latency Pure Tone'))
+% title('FSI Min Latency Pure Tone')
+
+subplot(3,2,3)
+hist(minLatWhiteMSN,latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(find(~isnan(tarMSNs)))),' MSN Min Latency White Noise'))
+% title('MSN Min Latency White Noise')
+
+subplot(3,2,4)
+hist(minLatToneMSN,latHistVect)
+xlim([latHistVect(1) latHistVect(end)])
+title(strcat(num2str(length(find(~isnan(tarMSNs)))),' MSN Min Latency Pure Tone'))
+% title('MSN Min Latency Pure Tone')
+
+subplot(3,1,3)
+hold on
+bar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],'w')
+errorbar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],[nanstd(minLatWhitePV),nanstd(minLatWhiteMSN),nanstd(minLatTonePV),nanstd(minLatToneMSN)])
+% xticks([1:4])
+% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+
+spikeGraphName = 'width3MinLat';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %the results of this demonstrate that there is a weak difference in latency
 %that is insignificant. Looking at histograms, looks like this might be in
@@ -830,8 +857,9 @@ print(hFig,spikeGraphName,'-djpeg','-r0')
 
 %lets try and look on a recording by recording basis
 tarRec = recStore(tarCells)';
-tarRec(:,2) = 0;
+tarRec(:,2) = NaN;
 tarRec(tarPVs,2) = 1;
+tarRec(tarMSNs,2) = 0;
 tarRec(:,3) = 0;
 %check to see if specific recording has both PVs and MSNs
 for i = 1:numFiles
@@ -845,16 +873,178 @@ for i = 1:numFiles
 end
 
 tarRec(:,4) = tarLats;
-
-figure
-hold on
-plot(mean(bigHistStore(:,tarCells(tarPVs))'))
-plot(mean(bigHistStore(:,tarCells(tarMSNs))'),'r')
-
+tester = [-.2:0.0005:0.4];
 %Doesnt look like a per-recording analysis will pull out anything different
 %really. 
 
+%now lets just plot the responses overall of different unit types
+%lets z score everything first
+tarHists = fineHist(tarCells,:);
+for i = 1:length(tarCells)
+    %extract std and mean from baseline
+    meanVal = mean(tarHists(i,1:401));
+    stdVal = std(tarHists(i,1:401));
+    zHists(i,:) = (tarHists(i,:) - meanVal)/stdVal;
+end
 
+hFig = figure;
+hold on
+plot([-.2:0.0005:0.4],mean(zHists((tarPVs),:))-mean(zHists((tarPVs),401)))
+plot([-.2:0.0005:0.4],mean(zHists((tarMSNs),:))-mean(zHists((tarMSNs),401)),'r')
+spikeGraphName = 'width3AverageZPlotsMSNrFSIb';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+hFig = figure;
+hold on
+plot([-.2:0.0005:0.4],mean(zHists((tarPVs),:))-mean(zHists((tarPVs),401)))
+plot([-.2:0.0005:0.4],mean(zHists((tarMSNs),:))-mean(zHists((tarMSNs),401)),'r')
+xlim([-0.02 0.05])
+spikeGraphName = 'width3AverageZPlotsMSNrFSIbZOOM';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+hFig = figure;
+hold on
+for i = 1:length(tarPVs)
+    plot([-.2:0.0005:0.4],zHists((tarPVs(i)),:),'r')
+end
+for i = 1:length(tarMSNs)
+    plot([-.2:0.0005:0.4],zHists((tarMSNs(i)),:),'k')
+end
+xlim([0 0.02])
+spikeGraphName = 'width3PVMSNzOverallPlotIndiv';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%now lets try and plot out width, threshold, 
+
+%first do PVs. 
+threshStorePV = [];
+for i = 1:length(tarPVs)
+    tester = sigValConv(2:end,:,tarCells(tarPVs(i)));
+    condTester = max(tester);
+    %find first value == 3
+    testFind = find(condTester >= 3,1,'first');
+    threshStorePV(i) = testFind;
+end
+
+%now do MSNs
+threshStoreMSN = [];
+for i = 1:length(tarMSNs)
+    tester = sigValConv(2:end,:,tarCells(tarMSNs(i)));
+    condTester = max(tester);
+    %find first value == 3
+    testFind = find(condTester >= 3,1,'first');
+    threshStoreMSN(i) = testFind;
+end
+%to access width data, need to get correct indices
+
+[C pvIndex b] = intersect(findPVs,tarCells(tarPVs));
+[C msnsIndex b] = intersect(findMSNs,tarCells(tarMSNs));
+
+%set ylimits for plots
+
+ylimThresh = [0 15];
+ylimWidth = [0 8];
+%plot this out. 
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
+set(hFig, 'Position', [10 80 1900 1000])
+subplot(2,2,1)
+hist(threshStorePV,[1:1:5])
+xlim([0.5 5.5])
+ylim(ylimThresh)
+ylabel('Number of Cells')
+xlabel('Amplitude of Threshold Response (dB)')
+set(gca,'XTickLabel',{'<=20','30','40','60','70'});
+title(strcat('Amplitude Threshold (FSIs) Mean:',num2str(mean(threshStorePV)),'pval',num2str(ranksum(threshStorePV,threshStoreMSN))))
+
+subplot(2,2,2)
+hist(threshStoreMSN,[1:1:5])
+xlim([0.5 5.5])
+title(strcat('Amplitude Threshold (MSNs) Mean:',num2str(mean(threshStoreMSN))))
+ylabel('Number of Cells')
+xlabel('Amplitude of Threshold Response (dB)')
+set(gca,'XTickLabel',{'<=20','30','40','60','70'});
+ylim(ylimThresh)
+
+subplot(2,2,3)
+hist(firstWidthPV(5,pvIndex),[1:1:16])
+xlim([0.5 16.5])
+ylim(ylimWidth)
+ylabel('Number of Cells')
+xlabel('Tuning Curve Width (0.2 octaves)')
+title(strcat('Tuning Width (FSIs) Mean:',num2str(mean(firstWidthPV(5,pvIndex))),'pval',num2str(ranksum(firstWidthPV(5,pvIndex),firstWidthMSN(5,msnsIndex)))))
+% title('Tuning Width (FSIs)')
+
+subplot(2,2,4)
+hist(firstWidthMSN(5,msnsIndex),[1:1:16])
+xlim([0.5 16.5])
+ylim(ylimWidth)
+ylabel('Number of Cells')
+xlabel('Tuning Curve Width (0.2 octaves)')
+title(strcat('Tuning Width (MSNs) Mean:',num2str(mean(firstWidthMSN(5,msnsIndex)))))
+
+spikeGraphName = 'width3IntensityThreshAndWidth';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%plot out BFs
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
+set(hFig, 'Position', [10 80 1900 1000])
+subplot(2,1,1)
+hist(bfStore(tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000])
+set(gca,'xscale','log')
+xlim([4000 32000])
+ylabel('Number of Cells')
+xlabel('Best Frequency (Hz)')
+% set(gca,'XTickLabel',{'<=20','30','40','60','70'});
+title('BFs (FSIs)')
+
+subplot(2,1,2)
+hist(bfStore(tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000])
+set(gca,'xscale','log')
+xlim([4000 32000])
+ylabel('Number of Cells')
+xlabel('Best Frequency (Hz)')
+% set(gca,'XTickLabel',{'<=20','30','40','60','70'});
+title('BFs (MSNs)')
+
+
+spikeGraphName = 'width3BFPlot';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%% Now lets just look at all MSNs and PVs. 
 minLatWhitePV = squeeze(min(latConvWhite(:,:,findPVs)));
 minLatWhiteMSN = squeeze(min(latConvWhite(:,:,findMSNs)));
 minLatTonePV = squeeze(min(min(latConvTone(:,:,findPVs))));
@@ -907,7 +1097,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %plot using latencies from width finder. 
 hFig = figure;
@@ -950,7 +1140,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 %based on this, there clearly is some failure of width based latency
 %calculations. 
 
@@ -1004,7 +1194,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
@@ -1062,7 +1252,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -1082,7 +1272,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %and just MSNs
 hFig = figure;
@@ -1104,7 +1294,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -1125,7 +1315,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
@@ -1195,10 +1385,82 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 ranksum(threshStorePV,threshStoreMSN)
 ranksum(firstWidthPV(5,pvTarget),firstWidthMSN(5,msnTarget))
+
+%plot out BFs
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
+set(hFig, 'Position', [10 80 1900 1000])
+subplot(2,1,1)
+hist(bfStore(findPVs(pvTarget)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000])
+set(gca,'xscale','log')
+xlim([4000 32000])
+ylim([0 5])
+ylabel('Number of Cells')
+xlabel('Best Frequency (Hz)')
+% set(gca,'XTickLabel',{'<=20','30','40','60','70'});
+title('BFs (FSIs)')
+
+subplot(2,1,2)
+hist(bfStore(findMSNs(msnTarget)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000])
+set(gca,'xscale','log')
+xlim([4000 32000])
+ylabel('Number of Cells')
+xlabel('Best Frequency (Hz)')
+% set(gca,'XTickLabel',{'<=20','30','40','60','70'});
+title('BFs (MSNs)')
+
+
+spikeGraphName = 'selectedUnitBFs';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+% Now plot out latencies?
+
+% minLatWhitePV = squeeze(min(latConvWhite(:,:,findPVs)));
+% minLatWhiteMSN = squeeze(min(latConvWhite(:,:,findMSNs)));
+minLatTonePV = squeeze(min(min(latConvTone(:,:,findPVs(pvTarget)))));
+minLatToneMSN = squeeze(min(min(latConvTone(:,:,findMSNs(msnTarget)))));
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
+set(hFig, 'Position', [10 80 1900 1000])
+subplot(2,1,1)
+hist(minLatTonePV,[0:0.001:0.1])
+% set(gca,'xscale','log')
+xlim([0 0.1])
+ylim([0 3])
+ylabel('Number of Cells')
+xlabel('fastestToneLatency (s)')
+% set(gca,'XTickLabel',{'<=20','30','40','60','70'});
+title('latency (FSIs)')
+
+subplot(2,1,2)
+hist(minLatToneMSN,[0:0.001:0.1])
+% set(gca,'xscale','log')
+xlim([0 0.1])
+ylabel('Number of Cells')
+xlabel('fastestToneLatency (s)')
+% set(gca,'XTickLabel',{'<=20','30','40','60','70'});
+title('latency (MSNs)')
+
+
+spikeGraphName = 'selectedUnitsLatencyTone';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %plot for everything. 
 %first do PVs. 
@@ -1273,7 +1535,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 ranksum(threshStorePV,threshStoreMSN)
 ranksum(firstWidthPV(5,pvTarget),firstWidthMSN(5,msnTarget))
@@ -1391,7 +1653,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 ranksum(threshStorePV,threshStoreMSN)
 ranksum(firstWidthPV(5,sigPVs),firstWidthMSN(5,sigMSNs))
@@ -1450,7 +1712,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 nanmean(minmin5ValPV)
 nanmean(minmin5ValMSN)
@@ -1501,7 +1763,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
@@ -1588,7 +1850,7 @@ savefig(hFig,spikeGraphName);
 set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
