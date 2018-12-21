@@ -198,6 +198,13 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
+hFig = figure;
+set(hFig, 'Position', [10 80 500 1000])
+hold on
+for i = 1:length(msns)
+    plot(baseMin(msns(i)),baseMinLaser(msns(i)),'k.')
+end
+
 
 %plot out modulations
 
@@ -366,6 +373,25 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-djpeg','-r0')
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
+%plot out change in histogram form
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+set(hFig, 'Position', [10 80 1000 1000])
+% subplot(2,1,1)
+hist(spikeRespMeanStore(msns,2) - spikeRespMeanStore(msns,1))
+xlim([-0.6 0.6])
+pbaspect([1,1,1])
+spikeGraphName = 'PV NpHR Effects Spike Histogram Of Difference';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
 %plot out changes in size of response as well as response width. ONLY PLOT
 %WIDTH CHANGE FOR 70DB
 hFig = figure;
@@ -428,6 +454,24 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-djpeg','-r0')
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%plot histogram of changes to tuning width
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+hist(fullMaster(msns,11)-fullMaster(msns,10),[-5:1:5])
+xlabel('Change in Tuning Width at 70dB')
+ylabel('Number of Units')
+spikeGraphName = 'msnTuningWidthHistogram';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-djpeg','-r0')
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
 
 %lets look at the average change in width at different amplitude levels. I
 %want to look at this both as a ratio and as an absolute difference
