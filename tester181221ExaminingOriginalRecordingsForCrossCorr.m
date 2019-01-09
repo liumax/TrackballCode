@@ -60,7 +60,11 @@ for i = 1:numFiles
                 
 %                 hist(rasters(:,1),rasterVector)
                 plot([0 0],[0 max(histStore)],'r')
-                ylim([0 max(histStore)])
+                if max(histStore) < 1
+                    ylim([0 1])
+                else
+                    ylim([0 max(histStore)])
+                end
                 xlim([-0.01 0.01])
                 set(gca,'xtick',[])
                 if ismember(k,findMSNs)
