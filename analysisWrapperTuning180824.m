@@ -1043,6 +1043,63 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
+%now lets plot out width by threshold amplitude.
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
+set(hFig, 'Position', [80 80 1900 1000])
+for i = 1:5
+    subplot(2,5,i)
+    %find PVs with threshold of a target value
+    finder = find(threshStorePV == i);
+    if finder
+        hist(firstWidthPV(5,pvIndex(finder)),[1:1:16])
+        testVal = mean(firstWidthPV(5,pvIndex(finder)));
+        title(strcat('FSI Width for Amp Level',num2str(i),'Mean',num2str(testVal)))
+    end
+    subplot(2,5,i+5)
+    %find MSNs with threshold of a target value
+    finder = find(threshStoreMSN == i);
+    if finder
+        hist(firstWidthMSN(5,msnsIndex(finder)),[1:1:16])
+        testVal = mean(firstWidthMSN(5,msnsIndex(finder)));
+        title(strcat('MSN Width for Amp Level',num2str(i),'Mean',num2str(testVal)))
+    end
+end
+
+spikeGraphName = 'width3PlotWidthBasedOnThreshAmp';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%now lets plot BF vs width.
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
+set(hFig, 'Position', [80 80 1900 1000])
+subplot(2,1,1)
+plot(bfStore(tarCells(tarPVs)),firstWidthPV(5,pvIndex),'k.')
+xlabel('BF')
+ylabel('Tuning Width')
+title('FSI Width vs BF')
+subplot(2,1,2)
+plot(bfStore(tarCells(tarMSNs)),firstWidthMSN(5,msnsIndex),'k.')
+xlabel('BF')
+ylabel('Tuning Width')
+title('MSN Width vs BF')
+
+spikeGraphName = 'width3PlotBFvsWidth';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
 
 %% Now lets just look at all MSNs and PVs. 
 minLatWhitePV = squeeze(min(latConvWhite(:,:,findPVs)));
@@ -1841,7 +1898,6 @@ hist(BFmsn,calibChart(:,1))
 set(gca,'xscale','log') 
 xlim([4000 32000])
 title('Best Frequencies MSN')
-
 
 spikeGraphName = 'histOfBFsPVMSN';
 savefig(hFig,spikeGraphName);
