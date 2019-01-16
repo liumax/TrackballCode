@@ -230,7 +230,8 @@ disp('Rotary Encoder Data Extracted')
 %% Now I need to load the spr file. 
 
 load(sprFile)
-
+%store stimulus
+s.SoundData.Stimulus = stimulus;
 %figure out octave labels
 octaveNum = log(s.Parameters.MaxFreq / s.Parameters.MinFreq)/log(2);
 numSteps = size(stimulus,1);
@@ -279,9 +280,12 @@ for i = 1:numUnits
             indivStore(:,:,k) = takeChunk;
         end
         avStore(:,:,i,j) = mean(indivStore,3);
+        
 %         bigStore{j} = indivStore;
     end
+    s.(desigNames{i}).IndivAverages = avStore(:,:,i,:);
     bigAvStore(:,:,i) = mean(squeeze(avStore(:,:,i,:)),3);
+    s.(desigNames{i}).FullAverage = mean(squeeze(avStore(:,:,i,:)),3);
 end
 
 
@@ -314,6 +318,19 @@ for i = 1:numUnits
     else
         title('Vel & Firing Rate')
     end
+    
+    %plot individual responses
+    subplot(4,3,4)
+    imagesc(squeeze(avStore(:,:,i,1)))
+    title('First Presentation')
+    
+    subplot(4,3,5)
+    imagesc(squeeze(avStore(:,:,i,2)))
+    title('First Presentation')
+    
+    subplot(4,3,6)
+    imagesc(squeeze(avStore(:,:,i,2)))
+    title('First Presentation')
 
     subplot(2,2,3)
     imagesc(bigAvStore(:,:,i))
