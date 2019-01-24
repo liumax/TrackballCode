@@ -4,7 +4,7 @@
 targets = what;
 targetFiles = targets.mat;
 
-masterIndex = strfind(targetFiles,'ML');
+masterIndex = strfind(targetFiles,'Analysis');
 masterIndex = find(not(cellfun('isempty', masterIndex)));
 targetFiles = targetFiles(masterIndex);
 
