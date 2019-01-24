@@ -98,13 +98,19 @@ for i = 1:numFiles
         
         %now pull binned spike values from both laser and non-laser
         fullBin{fullCounter} = [s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin),s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin)];
+        
         %now do some calculations
         binDiffs = (s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin) - s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin)).*testMask;
-        laserNonZero = s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin).*testMask;
+        laserNonZero = reshape(s.(s.DesignationName{keepList(j)}).BinDiffLaser(:,:,tarWin).*testMask,1,[]);
+        baseNonZero = reshape(s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin).*testMask,1,[]);
+        %test for significance before removing zero values. 
+        binValSignRank(fullCounter) = signrank(baseNonZero,laserNonZero);
+        
         laserNonZero(laserNonZero==0) = [];
-        baseNonZero = s.(s.DesignationName{keepList(j)}).BinDiff(:,:,tarWin).*testMask;
         baseNonZero(baseNonZero==0) = [];
-%         baseNonZero
+        
+        
+        
         spikeRespStore{fullCounter} = [baseNonZero,laserNonZero];
         spikeRespMeanStore(fullCounter,:) = [mean(baseNonZero),mean(laserNonZero)];
         %also try and pull a modulation index of response
@@ -509,12 +515,13 @@ plot(widthDiff')
 
 
 %plot out tuning curves for MSNs
+subNum = ceil(sqrt(length(msns)));
 hFig = figure;
 ampLevel = 1;
 set(hFig, 'Position', [10 80 1000 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(msns)
-    subplot(10,10,i)
+    subplot(subNum,subNum,i)
     hold on
     plot([1 length(curveStore{msns(i)})-1],[0 0],'k')
     plot(curveStore{msns(i)}(2:end,ampLevel),'r')
@@ -529,7 +536,7 @@ ampLevel = 2;
 set(hFig, 'Position', [10 80 1000 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(msns)
-    subplot(10,10,i)
+    subplot(subNum,subNum,i)
     hold on
     plot([1 length(curveStore{msns(i)})-1],[0 0],'k')
     plot(curveStore{msns(i)}(2:end,ampLevel),'r')
@@ -544,7 +551,7 @@ ampLevel = 3;
 set(hFig, 'Position', [10 80 1000 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(msns)
-    subplot(10,10,i)
+    subplot(subNum,subNum,i)
     hold on
     plot([1 length(curveStore{msns(i)})-1],[0 0],'k')
     plot(curveStore{msns(i)}(2:end,ampLevel),'r')
