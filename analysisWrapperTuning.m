@@ -1100,6 +1100,25 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
+%now lets plot BF vs width with points overlaid
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
+set(hFig, 'Position', [80 80 1900 1000])
+plot(bfStore(tarCells(tarPVs)),firstWidthPV(5,pvIndex),'ro')
+hold on
+plot(bfStore(tarCells(tarMSNs)),firstWidthMSN(5,msnsIndex),'k.')
+xlabel('BF')
+ylabel('Tuning Width')
+title('FSI (r) or MSN (k) Width vs BF')
+spikeGraphName = 'width3PlotBFvsWidthOverlay';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
 
 %% Now lets just look at all MSNs and PVs. 
 minLatWhitePV = squeeze(min(latConvWhite(:,:,findPVs)));
