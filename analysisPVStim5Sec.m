@@ -214,6 +214,34 @@ disp('Starting Spike Processing')
 for i = 1:numUnits  
     disp(strcat('Processing',desigNames{i}))
     tempInd = masterInd;%need to have this or masterInd will creep up with each for loop iteration.
+    
+    waveForms = s.(desigNames{i}).AverageWaveForms;
+    %find size of waveforms
+    waveSize = size(waveForms);
+
+    %find maximum waveform by max peak size
+    maxWave = max(waveForms);
+    [maxVal maxInd] = max(maxWave);
+
+    %chose the big wave, interpolate to fine degree
+    chosenWave = waveForms(:,maxInd);
+    interpVect = [1:0.1:40];
+    interpWave = interp1(1:40,chosenWave,interpVect,'spline');
+
+    %now we need to find the peak. Find this starting at point 10. 
+    [pkVal pkInd] = max(interpWave(100:end));
+    pkInd = pkInd + 100 - 1;
+    
+    %now lets find the full width half max
+    halfMaxVal = maxVal/2;
+    %find point before.
+    [firstVal firstInd] = find(interpWave(100:pkInd)>=halfMaxVal,1,'first');
+    firstInd = firstInd + 100 - 1;
+    %find the point after
+    [secondVal secondInd] = find(interpWave(pkInd:end)<=halfMaxVal,1,'first');
+    secondInd = secondInd + pkInd - 1;
+    master(i,tempInd) = (secondInd - firstInd)/300000; masterHeader{tempInd} = 'FWHM'; tempInd = tempInd + 1;
+    
     %pulls spike times and times for alignment
     spikeTimes = s.(desigNames{i}).SpikeTimes;
     
@@ -373,59 +401,319 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01])
 findPV = find(master(:,1) == 1);
 findMSN = find(master(:,1) == 0);
 
+%% Plotting!
 
+% %190121: This is old code below. Commented out for examination of FWHM
+% hFig = figure;
+% set(hFig, 'Position', [10 80 1240 850])
+% 
+% %plot AUC vs firing rate
+% subplot(3,3,1)
+% plot(master(:,indLocoAUC),master(:,indPreAverage),'k.')
+% hold on
+% plot(master(master(:,indLocoSig) == 1,indLocoAUC),master(master(:,indLocoSig) == 1,indPreAverage),'ro')
+% title('Scatter Plot of Baseline Rate vs LocoAUC')
+% 
+% %plot overall velocity trace. 
+% subplot(3,3,4)
+% hold on
+% plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2),'r')
+% maxVals = max(s.RotaryData.Velocity(:,2));
+% xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
+% % title('Overall Vel With Tone(k) Laser(b) and ToneLaser(g) Times')
+% title('Overall Velocity Trace')
+% 
+% 
+% %plot rasterized velocities
+% subplot(3,3,7)
+% hold on
+% plot(velVector,averageVel,'k')
+% xlim([velVector(1) velVector(end)]);
+% title('Average Velocity for Tone(k) Laser(b) ToneLaser(g)')
+% 
+% 
+% %plot firing rate vs peak trough times
+% subplot(3,3,2)
+% plot(master(:,indPkTrough),master(:,indPreAverage),'k.')
+% hold on
+% plot(master(master(:,indPVMSN) == 1,indPkTrough),master(master(:,indPVMSN) == 1,indPreAverage),'ro')
+% title('Peak Trough vs Baseline Rate, PV in red')
+% 
+% 
+% %plot modulation index of pre vs laser for laser only trials
+% subplot(3,3,5)
+% hold on
+% %calculate modulation index, which is (laser - pre)/(pre + laser)
+% modInd1 = (master(:,indLaserAverage)-master(:,indPreAverage))./(master(:,indLaserAverage) + master(:,indPreAverage));
+% if findMSN
+%     histMSN = hist(modInd1(findMSN),[-1:0.1:1]);
+%     bar([-1:0.1:1],histMSN,'k')
+% end
+% if findPV
+%     histPV = hist(modInd1(findPV),[-1:0.1:1]);
+%     bar([-1:0.1:1],histPV,'r')
+% end
+% 
+% xlim([-1 1]);
+% title('Modulation Index, Red PV Black MSN')
+% 
+% %plot normalized firing rate changes!
+% %First for normal bins
+% subplot(3,6,15)
+% hold on
+% for i = 1:numUnits
+%     if ismember(i,findPV)
+%         %generate the numbers
+%         normFire = [master(i,indPreAverage)/master(i,indPreAverage),master(i,indLaserAverage)/master(i,indPreAverage),master(i,indPostAverage)/master(i,indPreAverage)];
+%         plot(normFire,'r.-')
+%     elseif ismember(i,findMSN)
+%         %generate the numbers
+%         normFire = [master(i,indPreAverage)/master(i,indPreAverage),master(i,indLaserAverage)/master(i,indPreAverage),master(i,indPostAverage)/master(i,indPreAverage)];
+%         plot(normFire,'k.-')
+%     end
+%     if master(i,indPValPreLaser) < 0.05
+%         plot(2,normFire(2),'co')
+%     elseif master(i,indPValPrePost) < 0.05
+%         plot(3,normFire(3),'co')
+%     end
+%     
+% end
+% set(gca,'XTick',[1:3]);
+% set(gca,'XTickLabel',{'Pre','Laser','Post'});
+% title('Normalized Firing Rate Normal Window')
+% 
+% %now for restricted bins
+% subplot(3,6,16)
+% hold on
+% for i = 1:numUnits
+%     if ismember(i,findPV)
+%         %generate the numbers
+%         normFire = [master(i,indResPre)/master(i,indResPre),master(i,indResLaser)/master(i,indResPre),master(i,indResPost)/master(i,indResPre)];
+%         plot(normFire,'r.-')
+%     elseif ismember(i,findMSN)
+%         %generate the numbers
+%         normFire = [master(i,indResPre)/master(i,indResPre),master(i,indResLaser)/master(i,indResPre),master(i,indResPost)/master(i,indResPre)];
+%         plot(normFire,'k.-')
+%     end
+%     if master(i,indPValResPreLaser) < 0.05
+%         plot(2,normFire(2),'co')
+%     elseif master(i,indPValResPrePost) < 0.05
+%         plot(3,normFire(3),'co')
+%     end
+%     
+% end
+% set(gca,'XTick',[1:3]);
+% set(gca,'XTickLabel',{'Pre','Laser','Post'});
+% title('Normalized Firing Rate Restricted Window')
+% 
+% %plot out modulation indices by unit
+% subplot(3,3,3)
+% hold on
+% plot([0 0],[0 numUnits],'k')
+% for i = 1:numUnits
+%     if ismember(i,findPV)
+%         plot([0 modInd1(i)],[i i],'r','LineWidth',2)
+%     elseif ismember(i,findMSN)
+%         plot([0 modInd1(i)],[i i],'k','LineWidth',2)
+%     end
+%     
+% end
+% ylim([0 numUnits+1])
+% xlim([-1 1])
+% set(gca,'Ydir','reverse')
+% title('Modulation Index Sorted By Unit')
+% 
+% 
+% %plot out by position, do one shank at a time. 
+% subplot(3,3,6)
+% hold on
+% plot([0 0],[0 -s.ShankLength],'k')
+% firstFind = find(posArray(:,2) == 1); %find units belonging to first shank
+% firstArray = posArray(firstFind,:);
+% for i = 1:length(firstFind)
+%     
+% %     findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
+%     if ismember(firstFind(i),findPV)
+%         plot([0 modInd1(firstFind(i))],[firstArray(i,1) firstArray(i,1)],'r')
+%         plot(modInd1(firstFind(i)),firstArray(i,1),'r.')
+%     elseif ismember(firstFind(i),findMSN)
+%         plot([0 modInd1(firstFind(i))],[firstArray(i,1) firstArray(i,1)],'k')
+%         plot(modInd1(firstFind(i)),firstArray(i,1),'k.')
+%     end
+%     if master(firstFind(i),indPValPreLaser) < 0.05
+%         plot(modInd1(firstFind(i)),firstArray(i,1),'co')
+%     end
+% end
+% xlim([-1 1])
+% title('Shank 1 Sorted By Position')
+% 
+% 
+% subplot(3,3,9)
+% hold on
+% plot([0 0],[0 -s.ShankLength],'k')
+% secondFind = find(posArray(:,2) == 2); %find units belonging to first shank
+% secondArray = posArray(secondFind,:);
+% 
+% for i = 1:length(secondFind)
+%     
+% %     findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
+%     if ismember(secondFind(i),findPV)
+%         plot([0 modInd1(secondFind(i))],[secondArray(i,1) secondArray(i,1)],'r')
+%         plot(modInd1(secondFind(i)),secondArray(i,1),'r.')
+%     elseif ismember(secondFind(i),findMSN)
+%         plot([0 modInd1(secondFind(i))],[secondArray(i,1) secondArray(i,1)],'k')
+%         plot(modInd1(secondFind(i)),secondArray(i,1),'k.')
+%     end
+%     if master(secondFind(i),indPValPreLaser) < 0.05
+%         plot(modInd1(secondFind(i)),secondArray(i,1),'co')
+%     end
+% end
+% xlim([-1 1])
+% title('Shank 2 Sorted By Position')
+% 
+% 
+% spikeGraphName = strcat(fileName,'LaserStimSummary');
+% savefig(hFig,spikeGraphName);
+% 
+% %save as PDF with correct name
+% set(hFig,'Units','Inches');
+% pos = get(hFig,'Position');
+% set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+% print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%190121: This is new code with FWHM and %FR change/ratio of FR change. 
 hFig = figure;
 set(hFig, 'Position', [10 80 1240 850])
 
-%plot AUC vs firing rate
+%plot raster of velocity aligned to laser
 subplot(3,3,1)
-plot(master(:,indLocoAUC),master(:,indPreAverage),'k.')
-hold on
-plot(master(master(:,indLocoSig) == 1,indLocoAUC),master(master(:,indLocoSig) == 1,indPreAverage),'ro')
-title('Scatter Plot of Baseline Rate vs LocoAUC')
-
-%plot overall velocity trace. 
-subplot(3,3,4)
-hold on
-plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2),'r')
-maxVals = max(s.RotaryData.Velocity(:,2));
-xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
-% title('Overall Vel With Tone(k) Laser(b) and ToneLaser(g) Times')
-title('Overall Velocity Trace')
-
-
-%plot rasterized velocities
-subplot(3,3,7)
 hold on
 plot(velVector,averageVel,'k')
 xlim([velVector(1) velVector(end)]);
 title('Average Velocity for Tone(k) Laser(b) ToneLaser(g)')
 
-
-%plot firing rate vs peak trough times
-subplot(3,3,2)
-plot(master(:,indPkTrough),master(:,indPreAverage),'k.')
-hold on
-plot(master(master(:,indPVMSN) == 1,indPkTrough),master(master(:,indPVMSN) == 1,indPreAverage),'ro')
-title('Peak Trough vs Baseline Rate, PV in red')
-
-
-%plot modulation index of pre vs laser for laser only trials
-subplot(3,3,5)
-hold on
-%calculate modulation index, which is (laser - pre)/(pre + laser)
+%plot peak trough vs mod ind. 
+subplot(3,6,7)
 modInd1 = (master(:,indLaserAverage)-master(:,indPreAverage))./(master(:,indLaserAverage) + master(:,indPreAverage));
+plot(master(:,indPkTrough),modInd1,'k.')
+hold on
+plot(master(master(:,indPVMSN) == 1,indPkTrough),modInd1(master(:,indPVMSN) == 1),'ro')
+plot([min(master(:,indPkTrough)) max(master(:,indPkTrough))],[0 0],'k')
+ylim([-1 1])
+xlim([min(master(:,indPkTrough)) max(master(:,indPkTrough))])
+title('Pk-Trough vs ModInd')
+%plot histogram of modulation indices
+subplot(3,6,8)
+hold on
 if findMSN
     histMSN = hist(modInd1(findMSN),[-1:0.1:1]);
-    bar([-1:0.1:1],histMSN,'k')
-end
-if findPV
-    histPV = hist(modInd1(findPV),[-1:0.1:1]);
-    bar([-1:0.1:1],histPV,'r')
+%     bar([-1:0.1:1],histMSN,'k')
+else
+    histMSN = hist(0,[-1:0.1:1]);
 end
 
-xlim([-1 1]);
-title('Modulation Index, Red PV Black MSN')
+if findPV
+    histPV = hist(modInd1(findPV),[-1:0.1:1]);
+%     bar([-1:0.1:1],histPV,'r')
+else
+    histPV = hist(0,[-1:0.1:1]);
+end
+barh([-1:0.1:1],histMSN+histPV,'k')
+barh([-1:0.1:1],histPV,'r')
+
+ylim([-1 1]);
+title('Modulation Index, PV(r) MSN(k)')
+
+
+%plot out by position, do one shank at a time. 
+subplot(3,6,13)
+hold on
+plot([0 0],[0 -s.ShankLength],'k')
+firstFind = find(posArray(:,2) == 1); %find units belonging to first shank
+firstArray = posArray(firstFind,:);
+for i = 1:length(firstFind)
+    
+%     findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
+    if ismember(firstFind(i),findPV)
+        plot([0 modInd1(firstFind(i))],[firstArray(i,1) firstArray(i,1)],'r')
+        plot(modInd1(firstFind(i)),firstArray(i,1),'r.')
+    elseif ismember(firstFind(i),findMSN)
+        plot([0 modInd1(firstFind(i))],[firstArray(i,1) firstArray(i,1)],'k')
+        plot(modInd1(firstFind(i)),firstArray(i,1),'k.')
+    end
+    if master(firstFind(i),indPValPreLaser) < 0.05
+        plot(modInd1(firstFind(i)),firstArray(i,1),'co')
+    end
+end
+xlim([-1 1])
+title('Shank 1 ModInd')
+
+
+subplot(3,6,14)
+hold on
+plot([0 0],[0 -s.ShankLength],'k')
+secondFind = find(posArray(:,2) == 2); %find units belonging to first shank
+secondArray = posArray(secondFind,:);
+
+for i = 1:length(secondFind)
+    
+%     findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
+    if ismember(secondFind(i),findPV)
+        plot([0 modInd1(secondFind(i))],[secondArray(i,1) secondArray(i,1)],'r')
+        plot(modInd1(secondFind(i)),secondArray(i,1),'r.')
+    elseif ismember(secondFind(i),findMSN)
+        plot([0 modInd1(secondFind(i))],[secondArray(i,1) secondArray(i,1)],'k')
+        plot(modInd1(secondFind(i)),secondArray(i,1),'k.')
+    end
+    if master(secondFind(i),indPValPreLaser) < 0.05
+        plot(modInd1(secondFind(i)),secondArray(i,1),'co')
+    end
+end
+xlim([-1 1])
+title('Shank 2 ModInd')
+
+
+
+%Column 2
+
+%plot out peak trough (x) vs FWHM (y)
+subplot(3,3,2)
+plot(master(:,indPkTrough),master(:,6),'k.')
+title('PkTrough (x) vs FWHM (y)')
+
+
+%plot peak trough vs mod ind. 
+subplot(3,6,9)
+percentChange = (master(:,indLaserAverage)./master(:,indPreAverage));
+plot(master(:,indPkTrough),percentChange,'k.')
+hold on
+plot(master(master(:,indPVMSN) == 1,indPkTrough),percentChange(master(:,indPVMSN) == 1),'ro')
+plot([min(master(:,indPkTrough)) max(master(:,indPkTrough))],[1 1],'k')
+ylim([0 2])
+xlim([min(master(:,indPkTrough)) max(master(:,indPkTrough))])
+title('Pk-Trough vs %change')
+
+%plot histogram of modulation indices
+subplot(3,6,10)
+hold on
+if findMSN
+    histMSN = hist(percentChange(findMSN),[0:0.1:2]);
+%     bar([-1:0.1:1],histMSN,'k')
+else
+    histMSN = hist(0,[0:0.1:2]);
+end
+
+if findPV
+    histPV = hist(percentChange(findPV),[0:0.1:2]);
+%     bar([-1:0.1:1],histPV,'r')
+else
+    histPV = hist(0,[0:0.1:2]);
+end
+barh([0:0.1:2],histMSN+histPV,'k')
+barh([0:0.1:2],histPV,'r')
+ylim([0 2])
+title('Percent Change, PV(r) MSN(k)')
+
 
 %plot normalized firing rate changes!
 %First for normal bins
@@ -476,70 +764,37 @@ set(gca,'XTick',[1:3]);
 set(gca,'XTickLabel',{'Pre','Laser','Post'});
 title('Normalized Firing Rate Restricted Window')
 
-%plot out modulation indices by unit
+
+
+
+%column 3: do plots of FWHM
+
+%plot out FWHM vs mod index.
 subplot(3,3,3)
 hold on
-plot([0 0],[0 numUnits],'k')
-for i = 1:numUnits
-    if ismember(i,findPV)
-        plot([0 modInd1(i)],[i i],'r','LineWidth',2)
-    elseif ismember(i,findMSN)
-        plot([0 modInd1(i)],[i i],'k','LineWidth',2)
-    end
-    
-end
-ylim([0 numUnits+1])
-xlim([-1 1])
-set(gca,'Ydir','reverse')
-title('Modulation Index Sorted By Unit')
+plot(master(:,6),modInd1,'k.')
+plot(master(master(:,indPVMSN) == 1,6),modInd1(master(:,indPVMSN) == 1),'ro')
+plot([min(master(:,6)) max(master(:,6))],[0 0],'k')
+ylim([-1 1])
+xlim([min(master(:,6)) max(master(:,6))])
+title('FWHM vs ModInd')
 
-
-%plot out by position, do one shank at a time. 
+%now plot FWHM vs % change. 
 subplot(3,3,6)
 hold on
-plot([0 0],[0 -s.ShankLength],'k')
-firstFind = find(posArray(:,2) == 1); %find units belonging to first shank
-firstArray = posArray(firstFind,:);
-for i = 1:length(firstFind)
-    
-%     findOrder = find(s.SortedPeakWaveOrder == firstFind(i));
-    if ismember(firstFind(i),findPV)
-        plot([0 modInd1(firstFind(i))],[firstArray(i,1) firstArray(i,1)],'r')
-        plot(modInd1(firstFind(i)),firstArray(i,1),'r.')
-    elseif ismember(firstFind(i),findMSN)
-        plot([0 modInd1(firstFind(i))],[firstArray(i,1) firstArray(i,1)],'k')
-        plot(modInd1(firstFind(i)),firstArray(i,1),'k.')
-    end
-    if master(firstFind(i),indPValPreLaser) < 0.05
-        plot(modInd1(firstFind(i)),firstArray(i,1),'co')
-    end
-end
-xlim([-1 1])
-title('Shank 1 Sorted By Position')
-
+% percentChange = (master(:,indLaserAverage)./master(:,indPreAverage));
+plot(master(:,6),percentChange,'k.')
+plot(master(master(:,indPVMSN) == 1,6),percentChange(master(:,indPVMSN) == 1),'ro')
+plot([min(master(:,6)) max(master(:,6))],[1 1],'k')
+ylim([0 2])
+xlim([min(master(:,6)) max(master(:,6))])
+title('FWHM vs %change')
 
 subplot(3,3,9)
-hold on
-plot([0 0],[0 -s.ShankLength],'k')
-secondFind = find(posArray(:,2) == 2); %find units belonging to first shank
-secondArray = posArray(secondFind,:);
-
-for i = 1:length(secondFind)
-    
-%     findOrder = find(s.SortedPeakWaveOrder == secondFind(i));
-    if ismember(secondFind(i),findPV)
-        plot([0 modInd1(secondFind(i))],[secondArray(i,1) secondArray(i,1)],'r')
-        plot(modInd1(secondFind(i)),secondArray(i,1),'r.')
-    elseif ismember(secondFind(i),findMSN)
-        plot([0 modInd1(secondFind(i))],[secondArray(i,1) secondArray(i,1)],'k')
-        plot(modInd1(secondFind(i)),secondArray(i,1),'k.')
-    end
-    if master(secondFind(i),indPValPreLaser) < 0.05
-        plot(modInd1(secondFind(i)),secondArray(i,1),'co')
-    end
-end
-xlim([-1 1])
-title('Shank 2 Sorted By Position')
+stem3(master(:,indPkTrough),master(:,6),percentChange)
+xlabel('PkTrough')
+ylabel('FWHM')
+zlabel('% Change')
 
 
 spikeGraphName = strcat(fileName,'LaserStimSummary');
@@ -653,7 +908,7 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 %     print(hFig,spikeGraphName,'-dpdf','-r0')
 % end
 %% Saving
-save(fullfile(pname,fname),'s');
+save(fullfile(pname,fname),'s','master','masterHeader');
 
 end
 
