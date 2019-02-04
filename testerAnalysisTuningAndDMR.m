@@ -565,6 +565,8 @@ for i = 1:numUnits
     end
 end
 
+s.SoundData.DMRPulses = dmrDIO;
+
 %% Generate master
 %form master matrix
 trialNum = length(tuningDIO);
@@ -668,18 +670,6 @@ end
 %% Now process DMR
 
 load(sprFile)
-%store stimulus
-s.SoundData.Stimulus = stimulus;
-%figure out octave labels
-octaveNum = log(s.Parameters.MaxFreq / s.Parameters.MinFreq)/log(2);
-numSteps = size(stimulus,1);
-stepsPerOct = numSteps/octaveNum;
-
-
-freqs(1) = s.Parameters.MinFreq;
-for i = 2:numSteps
-    freqs (i) = freqs(i-1)*(2^(octaveNum/(numSteps-1)));
-end
 
 % Figure out how DMR file maps onto trodes times
 tempVect = linspace(dmrTimes(1),dmrTimes(2),length(stimulus));
@@ -688,9 +678,12 @@ trueDMRtimes = interp1(ttlOnsetTime,dmrDIO,tempVect);
 dmrStore = [];
 dmrStore = trueDMRtimes;
 
+
+
 dmrStep = mean(mode(diff(dmrStore)));
 newWin = round(s.Parameters.STRFWin/dmrStep);
 
+% spikeHistVect = dmrStore+
 %going to go through each thing and perform STRFs
 
 for i = 1:numUnits
@@ -999,10 +992,10 @@ for i = 1:numUnits
     set(gca,'XTick',[0:60:length(s.(desigNames{i}).DMRAverage)]);
     set(gca,'XTickLabel',[s.Parameters.STRFWin(1):0.01:s.Parameters.STRFWin(2)]);
     set(gca,'YTick',[1:10:40]);
-    set(gca,'YTickLabel',[freqs([40:-10:1])]);
+    set(gca,'YTickLabel',[faxis([40:-10:1])]);
     title(strcat('DMR STA Based on',num2str(numDMRSpikes(i))))
     
-    
+%     freqs
     
     hold off
     spikeGraphName = strcat(fileName,desigNames{i},'SpikeAnalysis');
