@@ -693,8 +693,8 @@ for i = 1:numUnits
     spikeArray(i,:) = hist(spikeStore,spikeHistVect);
 end
 
-[sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikeArray, 200);
-[sta_sig, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(sta, spikeArray, stimulus, 10, 200, 95);
+[sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikeArray, 100);
+[sta_sig, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(sta, spikeArray, stimulus, 10, 100, 95);
 
 
 for i = 1:numUnits
