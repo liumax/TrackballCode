@@ -1393,7 +1393,16 @@ for i = 1:numUnits
             for k = 1:numFreqs
                 nlVal = s.(desigNames{i}).LatPeakBin{k,j}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBin{k,j}.BinnedSpikesToneBase;
                 laserVal = s.(desigNames{i}).LatPeakBinLaser{k,j}.BinnedSpikesTone - s.(desigNames{i}).LatPeakBinLaser{k,j}.BinnedSpikesToneBase;
-                testVal = signrank(nlVal,laserVal);
+                if length(nlVal) == length(laserVal)
+                    testVal = signrank(nlVal,laserVal);
+                else
+                    [B I] = min([length(nlVal),length(laserVal)]);
+                    if I == 1
+                        testVal = signrank(nlVal,laserVal(1:length(nlVal)));
+                    elseif I == 2
+                        testVal = signrank(nlVal(1:length(laserVal)),laserVal);
+                    end
+                end
                 if testVal < plotThresh
                     plot(s.(desigNames{i}).BinDiff(k,j,toneTarget),s.(desigNames{i}).BinDiffLaser(k,j,toneTarget),'r*')
                 end
