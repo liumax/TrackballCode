@@ -1,7 +1,8 @@
 % Makes the dynamic moving ripple using Monty Escabi's toolbox.
 
 % Declare variables.
-flo       = 400;        % lower carrier frequency
+% flo       = 400;        % lower carrier frequency
+flo       = 4000;        % lower carrier frequency
 fhi       = 64000;      % upper carrier frequency 
 fRD      = 0.2;        % ripple density bandlimit frequency
 fFM      = 0.6;        % temporal modulation bandlimit frequency
