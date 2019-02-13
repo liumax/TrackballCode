@@ -56,9 +56,21 @@ s.Parameters.LaserAnalysis = [-0.2,0;0.1,0.3];
 s.Parameters.STRFWin = [-0.2 0.01];
 s.Parameters.dmrTiming = 6;
 s.Parameters.expectedDur = 10; %expected time duration. 
-sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR10mindsT5dsF5.mat';
-% dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
-ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
+
+%we have multiple datasets, so lets figure out which one is which. 
+dateVal = str2num(fileName(1:6));
+if dateVal < 190211
+%     sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR10mindsT5dsF5.mat';
+    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR400-6400-approx1kHz.mat';
+    % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
+    ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimesCORRECTFreqSampling.mat';
+
+%     ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
+else 
+    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR4kHz-16kHz_10mindsT5dsF5.mat';
+    % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
+    ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-4000flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
+end
 s.Parameters.MinFreq = 4000;
 s.Parameters.MaxFreq = 64000;
 % s.Parameters.DMRtimeDilation = 0.9995; %dilation of time. Multiply Trodes time by this to get DMR time.  
@@ -542,11 +554,11 @@ bigMod = find(abs(itiMod) > 0.001);
 if bigMod
     disp(strcat(num2str(length(bigMod)),'-deviations found, marking...'))
     for j = 1:length(bigMod)
-        devStore(devCounter,1) = i; %store the chunk
-        devStore(devCounter,2) = bigMod(i) - 1; %stores the TTLs before and after. 
-        devStore(devCounter,3) = bigMod(i) +1;
-        devStore(devCounter,4) = ttlChunks(i,1) - 1 + bigMod(i) - 1; %stores the TTLs before and after. 
-        devStore(devCounter,5) = ttlChunks(i,1) - 1 + bigMod(i) + 1;
+        devStore(devCounter,1) = j; %store the chunk
+        devStore(devCounter,2) = bigMod(j) - 1; %stores the TTLs before and after. 
+        devStore(devCounter,3) = bigMod(j) +1;
+%         devStore(devCounter,4) = ttlChunks(i,1) - 1 + bigMod(j) - 1; %stores the TTLs before and after. 
+%         devStore(devCounter,5) = ttlChunks(i,1) - 1 + bigMod(j) + 1;
 
         devCounter = devCounter + 1;
     end
@@ -558,7 +570,7 @@ disp('Applying TTL QC to Spiking Data by Removing Spikes')
 for i = 1:numUnits
     spikeTimes = s.(desigNames{i}).SpikeTimes;
     for j = 1:size(devStore,1)
-        findSpikes = find(spikeTimes >= dioTimes(devStore(j,4)) & spikeTimes <= dioTimes(devStore(j,5)));
+        findSpikes = find(spikeTimes >= dioTimes(devStore(j,2)) & spikeTimes <= dioTimes(devStore(j,3)));
         disp(strcat(num2str(length(findSpikes)),'-spikes removed'))
         spikeTimes(findSpikes) = [];
         s.(desigNames{i}).SpikeTimes = spikeTimes;
@@ -671,51 +683,70 @@ end
 
 load(sprFile)
 
+%downsample to 1 ms. 
+if dateVal < 190211
+else
+    stimulus = stimulus(:,1:6:end);
+end
+
 % Figure out how DMR file maps onto trodes times
 tempVect = linspace(dmrTimes(1),dmrTimes(2),length(stimulus));
 
 trueDMRtimes = interp1(ttlOnsetTime,dmrDIO,tempVect);
 dmrStore = [];
 dmrStore = trueDMRtimes;
-
-
+trueDMRtimes = [];
 
 dmrStep = mean(mode(diff(dmrStore)));
 newWin = round(s.Parameters.STRFWin/dmrStep);
 
-% spikeHistVect = dmrStore+
-%going to go through each thing and perform STRFs
-
+spikeHistVect = dmrStore+dmrStep/2;
 for i = 1:numUnits
-    disp(strcat('Working on Unit ',num2str(i)))
-    %pulls spike times and times for alignment
-    spikeTimes = s.(desigNames{i}).SpikeTimes;
-    %lets pull the stuff based on all spikes
-    
-    indivStore = [];
-    avStore = [];
-    %pull out only the spikes during the desired window
-    firstSpike = find(spikeTimes > dmrStore(1) - s.Parameters.STRFWin(1) ,1,'first');
-    lastSpike = find(spikeTimes < dmrStore(end) - s.Parameters.STRFWin(2) ,1,'last');
-    targetSpikes = spikeTimes(firstSpike:lastSpike);
-    if targetSpikes
-        for k = 1:length(targetSpikes)
-            findTarget = find(dmrStore - targetSpikes(k) > 0,1,'first');
-            takeChunk = stimulus(:,findTarget+newWin(1):findTarget+newWin(2));
-            indivStore(:,:,k) = takeChunk;
-        end
-%         avStore(:,:,i) = mean(indivStore,3);
-%         s.(desigNames{i}).IndivStim = indivStore;
-        s.(desigNames{i}).DMRAverage = mean(indivStore,3);
-%         bigAvStore(:,:,i) = mean(squeeze(avStore(:,:,i,:)),3);
-%         s.(desigNames{i}).FullAverage = mean(squeeze(avStore(:,:,i,:)),3);
-    else
-%         avStore(:,:,i) = ;
-        s.(desigNames{i}).DMRAverage = zeros(size(stimulus,1),newWin(2)-newWin(1)+1);
-%         bigAvStore(:,:,i) = mean(squeeze(avStore(:,:,i)),3);
-%         s.(desigNames{i}).FullAverage = mean(squeeze(avStore(:,:,i)),3);
-    end
+    spikeStore = s.(desigNames{i}).SpikeTimes(s.(desigNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(desigNames{i}).SpikeTimes < spikeHistVect(end));
+    spikeArray(i,:) = hist(spikeStore,spikeHistVect);
 end
+numLags = 100;
+[sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikeArray, numLags);
+[sta_sig, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(sta, spikeArray, stimulus, 10, numLags, 95);
+
+s.STAs = sta;
+s.STASig = sta_sig;
+
+% %going to go through each thing and perform STRFs
+% for i = 1:numUnits
+%     disp(strcat('Working on Unit ',num2str(i)))
+%     %pulls spike times and times for alignment
+%     spikeTimes = s.(desigNames{i}).SpikeTimes;
+%     %lets pull the stuff based on all spikes
+%     
+%     indivStore = [];
+%     avStore = [];
+%     %pull out only the spikes during the desired window
+%     firstSpike = find(spikeTimes > dmrStore(1) - s.Parameters.STRFWin(1) ,1,'first');
+%     lastSpike = find(spikeTimes < dmrStore(end) - s.Parameters.STRFWin(2) ,1,'last');
+%     targetSpikes = spikeTimes(firstSpike:lastSpike);
+%     if targetSpikes
+%         masterData(i,masterInd) = length(targetSpikes);
+%         
+%         for k = 1:length(targetSpikes)
+%             findTarget = find(dmrStore - targetSpikes(k) > 0,1,'first');
+%             takeChunk = stimulus(:,findTarget+newWin(1):findTarget+newWin(2));
+%             indivStore(:,:,k) = takeChunk;
+%         end
+% %         avStore(:,:,i) = mean(indivStore,3);
+% %         s.(desigNames{i}).IndivStim = indivStore;
+%         s.(desigNames{i}).DMRAverage = mean(indivStore,3);
+% %         bigAvStore(:,:,i) = mean(squeeze(avStore(:,:,i,:)),3);
+% %         s.(desigNames{i}).FullAverage = mean(squeeze(avStore(:,:,i,:)),3);
+%     else
+% %         avStore(:,:,i) = ;
+%         s.(desigNames{i}).DMRAverage = zeros(size(stimulus,1),newWin(2)-newWin(1)+1);
+% %         bigAvStore(:,:,i) = mean(squeeze(avStore(:,:,i)),3);
+% %         s.(desigNames{i}).FullAverage = mean(squeeze(avStore(:,:,i)),3);
+%     end
+% end
+% masterHeader{masterInd} = 'NumSpikesDMR';
+% masterInd = masterInd + 1;
 
 %% Pull waveforms from different time periods, so we can plot them out.
 
@@ -907,15 +938,7 @@ for i = 1:numUnits
         title(strcat('UNK AvRate:',num2str(s.(desigNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
     end
 
-    %plots ISI
-    subplot(4,4,6)
-    hist(s.(desigNames{i}).ISIGraph,1000)
-    histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
-    line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-    xlim(s.Parameters.ClusterWindow)
-    title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
-        strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
-
+    
     % plot histogram.
     subplot(4,4,5)
     plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
@@ -975,8 +998,17 @@ for i = 1:numUnits
     title('Descending = increase in amplitude and freq')
 
     % Column 2
-    %plot FR and velocity
+    %plots ISI
     subplot(4,4,2)
+    hist(s.(desigNames{i}).ISIGraph,1000)
+    histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
+    line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
+    xlim(s.Parameters.ClusterWindow)
+    title({strcat('ISI RPV %: ',num2str(s.(desigNames{i}).RPVPercent));...
+        strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
+
+    %plot FR and velocity
+    subplot(4,4,6)
     hold on
     plot(newTimeVector,newVelVector/max(newVelVector),'b')
     plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
@@ -984,16 +1016,53 @@ for i = 1:numUnits
     ylim([-0.1,1])
     title({fileName;desigNames{i}},'fontweight','bold', 'Interpreter', 'none');
     
+    %plot heatmap tuning curves
+    subplot(4,4,10)
+    imagesc(s.(desigNames{i}).BinTone')
+    colormap(parula)
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Mean Binned Resp (tone)')
+    
+    subplot(4,4,14)
+    imagesc(s.(desigNames{i}).BinGen')
+    colormap(parula)
+    colorbar
+    set(gca,'XTick',octaveRange(:,2));
+    set(gca,'XTickLabel',octaveRange(:,1));
+    set(gca,'YTick',dbRange(:,2));
+    set(gca,'YTickLabel',dbRange(:,1));
+    title('Mean Binned Resp (general)')
+    
+    
+    % Column 3
+    
     %plot DMR response
-    subplot(2,2,4)
-    imagesc(s.(desigNames{i}).DMRAverage)
+    subplot(2,2,2)
+    imagesc(reshape(sta(i,:),length(faxis),[]))
     colormap('parula')
     colorbar
-    set(gca,'XTick',[0:60:length(s.(desigNames{i}).DMRAverage)]);
-    set(gca,'XTickLabel',[s.Parameters.STRFWin(1):0.01:s.Parameters.STRFWin(2)]);
-    set(gca,'YTick',[1:10:40]);
-    set(gca,'YTickLabel',[faxis([40:-10:1])]);
-    title(strcat('DMR STA Based on',num2str(numDMRSpikes(i))))
+    format short
+    set(gca,'XTick',[0:20:numLags]);
+    set(gca,'XTickLabel',[dmrStep*100:-20*dmrStep:dmrStep]);
+    set(gca,'YTick',[1:10:length(faxis)]);
+    set(gca,'YTickLabel',[faxis([1:10:end])]);
+    title(strcat('DMR STA Based on',num2str(sum(sta(i,:)))))
+    
+    %plot out thresholded DMR
+    subplot(2,2,4)
+    imagesc(reshape(sta_sig(i,:),length(faxis),[]))
+    colormap('parula')
+    colorbar
+    format short
+    set(gca,'XTick',[0:20:numLags]);
+    set(gca,'XTickLabel',[dmrStep*100:-20*dmrStep:dmrStep]);
+    set(gca,'YTick',[1:10:length(faxis)]);
+    set(gca,'YTickLabel',[faxis([1:10:end])]);
+    title('Thresholded DMR a=0.95')
     
 %     freqs
     
