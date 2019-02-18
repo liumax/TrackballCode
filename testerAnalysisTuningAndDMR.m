@@ -768,6 +768,7 @@ end
 
 %% Saving
 save(fullfile(pname,fname),'s','masterData','masterHeader');
+save(fullfile(pname,strcat(fileName,'DMRData')),'sta','sta_sig','spikeArray','stimulus','faxis')
 
 %% Plotting shanks!
 hFig = figure;
@@ -1050,7 +1051,7 @@ for i = 1:numUnits
     set(gca,'XTickLabel',[dmrStep*100:-20*dmrStep:dmrStep]);
     set(gca,'YTick',[1:10:length(faxis)]);
     set(gca,'YTickLabel',[faxis([1:10:end])]);
-    title(strcat('DMR STA Based on',num2str(sum(sta(i,:)))))
+    title(strcat('DMR STA Based on',num2str(sum(spikeArray(i,:)))))
     
     %plot out thresholded DMR
     subplot(2,2,4)
