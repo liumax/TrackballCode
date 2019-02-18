@@ -1,0 +1,54 @@
+function [bmf, bw6db, bw3db, wc3db] = mtf_bmf_bw_wc(freq, mtf)
+%MTF_BMF_BW_WC - Modulation parameters from MTF.
+%
+% Calculates best modulation frequency, mtf bandwidth at 3dB and 6dB down,
+% and the high side mtf cutoff at 3dB down.
+%
+% caa
+
+mtf = mtf ./ max(mtf); % normalize so that the maximum value is 1.0
+
+% Process the temporal modulation transfer functions
+bw6db = 0;
+bw3db = 0;
+wc3db = 0;
+bmf = 0;
+
+freqfit = min(freq):0.001:max(freq);
+mtfinterp = interp1(freq, mtf, freqfit, 'spline');
+
+indmax = find(mtfinterp == max(mtfinterp));
+
+ind3dblow = find(mtfinterp(1:indmax) >= 0.7);
+ind3dbhi = find(mtfinterp(indmax:end) >= 0.7);
+
+ind6dblow = find(mtfinterp(1:indmax) >= 0.5);
+ind6dbhi = find(mtfinterp(indmax:end) >= 0.5);
+   
+bw3db = freqfit(max(ind3dbhi+indmax-1)) - freqfit(min(ind3dblow));
+bw6db = freqfit(max(ind6dbhi+indmax-1)) - freqfit(min(ind6dblow));
+
+wc3dbhi = freqfit(max(ind3dbhi+indmax-1));
+wc3dblow = freqfit(min(ind3dblow));
+wc3db = [wc3dblow wc3dbhi]; 
+
+
+if ( mtfinterp(min(ind3dblow)) < 0.71 && mtfinterp(max(ind3dbhi+indmax-1)) < 0.71 )  % it's bandpass
+	itemp = find(mtfinterp == max(mtfinterp));
+	bmf = freqfit(itemp);
+else  % it's lowpass
+	bmf = freqfit(max(ind3dbhi+indmax-1)) ./ 2;
+end
+
+%figure; % just checking to make sure everything is okay
+%hold on;
+%plot(freq, mtf, 'ko-');
+%plot([wc3dblow wc3dblow], [0 1], 'k-'); 
+%plot([wc3dbhi wc3dbhi], [0 1], 'k-'); 
+%plot([bmf bmf], [0 1], 'k-'); 
+%pause
+
+
+return;
+
+
