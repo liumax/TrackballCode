@@ -38,9 +38,20 @@ s.Parameters.LaserBin = 0.01; %histogram bin size
 s.Parameters.STRFWin = [-0.2 0.03];
 % s.Parameters.dmrTiming = 6;
 % s.Parameters.expectedDur = 10; %expected time duration. 
-sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR10mindsT5dsF5.mat';
-% dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
-ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
+%we have multiple datasets, so lets figure out which one is which. 
+dateVal = str2num(fileName(1:6));
+if dateVal < 190211
+%     sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR10mindsT5dsF5.mat';
+    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR400-6400-approx1kHz.mat';
+    % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
+    ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimesCORRECTFreqSampling.mat';
+
+%     ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
+else 
+    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR4kHz-16kHz_10mindsT5dsF5.mat';
+    % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
+    ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-4000flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
+end
 % s.Parameters.MinFreq = 4000;
 % s.Parameters.MaxFreq = 64000;
 % s.Parameters.DMRtimeDilation = 0.9995; %dilation of time. Multiply Trodes time by this to get DMR time.  
@@ -150,7 +161,6 @@ masterData = zeros(numUnits,1);
 masterHeader = cell(1,1);
 masterInd = 1;
 
-
 %% Produce Indices for sorting by position on shank
 for reInd = 1:length(s.DesignationName) %go through every unit
     %extract information about tetrode
@@ -202,7 +212,6 @@ masterData(:,masterInd) = posArray(s.SortedPeakWaveOrder,1); masterHeader{master
 masterData(:,masterInd) = posArray(s.SortedPeakWaveOrder,2); masterHeader{masterInd} = 'Shank Designation'; masterInd = masterInd + 1;
 masterData(:,masterInd) = s.SortedPeakWaveOrder; masterHeader{masterInd} = 'SimpleShankOrder'; masterInd = masterInd + 1;
 
-
 %% Extract data from rotary encoder.
 
 
@@ -227,7 +236,6 @@ disp('Rotary Encoder Data Extracted')
 newTimeVector = [s.RotaryData.Distance(1,1)/s.Parameters.trodesFS:s.Parameters.InterpolationStepRotary:s.RotaryData.Distance(end,1)/s.Parameters.trodesFS];
 newDistVector = interp1(s.RotaryData.Distance(:,1),s.RotaryData.Distance(:,2),newTimeVector);
 newVelVector = interp1(s.RotaryData.Distance(1:end-1,1)/s.Parameters.trodesFS,s.RotaryData.Velocity,newTimeVector);
-
 
 %% Extract DIO information. Tuning curve should rely on just one DIO output, DIO1.
 disp('Beginning DIO Extraction...')
@@ -339,7 +347,6 @@ if length(dio2UpTimes) ~= length(dio2DownTimes)
     error('LASER UP AND LASER DOWN TIMES MISMATCHED')
 end
 
-
 %% now we want to generate a series of times for laser and non-laser. 
 
 load(sprFile)
@@ -347,7 +354,10 @@ load(sprFile)
 % s.SoundData.Stimulus = stimulus;
 
 %downsample to 1 ms. 
-stimulus = stimulus(:,1:6:end);
+if dateVal < 190211
+else
+    stimulus = stimulus(:,1:6:end);
+end
 
 tempVect = linspace(dmrTimes(1),dmrTimes(2),length(stimulus));
 for i = 1:length(blockLengths)
@@ -388,17 +398,6 @@ end
 
 %% Now lets process the DMR. 
 
-%figure out octave labels
-% octaveNum = log(s.Parameters.MaxFreq / s.Parameters.MinFreq)/log(2);
-% numSteps = size(stimulus,1);
-% stepsPerOct = numSteps/octaveNum;
-
-
-% freqs(1) = s.Parameters.MinFreq;
-% for i = 2:numSteps
-%     freqs (i) = freqs(i-1)*(2^(octaveNum/(numSteps-1)));
-% end
-
 %going to go through each thing and perform STRFs
 numStore= zeros(numUnits,4);
 for i = 1:numUnits
@@ -421,6 +420,7 @@ for i = 1:numUnits
             spikeCounter = spikeCounter + length(tempFind);
         end
     end
+    
     for j = 1:length(spikeFinder)
         findTarget = find(dmrStore(:,1) - spikeTimes(spikeFinder(j)) > 0,1,'first');
         if findTarget
