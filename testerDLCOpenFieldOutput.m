@@ -548,6 +548,18 @@ for i = 1:length(CSVfinder)
 %         angleLaser(:,j) = preAngle(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3)-preAngle(laserOn(j)-2*laserDur);
         angleLaser(:,j) = preAngle(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3)-preAngle(laserOn(j));
     end
+    
+    %store binned values. 
+    %generate bins. 
+    binPre = [laserDur*3/2,laserDur*2];
+    binLaser = [laserDur*5/2,laserDur*3];
+    binPost = [laserDur*7/2,laserDur*4];
+    
+    tempPre = angleLaser(binPre(2),:) - angleLaser(binPre(1),:);
+    tempLaser = angleLaser(binLaser(2),:) - angleLaser(binLaser(1),:);
+    tempPost = angleLaser(binPost(2),:) - angleLaser(binPost(1),:);
+    
+    binDataOut(i,:) = [mean(tempPre),mean(tempLaser),mean(tempPost)];
 
     %store these results.
     longmeanDiffAngleLaser(:,i) = mean(angleLaser');
@@ -573,6 +585,52 @@ for i = 1:length(CSVfinder)
     end
     bigRotStore(i,:) = sum(rotStore);
 end
+
+%decode binned data.
+decodeBin(:,1) = decoder.*binDataOut(:,1);
+decodeBin(:,2) = decoder.*binDataOut(:,2);
+decodeBin(:,3) = decoder.*binDataOut(:,3);
+
+binData3mW = decodeBin(25:48,:);
+binData7mW = decodeBin(73:96,:);
+binData15mW = decodeBin(1:24,:);
+binData15mWPulse = decodeBin(49:72,:);
+
+
+signrank(binData3mW(:,1),binData3mW(:,2))
+signrank(binData7mW(:,1),binData7mW(:,2))
+signrank(binData15mW(:,1),binData15mW(:,2))
+signrank(binData15mWPulse(:,1),binData15mWPulse(:,2))
+
+signrank(mean([binData3mW(:,1),binData3mW(:,3)]'),binData3mW(:,2))
+signrank(mean([binData7mW(:,1),binData7mW(:,3)]'),binData7mW(:,2))
+signrank(mean([binData15mW(:,1),binData15mW(:,3)]'),binData15mW(:,2))
+signrank(mean([binData15mWPulse(:,1),binData15mWPulse(:,3)]'),binData15mWPulse(:,2))
+
+
+
+
+hFig = figure;
+hold on
+plot([1,2,3],binData3mW,'k')
+errorbar([1,2,3],mean(binData3mW),std(binData3mW)/sqrt(length(binData3mW)),'r','LineWidth',2)
+plot([4,5,6],binData7mW,'k')
+errorbar([4,5,6],mean(binData7mW),std(binData7mW)/sqrt(length(binData7mW)),'r','LineWidth',2)
+plot([7,8,9],binData15mW,'k')
+errorbar([7,8,9],mean(binData15mW),std(binData15mW)/sqrt(length(binData15mW)),'r','LineWidth',2)
+plot([10,11,12],binData15mWPulse,'k')
+errorbar([10,11,12],mean(binData15mWPulse),std(binData15mWPulse)/sqrt(length(binData15mWPulse)),'r','LineWidth',2)
+ylim([-300 300])
+set(gca,'tickdir','out')
+
+spikeGraphName = 'DLCAverageAngleChange'
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 % %normalize rotations. This is contra over all
 % normRot = [];
@@ -619,10 +677,10 @@ rots3mW([13,15],:) = [];
 rots15mWPulse([13,15],:) = [];
 rots7mW([13,15],:) = [];
 
-signrank(mean([rots3mW(:,1),rots7mW(:,3)]'),rots7mW(:,2))
+signrank(mean([rots3mW(:,1),rots3mW(:,3)]'),rots3mW(:,2))
 signrank(mean([rots7mW(:,1),rots7mW(:,3)]'),rots7mW(:,2))
-signrank(mean([rots15mW(:,1),rots7mW(:,3)]'),rots7mW(:,2))
-signrank(mean([rots15mWPulse(:,1),rots7mW(:,3)]'),rots7mW(:,2))
+signrank(mean([rots15mW(:,1),rots15mW(:,3)]'),rots15mW(:,2))
+signrank(mean([rots15mWPulse(:,1),rots15mWPulse(:,3)]'),rots15mWPulse(:,2))
 
 hFig = figure;
 hold on
@@ -754,12 +812,18 @@ hFig = figure;
 imagesc(tester)
 colormap('gray')
 hold on
+
 p1 = [dataOut(1,11) dataOut(1,12)];                         % First Point
 p2 = [mean([dataOut(1,5),dataOut(1,8)]) mean([dataOut(1,6),dataOut(1,9)])]; % Second Point
 dp = p2-p1;
 % plot(p1,'r.')
 % plot(p2,'g.')
 quiver(p1(1),p1(2),dp(1),dp(2),0,'LineWidth',2,'Color',[1 0 0])
+plot(dataOut(1,5),dataOut(1,6),'g.')
+plot(dataOut(1,8),dataOut(1,9),'g.')
+plot(dataOut(1,2),dataOut(1,3),'c.')
+plot(dataOut(1,11),dataOut(1,12),'m.')
+axis square
 spikeGraphName = 'SingleFrameAxisExample'
 savefig(hFig,spikeGraphName);
 
@@ -826,143 +890,91 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-
-plot([],[],'r')
-
-p1 = [2 3];                         % First Point
-p2 = [9 8];                         % Second Point
-dp = p2-p1;                         % Difference
-figure(1)
-quiver(p1(1),p1(2),dp(1),dp(2),0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-figure;
-hold on
-for i = 1:length(decoder)
-    plot(meanCumAngleLaser(:,i)*decoder(i))
-end
-
-
-load('HardwareTrial13Arena1.mat')
-load('Trial13Arena1DLCOut.mat')
-% dataOut = csvread(fname,3);
-%column 1 is time, 2-3 is nose, 5-6 is left ear, 8-9 is right ear, 11-12 is
-%tail base.
-figure
-hold on
-plot(diff(dataOut(:,2)),'b')
-plot(diff(dataOut(:,3)),'r')
-plot((dataOut(:,4)-1)*50,'g')
+%% Now lets plot out a specific trial
+%look at trial 13, arena 1. Session 33
+targetTime = laserOn(33);
 
 figure
-hold on
-plot(diff(dataOut(:,5)),'b')
-plot(diff(dataOut(:,6)),'r')
-plot((dataOut(:,7)-1)*50,'g')
-
-
-figure
-hold on
-plot(diff(dataOut(:,8)),'b')
-plot(diff(dataOut(:,9)),'r')
-plot((dataOut(:,10)-1)*50,'g')
-
-figure
-hold on
-plot(diff(dataOut(:,11)),'b')
-plot(diff(dataOut(:,12)),'r')
-plot((dataOut(:,13)-1)*50,'g')
-
-%seems like tail has the most shit, followed by nose. ears are doing well. 
-
-%now lets find the angle?first, we need to generate the mean point between
-%the ears.
-
+plot(angleLaser(:,33))
+% laserOn
+i = 1;
+disp(i)
+%first, lets find appropriate hardware file.
+tarFind = find(HWfinder(:,1) == CSVfinder(i,1) & HWfinder(:,2) == CSVfinder(i,2));
+dataOut = csvread(namesCSV{i},3);
+load(namesHW{tarFind})
+%calculate between the ear point.
 earMeanX = mean([dataOut(:,5),dataOut(:,8)]');
 earMeanY = mean([dataOut(:,6),dataOut(:,9)]');
+%generate vector array
+v2=[earMeanX',earMeanY']-[dataOut(:,11),dataOut(:,12)]; %This is tail
 
-% figure
-% hold on
-% tester = read(v,i);
-% imagesc(tester(:,:,1))
-% plot(dataOut(i,2),dataOut(i,3),'r.')
-% plot(earMeanX(i),earMeanY(i),'g.')
-% plot(dataOut(i,11),dataOut(i,12),'w.')
-
-
-% v1=[earMeanX(i),earMeanY(i)]-[dataOut(i,2),dataOut(i,3)];
-% v2=[earMeanX(i),earMeanY(i)]-[dataOut(i,11),dataOut(i,12)];
-
-
-for i = 1:length(earMeanY)
-    v1=[earMeanX(i),earMeanY(i)]-[dataOut(i,2),dataOut(i,3)];
-    v2=[earMeanX(i),earMeanY(i)]-[dataOut(i,11),dataOut(i,12)];
-%     a1 = mod(atan2( det([v1;v2;]) , dot(v1,v2) ), 2*pi );
-%     angleVal(i) = a1;
-    pointDir(i) = (dataOut(i,2) - earMeanX(i))*(dataOut(i,12)-earMeanY(i)) - (dataOut(i,3) - earMeanY(i))*(dataOut(i,11)-earMeanX(i));
-    %positive values mean nose is left of body, negative values mean nose
-    %is right of body. 
-    angleVal(i)=acos(sum(v1.*v2)/(norm(v1)*norm(v2)));
-end
-angleVal = angleVal/(2*pi)*360;
-
-trueAngle = angleVal - 180;
-posNeg = zeros(length(pointDir),1);
-posNeg(pointDir > 0) = 1;
-posNeg(pointDir < 0) = -1;
-trueAngle = trueAngle.*posNeg';
-
-%lets pull time points of laser onset
-laserOn = timeStore(1:2:end);
-laserOn = round(laserOn*30);
-
-%check periods of laser on vs off
-laserDur = 10*30;
-
-for i = 1:length(laserOn)
-    angleLaser(:,i) = cumsum(trueAngle(laserOn(i)-laserDur:laserOn(i) + laserDur*2));
-    if laserOn(i) > laserDur*3
-        angleControl(:,i) = cumsum(trueAngle(laserOn(i)-laserDur*3:laserOn(i)));
-    end
-end
-
-
-for i = 1:length(laserOn)
-    angleLaser(:,i) = cumsum(diff(trueAngle(laserOn(i)-laserDur:laserOn(i) + laserDur*2)));
-    if laserOn(i) > laserDur*3
-        angleControl(:,i) = cumsum(diff(trueAngle(laserOn(i)-laserDur*3:laserOn(i))));
-    end
-end
+v = VideoReader('Trial13Arena1.mp4')
 
 figure
 hold on
-plot(mean(angleLaser'),'g')
-plot(mean(angleLaser') + std(angleLaser')/sqrt(45),'g')
-plot(mean(angleLaser') - std(angleLaser')/sqrt(45),'g')
-plot(mean(angleControl'),'k')
-plot(mean(angleControl') + std(angleControl')/sqrt(45),'k')
-plot(mean(angleControl') - std(angleControl')/sqrt(45),'k')
+plot(earMeanX(targetTime+450:targetTime + 600),earMeanY(targetTime+450:targetTime + 600))
+plot(earMeanX(targetTime+450),earMeanY(targetTime+450),'bo')
+plot(earMeanX(targetTime+750:targetTime + 900),earMeanY(targetTime+750:targetTime + 900),'r')
+plot(earMeanX(targetTime+750),earMeanY(targetTime+750),'ro')
 
-%the readout angle doesnt seem to produce much. what about movement of the
-%ear mean point?
+
+
+
+figure
+hold on
+plot(earMeanX(targetTime+450:targetTime + 600),earMeanY(targetTime+450:targetTime + 600))
+plot(earMeanX(targetTime+450),earMeanY(targetTime+450),'bo')
+plot(earMeanX(targetTime+600:targetTime + 750),earMeanY(targetTime+600:targetTime + 750),'r')
+plot(earMeanX(targetTime+600),earMeanY(targetTime+600),'ro')
+
+%set parameters.
+frameLim = 30;
+frameMult = 10; %this instructs whether to jump frames. 
+dataOut = csvread(namesCSV{i},3);
+for j = 1:frameLim
+    p1 = [dataOut(targetTime+450+j*frameMult,11) dataOut(targetTime+450+j*frameMult,12)];                         % First Point
+    p2 = [mean([dataOut(targetTime+450+j*frameMult,5),dataOut(targetTime+450+j*frameMult,8)]) mean([dataOut(targetTime+450+j*frameMult,6),dataOut(targetTime+450+j*frameMult,9)])]; % Second Point
+    dp = p2-p1;
+    % plot(p1,'r.')
+    % plot(p2,'g.')
+    quiver(p1(1),p1(2),dp(1),dp(2),0,'LineWidth',2,'Color',[(frameLim-j)/frameLim j/frameLim 0])
+end
+
+
+
+figure
+hold on
+plot(earMeanX(targetTime+450:targetTime + 600),earMeanY(targetTime+450:targetTime + 600))
+plot(earMeanX(targetTime+450),earMeanY(targetTime+450),'bo')
+plot(earMeanX(targetTime+600:targetTime + 750),earMeanY(targetTime+600:targetTime + 750),'r')
+plot(earMeanX(targetTime+600),earMeanY(targetTime+600),'ro')
+
+%set parameters.
+frameLim = 15;
+frameMult = 20; %this instructs whether to jump frames. 
+dataOut = csvread(namesCSV{i},3);
+for j = 1:frameLim
+    p1 = [dataOut(targetTime+450+j*frameMult,11) dataOut(targetTime+450+j*frameMult,12)];                         % First Point
+    p2 = [mean([dataOut(targetTime+450+j*frameMult,5),dataOut(targetTime+450+j*frameMult,8)]) mean([dataOut(targetTime+450+j*frameMult,6),dataOut(targetTime+450+j*frameMult,9)])]; % Second Point
+    dp = p2-p1;
+    % plot(p1,'r.')
+    % plot(p2,'g.')
+    quiver(p1(1),p1(2),dp(1),dp(2),0,'LineWidth',2,'Color',[(frameLim-j)/frameLim j/frameLim 0])
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
