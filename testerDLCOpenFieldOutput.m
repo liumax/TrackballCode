@@ -350,8 +350,6 @@ title('Mouse Body Angle, 3, 6.7, 15 mW, 15 mW pulsed')
 
 
 
-
-
 %% Ok lets try plotting out the allocentric body angle, not the egocentric body angle. 
 
 %now go through and extract angle change from each
@@ -587,9 +585,9 @@ for i = 1:length(CSVfinder)
 end
 
 %decode binned data.
-decodeBin(:,1) = decoder.*binDataOut(:,1);
-decodeBin(:,2) = decoder.*binDataOut(:,2);
-decodeBin(:,3) = decoder.*binDataOut(:,3);
+decodeBin(:,1) = decoder'.*binDataOut(:,1);
+decodeBin(:,2) = decoder'.*binDataOut(:,2);
+decodeBin(:,3) = decoder'.*binDataOut(:,3);
 
 binData3mW = decodeBin(25:48,:);
 binData7mW = decodeBin(73:96,:);
@@ -657,14 +655,14 @@ targets = [13,15,13+24,15+24,13+48,15+48,13+72,15+72];
 normRot(targets,:) = NaN;
 
 % normRot = normRot./normRot(:,1);
-normRotNorm(:,1) = normRot(:,1)./normRot(:,1);
-normRotNorm(:,2) = normRot(:,2)./normRot(:,1);
-normRotNorm(:,3) = normRot(:,3)./normRot(:,1);
-figure
-hold on
-for i = 1:24
-    plot(normRotNorm(i,:))
-end
+% normRotNorm(:,1) = normRot(:,1)./normRot(:,1);
+% normRotNorm(:,2) = normRot(:,2)./normRot(:,1);
+% normRotNorm(:,3) = normRot(:,3)./normRot(:,1);
+% figure
+% hold on
+% for i = 1:24
+%     plot(normRotNorm(i,:))
+% end
 
 rots15mW = normRot(1:24,:);
 rots3mW = normRot(25:48,:);
@@ -681,6 +679,17 @@ signrank(mean([rots3mW(:,1),rots3mW(:,3)]'),rots3mW(:,2))
 signrank(mean([rots7mW(:,1),rots7mW(:,3)]'),rots7mW(:,2))
 signrank(mean([rots15mW(:,1),rots15mW(:,3)]'),rots15mW(:,2))
 signrank(mean([rots15mWPulse(:,1),rots15mWPulse(:,3)]'),rots15mWPulse(:,2))
+
+
+signrank(rots3mW(:,1),rots3mW(:,2))
+signrank(rots7mW(:,1),rots7mW(:,2))
+signrank(rots15mW(:,1),rots15mW(:,2))
+signrank(rots15mWPulse(:,1),rots15mWPulse(:,2))
+
+signrank(rots3mW(:,3),rots3mW(:,2))
+signrank(rots7mW(:,3),rots7mW(:,2))
+signrank(rots15mW(:,3),rots15mW(:,2))
+signrank(rots15mWPulse(:,3),rots15mWPulse(:,2))
 
 hFig = figure;
 hold on
