@@ -20,8 +20,10 @@ for i = 1:numFiles
 %     testData(nanVals,:) = [];
     %pull cell types
 %     cellTypes = masterHeader(:,7);
-    findPVs = find(testData(:,7) == 1);
-    findMSNs = find(testData(:,7) == 0);
+    [indCellType] = functionCellStringFind(masterHeader,'CellType');
+    indCellType = indCellType(1);
+    findPVs = find(testData(:,indCellType) == 1);
+    findMSNs = find(testData(:,indCellType) == 0);
     probePos = floor(-testData(:,1));
     %if find MSNs and PVs
     if length(findPVs) > 0 & length(findMSNs) > 0
