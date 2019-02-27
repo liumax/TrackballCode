@@ -39,314 +39,316 @@ end
 decoder = [-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,...
     -1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1];
 
-%% Look through and try and find body angle. 
-%now go through and extract angle change from each
-for i = 1:length(CSVfinder)
-    disp(i)
-    %first, lets find appropriate hardware file.
-    tarFind = find(HWfinder(:,1) == CSVfinder(i,1) & HWfinder(:,2) == CSVfinder(i,2));
-    dataOut = csvread(namesCSV{i},3);
-    load(namesHW{tarFind})
-    %calculate between the ear point.
-    earMeanX = mean([dataOut(:,5),dataOut(:,8)]');
-    earMeanY = mean([dataOut(:,6),dataOut(:,9)]');
-    %pull angle
-    for j = 1:length(earMeanY)
-        v1=[earMeanX(j),earMeanY(j)]-[dataOut(j,2),dataOut(j,3)];
-        v2=[earMeanX(j),earMeanY(j)]-[dataOut(j,11),dataOut(j,12)];
-    %     a1 = mod(atan2( det([v1;v2;]) , dot(v1,v2) ), 2*pi );
-    %     angleVal(i) = a1;
-        pointDir(j) = (dataOut(j,2) - earMeanX(j))*(dataOut(j,12)-earMeanY(j)) - (dataOut(j,3) - earMeanY(j))*(dataOut(j,11)-earMeanX(j));
-        %positive values mean nose is left of body, negative values mean nose
-        %is right of body. 
-        angleVal(j)=acos(sum(v1.*v2)/(norm(v1)*norm(v2)));
-    end
-    %adjust to degrees
-    angleVal = angleVal/(2*pi)*360;
-    %correct for direction. Positive means nose is to left, negative means
-    %nose is to right. 
-    trueAngle = angleVal - 180;
-    posNeg = zeros(length(pointDir),1);
-    posNeg(pointDir > 0) = 1;
-    posNeg(pointDir < 0) = -1;
-    trueAngle = trueAngle.*posNeg';
-
-    %lets pull time points of laser onset
-    laserOn = timeStore(1:2:end);
-    laserOn = round(laserOn*30);
-
-    %check periods of laser on vs off
-    laserDur = 10*30;
-    angleLaser = [];
-    angleControl = [];
-    %pull cumulative angle
-    for j = 1:length(laserOn)
-        angleLaser(:,j) = cumsum(trueAngle(laserOn(j)-laserDur:laserOn(j) + laserDur*2));
-        if laserOn(j) > laserDur*3
-            angleControl(:,j) = cumsum(trueAngle(laserOn(j)-laserDur*3:laserOn(j)));
-        end
-    end
-    
-    %store these results.
-    meanCumAngleLaser(:,i) = mean(angleLaser');
-    STECumAngleLaser(:,i) = std(angleLaser')/sqrt(45);
-    meanCumAngleControl(:,i) = mean(angleControl');
-    STECumAngleLaser(:,i) = std(angleControl')/sqrt(45);
-    
-    angleLaser= [];
-    angleControl = [];
-    %pull diff angle
-    for j = 1:length(laserOn)
-        angleLaser(:,j) = ((trueAngle(laserOn(j)-laserDur:laserOn(j) + laserDur*2)));
-        if laserOn(j) > laserDur*3
-            angleControl(:,j) = ((trueAngle(laserOn(j)-laserDur*3:laserOn(j))));
-        end
-    end
-
-    %store these results.
-    meanDiffAngleLaser(:,i) = mean(angleLaser');
-    STEDiffAngleLaser(:,i) = std(angleLaser')/sqrt(45);
-    meanDiffAngleControl(:,i) = mean(angleControl');
-    STEDiffAngleControl(:,i) = std(angleControl')/sqrt(45);
-    
-    angleLaser = [];
-    angleControl = [];
-end
-
-decoder = [-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,...
-    -1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1];
-% figure;
-% hold on
-% for i = 1:23
-%     plot(meanCumAngleLaser(:,i)*decoder(i))
+% %% Look through and try and find body angle. 
+% %now go through and extract angle change from each
+% for i = 1:length(CSVfinder)
+%     disp(i)
+%     %first, lets find appropriate hardware file.
+%     tarFind = find(HWfinder(:,1) == CSVfinder(i,1) & HWfinder(:,2) == CSVfinder(i,2));
+%     dataOut = csvread(namesCSV{i},3);
+%     load(namesHW{tarFind})
+%     %calculate between the ear point.
+%     earMeanX = mean([dataOut(:,5),dataOut(:,8)]');
+%     earMeanY = mean([dataOut(:,6),dataOut(:,9)]');
+%     %pull angle
+%     for j = 1:length(earMeanY)
+%         v1=[earMeanX(j),earMeanY(j)]-[dataOut(j,2),dataOut(j,3)];
+%         v2=[earMeanX(j),earMeanY(j)]-[dataOut(j,11),dataOut(j,12)];
+%     %     a1 = mod(atan2( det([v1;v2;]) , dot(v1,v2) ), 2*pi );
+%     %     angleVal(i) = a1;
+%         pointDir(j) = (dataOut(j,2) - earMeanX(j))*(dataOut(j,12)-earMeanY(j)) - (dataOut(j,3) - earMeanY(j))*(dataOut(j,11)-earMeanX(j));
+%         %positive values mean nose is left of body, negative values mean nose
+%         %is right of body. 
+%         angleVal(j)=acos(sum(v1.*v2)/(norm(v1)*norm(v2)));
+%     end
+%     %adjust to degrees
+%     angleVal = angleVal/(2*pi)*360;
+%     %correct for direction. Positive means nose is to left, negative means
+%     %nose is to right. 
+%     trueAngle = angleVal - 180;
+%     posNeg = zeros(length(pointDir),1);
+%     posNeg(pointDir > 0) = 1;
+%     posNeg(pointDir < 0) = -1;
+%     trueAngle = trueAngle.*posNeg';
+% 
+%     %lets pull time points of laser onset
+%     laserOn = timeStore(1:2:end);
+%     laserOn = round(laserOn*30);
+% 
+%     %check periods of laser on vs off
+%     laserDur = 10*30;
+%     angleLaser = [];
+%     angleControl = [];
+%     %pull cumulative angle
+%     for j = 1:length(laserOn)
+%         angleLaser(:,j) = cumsum(trueAngle(laserOn(j)-laserDur:laserOn(j) + laserDur*2));
+%         if laserOn(j) > laserDur*3
+%             angleControl(:,j) = cumsum(trueAngle(laserOn(j)-laserDur*3:laserOn(j)));
+%         end
+%     end
+%     
+%     %store these results.
+%     meanCumAngleLaser(:,i) = mean(angleLaser');
+%     STECumAngleLaser(:,i) = std(angleLaser')/sqrt(45);
+%     meanCumAngleControl(:,i) = mean(angleControl');
+%     STECumAngleLaser(:,i) = std(angleControl')/sqrt(45);
+%     
+%     angleLaser= [];
+%     angleControl = [];
+%     %pull diff angle
+%     for j = 1:length(laserOn)
+%         angleLaser(:,j) = ((trueAngle(laserOn(j)-laserDur:laserOn(j) + laserDur*2)));
+%         if laserOn(j) > laserDur*3
+%             angleControl(:,j) = ((trueAngle(laserOn(j)-laserDur*3:laserOn(j))));
+%         end
+%     end
+% 
+%     %store these results.
+%     meanDiffAngleLaser(:,i) = mean(angleLaser');
+%     STEDiffAngleLaser(:,i) = std(angleLaser')/sqrt(45);
+%     meanDiffAngleControl(:,i) = mean(angleControl');
+%     STEDiffAngleControl(:,i) = std(angleControl')/sqrt(45);
+%     
+%     angleLaser = [];
+%     angleControl = [];
 % end
-
-corrCumAngleLaser = [];
-for i = 1:23
-    corrCumAngleLaser(:,i) = meanCumAngleLaser(:,i)*decoder(i);
-end
-
+% 
+% decoder = [-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,...
+%     -1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1,-1,1,1,-1];
+% % figure;
+% % hold on
+% % for i = 1:23
+% %     plot(meanCumAngleLaser(:,i)*decoder(i))
+% % end
+% 
+% corrCumAngleLaser = [];
+% for i = 1:23
+%     corrCumAngleLaser(:,i) = meanCumAngleLaser(:,i)*decoder(i);
+% end
+% 
+% % figure
+% % plot(mean(corrCumAngleLaser'))
+% 
+% corrDiffAngleLaser = [];
+% for i = 1:23
+%     corrDiffAngleLaser(:,i) = meanDiffAngleLaser(:,i)*decoder(i);
+% end
+% 
+% % figure
+% % plot(mean(corrDiffAngleLaser'))
+% 
+% corrCumAngleControl = [];
+% for i = 1:23
+%     corrCumAngleControl(:,i) = meanCumAngleControl(:,i)*decoder(i);
+% end
+% 
+% % figure
+% % plot(mean(corrCumAngleControl'))
+% 
+% corrDiffAngleControl = [];
+% for i = 1:23
+%     corrDiffAngleControl(:,i) = meanDiffAngleControl(:,i)*decoder(i);
+% end
+% 
 % figure
-% plot(mean(corrCumAngleLaser'))
-
-corrDiffAngleLaser = [];
-for i = 1:23
-    corrDiffAngleLaser(:,i) = meanDiffAngleLaser(:,i)*decoder(i);
-end
-
+% plot(mean(corrDiffAngleControl'))
+% 
 % figure
-% plot(mean(corrDiffAngleLaser'))
-
-corrCumAngleControl = [];
-for i = 1:23
-    corrCumAngleControl(:,i) = meanCumAngleControl(:,i)*decoder(i);
-end
-
+% hold on
+% plot(smooth(mean(corrCumAngleLaser'),15),'g')
+% plot(smooth(mean(corrCumAngleControl'),15),'k')
+% 
+% 
 % figure
-% plot(mean(corrCumAngleControl'))
-
-corrDiffAngleControl = [];
-for i = 1:23
-    corrDiffAngleControl(:,i) = meanDiffAngleControl(:,i)*decoder(i);
-end
-
-figure
-plot(mean(corrDiffAngleControl'))
-
-figure
-hold on
-plot(smooth(mean(corrCumAngleLaser'),15),'g')
-plot(smooth(mean(corrCumAngleControl'),15),'k')
-
-
-figure
-hold on
-plot(smooth(mean(corrDiffAngleLaser'),15),'g')
-plot(smooth(mean(corrDiffAngleControl'),15),'k')
-
-
-%now we can plot while normalizing baseline
-laserBase = mean(mean(corrDiffAngleLaser(100:200,:)'));
-controlBase = mean(mean(corrDiffAngleControl(100:200,:)'));
-
-
-hFig = figure
-hold on
-plot([0:1/30:30],smooth(mean(corrDiffAngleLaser'),15)-laserBase,'g','LineWidth',2)
-% plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')+std(corrDiffAngleLaser')/sqrt(23),15)-laserBase,'g')
-% plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')-std(corrDiffAngleLaser')/sqrt(23),15)-laserBase,'g')
-plot([0:1/30:30],smooth(mean(corrDiffAngleControl'),15)-controlBase,'k','LineWidth',2)
-% plot([0:1/30:30],smooth(mean(corrDiffAngleControl')+std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
-% plot([0:1/30:30],smooth(mean(corrDiffAngleControl')-std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
-plot([10 10],[-3 4],'k')
-plot([20 20],[-3 4],'k')
-spikeGraphName = 'LaserVSITI_MouseHeadAngle'
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
-hFig = figure
-hold on
-plot([0:1/30:30],smooth(mean(corrDiffAngleLaser'),15),'g','LineWidth',2)
-plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')+std(corrDiffAngleLaser')/sqrt(23),15),'g')
-plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')-std(corrDiffAngleLaser')/sqrt(23),15),'g')
+% hold on
+% plot(smooth(mean(corrDiffAngleLaser'),15),'g')
+% plot(smooth(mean(corrDiffAngleControl'),15),'k')
+% 
+% 
+% %now we can plot while normalizing baseline
+% laserBase = mean(mean(corrDiffAngleLaser(100:200,:)'));
+% controlBase = mean(mean(corrDiffAngleControl(100:200,:)'));
+% 
+% 
+% hFig = figure
+% hold on
+% plot([0:1/30:30],smooth(mean(corrDiffAngleLaser'),15)-laserBase,'g','LineWidth',2)
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')+std(corrDiffAngleLaser')/sqrt(23),15)-laserBase,'g')
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')-std(corrDiffAngleLaser')/sqrt(23),15)-laserBase,'g')
 % plot([0:1/30:30],smooth(mean(corrDiffAngleControl'),15)-controlBase,'k','LineWidth',2)
-% plot([0:1/30:30],smooth(mean(corrDiffAngleControl')+std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
-% plot([0:1/30:30],smooth(mean(corrDiffAngleControl')-std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
-plot([10 10],[-3 4],'k')
-plot([20 20],[-3 4],'k')
-spikeGraphName = 'LaserWithSTE_MouseHeadAngle'
-savefig(hFig,spikeGraphName);
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleControl')+std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleControl')-std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
+% plot([10 10],[-3 4],'k')
+% plot([20 20],[-3 4],'k')
+% spikeGraphName = 'LaserVSITI_MouseHeadAngle'
+% savefig(hFig,spikeGraphName);
+% 
+% %save as PDF with correct name
+% set(hFig,'Units','Inches');
+% pos = get(hFig,'Position');
+% set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+% print(hFig,spikeGraphName,'-dpdf','-r0')
+% 
+% hFig = figure
+% hold on
+% plot([0:1/30:30],smooth(mean(corrDiffAngleLaser'),15),'g','LineWidth',2)
+% plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')+std(corrDiffAngleLaser')/sqrt(23),15),'g')
+% plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')-std(corrDiffAngleLaser')/sqrt(23),15),'g')
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleControl'),15)-controlBase,'k','LineWidth',2)
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleControl')+std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleControl')-std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
+% plot([10 10],[-3 4],'k')
+% plot([20 20],[-3 4],'k')
+% spikeGraphName = 'LaserWithSTE_MouseHeadAngle'
+% savefig(hFig,spikeGraphName);
+% 
+% %save as PDF with correct name
+% set(hFig,'Units','Inches');
+% pos = get(hFig,'Position');
+% set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+% print(hFig,spikeGraphName,'-dpdf','-r0')
+% 
+% % Calculate percentiles from ITI, plot these. 
+% %calculating percentiles by averaging across each time point, then
+% %performing percentile calculations. This is appropriate comparison to
+% %means that I am displaying. 
+% perLow = prctile(reshape(mean(corrDiffAngleControl(300:901,:)'),1,[]),5);
+% perHi = prctile(reshape(mean(corrDiffAngleControl(300:901,:)'),1,[]),95);
+% 
+% hFig = figure
+% hold on
+% plot([0:1/30:30],smooth(mean(corrDiffAngleLaser'),15),'g','LineWidth',2)
+% plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')+std(corrDiffAngleLaser')/sqrt(23),15),'g')
+% plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')-std(corrDiffAngleLaser')/sqrt(23),15),'g')
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleControl'),15)-controlBase,'k','LineWidth',2)
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleControl')+std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
+% % plot([0:1/30:30],smooth(mean(corrDiffAngleControl')-std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
+% plot([10 10],[-3 4],'k')
+% plot([20 20],[-3 4],'k')
+% plot([0 30],[perLow perLow],'k')
+% plot([0 30],[perHi perHi],'k')
+% 
+% spikeGraphName = 'LaserWithSTE_PRCTILE_MouseHeadAngle'
+% savefig(hFig,spikeGraphName);
+% 
+% %save as PDF with correct name
+% set(hFig,'Units','Inches');
+% pos = get(hFig,'Position');
+% set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+% print(hFig,spikeGraphName,'-dpdf','-r0')
+% 
+% 
+% %% Try and pull longer window
+% 
+% %now go through and extract angle change from each
+% for i = 1:length(CSVfinder)
+%     disp(i)
+%     %first, lets find appropriate hardware file.
+%     tarFind = find(HWfinder(:,1) == CSVfinder(i,1) & HWfinder(:,2) == CSVfinder(i,2));
+%     dataOut = csvread(namesCSV{i},3);
+%     load(namesHW{tarFind})
+%     %calculate between the ear point.
+%     earMeanX = mean([dataOut(:,5),dataOut(:,8)]');
+%     earMeanY = mean([dataOut(:,6),dataOut(:,9)]');
+%     %pull angle
+%     for j = 1:length(earMeanY)
+%         v1=[earMeanX(j),earMeanY(j)]-[dataOut(j,2),dataOut(j,3)];
+%         v2=[earMeanX(j),earMeanY(j)]-[dataOut(j,11),dataOut(j,12)];
+%     %     a1 = mod(atan2( det([v1;v2;]) , dot(v1,v2) ), 2*pi );
+%     %     angleVal(i) = a1;
+%         pointDir(j) = (dataOut(j,2) - earMeanX(j))*(dataOut(j,12)-earMeanY(j)) - (dataOut(j,3) - earMeanY(j))*(dataOut(j,11)-earMeanX(j));
+%         %positive values mean nose is left of body, negative values mean nose
+%         %is right of body. 
+%         angleVal(j)=acos(sum(v1.*v2)/(norm(v1)*norm(v2)));
+%     end
+%     %adjust to degrees
+%     angleVal = angleVal/(2*pi)*360;
+%     %correct for direction. Positive means nose is to left, negative means
+%     %nose is to right. 
+%     trueAngle = angleVal - 180;
+%     posNeg = zeros(length(pointDir),1);
+%     posNeg(pointDir > 0) = 1;
+%     posNeg(pointDir < 0) = -1;
+%     trueAngle = trueAngle.*posNeg';
+% 
+%     %lets pull time points of laser onset
+%     laserOn = timeStore(1:2:end);
+%     laserOn = round(laserOn*30);
+% 
+%     %check periods of laser on vs off
+%     laserDur = 10*30;
+%     angleLaser = [];
+%     %pull cumulative angle
+%     for j = 2:length(laserOn)
+%         angleLaser(:,j) = cumsum(trueAngle(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3));
+%     end
+%     
+%     %store these results.
+%     longmeanCumAngleLaser(:,i) = mean(angleLaser');
+%     longSTECumAngleLaser(:,i) = std(angleLaser')/sqrt(45);
+%     
+%     angleLaser= [];
+%     %pull diff angle
+%     for j = 2:length(laserOn)
+%         angleLaser(:,j) = ((trueAngle(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3)));
+%     end
+% 
+%     %store these results.
+%     longmeanDiffAngleLaser(:,i) = mean(angleLaser');
+%     longSTEDiffAngleLaser(:,i) = std(angleLaser')/sqrt(45);
+%     
+%     angleLaser = [];
+% end
+% 
+% data15mw = [];
+% for i = 1:24
+%     data15mw(:,i) = longmeanDiffAngleLaser(:,i)*decoder(i);
+% end
+% 
+% 
+% data3mw = [];
+% for i = 25:48
+%     data3mw(:,i-24) = longmeanDiffAngleLaser(:,i)*decoder(i);
+% end
+% data3mw(:,[13,15]) = []; %dead mouse!
+% 
+% data15mwPulse = [];
+% for i = 49:72
+%     data15mwPulse(:,i-48) = longmeanDiffAngleLaser(:,i)*decoder(i);
+% end
+% data15mwPulse(:,[13,15]) = []; %dead mouse!
+% 
+% data67mw = [];
+% for i = 73:96
+%     data67mw(:,i-72) = longmeanDiffAngleLaser(:,i)*decoder(i);
+% end
+% data67mw(:,[13,15]) = []; %dead mouse!
+% 
+% 
+% hFig = figure;
+% % longperLow = prctile(reshape(mean(data15mw(1:600,:)'),1,[]),2.5);
+% % longperHi = prctile(reshape(mean(data15mw(1:600,:)'),1,[]),97.5);
+% hold on
+% smoothTar = 45;
+% plot([0:1/30:50],smooth(mean(data15mw'),smoothTar),'r','LineWidth',2)
+% plot([0:1/30:50],smooth(mean(data67mw'),smoothTar),'Color',[0.5 0 0],'LineWidth',2)
+% plot([0:1/30:50],smooth(mean(data3mw'),smoothTar),'k','LineWidth',2)
+% plot([0:1/30:50],smooth(mean(data15mwPulse'),smoothTar),'c--','LineWidth',2)
+% 
+% 
+% % plot([0:1/30:50],mean(data15mw')+std(data15mw')/sqrt(24),'g','LineWidth',1)
+% % plot([0:1/30:50],mean(data15mw')-std(data15mw')/sqrt(24),'g','LineWidth',1)
+% % plot([0:1/30:50],mean(data3mw')+std(data3mw')/sqrt(22),'b','LineWidth',1)
+% % plot([0:1/30:50],mean(data3mw')-std(data3mw')/sqrt(22),'b','LineWidth',1)
+% % plot([0 50],[longperLow longperLow],'k')
+% % plot([0 50],[longperHi longperHi],'k')
+% plot([20 20],[min(mean(data15mw')) max(mean(data15mw'))],'k')
+% plot([30 30],[min(mean(data15mw')) max(mean(data15mw'))],'k')
+% ylabel('Mouse Body Angle (degrees)')
+% xlabel('Time (sec)')
+% title('Mouse Body Angle, 3, 6.7, 15 mW, 15 mW pulsed')
 
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
 
-% Calculate percentiles from ITI, plot these. 
-%calculating percentiles by averaging across each time point, then
-%performing percentile calculations. This is appropriate comparison to
-%means that I am displaying. 
-perLow = prctile(reshape(mean(corrDiffAngleControl(300:901,:)'),1,[]),5);
-perHi = prctile(reshape(mean(corrDiffAngleControl(300:901,:)'),1,[]),95);
-
-hFig = figure
-hold on
-plot([0:1/30:30],smooth(mean(corrDiffAngleLaser'),15),'g','LineWidth',2)
-plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')+std(corrDiffAngleLaser')/sqrt(23),15),'g')
-plot([0:1/30:30],smooth(mean(corrDiffAngleLaser')-std(corrDiffAngleLaser')/sqrt(23),15),'g')
-% plot([0:1/30:30],smooth(mean(corrDiffAngleControl'),15)-controlBase,'k','LineWidth',2)
-% plot([0:1/30:30],smooth(mean(corrDiffAngleControl')+std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
-% plot([0:1/30:30],smooth(mean(corrDiffAngleControl')-std(corrDiffAngleControl')/sqrt(23),15)-controlBase,'k')
-plot([10 10],[-3 4],'k')
-plot([20 20],[-3 4],'k')
-plot([0 30],[perLow perLow],'k')
-plot([0 30],[perHi perHi],'k')
-
-spikeGraphName = 'LaserWithSTE_PRCTILE_MouseHeadAngle'
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
-
-%% Try and pull longer window
-
-%now go through and extract angle change from each
-for i = 1:length(CSVfinder)
-    disp(i)
-    %first, lets find appropriate hardware file.
-    tarFind = find(HWfinder(:,1) == CSVfinder(i,1) & HWfinder(:,2) == CSVfinder(i,2));
-    dataOut = csvread(namesCSV{i},3);
-    load(namesHW{tarFind})
-    %calculate between the ear point.
-    earMeanX = mean([dataOut(:,5),dataOut(:,8)]');
-    earMeanY = mean([dataOut(:,6),dataOut(:,9)]');
-    %pull angle
-    for j = 1:length(earMeanY)
-        v1=[earMeanX(j),earMeanY(j)]-[dataOut(j,2),dataOut(j,3)];
-        v2=[earMeanX(j),earMeanY(j)]-[dataOut(j,11),dataOut(j,12)];
-    %     a1 = mod(atan2( det([v1;v2;]) , dot(v1,v2) ), 2*pi );
-    %     angleVal(i) = a1;
-        pointDir(j) = (dataOut(j,2) - earMeanX(j))*(dataOut(j,12)-earMeanY(j)) - (dataOut(j,3) - earMeanY(j))*(dataOut(j,11)-earMeanX(j));
-        %positive values mean nose is left of body, negative values mean nose
-        %is right of body. 
-        angleVal(j)=acos(sum(v1.*v2)/(norm(v1)*norm(v2)));
-    end
-    %adjust to degrees
-    angleVal = angleVal/(2*pi)*360;
-    %correct for direction. Positive means nose is to left, negative means
-    %nose is to right. 
-    trueAngle = angleVal - 180;
-    posNeg = zeros(length(pointDir),1);
-    posNeg(pointDir > 0) = 1;
-    posNeg(pointDir < 0) = -1;
-    trueAngle = trueAngle.*posNeg';
-
-    %lets pull time points of laser onset
-    laserOn = timeStore(1:2:end);
-    laserOn = round(laserOn*30);
-
-    %check periods of laser on vs off
-    laserDur = 10*30;
-    angleLaser = [];
-    %pull cumulative angle
-    for j = 2:length(laserOn)
-        angleLaser(:,j) = cumsum(trueAngle(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3));
-    end
-    
-    %store these results.
-    longmeanCumAngleLaser(:,i) = mean(angleLaser');
-    longSTECumAngleLaser(:,i) = std(angleLaser')/sqrt(45);
-    
-    angleLaser= [];
-    %pull diff angle
-    for j = 2:length(laserOn)
-        angleLaser(:,j) = ((trueAngle(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3)));
-    end
-
-    %store these results.
-    longmeanDiffAngleLaser(:,i) = mean(angleLaser');
-    longSTEDiffAngleLaser(:,i) = std(angleLaser')/sqrt(45);
-    
-    angleLaser = [];
-end
-
-data15mw = [];
-for i = 1:24
-    data15mw(:,i) = longmeanDiffAngleLaser(:,i)*decoder(i);
-end
-
-
-data3mw = [];
-for i = 25:48
-    data3mw(:,i-24) = longmeanDiffAngleLaser(:,i)*decoder(i);
-end
-data3mw(:,[13,15]) = []; %dead mouse!
-
-data15mwPulse = [];
-for i = 49:72
-    data15mwPulse(:,i-48) = longmeanDiffAngleLaser(:,i)*decoder(i);
-end
-data15mwPulse(:,[13,15]) = []; %dead mouse!
-
-data67mw = [];
-for i = 73:96
-    data67mw(:,i-72) = longmeanDiffAngleLaser(:,i)*decoder(i);
-end
-data67mw(:,[13,15]) = []; %dead mouse!
-
-
-hFig = figure;
-% longperLow = prctile(reshape(mean(data15mw(1:600,:)'),1,[]),2.5);
-% longperHi = prctile(reshape(mean(data15mw(1:600,:)'),1,[]),97.5);
-hold on
-smoothTar = 45;
-plot([0:1/30:50],smooth(mean(data15mw'),smoothTar),'r','LineWidth',2)
-plot([0:1/30:50],smooth(mean(data67mw'),smoothTar),'Color',[0.5 0 0],'LineWidth',2)
-plot([0:1/30:50],smooth(mean(data3mw'),smoothTar),'k','LineWidth',2)
-plot([0:1/30:50],smooth(mean(data15mwPulse'),smoothTar),'c--','LineWidth',2)
-
-
-% plot([0:1/30:50],mean(data15mw')+std(data15mw')/sqrt(24),'g','LineWidth',1)
-% plot([0:1/30:50],mean(data15mw')-std(data15mw')/sqrt(24),'g','LineWidth',1)
-% plot([0:1/30:50],mean(data3mw')+std(data3mw')/sqrt(22),'b','LineWidth',1)
-% plot([0:1/30:50],mean(data3mw')-std(data3mw')/sqrt(22),'b','LineWidth',1)
-% plot([0 50],[longperLow longperLow],'k')
-% plot([0 50],[longperHi longperHi],'k')
-plot([20 20],[min(mean(data15mw')) max(mean(data15mw'))],'k')
-plot([30 30],[min(mean(data15mw')) max(mean(data15mw'))],'k')
-ylabel('Mouse Body Angle (degrees)')
-xlabel('Time (sec)')
-title('Mouse Body Angle, 3, 6.7, 15 mW, 15 mW pulsed')
 
 
 
@@ -853,14 +855,14 @@ targets = [13,15,13+24,15+24,13+48,15+48,13+72,15+72];
 normRot(targets,:) = NaN;
 
 % normRot = normRot./normRot(:,1);
-% normRotNorm(:,1) = normRot(:,1)./normRot(:,1);
-% normRotNorm(:,2) = normRot(:,2)./normRot(:,1);
-% normRotNorm(:,3) = normRot(:,3)./normRot(:,1);
-% figure
-% hold on
-% for i = 1:24
-%     plot(normRotNorm(i,:))
-% end
+normRotNorm(:,1) = normRot(:,1)./normRot(:,1);
+normRotNorm(:,2) = normRot(:,2)./normRot(:,1);
+normRotNorm(:,3) = normRot(:,3)./normRot(:,1);
+figure
+hold on
+for i = 1:24
+    plot(normRotNorm(i,:))
+end
 
 rots15mW = normRot(1:24,:);
 rots3mW = normRot(25:48,:);
@@ -877,17 +879,6 @@ signrank(mean([rots3mW(:,1),rots3mW(:,3)]'),rots3mW(:,2))
 signrank(mean([rots7mW(:,1),rots7mW(:,3)]'),rots7mW(:,2))
 signrank(mean([rots15mW(:,1),rots15mW(:,3)]'),rots15mW(:,2))
 signrank(mean([rots15mWPulse(:,1),rots15mWPulse(:,3)]'),rots15mWPulse(:,2))
-
-
-signrank(rots3mW(:,1),rots3mW(:,2))
-signrank(rots7mW(:,1),rots7mW(:,2))
-signrank(rots15mW(:,1),rots15mW(:,2))
-signrank(rots15mWPulse(:,1),rots15mWPulse(:,2))
-
-signrank(rots3mW(:,3),rots3mW(:,2))
-signrank(rots7mW(:,3),rots7mW(:,2))
-signrank(rots15mW(:,3),rots15mW(:,2))
-signrank(rots15mWPulse(:,3),rots15mWPulse(:,2))
 
 hFig = figure;
 hold on
