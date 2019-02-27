@@ -364,6 +364,8 @@ for i = 1:length(CSVfinder)
     %calculate between the ear point.
     earMeanX = mean([dataOut(:,5),dataOut(:,8)]');
     earMeanY = mean([dataOut(:,6),dataOut(:,9)]');
+    distanceTraveled = sqrt((diff(earMeanX)).^2 + (diff(earMeanY)).^2);
+    distStore{i} = distanceTraveled;
     %generate vector array
     v2=[earMeanX',earMeanY']-[dataOut(:,11),dataOut(:,12)]; %This is tail
 %     v2=[earMeanX',earMeanY']-[dataOut(:,2),dataOut(:,3)]; %This is tail
@@ -520,11 +522,11 @@ for i = 1:length(CSVfinder)
         end
     end
     
-    figure
-    plot(preAngle)
-    hold on
-    plot(cumsum(angleTracker*90),'r')
-    
+%     figure
+%     plot(preAngle)
+%     hold on
+%     plot(cumsum(angleTracker*90),'r')
+%     
     %lets pull time points of laser onset
     laserOn = timeStore(1:2:end);
     laserOn = round(laserOn*30);
@@ -548,6 +550,15 @@ for i = 1:length(CSVfinder)
 %         angleLaser(:,j) = preAngle(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3)-preAngle(laserOn(j)-2*laserDur);
         angleLaser(:,j) = preAngle(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3)-preAngle(laserOn(j));
     end
+    
+    distanceLaser = [];
+    for j = 2:length(laserOn)
+%         angleLaser(:,j) = preAngle(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3)-preAngle(laserOn(j)-2*laserDur);
+%         distanceLaser(:,j) = distanceTraveled(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3) - mean(distanceTraveled(laserOn(j)-2*laserDur:laserOn(j)));
+        distanceLaser(:,j) = distanceTraveled(laserOn(j)-2*laserDur:laserOn(j) + laserDur*3);
+    end
+    bigDistStore{i} = distanceLaser;
+    distMeanStore(:,i) = mean(distanceLaser');
     
     %store binned values. 
     %generate bins. 
@@ -583,13 +594,200 @@ for i = 1:length(CSVfinder)
         postNeg = length(find(angleTracker(laserOn(j)+postPer(1):laserOn(j)+postPer(2)) == -1));
         rotStore(j,:) = [prePos,preNeg,laserPos,laserNeg,postPos,postNeg];
     end
+    angleTrackerStore{i} = angleTracker;
     bigRotStore(i,:) = sum(rotStore);
 end
 
+%pull total number of rotations, L OR R
+for i = 1:96
+testData = angleTrackerStore{i};
+fullRot(i) = sum(abs(testData));
+end
+
+rotOrg = reshape(fullRot,24,4);
+rotOrg([13,15],:) = [];
+
+hFig = figure;
+hold on
+for i = 1:length(rotOrg)
+    plot(rotOrg(i,:),'Color',[0.7 0.7 0.7])
+end
+plot(mean(rotOrg),'k','LineWidth',2)
+
+set(gca,'tickdir','out')
+
+spikeGraphName = 'OverallRotationNumber'
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+inVals = {rotOrg(:,2),rotOrg(:,4),rotOrg(:,1),rotOrg(:,3)};
+plotSpreadSFO(inVals)
+
+
+
+%plot out distance change 
+badInd1 = 13:24:96;
+badInd2 = 15:24:96;
+badInds = sort([badInd1,badInd2]);
+newDistMeans = distMeanStore;
+newDistMeans(:,badInds) = [];
+
+dist15mW = newDistMeans(:,1:22);
+dist3mW = newDistMeans(:,23:44);
+dist15mwP = newDistMeans(:,45:66);
+dist7mW = newDistMeans(:,67:88);
+
+hFig = figure;
+smoothWind = 45;
+multFactor = 30*25/530;% 30 fps, then conversion of pixels to cm
+subplot(2,2,1)
+hold on
+plot([-20:1/30:30],smooth(mean(dist15mW'),smoothWind)*multFactor,'r','LineWidth',2)
+plot([-20:1/30:30],smooth(mean(dist15mW'),smoothWind)*multFactor + smooth(std(dist15mW'),smoothWind)*multFactor,'r','LineWidth',1)
+plot([-20:1/30:30],smooth(mean(dist15mW'),smoothWind)*multFactor - smooth(std(dist15mW'),smoothWind)*multFactor,'r','LineWidth',1)
+plot([0 0],[8 10])
+plot([10 10],[8 10])
+xlim([-20 30])
+ylim([6 12])
+set(gca,'tickdir','out')
+subplot(2,2,2)
+hold on
+plot([-20:1/30:30],smooth(mean(dist3mW'),smoothWind)*multFactor,'k','LineWidth',2)
+plot([-20:1/30:30],smooth(mean(dist3mW'),smoothWind)*multFactor + smooth(std(dist3mW'),smoothWind)*multFactor,'k','LineWidth',1)
+plot([-20:1/30:30],smooth(mean(dist3mW'),smoothWind)*multFactor - smooth(std(dist3mW'),smoothWind)*multFactor,'k','LineWidth',1)
+plot([0 0],[8 10])
+plot([10 10],[8 10])
+xlim([-20 30])
+ylim([6 12])
+set(gca,'tickdir','out')
+subplot(2,2,3)
+hold on
+plot([-20:1/30:30],smooth(mean(dist15mwP'),smoothWind)*multFactor,'c','LineWidth',2)
+plot([-20:1/30:30],smooth(mean(dist15mwP'),smoothWind)*multFactor + smooth(std(dist15mwP'),smoothWind)*multFactor,'c','LineWidth',1)
+plot([-20:1/30:30],smooth(mean(dist15mwP'),smoothWind)*multFactor - smooth(std(dist15mwP'),smoothWind)*multFactor,'c','LineWidth',1)
+plot([0 0],[8 10])
+plot([10 10],[8 10])
+xlim([-20 30])
+ylim([6 12])
+set(gca,'tickdir','out')
+subplot(2,2,4)
+hold on
+plot([-20:1/30:30],smooth(mean(dist7mW'),smoothWind)*multFactor,'Color',[0.5 0 0],'LineWidth',2)
+plot([-20:1/30:30],smooth(mean(dist7mW'),smoothWind)*multFactor + smooth(std(dist7mW'),smoothWind)*multFactor,'LineWidth',1,'Color',[0.5 0 0])
+plot([-20:1/30:30],smooth(mean(dist7mW'),smoothWind)*multFactor - smooth(std(dist7mW'),smoothWind)*multFactor,'LineWidth',1,'Color',[0.5 0 0])
+plot([0 0],[8 10])
+plot([10 10],[8 10])
+ylim([6 12])
+set(gca,'tickdir','out')
+xlim([-20 30])
+spikeGraphName = 'ChangeInSpeedRelativeLaserMulti'
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%now lets generate and plot binned values. 
+newDistMeans = newDistMeans*30*25/530;
+binSpeed(:,1) = mean(newDistMeans(450:600,:));
+binSpeed(:,2) = mean(newDistMeans(750:900,:));
+binSpeed(:,3) = mean(newDistMeans(1050:1200,:));
+
+binSpeed15mW = binSpeed(1:22,:);
+binSpeed3mW = binSpeed(23:44,:);
+binSpeed15mWP = binSpeed(45:66,:);
+binSpeed7mW = binSpeed(67:88,:);
+
+hFig = figure;
+hold on
+plot([1,2,3],binSpeed3mW,'k')
+errorbar([1,2,3],mean(binSpeed3mW),std(binSpeed3mW)/sqrt(length(binSpeed3mW)),'r','LineWidth',2)
+plot([4,5,6],binSpeed7mW,'k')
+errorbar([4,5,6],mean(binSpeed7mW),std(binSpeed7mW)/sqrt(length(binSpeed7mW)),'r','LineWidth',2)
+plot([7,8,9],binSpeed15mW,'k')
+errorbar([7,8,9],mean(binSpeed15mW),std(binSpeed15mW)/sqrt(length(binSpeed15mW)),'r','LineWidth',2)
+plot([10,11,12],binSpeed15mWP,'k')
+errorbar([10,11,12],mean(binSpeed15mWP),std(binSpeed15mWP)/sqrt(length(binSpeed15mWP)),'r','LineWidth',2)
+% ylim([0.1 0.5])
+set(gca,'tickdir','out')
+
+spikeGraphName = 'BinnedSpeedChange'
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+signrank(binSpeed3mW(:,1),binSpeed3mW(:,2))
+signrank(binSpeed7mW(:,1),binSpeed7mW(:,2))
+signrank(binSpeed15mW(:,1),binSpeed15mW(:,2))
+signrank(binSpeed15mWP(:,1),binSpeed15mWP(:,2))
+
+signrank(binSpeed3mW(:,3),binSpeed3mW(:,2))
+signrank(binSpeed7mW(:,3),binSpeed7mW(:,2))
+signrank(binSpeed15mW(:,3),binSpeed15mW(:,2))
+signrank(binSpeed15mWP(:,3),binSpeed15mWP(:,2))
+
+% signrank(mean([binData3mW(:,1),binData3mW(:,3)]'),binData3mW(:,2))
+% signrank(mean([binData7mW(:,1),binData7mW(:,3)]'),binData7mW(:,2))
+% signrank(mean([binSpeed15mW(:,1),binSpeed15mW(:,3)]'),binSpeed15mW(:,2))
+% signrank(mean([binData15mWPulse(:,1),binData15mWPulse(:,3)]'),binData15mWPulse(:,2))
+
+
+
+
+
+totalDistTraveled=[];
+%generate total distance traveled plots.
+for i = 1:length(distStore)
+    totalDistTraveled(i) = sum(distStore{i});
+end
+
+%convert to CM
+totalDistTraveled = totalDistTraveled*25/530;
+totalDistTraveled = reshape(totalDistTraveled,24,4);
+totalDistTraveled([13,15],:) = [];
+
+hFig = figure;
+hold on
+for i = 1:length(totalDistTraveled)
+    plot(totalDistTraveled(i,:),'Color',[0.7 0.7 0.7])
+end
+plot(mean(totalDistTraveled),'k','LineWidth',2)
+
+set(gca,'tickdir','out')
+
+spikeGraphName = 'OverallDistanceTraveled'
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+inVals = {totalDistTraveled(:,2),totalDistTraveled(:,4),totalDistTraveled(:,1),totalDistTraveled(:,3)};
+plotSpreadSFO(inVals)
+
+
+
+
+
 %decode binned data.
-decodeBin(:,1) = decoder.*binDataOut(:,1);
-decodeBin(:,2) = decoder.*binDataOut(:,2);
-decodeBin(:,3) = decoder.*binDataOut(:,3);
+decodeBin(:,1) = decoder'.*binDataOut(:,1);
+decodeBin(:,2) = decoder'.*binDataOut(:,2);
+decodeBin(:,3) = decoder'.*binDataOut(:,3);
 
 binData3mW = decodeBin(25:48,:);
 binData7mW = decodeBin(73:96,:);
