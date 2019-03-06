@@ -360,6 +360,7 @@ else
 end
 
 tempVect = linspace(dmrTimes(1),dmrTimes(2),length(stimulus));
+spikeHistVect= tempVect - tempVect(1);
 for i = 1:length(blockLengths)
     trueDMRtimes = interp1(ttlOnsetTime,dioTimes(ttlChunks(i,1):ttlChunks(i,2)),tempVect);
     dmrStore(:,i) = trueDMRtimes;
@@ -397,6 +398,94 @@ if size(timesLaser) ~= size(timesNonLaser)
 end
 
 %% Now lets process the DMR. 
+%now lets try and create spike arrays. 
+spikeStoreNormal = zeros(numUnits,length(stimulus));
+spikeStoreLaser = zeros(numUnits,length(stimulus));
+
+for i = 1:numUnits
+    disp(strcat('Pulling Spikes For Unit ',num2str(i)))
+    %pulls spike times and times for alignment
+    spikeTimes = s.(desigNames{i}).SpikeTimes;
+    
+    %Now lets do laser period. 
+    %first laser
+    spikeFinder1 = [];
+    spikeCounter = 1;
+    findFirstEnd = find(timesLaser(:,1) < dmrStore(end,1),1,'last');
+    for j = 1:findFirstEnd
+        tempFind = find(spikeTimes > timesLaser(j,1) & spikeTimes < timesLaser(j,2));
+        if tempFind
+            spikeFinder1(spikeCounter:spikeCounter+length(tempFind)-1) = tempFind;
+            spikeCounter = spikeCounter + length(tempFind);
+        end
+    end
+    if spikeFinder1
+        spikeTimes1 = spikeTimes(spikeFinder1) - dmrStore(1,1);
+    end
+    %now second laser
+    spikeFinder2 = [];
+    spikeCounter = 1;
+    findFirstEnd = find(timesLaser(:,1) > dmrStore(end,1),1,'first');
+    for j = findFirstEnd:length(timesLaser)
+        tempFind = find(spikeTimes > timesLaser(j,1) & spikeTimes < timesLaser(j,2));
+        if tempFind
+            spikeFinder2(spikeCounter:spikeCounter+length(tempFind)-1) = tempFind;
+            spikeCounter = spikeCounter + length(tempFind);
+        end
+    end
+    if spikeFinder2
+        spikeTimes2 = spikeTimes(spikeFinder2) - dmrStore(1,2);
+    end
+    laserSpikes = sort([spikeTimes1;spikeTimes2]);
+    spikeFinder = [spikeFinder1,spikeFinder2];
+    laserWaves = reshape(mean(s.(desigNames{i}).AllWaves(:,:,spikeFinder),3),[],1);
+    s.(desigNames{i}).LaserWave = laserWaves;
+    
+    %Now lets do control period
+    %first control
+    spikeFinder1 = [];
+    spikeCounter = 1;
+    findFirstEnd = find(timesNonLaser(:,1) < dmrStore(end,1),1,'last');
+    for j = 1:findFirstEnd
+        tempFind = find(spikeTimes > timesNonLaser(j,1) & spikeTimes < timesNonLaser(j,2));
+        if tempFind
+            spikeFinder1(spikeCounter:spikeCounter+length(tempFind)-1) = tempFind;
+            spikeCounter = spikeCounter + length(tempFind);
+        end
+    end
+    if spikeFinder1
+        spikeTimes1 = spikeTimes(spikeFinder1) - dmrStore(1,1);
+    end
+    %now second control
+    spikeFinder2 = [];
+    spikeCounter = 1;
+    findFirstEnd = find(timesNonLaser(:,1) > dmrStore(end,1),1,'first');
+    for j = findFirstEnd:length(timesNonLaser)
+        tempFind = find(spikeTimes > timesNonLaser(j,1) & spikeTimes < timesNonLaser(j,2));
+        if tempFind
+            spikeFinder2(spikeCounter:spikeCounter+length(tempFind)-1) = tempFind;
+            spikeCounter = spikeCounter + length(tempFind);
+        end
+    end
+    if spikeFinder2
+        spikeTimes2 = spikeTimes(spikeFinder2) - dmrStore(1,2);
+    end
+    nonLaserSpikes = sort([spikeTimes1;spikeTimes2]);
+    spikeFinder = [spikeFinder1,spikeFinder2];
+    nonLaserWaves = reshape(mean(s.(desigNames{i}).AllWaves(:,:,spikeFinder),3),[],1);
+    s.(desigNames{i}).nonLaserWave = nonLaserWaves;
+    
+    spikeStoreNormal(i,:) = hist(laserSpikes,spikeHistVect);
+    spikeStoreLaser(i,:) = hist(nonLaserSpikes,spikeHistVect);
+end
+
+numLags = 100;
+[staNorm, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikeStoreNormal, numLags);
+[sta_sigNorm, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(staNorm, spikeStoreNormal, stimulus, 10, numLags, 95);
+[staLaser, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikeStoreLaser, numLags);
+[sta_sigLaser, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(staLaser, spikeStoreLaser, stimulus, 10, numLags, 95);
+
+save(fullfile(pname,strcat(fileName,'staDATA.mat')),'staNorm','sta_sigNorm','staLaser','sta_sigLaser');
 
 %going to go through each thing and perform STRFs
 numStore= zeros(numUnits,4);
