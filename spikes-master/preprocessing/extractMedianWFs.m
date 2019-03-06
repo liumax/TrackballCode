@@ -8,12 +8,12 @@ function medWFs = extractMedianWFs(clu, st, Fs, datPath, dataType, dataSize, cha
 % -- note: if you desire only "good", try this:
 % >> cluSub = clu(ismember(clu, cids(cgs==2))); % and same for spike times
 %
-% - clu [nSpikes,1] cluster identities
-% - st [nSpikes,1] spike times (sec)
-% - Fs [1,1] sampling frequency
-% - datPath [string] filename
-% - dataType [string] e.g. 'int16'
-% - dataSize [2,1] e.g. [nChannelsInFile nSamples]
+% - clu [nSpikes,1] cluster identities %MAX spClu
+% - st [nSpikes,1] spike times (sec) %MAX spTimeSec
+% - Fs [1,1] sampling frequency %MAX 30000
+% - datPath [string] filename %MAX (for phy.dat) E:\maxKilo\maxFsiXcorr5
+% - dataType [string] e.g. 'int16' %Max 'int16'
+% - dataSize [2,1] e.g. [nChannelsInFile nSamples] %Max 64 channels, 
 % - chanMap [vector] note: assume this is zero-indexed
 % - gain [1,1] to convert to uV if desired, otherwise use 1
 
@@ -42,8 +42,9 @@ for q = 1:nClu
     
     theseWF = zeros(nWFsToLoad, nCh, nWFsamps);
     for i=1:nWFsToLoad
+%         disp(strcat('q:',num2str(q),'i:',num2str(i)))
         tempWF = mmf.Data.x(1:nChInFile,extractST(i)+wfWin(1):extractST(i)+wfWin(end));
-        theseWF(i,:,:) = tempWF(chanMap+1,:);
+        theseWF(i,:,:) = tempWF(chanMap,:);
     end
     
     
