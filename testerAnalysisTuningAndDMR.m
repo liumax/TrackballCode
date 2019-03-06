@@ -56,12 +56,16 @@ s.Parameters.LaserAnalysis = [-0.2,0;0.1,0.3];
 s.Parameters.STRFWin = [-0.2 0.01];
 s.Parameters.dmrTiming = 6;
 s.Parameters.expectedDur = 10; %expected time duration. 
+numLags = 20;
 
 %we have multiple datasets, so lets figure out which one is which. 
 dateVal = str2num(fileName(1:6));
 if dateVal < 190211
 %     sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR10mindsT5dsF5.mat';
-    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR400-6400-approx1kHz.mat';
+%     sprFile =
+%     'Z:\Max\dmrOutputFiles\extractedDMR400-6400-approx1kHz.mat'; %This is
+%     the 1 kHz example. 
+    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR400-6400-DFt150-DFf2.mat';
     % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
     ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimesCORRECTFreqSampling.mat';
 
@@ -705,7 +709,7 @@ for i = 1:numUnits
     spikeStore = s.(desigNames{i}).SpikeTimes(s.(desigNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(desigNames{i}).SpikeTimes < spikeHistVect(end));
     spikeArray(i,:) = hist(spikeStore,spikeHistVect);
 end
-numLags = 100;
+
 [sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikeArray, numLags);
 [sta_sig, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(sta, spikeArray, stimulus, 10, numLags, 95);
 
