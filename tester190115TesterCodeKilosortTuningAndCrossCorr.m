@@ -568,57 +568,6 @@ for i = 1:numUnits
     masterData(i,masterHolder) = averageRate;
     masterHeader{masterHolder} = 'Average Rate';
     masterHolder = masterHolder + 1;
-%     
-%     %now pull waveform data and isi data to categorize cells
-%     waveForms = s.(cluNames{i}).AverageWaveForms;
-%     
-%     %find size of waveforms
-%     waveSize = size(waveForms);
-% 
-%     %find maximum waveform by max peak size
-%     maxWave = max(waveForms);
-%     [maxVal maxInd] = max(maxWave);
-% 
-%     %chose the big wave, interpolate to fine degree
-%     chosenWave = waveForms(:,maxInd);
-%     interpVect = [1:0.1:40];
-%     interpWave = interp1(1:40,chosenWave,interpVect,'spline');
-%     
-%     %now we need to find the peak. Find this starting at point 10. 
-% 
-%     [pkVal pkInd] = max(interpWave(100:end));
-%     pkInd = pkInd + 100 - 1;
-%     %now we need to find the minimum following the peak
-% 
-%     [troughVal troughInd] = min(interpWave(pkInd:end));
-%     troughInd = troughInd + pkInd - 1;
-% 
-%     peakTrough = (troughInd - pkInd)/300000;
-%     
-%     %find ISIs
-%     isiTimes = diff(spikeTimes);
-%     isiCov = std(isiTimes)/mean(isiTimes);
-%     
-%     masterData(i,masterHolder) = peakTrough;
-%     masterHeader{masterHolder} = 'PeakTrough(ms)';
-%     masterHolder = masterHolder + 1;
-%     
-%     masterData(i,masterHolder) = isiCov;
-%     masterHeader{masterHolder} = 'isiCov';
-%     masterHolder = masterHolder + 1;
-%     
-%     
-%     if peakTrough < s.Parameters.PVLim(1) & isiCov > s.Parameters.ChatLim
-%         masterData(i,masterHolder) = 1; %pv cell
-%     elseif peakTrough > s.Parameters.PVLim(2) & isiCov < s.Parameters.ChatLim & averageRate > 2
-%         masterData(i,masterHolder) = 2; %ChAT Cell
-%     elseif peakTrough > s.Parameters.PVLim(2) & isiCov > s.Parameters.ChatLim
-%         masterData(i,masterHolder) = 0; %MSN
-%     else
-%         masterData(i,masterHolder) = NaN; %label as unknown
-%     end
-%     masterHeader{masterHolder} = 'CellType';
-%     masterHolder = masterHolder + 1;
     
     
     %calculates histograms of every single trial. 
@@ -1279,78 +1228,6 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-
-% 
-% 
-% for i = 1:numUnits
-%     hFig = figure;
-%     set(hFig, 'Position', [10 80 1900 1000])
-%     plot(s.(cluNames{i}).AllRasters(:,1),...
-%         s.(cluNames{i}).AllRasters(:,3),'k.','markersize',4)
-%     hold on
-%     plot([0 0],[ylim],'b');
-%     plot([toneDur toneDur],[ylim],'b');
-%     rasterFreqLines = zeros(numFreqs,2);
-%     if numDBs ==1
-%         rasterFreqLines(:,1) = cumsum((matrixTrialNum'));
-%     elseif numDBs > 1
-%         rasterFreqLines(:,1) = cumsum(sum(matrixTrialNum'));
-%     end
-% 
-%     rasterFreqLines(:,2) = uniqueFreqs;
-%     %this generates green lines separating by Frequency
-%     tempHold = 1;
-%     for k = 1:size(uniqueFreqs,1)
-%         plot(s.Parameters.RasterWindow,[tempHold+sum(matrixTrialNum(k,:)) tempHold+sum(matrixTrialNum(k,:))],'g','LineWidth',1)
-%         tempHold = tempHold + sum(matrixTrialNum(k,:));
-%     end
-%     set(gca,'YTick',rasterFreqLines(:,1));
-%     set(gca,'YTickLabel',rasterFreqLines(:,2));
-%     set(gca,'Ydir','reverse')
-%     ylim([0 totalTrialNum])
-%     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-% %     title('Descending = increase in amplitude and freq')
-%     title({fileName;cluNames{i}},'fontweight','bold', 'Interpreter', 'none');
-%     hold off
-%     spikeGraphName = strcat(fileName,cluNames{i},'JustRaster');
-%     savefig(hFig,spikeGraphName);
-% 
-%     %save as PDF with correct name
-%     set(hFig,'Units','Inches');
-%     pos = get(hFig,'Position');
-%     set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-%     print(hFig,spikeGraphName,'-dpdf','-r0')
-%     
-%     close
-% end
-% 
-% 
-% for i = 1:numUnits
-%     hFig = figure;
-%     set(hFig, 'Position', [10 80 1900 1000])
-%     imagesc(s.(cluNames{i}).BinTone')
-%     colormap(parula)
-%     colorbar
-%     set(gca,'XTick',octaveRange(:,2));
-%     set(gca,'XTickLabel',octaveRange(:,1));
-%     set(gca,'YTick',dbRange(:,2));
-%     set(gca,'YTickLabel',dbRange(:,1));
-% %     title('Descending = increase in amplitude and freq')
-%     title({fileName;cluNames{i}},'fontweight','bold', 'Interpreter', 'none');
-%     hold off
-%     spikeGraphName = strcat(fileName,cluNames{i},'JustTuningPlot');
-%     savefig(hFig,spikeGraphName);
-% 
-%     %save as PDF with correct name
-%     set(hFig,'Units','Inches');
-%     pos = get(hFig,'Position');
-%     set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-%     print(hFig,spikeGraphName,'-dpdf','-r0')
-%     
-%     close
-% end
-
-
 for i = 1:numUnits
     hFig = figure;
     set(hFig, 'Position', [10 80 1900 1000])
@@ -1386,29 +1263,6 @@ for i = 1:numUnits
         xlim([plotVect(1) plotVect(end)])
         title(strcat('Num Spikes:',num2str(length(s.(cluNames{i}).SpikeTimes)),'Max Amp:',num2str(max(max(s.(cluNames{i}).medianWave)))))        
     end
-    %plots average waveform
-%     subplot(4,8,1)
-%     hold on
-%     plot(s.(cluNames{i}).AverageWaveForms,'LineWidth',2)
-%     if ismember(i,findPVs)
-%         title(strcat('PV AverageFiringRate:',num2str(s.(cluNames{i}).AverageRate)))
-%     elseif ismember(i,findMSNs)
-%         title(strcat('MSN AverageFiringRate:',num2str(s.(cluNames{i}).AverageRate)))
-%     elseif ismember(i,findCHATs)
-%         title(strcat('CHAT AverageFiringRate:',num2str(s.(cluNames{i}).AverageRate)))
-%     else
-%         title(strcat('UNK AverageFiringRate:',num2str(s.(cluNames{i}).AverageRate)))
-%     end
-
-    %plots ISI
-%     subplot(4,8,2)
-%     hist(s.(cluNames{i}).ISIGraph,1000)
-%     histMax = max(hist(s.(cluNames{i}).ISIGraph,1000));
-%     line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-%     xlim(s.Parameters.ClusterWindow)
-%     title({strcat('ISI RPV %: ',num2str(s.(cluNames{i}).RPVPercent));...
-%         strcat(num2str(s.(cluNames{i}).RPVNumber),'/',num2str(s.(cluNames{i}).TotalSpikeNumber))})
-
     % plot histogram.
     subplot(4,4,6)
     plot(histBinVector,s.(cluNames{i}).AllHistograms,'k','LineWidth',2)
@@ -1576,39 +1430,6 @@ for i = 1:numUnits
     set(gca,'XTickLabel',octaveRange(:,1));
     ylabel('Binned Spikes/Gen Period')
     title('Tuning Curves Across General Period')
-
-    %% Column 4
-    %plot velocity data
-%     subplot(4,4,4)
-%     hold on
-%     plot(s.RotaryData.Velocity(:,1),s.RotaryData.Velocity(:,2)/max(s.RotaryData.Velocity(:,2)),'b')
-%     plot([s.RotaryData.Velocity(1,1):s.Parameters.SpeedFiringBins:s.RotaryData.Velocity(end,1)],s.(cluNames{i}).SessionFiring/max(s.(cluNames{i}).SessionFiring),'r')
-%     xlim([s.RotaryData.Velocity(1,1),s.RotaryData.Velocity(end,1)])
-%     ylim([-0.1,1])
-%     if toggleROC == 1
-%         title(strcat('Vel & Firing Rate. AUC:',num2str(s.(cluNames{i}).TrueAUC),'99%Range',num2str(prctile(s.(cluNames{i}).ShuffleAUC,99)),'-',num2str(prctile(s.(cluNames{i}).ShuffleAUC,1))))
-%     else
-%         title('Vel & Firing Rate')
-%     end
-
-
-    
-
-%     if idToggle == 0
-% 
-%     elseif idToggle == 1
-%         %plot laser raster
-%         subplot(4,4,12)
-%         plot(s.(cluNames{i}).LaserRasters(:,1),s.(cluNames{i}).LaserRasters(:,2),'k.')
-%         xlim([s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2)])
-%         title(strcat('Laser Raster, Response %:',num2str(sum(s.(cluNames{i}).LaserResps)/length(dio2Times))))
-%         subplot(4,4,16)
-%         plot(laserBinVect,s.(cluNames{i}).LaserHist)
-%         xlim([s.Parameters.LaserWindow(1),s.Parameters.LaserWindow(2)])
-%         title('Laser Histogram')
-%     end
-
-
 
     hold off
     spikeGraphName = strcat(fileName,cluNames{i},'SpikeAnalysis');
