@@ -28,11 +28,12 @@ for masterCount = 1:numFolders
     
 %     periodFinder = strfind(fileName,'.');
 %     fileName = fileName(1:periodFinder-1);
-    try
-        testerAnalysisTuningAndDMR;
-    catch
-        disp('DIO FUCKUP')
-    end
+testerAnalysisTuningAndDMR;
+%     try
+%         testerAnalysisTuningAndDMR;
+%     catch
+%         disp('DIO FUCKUP')
+%     end
     close all
     clearvars -except masterCount masterFolders masterFolder numFolders
     cd(masterFolder)
