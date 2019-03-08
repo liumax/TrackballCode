@@ -6,8 +6,8 @@
 
 %for testing purposes
 % fileName = '180718_ML180619B_L_AudStr_pen1_3000_fullTuning'
-fileName = '180718_ML180619C_R_AudStr_pen1_3000_fullTuning'
-% fileName = '180315_ML180306C_R17_3218mid1_fullTuning'
+% fileName = '180718_ML180619C_R_AudStr_pen1_3000_fullTuning'
+fileName = '180315_ML180306C_R17_3218mid1_fullTuning'
 % fileName = '180717_ML180619A_R_AudStr_pen2_2850_fullTuning'
 %% Constants
 
@@ -854,7 +854,6 @@ s.FullWidth = bigWidth;
 
 masterInd = masterHolder;
 
-save(fullfile(pname,fname),'s','masterData','masterHeader');
 
 
 %% Plotting
@@ -912,20 +911,53 @@ for i = 1:numUnits
     shuffSpikes{i} = randArray*shuffVal + repmat(tarSpikes,1,shuffNum);
 end
 
-%now lets actually do the cross correlograms! Try to only target FSIs and
+s.JitteredSpikes = shuffSpikes;
+
+%now lets actually do the targeted cross correlograms! Try to only target FSIs and
 %align MSN spikes to them. 
 findFSIs =find(masterData(:,indPkTr) < s.Parameters.PVLim(1));
 findMSNs = find(masterData(:,indPkTr) > s.Parameters.PVLim(2));
 
+synchWind = 0.001; %time difference within which spikes are considered synchronous.
 rasterWindow = [-0.01025 0.01025];
 rasterVector = [-0.01:0.0005:0.01];
-for i = 1:length(findFSIs)
-    for j = 1:length(findMSNs)
-        disp(strcat('Running Cross Corr for Unit',num2str(cluNames{findMSNs(j)}),'-aligned to',num2str(cluNames{findFSIs(i)})))
-        [rasters] = crosscorrelogram(s.(cluNames{findFSIs(i)}).SpikeTimes,s.(cluNames{findMSNs(j)}).SpikeTimes,rasterWindow);
+
+
+for i = 1:numUnits
+    for j = 1:numUnits
+        disp(strcat('Running Cross Corr for Unit',num2str(cluNames{j}),'-aligned to',num2str(cluNames{i})))
+        [rasters] = crosscorrelogram(s.(cluNames{i}).SpikeTimes,s.(cluNames{j}).SpikeTimes,rasterWindow);
         histStore = hist(rasters,rasterVector);
         rasters = [];
         trueStore{findFSIs(i),findMSNs(j)} = histStore;
+    end
+end
+
+s.CrossCorrs = trueStore;
+
+for i = 1:length(findFSIs)
+    for j = 1:length(findMSNs)
+%         disp(strcat('Running Cross Corr for Unit',num2str(cluNames{findMSNs(j)}),'-aligned to',num2str(cluNames{findFSIs(i)})))
+%         [rasters] = crosscorrelogram(s.(cluNames{findFSIs(i)}).SpikeTimes,s.(cluNames{findMSNs(j)}).SpikeTimes,rasterWindow);
+%         histStore = hist(rasters,rasterVector);
+%         rasters = [];
+%         trueStore{findFSIs(i),findMSNs(j)} = histStore;
+        %now lets try and remove synchronous FSIs spikes. This way, we can
+        %eliminate any peak in the FSI aligned MSN spikes. 
+        diffArray = [];
+        newFSIspike = s.(cluNames{findFSIs(i)}).SpikeTimes;
+        for k = length(s.(cluNames{findMSNs(j)}).SpikeTimes):-1:1
+            diffArray = s.(cluNames{findFSIs(i)}).SpikeTimes - s.(cluNames{findMSNs(j)}).SpikeTimes(k);
+            spikeFind = find(abs(diffArray) < synchWind);
+            newFSIspike(spikeFind) = [];
+        end
+        [rasters] = crosscorrelogram(newFSIspike,s.(cluNames{findMSNs(j)}).SpikeTimes,rasterWindow);
+        histStore = hist(rasters,rasterVector);
+        rasters = [];
+        remStore{findFSIs(i),findMSNs(j)} = histStore;
+        
+        
+        %now lets run the jittered spikes
         tempHist = [];
         shuffTar = shuffSpikes{findMSNs(j)};
         disp(strcat('Running Shuffle Cross Corr for Unit',num2str(cluNames{findMSNs(j)}),'-aligned to',num2str(cluNames{findFSIs(i)})))
@@ -937,6 +969,9 @@ for i = 1:length(findFSIs)
         shuffStore{findFSIs(i),findMSNs(j)} = tempHist;
     end
 end
+
+s.CrossCorrJitter = shuffStore;
+s.CrossCorrRemSynch = remStore;
 
 hFig = figure;
 [B,I] = sort(s.PeakChanVals);
@@ -962,6 +997,7 @@ for i = 1:numUnits
             Y = prctile(shuffStore{I(i),I(j)},[.5 99.5],2);
             plot(rasterVector,Y(:,1),'Color',[0.7 0.7 0.7])
             plot(rasterVector,Y(:,2),'Color',[0.7 0.7 0.7])
+            plot(rasterVector,smooth(remStore{I(i),I(j)},3),'c','LineWidth',2)
             plot(rasterVector,smooth(histStore,3),'r','LineWidth',2)
             hold on
             plot([0 0],[0 max(histStore)],'r')
@@ -998,7 +1034,7 @@ for i = 1:numUnits
             subplot(numUnits,numUnits,numUnits*(i-1)+j)
             plot(rasterVector,smooth(histStore,3),'k','LineWidth',2)
             hold on
-            plot([0 0],[0 max(histStore)],'r')
+            plot([0 0],[0 max(histStore)],'k')
             if max(histStore) < 1
                 ylim([0 1])
             else
@@ -1089,6 +1125,7 @@ for i = 1:numUnits
         if j == i
             histStore(21) = 0;
         end
+        nonToneStore{i,j} = histStore;
         subplot(numUnits,numUnits,numUnits*(i-1)+j)
         plot(rasterVector,histStore,'k','LineWidth',2)
         max1 =max(histStore);
@@ -1096,6 +1133,7 @@ for i = 1:numUnits
         %plot out tone cross corr
         [rasters] = crosscorrelogram(tarSpikesTone,spikesTone(cluTone == clu(I(j))),rasterWindow);
         histStore = hist(rasters,rasterVector);
+        ToneStore{i,j} = histStore;
         if j == i
             histStore(21) = 0;
         end
@@ -1123,6 +1161,9 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
+s.CrossCorrTone = ToneStore;
+s.CrossCorrNonTone = nonToneStore;
 
 %now try and pull spikes using a shuffle in which I shift by one trial (in
 %terms of the same stimulus). We need to first check and find these trials,
@@ -1191,7 +1232,7 @@ for i = 1:numUnits
                 [rasters] = crosscorrelogram(tarSpikes,tarSpikesMatch,rasterWindow);
                 tempHist = hist(rasters,rasterVector);
                 histStore = histStore + tempHist;
-                   
+                trialScrambleStore{i,j} = histStore;
             end
             
         end
@@ -1226,6 +1267,16 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
+s.CrossCorrTrialShuffle = trialScrambleStore;
+
+%% SAVE DATA
+
+
+save(fullfile(pname,fname),'s','masterData','masterHeader');
+
+
+%% NOW PLOT INDIVIDUAL UNITS
 
 
 for i = 1:numUnits
