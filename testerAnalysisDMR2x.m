@@ -308,10 +308,10 @@ for i = 1:length(blockLengths)
         disp(strcat(num2str(length(bigMod)),'-deviations found, marking...'))
         for j = 1:length(bigMod)
             devStore(devCounter,1) = i; %store the chunk
-            devStore(devCounter,2) = bigMod(i) - 1; %stores the TTLs before and after. 
-            devStore(devCounter,3) = bigMod(i) +1;
-            devStore(devCounter,4) = ttlChunks(i,1) - 1 + bigMod(i) - 1; %stores the TTLs before and after. 
-            devStore(devCounter,5) = ttlChunks(i,1) - 1 + bigMod(i) + 1;
+            devStore(devCounter,2) = bigMod(j) - 1; %stores the TTLs before and after. 
+            devStore(devCounter,3) = bigMod(j) +1;
+            devStore(devCounter,4) = ttlChunks(i,1) - 1 + bigMod(j) - 1; %stores the TTLs before and after. 
+            devStore(devCounter,5) = ttlChunks(i,1) - 1 + bigMod(j) + 1;
             
             devCounter = devCounter + 1;
         end
