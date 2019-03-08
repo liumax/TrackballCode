@@ -56,7 +56,7 @@ s.Parameters.LaserAnalysis = [-0.2,0;0.1,0.3];
 s.Parameters.STRFWin = [-0.2 0.01];
 s.Parameters.dmrTiming = 6;
 s.Parameters.expectedDur = 10; %expected time duration. 
-numLags = 20;
+numLags = 100;
 
 %we have multiple datasets, so lets figure out which one is which. 
 dateVal = str2num(fileName(1:6));
