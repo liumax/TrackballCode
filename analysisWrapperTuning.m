@@ -1,9 +1,10 @@
 %This is code to do wrapper functions on analysisTuningWithWhite output
 %data. Takes in s and masterData in, and is meant to output overall
-%information about the population. 
+%information about the population. This will be for data from baseline
+%tuning recordings. 
 
 
-%% identify files, pull names, set up for loop for extraction
+%% identify files, pull names, extraction via loop
 
 clear
 targets = what;
@@ -24,6 +25,9 @@ binValBigStore = [];
 sigValBigStore = [];
 latMapBigStore = [];
 widthLatStore = [];
+nameStore = [];
+unitStore = [];
+
 %actually extract files. 
 for i = 1:numFiles
     %load the target file
@@ -43,6 +47,19 @@ for i = 1:numFiles
     %generate a finder for non-white noise tones
     toneFinder = find(s.SoundData.Frequencies ~= 0);
     toneFinder(toneFinder > length(s.SoundData.ToneTimes)) = [];
+    %now lets also generate a trial matrix for all tone times. 
+    trialMatrix = [];
+    trialMatrix = s.SoundData.TrialMatrix;
+    %now we need to go through and replace the actual real DB values with
+    %standardized values.
+    for j = 1:s.SoundData.NumFreqs
+        finder = find(trialMatrix(:,2) == s.SoundData.UniqueFrequencies(j));
+        tarDBs = (trialMatrix(finder,3));
+        uniqueTars = unique(tarDBs);
+        for k = 1:length(uniqueTars)
+            trialMatrix(finder(tarDBs == uniqueTars(k)),3) = s.SoundData.UniqueDBs(k);
+        end
+    end
     if numDBs == 5
         %pull from masterData, store in overall. 
         bigMaster(bigMasterInd:bigMasterInd + numUnits - 1,:) = masterData;
@@ -84,29 +101,62 @@ for i = 1:numFiles
             tempBinStore(:,:,j) = s.(desigName{j}).BinTone;
             tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(:,:,2);
             tempLatStore(:,:,j) = s.(desigName{j}).LatencyMap;
-            maxFind = find(s.(desigName{j}).PeakMapTone(2:end,:) == max(max(s.(desigName{j}).PeakMapTone(2:end,:))));
-            if length(maxFind) == 1
-                tempMaxStore(j) = maxFind;
-            elseif length(maxFind) > 1
-                maxFind = max(maxFind);
-                tempMaxStore(j) = maxFind;
+            [row,col] = find(s.(desigName{j}).PeakMapTone(2:end,:) == max(max(s.(desigName{j}).PeakMapTone(2:end,:))));
+            if length(row) == 1
+                disp('Found single max value!')
+            elseif length(row) > 1
+                disp('Found Multiple Max Values. Pruning to max amplitude')
+                col = col(end);
+                row = row(end);
             else
-                tempMaxStore(j) = 0;
+                disp('No Max Value Found')
             end
+            
             %find appropriate histogram, store. 
-            if length(maxFind) >= 1
-                dbVal = floor((maxFind-1)/16);
-                freqVal= mod(maxFind,16);
-                tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+1,dbVal+1,:));
-                dbStore(j) = floor((maxFind-1)/16);
-                freqStore(j) = mod(maxFind,16);
+            if length(row) == 1
+                dbVal = col;
+                freqVal= row;
+                tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+1,dbVal,:));
+                dbStore(j) = dbVal;
+                freqStore(j) = freqVal;
             else
                 tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
             end
-        disp('About to do fine histogram')
-        %generate a finer scale histogram across all tones
-        tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.SoundData.ToneTimes(toneFinder),[-0.2 0.4]);
-        fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:0.0005:0.4]);
+            %now we need to pull the peak values from the 70DB band. 
+            tarVals = s.(desigName{j}).BinTone(2:end,end);
+            [pk ind] = max(tarVals);
+            if ind >=2 & ind <= 15 %these are non-edge cases
+                tarCols = [4,4,4,5,5,5];
+                tarRows = [ind,ind+1,ind+2,ind,ind+1,ind+2];
+            elseif ind < 2
+                tarCols = [4,4,4,5,5,5];
+                tarRows = [ind+1,ind+2,ind+3,ind+1,ind+2,ind+3];
+            elseif ind > 15
+                tarCols = [4,4,4,5,5,5];
+                tarRows = [ind-1,ind,ind+1,ind-1,ind,ind+1];
+            end
+            %now we need to pull the trial numbers from these targeting
+            %systems!
+            tarCount = 1;
+            tarStore = [];
+            for m = 1:length(tarCols)
+                tarInds = find(trialMatrix(:,3) == s.SoundData.UniqueDBs(tarCols(m)) & trialMatrix(:,2) == s.SoundData.UniqueFrequencies(tarRows(m)));
+                tarStore(tarCount:tarCount + length(tarInds) - 1) = tarInds;
+                tarCount = tarCount + length(tarInds);
+            end
+            tarStore = sort(tarStore);
+            %now pull correct raster data!
+            findRast = ismember(s.(desigName{j}).AllRasters(:,2),tarStore);
+            tarSpikes = s.(desigName{j}).AllRasters(findRast,1);
+            latFineHist(bigMasterInd + j - 1,:) = hist(tarSpikes,[-0.2:0.0005:0.4]);
+            
+            disp('About to do fine histogram')
+            %generate a finer scale histogram across all tones
+            tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.SoundData.ToneTimes(toneFinder),[-0.2 0.4]);
+            binSize = 0.0005;
+            fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:binSize:0.4])/binSize/length(tarStore);
+            nameStore{bigMasterInd + j -1} = targetFiles{i};
+            unitStore{bigMasterInd + j -1} = desigName{j};
         end
         pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
         interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
@@ -114,7 +164,7 @@ for i = 1:numFiles
         sigValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempSigStore;
         latMapBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempLatStore;
         widthLatStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = s.WidthLatData;
-        bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) = tempMaxStore;
+%         bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) = tempMaxStore;
         bigHistStore(:,bigMasterInd:bigMasterInd + numUnits - 1) = tempHist;
         bigDBStore(bigMasterInd:bigMasterInd + numUnits - 1) = dbStore;
         bigFreqStore(bigMasterInd:bigMasterInd + numUnits - 1) = freqStore;
@@ -174,38 +224,71 @@ for i = 1:numFiles
             tempBinStore(:,:,j) = s.(desigName{j}).BinTone(:,end-5+1:end);
             tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(:,end-5+1:end,2);
             tempLatStore(:,:,j) = s.(desigName{j}).LatencyMap(:,end-5+1:end);
-            maxFind = find(s.(desigName{j}).PeakMapTone(2:end,end-5+1:end) == max(max(s.(desigName{j}).PeakMapTone(2:end,end-5+1:end))));
-            if length(maxFind) == 1
-                tempMaxStore(j) = maxFind;
-            elseif length(maxFind) > 1
-                maxFind = max(maxFind);
-                tempMaxStore(j) = max(maxFind);
-            else
-                tempMaxStore(j) = 0;
+            
+            [row,col] = find(s.(desigName{j}).PeakMapTone(2:end,end-5+1:end) == max(max(s.(desigName{j}).PeakMapTone(2:end,end-5+1:end))));
+            if length(row) == 1
+                disp('Found single max value!')
+            elseif length(row) > 1
+                disp('Found Multiple Max Values. Pruning to max amplitude')
+                col = col(end);
+                row = row(end);
             end
             %find appropriate histogram, store. 
-            if length(maxFind) >= 1
-                dbVal = floor((maxFind-1)/16);
-                freqVal= mod(maxFind,16);
-                dbStore(j) = floor((maxFind-1)/16);
-                freqStore(j) = mod(maxFind,16);
-                tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+1,dbVal+2,:));
+            if length(row) == 1
+                dbVal = col;
+                freqVal= row;
+                dbStore(j) = dbVal;
+                freqStore(j) = freqVal;
+                tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+1,dbVal+1,:));
             else
                 tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
             end
+            
+            %now we need to pull the peak values from the 70DB band. 
+            tarVals = s.(desigName{j}).BinTone(2:end,end);
+            [pk ind] = max(tarVals);
+            if ind >=2 & ind <= 15 %these are non-edge cases
+                tarCols = [5,5,5,6,6,6];
+                tarRows = [ind,ind+1,ind+2,ind,ind+1,ind+2];
+            elseif ind < 2
+                tarCols = [5,5,5,6,6,6];
+                tarRows = [ind+1,ind+2,ind+3,ind+1,ind+2,ind+3];
+            elseif ind > 15
+                tarCols = [5,5,5,6,6,6];
+                tarRows = [ind-1,ind,ind+1,ind-1,ind,ind+1];
+            end
+            %now we need to pull the trial numbers from these targeting
+            %systems!
+            tarCount = 1;
+            tarStore = [];
+            for m = 1:length(tarCols)
+                tarInds = find(trialMatrix(:,3) == s.SoundData.UniqueDBs(tarCols(m)) & trialMatrix(:,2) == s.SoundData.UniqueFrequencies(tarRows(m)));
+                tarStore(tarCount:tarCount + length(tarInds) - 1) = tarInds;
+                tarCount = tarCount + length(tarInds);
+            end
+            tarStore = sort(tarStore);
+            %now pull correct raster data!
+            findRast = ismember(s.(desigName{j}).AllRasters(:,2),tarStore);
+            tarSpikes = s.(desigName{j}).AllRasters(findRast,1);
+            binSize = 0.0005;
+            latFineHist(bigMasterInd + j - 1,:) = hist(tarSpikes,[-0.2:binSize:0.4])/binSize/length(tarStore);
+            
             disp('About to do fine histogram')
             %generate a finer scale histogram across all tones
             tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.SoundData.ToneTimes(toneFinder),[-0.2 0.4]);
             fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:0.0005:0.4]);
+            nameStore{bigMasterInd + j -1} = targetFiles{i};
+            unitStore{bigMasterInd + j -1} = desigName{j};
         end
         disp('Finished going through individual cells')
+        %store values!
         pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
         interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
         binValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempBinStore;
         sigValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempSigStore;
         latMapBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempLatStore;
         widthLatStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = s.WidthLatData(:,end-5+1:end,:);
-        bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) = tempMaxStore;
+%         bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) = tempMaxStore;
         bigHistStore(:,bigMasterInd:bigMasterInd + numUnits - 1) = tempHist;
         bigDBStore(bigMasterInd:bigMasterInd + numUnits - 1) = dbStore;
         bigFreqStore(bigMasterInd:bigMasterInd + numUnits - 1) = freqStore;
@@ -248,6 +331,31 @@ findCHATs = find(bigMaster(:,indCellType) == 2);
 
 findPVs = find(bigMaster(:,5) < 0.0004);
 findMSNs = find(bigMaster(:,5) > 0.0005);
+
+%% Lets look at the waveforms a bit more carefully
+for i = 1:size(interpWaveStore,1)
+    testWave = interpWaveStore(i,:);
+    [pks locs] = max(testWave(100:150));
+    maxPoint = locs+100-1;
+    diffWave = diff(testWave);
+    %get half-width
+    firstHalf = find(testWave(1:maxPoint) > pks/2,1,'first');
+    backHalf = find(testWave(firstHalf:end) < pks/2,1,'first');
+    halfWidth(i) = backHalf;
+    %get peak trough
+    try
+        minPoint = find(diffWave(maxPoint:end) > 0,1,'first');
+        widthVal(i) = minPoint;
+    catch
+        disp('No Zero Crossing')
+        [pks locs] = min(testWave(maxPoint:end));
+        widthVal(i) = locs;
+    end
+end
+
+figure
+stem3(widthVal/300000,halfWidth/300000,bigMaster(:,8))
+
 %% Pull tuning widths
 %pull widths
 pvWidths = widthStore(:,findPVs,:);
@@ -255,7 +363,7 @@ msnWidths = widthStore(:,findMSNs,:);
 firstWidthMSN = msnWidths(:,:,2);
 firstWidthPV = pvWidths(:,:,2);
 
-%% STORE INFO FOR MSNS
+%% Go through and store specific values. MSNs
 %now we need to go through systematically. Store values like threshold
 %value, width 10 dB above threshold, shape of response (monotonic
 %increasing?)
@@ -321,7 +429,7 @@ for i = 1:length(firstWidthMSN)
         end
     end
 end
-%% STORE INFO FOR PVs
+%% Go through and store specific values. PVs
 %do the same for PVs
 infoStorePV = zeros(length(firstWidthPV),6);
 for i = 1:length(firstWidthPV)
@@ -385,10 +493,7 @@ for i = 1:length(firstWidthPV)
 end
 %% SAVE COMBINED DATA
 condensedMSN = infoStoreMSN(infoStoreMSN(:,5) == 1,:);
-
 condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
-
-
 
 [indPkTr] = functionCellStringFind(masterHeader,'PeakTrough');
 [indISI] = functionCellStringFind(masterHeader,'isiCov');
@@ -573,8 +678,6 @@ sigValConv(sigValConv <= 0.001) = 4;
 sigValConv(sigValConv <= 0.01) = 3;
 sigValConv(sigValConv <= 0.05) = 2;
 sigValConv(sigValConv <= 1) = 1;
-
-
 clims = [1 3];
 
 %% Plot out tuning curves without white noise, actual values and step function significance
@@ -663,63 +766,6 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-% based on this, it seems like there is something of a difference between
-% FSIs and MSNs
-
-%% lets try plotting just white noise responses
-%just do PVs
-
-clims = [1 3];
-
-hFig = figure;
-set(hFig, 'Position', [10 80 1900 1000])
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
-for i = 1:length(findPVs)
-    subplot(1,length(findPVs),i)
-    imagesc(binValBigStore(1,:,findPVs(i))')
-    colormap('parula')
-    set(gca,'YTick',[]);
-    set(gca,'XTick',[]);
-    set(gca,'Ydir','reverse')
-end
-
-hFig = figure;
-set(hFig, 'Position', [10 80 1900 1000])
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
-for i = 1:length(findPVs)
-    subplot(1,length(findPVs),i)
-    imagesc(sigValConv(1,:,findPVs(i))',clims)
-    colormap('parula')
-    set(gca,'YTick',[]);
-    set(gca,'XTick',[]);
-    set(gca,'Ydir','reverse')
-end
-
-%and just MSNs
-hFig = figure;
-set(hFig, 'Position', [10 80 1900 1000])
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
-for i = 1:length(findMSNs)
-    subplot(15,20,i)
-    imagesc(binValBigStore(1,:,findMSNs(i))')
-    colormap('parula')
-    set(gca,'YTick',[]);
-    set(gca,'XTick',[]);
-    set(gca,'Ydir','reverse')
-end
-
-hFig = figure;
-set(hFig, 'Position', [10 80 1900 1000])
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
-for i = 1:length(findMSNs)
-    subplot(15,20,i)
-    imagesc(sigValConv(1,:,findMSNs(i))',clims)
-    colormap('parula')
-    set(gca,'YTick',[]);
-    set(gca,'XTick',[]);
-    set(gca,'Ydir','reverse')
-end
-
 
 %% now lets select for units with a minimum width of 3 at the tone window.
 %180905 new attempt. Will threshold by units that respond to at least two
@@ -746,7 +792,7 @@ latConvWidthTone = widthLatConv(2:end,:,:);
 %now lets extract targeted latencies. THIS IS FOR BIGGEST RESPONSE
 for i = 1:length(tarCells);
     tempLat = latConvTone(:,:,tarCells(i));
-    tarLats(i) = tempLat(bigMaxStore(tarCells(i)));
+    tarLats(i) = tempLat(bigFreqStore(tarCells(i)),bigDBStore(tarCells(i)));
 end
 %QC check, remove all latencies and tarCells that are NaNs
 nanFind = isnan(tarLats);
@@ -877,7 +923,7 @@ tester = [-.2:0.0005:0.4];
 %Doesnt look like a per-recording analysis will pull out anything different
 %really. 
 
-%now lets just plot the responses overall of different unit types
+%% now lets just plot the responses overall latency PSTH of different unit types
 %lets z score everything first
 tarHists = fineHist(tarCells,:);
 for i = 1:length(tarCells)
@@ -904,7 +950,8 @@ hFig = figure;
 hold on
 plot([-.2:0.0005:0.4],mean(zHists((tarPVs),:))-mean(zHists((tarPVs),401)))
 plot([-.2:0.0005:0.4],mean(zHists((tarMSNs),:))-mean(zHists((tarMSNs),401)),'r')
-xlim([-0.02 0.05])
+% xlim([-0.02 0.05])
+xlim([0 0.02])
 spikeGraphName = 'width3AverageZPlotsMSNrFSIbZOOM';
 savefig(hFig,spikeGraphName);
 
@@ -932,7 +979,69 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-%now lets try and plot out width, threshold, 
+%we can also now try and do this for all units. 
+%lets z score everything first
+% tarHists = fineHist;
+latFineHist(:,1) = 0;
+latFineHist(:,end) = 0;
+for i = 1:length(tarCells)
+    %extract std and mean from baseline
+    meanVal = mean(latFineHist(tarCells(i),1:401));
+    stdVal = std(latFineHist(tarCells(i),1:401));
+    allZHists(i,:) = (latFineHist(tarCells(i),:) - meanVal)/stdVal;
+end
+
+%this has been fixed now. however, still some shitty units. lets try and
+%evaluate which ones can be salvaged.
+for i = 1:length(tarCells)
+    %extract std and mean from baseline
+    toneSpikes(i) = sum(latFineHist(tarCells(i),401:601))-sum(latFineHist(tarCells(i),1:401));
+    peakVals(i) = max(latFineHist(tarCells(i),401:601))-mean(latFineHist(tarCells(i),1:401));
+    [pks maxInd(i)] = max(latFineHist(tarCells(i),401:601));
+end
+
+specFind = find(toneSpikes(tarPVs)>0);
+hFig = figure;
+hold on
+for i = 1:length(specFind)
+%     plot([-.2:0.0005:0.4],smooth(allZHists((tarPVs(specFind(i))),:),11)/max(smooth(allZHists((tarPVs(specFind(i))),:),11))+i,'Color',[rand(1),rand(1),rand(1)])
+    plot(smooth(allZHists((tarPVs(specFind(i))),1:maxInd(tarPVs(specFind(i)))+400),11)/max(smooth(allZHists((tarPVs(specFind(i))),1:maxInd(tarPVs(specFind(i)))+400),11))+i,'Color',[rand(1),rand(1),rand(1)])
+end
+
+specFind = find(toneSpikes(tarMSNs) > 10);
+hFig = figure;
+hold on
+for i = 1:length(specFind)
+%     plot([-.2:0.0005:0.4],smooth(allZHists((tarMSNs(specFind(i))),:),11)/max(smooth(allZHists((tarMSNs(specFind(i))),:),11))+i,'Color',[rand(1),rand(1),rand(1)])
+    plot(smooth(allZHists((tarMSNs(specFind(i))),1:maxInd(tarMSNs(specFind(i)))+400),11)/max(smooth(allZHists((tarMSNs(specFind(i))),1:maxInd(tarMSNs(specFind(i)))+400),11))+i,'Color',[rand(1),rand(1),rand(1)])
+end
+$$$$
+%what would be kind of nice would be to find the first major peak during
+%the tone period, then cut off datapoints after that to make things less
+%messy
+
+hFig = figure;
+hold on
+for i = 1:length(tarPVs)
+    plot([-.2:0.0005:0.4],smooth(allZHists((tarPVs(i)),:),11)/max(smooth(allZHists((tarPVs(i)),:),11))+i,'r')
+end
+for i = 1:length(tarMSNs)
+    plot([-.2:0.0005:0.4],smooth(allZHists((tarMSNs(i)),:),11)/max(smooth(allZHists((tarMSNs(i)),:),11))+i,'k')
+end
+xlim([0 0.1])
+% 
+% 
+% hFig = figure;
+% hold on
+% for i = 1:length(tarPVs)
+%     plot([-.2:0.0005:0.4],smooth(zHists((tarPVs(i)),:),11)/max(smooth(zHists((tarPVs(i)),:),11)),'r')
+% end
+% for i = 1:length(tarMSNs)
+%     plot([-.2:0.0005:0.4],smooth(zHists((tarMSNs(i)),:),11)/max(smooth(zHists((tarMSNs(i)),:),11)),'k')
+% end
+% xlim([0 0.1])
+
+%% now lets try and plot out width, threshold, with the width of 3 setup. 
 
 %first do PVs. 
 threshStorePV = [];
@@ -1010,7 +1119,7 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-%plot out BFs
+%% plot out BFs of width 3 selected units. 
 
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
@@ -1222,7 +1331,6 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 %now lets look at specific amplitudes?
-
 minLatWhitePV = squeeze((latConvWhite(:,5,findPVs)));
 minLatWhiteMSN = squeeze((latConvWhite(:,5,findMSNs)));
 minLatTonePV = squeeze((min(latConvTone(:,5,findPVs))));
@@ -1275,7 +1383,7 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
-%% lets try plotting out only the "classic" responses 
+%% lets try plotting out only the "classic" responses that have monotonically widening tuning curves. 
 
 pvTarget = find(infoStorePV(:,5)==1);
 msnTarget = find(infoStoreMSN(:,5)==1);
