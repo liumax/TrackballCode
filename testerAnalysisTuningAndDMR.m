@@ -65,13 +65,13 @@ if dateVal < 190211
 %     sprFile =
 %     'Z:\Max\dmrOutputFiles\extractedDMR400-6400-approx1kHz.mat'; %This is
 %     the 1 kHz example. 
-    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR400-6400-DFt150-DFf2.mat';
+    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR400-6400-approx1kHz.mat';
     % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
     ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimesCORRECTFreqSampling.mat';
 
 %     ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
 else 
-    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR4kHz-16kHz_10mindsT5dsF5.mat';
+    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR4kHz-16kHz_10mindsT30dsF5.mat';
     % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
     ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-4000flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
 end
@@ -712,10 +712,12 @@ end
 
 [sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikeArray, numLags);
 [sta_sig, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(sta, spikeArray, stimulus, 10, numLags, 95);
-
+s.DMRTimes = trueDMRtimes;
+s.DMRStep = dmrStep;
+s.DMRfaxis = faxis;
 s.STAs = sta;
 s.STASig = sta_sig;
-
+s.SpikeArray = spikeArray;
 % %going to go through each thing and perform STRFs
 % for i = 1:numUnits
 %     disp(strcat('Working on Unit ',num2str(i)))
