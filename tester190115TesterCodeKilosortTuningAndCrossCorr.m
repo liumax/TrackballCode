@@ -5,9 +5,9 @@
 
 
 %for testing purposes
-% fileName = '180718_ML180619B_L_AudStr_pen1_3000_fullTuning'
+fileName = '180718_ML180619B_L_AudStr_pen1_3000_fullTuning'
 % fileName = '180718_ML180619C_R_AudStr_pen1_3000_fullTuning'
-fileName = '180315_ML180306C_R17_3218mid1_fullTuning'
+% fileName = '180315_ML180306C_R17_3218mid1_fullTuning'
 % fileName = '180717_ML180619A_R_AudStr_pen2_2850_fullTuning'
 %% Constants
 
@@ -153,6 +153,9 @@ for i = 1:numUnits
     tarWave = squeeze(medWFs(i,:,:));
     s.(cluNames{i}).medianWave = tarWave;
     %find minima for each wave. Note that waves are now downwards pointing
+    for j = 1:64
+        tarWave(j,:) = tarWave(j,:) - mean(tarWave(j,1:5));
+    end
     [pks inds] = min(tarWave');
     %find the minimal minima
     [metpks metinds] = min(pks);
@@ -929,7 +932,7 @@ for i = 1:numUnits
         [rasters] = crosscorrelogram(s.(cluNames{i}).SpikeTimes,s.(cluNames{j}).SpikeTimes,rasterWindow);
         histStore = hist(rasters,rasterVector);
         rasters = [];
-        trueStore{findFSIs(i),findMSNs(j)} = histStore;
+        trueStore{(i),(j)} = histStore;
     end
 end
 
