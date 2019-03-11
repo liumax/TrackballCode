@@ -27,6 +27,8 @@ latMapBigStore = [];
 widthLatStore = [];
 nameStore = [];
 unitStore = [];
+halfWidthTimeStore = [];
+pkTroughTimeStore = [];
 
 %parameters
 masterHeaderSize = 12; %only want the first 12 values of masterData. 
@@ -44,12 +46,15 @@ for i = 1:numFiles
     tempSigStore = [];
     tempLatStore = [];
     tempMaxStore = [];
+    tempWidthStore = [];
     tempHist = [];
     dbStore = [];
     freqStore = [];
+    halfWidthTime = [];
+    pkTroughTime = [];
     %generate a finder for non-white noise tones
-    toneFinder = find(s.SoundData.Frequencies ~= 0);
-    toneFinder(toneFinder > length(s.SoundData.TrialMatrix)) = [];
+    toneFinder = find(s.TrialMatrix(:,2) ~= 0);
+%     toneFinder(toneFinder > length(s.SoundData.TrialMatrix)) = [];
     %now lets also generate a trial matrix for all tone times. 
     trialMatrix = [];
     trialMatrix = s.SoundData.TrialMatrix;
@@ -66,6 +71,7 @@ for i = 1:numFiles
     %since non-white noise sessions will have funky tone DB values, round
     %up to the nearest ten.
     trialMatrix(:,3) = round(trialMatrix(:,3)/10)*10;
+    uniqueDBs = unique(trialMatrix(:,3));
     %pull from masterData, store in overall. 
     bigMaster(bigMasterInd:bigMasterInd + numUnits - 1,:) = masterData(:,1:12);
     %now pull overall designations of pos/neg/mix/no response
@@ -79,7 +85,7 @@ for i = 1:numFiles
     numCells = length(s.DesignationName);
     desigName = s.DesignationName;
     for j = 1:numCells
-        disp('New Unit')
+        disp(desigName{j})
         %pull up cell average waveforms
         cellWaves = s.(desigName{j}).AverageWaveForms;
         %now pull up which one is biggest
@@ -94,19 +100,35 @@ for i = 1:numFiles
         [pkVal pkInd] = max(interpWave(100:end));
         pkInd = pkInd + 100 - 1;
         %now we need to find the minimum following the peak
-
-        [troughVal troughInd] = min(interpWave(pkInd:end));
+        waveDiff = diff(interpWave);
+        
+        troughInd = find(waveDiff(pkInd:end) > 0,1,'first');
+        troughVal = interpWave(troughInd);
+        if isempty(troughInd)
+            [troughVal troughInd] = min(interpWave(pkInd:end));
+        end
+        pkTroughTime(j) = troughInd;
         troughInd = troughInd + pkInd - 1;
         pkTroughRatio(j) = pkVal/troughVal;
         interpWaves(j,:) = interpWave;
+        %now get half-width
+        halfFirst = find(interpWave(1:pkInd) > pkVal/2,1,'first');
+        halfSecond = find(interpWave(halfFirst:end) < pkVal/2,1,'first');
+        halfWidthTime(j) = halfSecond;
 
         %pull out binned values for entire tone period, as well as
         %significance
-        tempBinStore(:,:,j) = s.(desigName{j}).BinTone(:,end-5+1:end);
-        tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(:,end-5+1:end,2);
-        tempLatStore(:,:,j) = s.(desigName{j}).LatencyMap(:,end-5+1:end);
+        tempBinStore(:,:,j) = s.(desigName{j}).BinTone(1+s.SoundData.WhiteNoise:end,end-5+1:end);
+        tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(1+s.SoundData.WhiteNoise:end,end-5+1:end,2);
+        tempLatStore(:,:,j) = s.(desigName{j}).LatencyMap(1+s.SoundData.WhiteNoise:end,end-5+1:end);
+        try
+            tempWidthStore(:,:,j) = s.WidthLatData(1+s.SoundData.WhiteNoise:end,end-5+1:end,j);
+        catch
+            tempWidthStore(:,:,j) = s.NonLaserOverall.WidthLatData(1+s.SoundData.WhiteNoise:end,end-5+1:end,j);
+            
+        end
         
-        [row,col] = find(s.(desigName{j}).PeakMapTone(1+s.SoundData.WhiteNoise:end,end-5+1:end) == max(max(s.(desigName{j}).PeakMapTone(1+s.SoundData.WhiteNoise:end,end-5+1:end))));
+        [row,col] = find(s.(desigName{j}).BinTone(1+s.SoundData.WhiteNoise:end,end-5+1:end) == max(max(s.(desigName{j}).BinTone(1+s.SoundData.WhiteNoise:end,end-5+1:end))));
         if length(row) == 1
             disp('Found single max value!')
         elseif length(row) > 1
@@ -121,295 +143,90 @@ for i = 1:numFiles
         if length(row) == 1
             dbVal = col;
             freqVal= row;
-            tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+1,dbVal,:));
+%             tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+s.SoundData.WhiteNoise,end-5+dbVal,:));
             dbStore(j) = dbVal;
             freqStore(j) = freqVal;
         else
-            tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
+%             tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
         end
         %now we need to pull the peak values from the 70DB band. 
-        tarVals = s.(desigName{j}).BinTone(2:end,end);
+        tarVals = s.(desigName{j}).BinTone(1+s.SoundData.WhiteNoise:end,end);
+        ind1 = s.SoundData.NumDBs - 1;
+        ind2 = s.SoundData.NumDBs;
         [pk ind] = max(tarVals);
         if ind >=2 & ind <= 15 %these are non-edge cases
-            tarCols = [4,4,4,5,5,5];
-            tarRows = [ind,ind+1,ind+2,ind,ind+1,ind+2];
+            tarCols = [ind1,ind1,ind1,ind2,ind2,ind2];
+            tarRows = [ind-1+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise,ind+1+s.SoundData.WhiteNoise,ind-1+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise,ind+1+s.SoundData.WhiteNoise];
         elseif ind < 2
-            tarCols = [4,4,4,5,5,5];
-            tarRows = [ind+1,ind+2,ind+3,ind+1,ind+2,ind+3];
+            tarCols = [ind1,ind1,ind1,ind2,ind2,ind2];
+            tarRows = [ind+s.SoundData.WhiteNoise,ind+1+s.SoundData.WhiteNoise,ind+2+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise,ind+1+s.SoundData.WhiteNoise,ind+2+s.SoundData.WhiteNoise];
         elseif ind > 15
-            tarCols = [4,4,4,5,5,5];
-            tarRows = [ind-1,ind,ind+1,ind-1,ind,ind+1];
+            tarCols = [ind1,ind1,ind1,ind2,ind2,ind2];
+            tarRows = [ind-2+s.SoundData.WhiteNoise,ind-1+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise,ind-2+s.SoundData.WhiteNoise,ind-1+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise];
         end
         %now we need to pull the trial numbers from these targeting
         %systems!
         tarCount = 1;
         tarStore = [];
         for m = 1:length(tarCols)
-            tarInds = find(trialMatrix(:,3) == s.SoundData.UniqueDBs(tarCols(m)) & trialMatrix(:,2) == s.SoundData.UniqueFrequencies(tarRows(m)));
+            tarInds = find(trialMatrix(:,3) == uniqueDBs(tarCols(m)) & trialMatrix(:,2) == s.SoundData.UniqueFrequencies(tarRows(m)));
             tarStore(tarCount:tarCount + length(tarInds) - 1) = tarInds;
             tarCount = tarCount + length(tarInds);
         end
         tarStore = sort(tarStore);
         %now pull correct raster data!
+        binSize = 0.0005;
         findRast = ismember(s.(desigName{j}).AllRasters(:,2),tarStore);
         tarSpikes = s.(desigName{j}).AllRasters(findRast,1);
-        latFineHist(bigMasterInd + j - 1,:) = hist(tarSpikes,[-0.2:0.0005:0.4]);
+        latFineHist(bigMasterInd + j - 1,:) = hist(tarSpikes,[-0.2:binSize:0.4])/binSize/length(tarStore);
 
-        disp('About to do fine histogram')
+        disp('About to do fine overall histogram')
         %generate a finer scale histogram across all tones
-        tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.SoundData.ToneTimes(toneFinder),[-0.2 0.4]);
-        binSize = 0.0005;
-        fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:binSize:0.4])/binSize/length(tarStore);
+        tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.TrialMatrix(toneFinder,1),[-0.2 0.4]);
+        
+        fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:binSize:0.4])/binSize/length(toneFinder);
         nameStore{bigMasterInd + j -1} = targetFiles{i};
         unitStore{bigMasterInd + j -1} = desigName{j};
     end
-    
-    
-    
-    if numDBs == 5
-        
-
-        
-        
-        for j = 1:numCells
-            disp('New Unit')
-            %pull up cell average waveforms
-            cellWaves = s.(desigName{j}).AverageWaveForms;
-            %now pull up which one is biggest
-            waveMax = max(cellWaves);
-            [maxVal maxInd] = max(waveMax);
-            %now generate finely sampled version
-            chosenWave = cellWaves(:,maxInd);
-            interpVect = [1:0.1:40];
-            interpWave = interp1(1:40,chosenWave,interpVect,'spline');
-            %now find peak value
-
-            [pkVal pkInd] = max(interpWave(100:end));
-            pkInd = pkInd + 100 - 1;
-            %now we need to find the minimum following the peak
-
-            [troughVal troughInd] = min(interpWave(pkInd:end));
-            troughInd = troughInd + pkInd - 1;
-            pkTroughRatio(j) = pkVal/troughVal;
-            interpWaves(j,:) = interpWave;
-
-            %pull out binned values for entire tone period, as well as
-            %significance
-            tempBinStore(:,:,j) = s.(desigName{j}).BinTone;
-            tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(:,:,2);
-            tempLatStore(:,:,j) = s.(desigName{j}).LatencyMap;
-            [row,col] = find(s.(desigName{j}).PeakMapTone(2:end,:) == max(max(s.(desigName{j}).PeakMapTone(2:end,:))));
-            if length(row) == 1
-                disp('Found single max value!')
-            elseif length(row) > 1
-                disp('Found Multiple Max Values. Pruning to max amplitude')
-                col = col(end);
-                row = row(end);
-            else
-                disp('No Max Value Found')
-            end
-            
-            %find appropriate histogram, store. 
-            if length(row) == 1
-                dbVal = col;
-                freqVal= row;
-                tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+1,dbVal,:));
-                dbStore(j) = dbVal;
-                freqStore(j) = freqVal;
-            else
-                tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
-            end
-            %now we need to pull the peak values from the 70DB band. 
-            tarVals = s.(desigName{j}).BinTone(2:end,end);
-            [pk ind] = max(tarVals);
-            if ind >=2 & ind <= 15 %these are non-edge cases
-                tarCols = [4,4,4,5,5,5];
-                tarRows = [ind,ind+1,ind+2,ind,ind+1,ind+2];
-            elseif ind < 2
-                tarCols = [4,4,4,5,5,5];
-                tarRows = [ind+1,ind+2,ind+3,ind+1,ind+2,ind+3];
-            elseif ind > 15
-                tarCols = [4,4,4,5,5,5];
-                tarRows = [ind-1,ind,ind+1,ind-1,ind,ind+1];
-            end
-            %now we need to pull the trial numbers from these targeting
-            %systems!
-            tarCount = 1;
-            tarStore = [];
-            for m = 1:length(tarCols)
-                tarInds = find(trialMatrix(:,3) == s.SoundData.UniqueDBs(tarCols(m)) & trialMatrix(:,2) == s.SoundData.UniqueFrequencies(tarRows(m)));
-                tarStore(tarCount:tarCount + length(tarInds) - 1) = tarInds;
-                tarCount = tarCount + length(tarInds);
-            end
-            tarStore = sort(tarStore);
-            %now pull correct raster data!
-            findRast = ismember(s.(desigName{j}).AllRasters(:,2),tarStore);
-            tarSpikes = s.(desigName{j}).AllRasters(findRast,1);
-            latFineHist(bigMasterInd + j - 1,:) = hist(tarSpikes,[-0.2:0.0005:0.4]);
-            
-            disp('About to do fine histogram')
-            %generate a finer scale histogram across all tones
-            tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.SoundData.ToneTimes(toneFinder),[-0.2 0.4]);
-            binSize = 0.0005;
-            fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:binSize:0.4])/binSize/length(tarStore);
-            nameStore{bigMasterInd + j -1} = targetFiles{i};
-            unitStore{bigMasterInd + j -1} = desigName{j};
-        end
-        pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
-        interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
-        binValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempBinStore;
-        sigValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempSigStore;
-        latMapBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempLatStore;
-        widthLatStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = s.WidthLatData;
+    halfWidthTimeStore(bigMasterInd:bigMasterInd + numUnits - 1) = halfWidthTime;
+    pkTroughTimeStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughTime;
+    pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
+    interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
+    binValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempBinStore;
+    sigValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempSigStore;
+    latMapBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempLatStore;
+    if size(tempWidthStore,1) < size(unique(s.TrialMatrix(:,2)),1) - s.SoundData.WhiteNoise
+        sizeDiff = size(s.NonLaserOverall.WidthData,1) - size(tempWidthStore,1);
+        tempWidthStore(end+sizeDiff,:,:) = zeros(sizeDiff,size(tempWidthStore,2),size(tempWidthStore,3));
+    end
+    widthLatStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempWidthStore;
 %         bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) = tempMaxStore;
-        bigHistStore(:,bigMasterInd:bigMasterInd + numUnits - 1) = tempHist;
-        bigDBStore(bigMasterInd:bigMasterInd + numUnits - 1) = dbStore;
-        bigFreqStore(bigMasterInd:bigMasterInd + numUnits - 1) = freqStore;
-        recStore(bigMasterInd:bigMasterInd + numUnits - 1) = i;
-        
-        %instead, lets just pull from posWidths and negWidths
-        intFastPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((2:end),:,1));
-        intFastNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((2:end),:,1));
-        intSlowPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((2:end),:,3));
-        intSlowNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((2:end),:,3));
-        %store positive tuning widths
-        widthStore(:,bigMasterInd:bigMasterInd + numUnits - 1,:) = s.PosWidths;
-        %store BFs
-        bfStore(bigMasterInd:bigMasterInd + numUnits - 1) = masterData(:,12);
-        bigMasterInd = bigMasterInd + numUnits;
-        
-        
-    elseif numDBs > 5
-        %pull from masterData, store in overall. 
-        bigMaster(bigMasterInd:bigMasterInd + numUnits - 1,:) = masterData;
+%     bigHistStore(:,bigMasterInd:bigMasterInd + numUnits - 1) = tempHist;
+    bigDBStore(bigMasterInd:bigMasterInd + numUnits - 1) = dbStore;
+    bigFreqStore(bigMasterInd:bigMasterInd + numUnits - 1) = freqStore;
+    recStore(bigMasterInd:bigMasterInd + numUnits - 1) = i;
 
-        %now pull overall designations of pos/neg/mix/no response
-        [indPosSig] = functionCellStringFind(masterHeader,'PosSigGenHist');
-        [indNegSig] = functionCellStringFind(masterHeader,'NegSigGenHist');
-
-        holder = masterData(:,[indPosSig,indNegSig]);
-        holder(:,2) = holder(:,2) * -2;
-        respVect(:,bigMasterInd:bigMasterInd + numUnits - 1) = (holder(:,1) + holder(:,2))'; %note that here, -2 = neg, -1 = mix, 0 = no, 1 = pos
-        %find the peak to trough value ratio in waveforms. 
-        numCells = length(s.DesignationName);
-        desigName = s.DesignationName;
-        
-        for j = 1:numCells
-            disp('New Unit, > 6DB steps')
-            %pull up cell average waveforms
-            cellWaves = s.(desigName{j}).AverageWaveForms;
-            %now pull up which one is biggest
-            waveMax = max(cellWaves);
-            [maxVal maxInd] = max(waveMax);
-            %now generate finely sampled version
-            chosenWave = cellWaves(:,maxInd);
-            interpVect = [1:0.1:40];
-            interpWave = interp1(1:40,chosenWave,interpVect,'spline');
-            %now find peak value
-
-            [pkVal pkInd] = max(interpWave(100:end));
-            pkInd = pkInd + 100 - 1;
-            %now we need to find the minimum following the peak
-
-            [troughVal troughInd] = min(interpWave(pkInd:end));
-            troughInd = troughInd + pkInd - 1;
-            pkTroughRatio(j) = pkVal/troughVal;
-            interpWaves(j,:) = interpWave;
-
-            %pull out binned values for entire tone period, as well as
-            %significance
-            tempBinStore(:,:,j) = s.(desigName{j}).BinTone(:,end-5+1:end);
-            tempSigStore(:,:,j) = s.(desigName{j}).BinSigVals(:,end-5+1:end,2);
-            tempLatStore(:,:,j) = s.(desigName{j}).LatencyMap(:,end-5+1:end);
-            
-            [row,col] = find(s.(desigName{j}).PeakMapTone(2:end,end-5+1:end) == max(max(s.(desigName{j}).PeakMapTone(2:end,end-5+1:end))));
-            if length(row) == 1
-                disp('Found single max value!')
-            elseif length(row) > 1
-                disp('Found Multiple Max Values. Pruning to max amplitude')
-                col = col(end);
-                row = row(end);
-            end
-            %find appropriate histogram, store. 
-            if length(row) == 1
-                dbVal = col;
-                freqVal= row;
-                dbStore(j) = dbVal;
-                freqStore(j) = freqVal;
-                tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+1,dbVal+1,:));
-            else
-                tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
-            end
-            
-            %now we need to pull the peak values from the 70DB band. 
-            tarVals = s.(desigName{j}).BinTone(2:end,end);
-            [pk ind] = max(tarVals);
-            if ind >=2 & ind <= 15 %these are non-edge cases
-                tarCols = [5,5,5,6,6,6];
-                tarRows = [ind,ind+1,ind+2,ind,ind+1,ind+2];
-            elseif ind < 2
-                tarCols = [5,5,5,6,6,6];
-                tarRows = [ind+1,ind+2,ind+3,ind+1,ind+2,ind+3];
-            elseif ind > 15
-                tarCols = [5,5,5,6,6,6];
-                tarRows = [ind-1,ind,ind+1,ind-1,ind,ind+1];
-            end
-            %now we need to pull the trial numbers from these targeting
-            %systems!
-            tarCount = 1;
-            tarStore = [];
-            for m = 1:length(tarCols)
-                tarInds = find(trialMatrix(:,3) == s.SoundData.UniqueDBs(tarCols(m)) & trialMatrix(:,2) == s.SoundData.UniqueFrequencies(tarRows(m)));
-                tarStore(tarCount:tarCount + length(tarInds) - 1) = tarInds;
-                tarCount = tarCount + length(tarInds);
-            end
-            tarStore = sort(tarStore);
-            %now pull correct raster data!
-            findRast = ismember(s.(desigName{j}).AllRasters(:,2),tarStore);
-            tarSpikes = s.(desigName{j}).AllRasters(findRast,1);
-            binSize = 0.0005;
-            latFineHist(bigMasterInd + j - 1,:) = hist(tarSpikes,[-0.2:binSize:0.4])/binSize/length(tarStore);
-            
-            disp('About to do fine histogram')
-            %generate a finer scale histogram across all tones
-            tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.SoundData.ToneTimes(toneFinder),[-0.2 0.4]);
-            fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:0.0005:0.4]);
-            nameStore{bigMasterInd + j -1} = targetFiles{i};
-            unitStore{bigMasterInd + j -1} = desigName{j};
-        end
-        disp('Finished going through individual cells')
-        %store values!
-        pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
-        interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
-        binValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempBinStore;
-        sigValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempSigStore;
-        latMapBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempLatStore;
-        widthLatStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = s.WidthLatData(:,end-5+1:end,:);
-%         bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) = tempMaxStore;
-        bigHistStore(:,bigMasterInd:bigMasterInd + numUnits - 1) = tempHist;
-        bigDBStore(bigMasterInd:bigMasterInd + numUnits - 1) = dbStore;
-        bigFreqStore(bigMasterInd:bigMasterInd + numUnits - 1) = freqStore;
-        recStore(bigMasterInd:bigMasterInd + numUnits - 1) = i;
-        %for "integral" of responses, we'll have to go into individual units,
-        %and save both for short period and long period
-    %     tempInd = 1;
-    %     sigCutoff = 0.01;
-    %     for j = 1:numUnits
-    %         intFast(bigMasterInd + tempInd - 1) = length(find(squeeze(s.(s.DesignationName{j}).BinSigVals(2:end,:,1))<sigCutoff));
-    %         intBig(bigMasterInd + tempInd - 1) = length(find(squeeze(s.(s.DesignationName{j}).BinSigVals(2:end,:,3))<sigCutoff));
-    %         tempInd = tempInd + 1;
-    %     end
-        %instead, lets just pull from posWidths and negWidths
-        intFastPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((2:end),:,1));
-        intFastNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((2:end),:,1));
-        intSlowPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((2:end),:,3));
-        intSlowNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((2:end),:,3));
+    %instead, lets just pull from posWidths and negWidths
+    try
+        intFastPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((end-5+1:end),:,1));
+        intFastNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((end-5+1:end),:,1));
+        intSlowPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.PosWidths((end-5+1:end),:,3));
+        intSlowNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NegWidths((end-5+1:end),:,3));
         %store positive tuning widths
         widthStore(:,bigMasterInd:bigMasterInd + numUnits - 1,:) = s.PosWidths(end-5+1:end,:,:);
-        %store BFs
-        bfStore(bigMasterInd:bigMasterInd + numUnits - 1) = masterData(:,12);
-        bigMasterInd = bigMasterInd + numUnits;
+    catch
+        intFastPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NonLaserOverall.PosWidths((end-5+1:end),:,1));
+        intFastNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NonLaserOverall.NegWidths((end-5+1:end),:,1));
+        intSlowPos(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NonLaserOverall.PosWidths((end-5+1:end),:,3));
+        intSlowNeg(:,bigMasterInd:bigMasterInd + numUnits - 1) = sum(s.NonLaserOverall.NegWidths((end-5+1:end),:,3));
+        %store positive tuning widths
+        widthStore(:,bigMasterInd:bigMasterInd + numUnits - 1,:) = s.NonLaserOverall.PosWidths(end-5+1:end,:,:);
     end
+    
+    %store BFs
+    bfStore(bigMasterInd:bigMasterInd + numUnits - 1) = masterData(:,12);
+    bigMasterInd = bigMasterInd + numUnits;
+        
 end
 
 
@@ -427,7 +244,7 @@ findCHATs = find(bigMaster(:,indCellType) == 2);
 
 
 findPVs = find(bigMaster(:,5) < 0.0004);
-findMSNs = find(bigMaster(:,5) > 0.0005);
+findMSNs = find(bigMaster(:,5) > 0.0005); 
 
 %% Lets look at the waveforms a bit more carefully
 for i = 1:size(interpWaveStore,1)
@@ -782,8 +599,9 @@ clims = [1 3];
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotWid = ceil(sqrt(length(findPVs)));
 for i = 1:length(findPVs)
-    subplot(8,6,i)
+    subplot(plotWid,plotWid,i)
     imagesc(binValBigStore(2:end,:,findPVs(i))')
     colormap('parula')
     set(gca,'YTick',[]);
@@ -804,7 +622,7 @@ hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(findPVs)
-    subplot(8,6,i)
+    subplot(plotWid,plotWid,i)
     imagesc(sigValConv(2:end,:,findPVs(i))',clims)
     colormap('parula')
     set(gca,'YTick',[]);
@@ -824,8 +642,9 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotWid = ceil(sqrt(length(findMSNs)));
 for i = 1:length(findMSNs)
-    subplot(15,20,i)
+    subplot(plotWid,plotWid,i)
     imagesc(binValBigStore(2:end,:,findMSNs(i))')
     colormap('parula')
     set(gca,'YTick',[]);
@@ -846,7 +665,7 @@ hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(findMSNs)
-    subplot(15,20,i)
+    subplot(plotWid,plotWid,i)
     imagesc(sigValConv(2:end,:,findMSNs(i))',clims)
     colormap('parula')
     set(gca,'YTick',[]);
@@ -1020,6 +839,54 @@ tester = [-.2:0.0005:0.4];
 %Doesnt look like a per-recording analysis will pull out anything different
 %really. 
 
+
+
+%now lets plot out heatmaps?
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotWid = ceil(sqrt(length(tarPVs)));
+for i = 1:length(tarPVs)
+    subplot(plotWid,plotWid,i)
+    imagesc(binValBigStore(2:end,:,tarCells(tarPVs(i)))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
+
+spikeGraphName = '3binFSIBinStoreTuning';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotWid = ceil(sqrt(length(tarMSNs)));
+for i = 1:length(tarMSNs)
+    subplot(plotWid,plotWid,i)
+    imagesc(binValBigStore(2:end,:,tarCells(tarMSNs(i)))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
+
+spikeGraphName = '3binMSNBinStoreTuning';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
 %% now lets just plot the responses overall latency PSTH of different unit types
 %lets z score everything first
 tarHists = fineHist(tarCells,:);
@@ -1112,7 +979,25 @@ for i = 1:length(specFind)
 %     plot([-.2:0.0005:0.4],smooth(allZHists((tarMSNs(specFind(i))),:),11)/max(smooth(allZHists((tarMSNs(specFind(i))),:),11))+i,'Color',[rand(1),rand(1),rand(1)])
     plot(smooth(allZHists((tarMSNs(specFind(i))),1:maxInd(tarMSNs(specFind(i)))+400),11)/max(smooth(allZHists((tarMSNs(specFind(i))),1:maxInd(tarMSNs(specFind(i)))+400),11))+i,'Color',[rand(1),rand(1),rand(1)])
 end
-$$$$
+
+%lets try and do this without spreading in y axis
+
+specFind = find(toneSpikes(tarPVs)>0);
+hFig = figure;
+hold on
+for i = 1:length(specFind)
+%     plot([-.2:0.0005:0.4],smooth(allZHists((tarPVs(specFind(i))),:),11)/max(smooth(allZHists((tarPVs(specFind(i))),:),11))+i,'Color',[rand(1),rand(1),rand(1)])
+    plot(smooth(allZHists((tarPVs(specFind(i))),1:maxInd(tarPVs(specFind(i)))+400),11)/max(smooth(allZHists((tarPVs(specFind(i))),1:maxInd(tarPVs(specFind(i)))+400),11)),'r')
+end
+
+specFind = find(toneSpikes(tarMSNs) > 10);
+% hFig = figure;
+hold on
+for i = 1:length(specFind)
+%     plot([-.2:0.0005:0.4],smooth(allZHists((tarMSNs(specFind(i))),:),11)/max(smooth(allZHists((tarMSNs(specFind(i))),:),11))+i,'Color',[rand(1),rand(1),rand(1)])
+    plot(smooth(allZHists((tarMSNs(specFind(i))),1:maxInd(tarMSNs(specFind(i)))+400),11)/max(smooth(allZHists((tarMSNs(specFind(i))),1:maxInd(tarMSNs(specFind(i)))+400),11)),'k')
+end
+
 %what would be kind of nice would be to find the first major peak during
 %the tone period, then cut off datapoints after that to make things less
 %messy
