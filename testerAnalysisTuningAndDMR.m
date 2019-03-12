@@ -690,7 +690,7 @@ load(sprFile)
 %downsample to 1 ms. 
 if dateVal < 190211
 else
-    stimulus = stimulus(:,1:6:end);
+%     stimulus = stimulus(:,1:6:end);
 end
 
 % Figure out how DMR file maps onto trodes times
@@ -712,12 +712,49 @@ end
 
 [sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikeArray, numLags);
 [sta_sig, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(sta, spikeArray, stimulus, 10, numLags, 95);
+
+s.STAs = sta;
+s.STASig = sta_sig;
+
+%now lets generate jittered spike trains and see what this produces?
+jitterNum = 100;
+jitterTime = 0.3; %+/- 150 ms. 
+for j = 1:jitterNum
+    disp(j)
+    for i = 1:numUnits
+        
+        spikeStore = s.(desigNames{i}).SpikeTimes(s.(desigNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(desigNames{i}).SpikeTimes < spikeHistVect(end));
+
+        jitterVals = rand(length(spikeStore),1)-0.5;
+        fakeSpikes = spikeStore + jitterVals;
+        tempSpikes(i,:) = hist(fakeSpikes,spikeHistVect);
+        
+    end
+    [sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, tempSpikes, numLags);
+    jitSTAStore{j} = sta;
+end
+
+%also generate split spike STAs to have internal comparison. 
+for i = 1:numUnits
+    spikeStore = s.(desigNames{i}).SpikeTimes(s.(desigNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(desigNames{i}).SpikeTimes < spikeHistVect(end));
+    sel1 = randperm(length(spikeStore),round(length(spikeStore)/2));
+    sel2 = [1:length(spikeStore)];
+    sel2(ismember(sel1,sel2)) = [];
+    spikes1(i,:) = hist(spikeStore(sel1),spikeHistVect);
+    spikes2(i,:) = hist(spikeStore(sel2),spikeHistVect);
+end
+[sta1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes1, numLags);
+[sta2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes2, numLags);
+
+s.JitteredSTAs = jitSTAStore;
+s.SplitSTA1 = sta1;
+s.SplitSTA2 = sta2;
 s.DMRTimes = trueDMRtimes;
 s.DMRStep = dmrStep;
 s.DMRfaxis = faxis;
-s.STAs = sta;
-s.STASig = sta_sig;
+
 s.SpikeArray = spikeArray;
+
 % %going to go through each thing and perform STRFs
 % for i = 1:numUnits
 %     disp(strcat('Working on Unit ',num2str(i)))
