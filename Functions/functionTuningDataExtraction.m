@@ -44,19 +44,36 @@ for i = 1:numUnits
     masterHolder = masterHolder + 1;
     
     %now pull waveform data and isi data to categorize cells
-    waveForms = s.(desigNames{i}).AverageWaveForms;
+    try
+        waveForms = s.(desigNames{i}).AverageWaveForms;
+        
+        %find size of waveforms
+        waveSize = size(waveForms);
+
+        %find maximum waveform by max peak size
+        maxWave = max(waveForms);
+        [maxVal maxInd] = max(maxWave);
+
+        %chose the big wave, interpolate to fine degree
+        chosenWave = waveForms(:,maxInd);
+        interpVect = [1:0.1:40];
+        interpWave = interp1(1:40,chosenWave,interpVect,'spline');
+    catch
+        waveForms = s.(desigNames{i}).medianWave*-1;
+        
+        %find size of waveforms
+        waveSize = size(waveForms);
+
+        %find maximum waveform by max peak size
+        maxWave = max(waveForms');
+        [maxVal maxInd] = max(maxWave);
+
+        %chose the big wave, interpolate to fine degree
+        chosenWave = waveForms(maxInd,:);
+        interpVect = [1:0.1:length(chosenWave)];
+        interpWave = interp1(1:length(chosenWave),chosenWave,interpVect,'spline');
+    end
     
-    %find size of waveforms
-    waveSize = size(waveForms);
-
-    %find maximum waveform by max peak size
-    maxWave = max(waveForms);
-    [maxVal maxInd] = max(maxWave);
-
-    %chose the big wave, interpolate to fine degree
-    chosenWave = waveForms(:,maxInd);
-    interpVect = [1:0.1:40];
-    interpWave = interp1(1:40,chosenWave,interpVect,'spline');
     
     %now we need to find the peak. Find this starting at point 10. 
 
