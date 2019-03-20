@@ -118,6 +118,7 @@ clustfolder ='kilosortoutput\';
 spfolder = 'kilosortoutput\';
 %get clusters
 [cids, cgs] = readClusterGroupsCSV([clustfolder 'cluster_group.tsv']);
+disp('Clusters Pulled')
 phyGoodClusters = cids(cgs==2);
 clu=phyGoodClusters;
 numClu = numel(clu);
@@ -740,95 +741,49 @@ for i = 1:numUnits
 end
 
 [sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikeArray, numLags);
-% [sta_sig, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(sta, spikeArray, stimulus, 10, numLags, 95);
+[sta_sig, ptd, siglevel] = ne_sig_sta_from_stim_obs_resp(sta, spikeArray, stimulus, 10, numLags, 95);
 
 s.STAs = sta;
-% s.STASig = sta_sig;
+s.STASig = sta_sig;
 
-% %now lets generate jittered spike trains and see what this produces?
-% jitterNum = 100;
-% jitterTime = 0.3; %+/- 150 ms. 
-% for j = 1:jitterNum
-%     disp(j)
-%     for i = 1:numUnits
-%         
-%         spikeStore = s.(cluNames{i}).SpikeTimes(s.(cluNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(cluNames{i}).SpikeTimes < spikeHistVect(end));
-% 
-%         jitterVals = rand(length(spikeStore),1)-0.5;
-%         fakeSpikes = spikeStore + jitterVals;
-%         tempSpikes(i,:) = hist(fakeSpikes,spikeHistVect);
-%         
-%     end
-%     [sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, tempSpikes, numLags);
-%     jitSTAStore{j} = sta;
-% end
-% 
-% %also generate split spike STAs to have internal comparison. 
-% for i = 1:numUnits
-%     spikeStore = s.(cluNames{i}).SpikeTimes(s.(cluNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(cluNames{i}).SpikeTimes < spikeHistVect(end));
-%     sel1 = randperm(length(spikeStore),round(length(spikeStore)/2));
-%     sel2 = [1:length(spikeStore)];
-%     sel2(ismember(sel1,sel2)) = [];
-%     spikes1(i,:) = hist(spikeStore(sel1),spikeHistVect);
-%     spikes2(i,:) = hist(spikeStore(sel2),spikeHistVect);
-% end
-% [sta1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes1, numLags);
-% [sta2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes2, numLags);
-% 
-% s.JitteredSTAs = jitSTAStore;
-% s.SplitSTA1 = sta1;
-% s.SplitSTA2 = sta2;
+%now lets generate jittered spike trains and see what this produces?
+jitterNum = 100;
+jitterTime = 0.3; %+/- 150 ms. 
+parfor j = 1:jitterNum
+    disp(j)
+    tempSpikes = [];
+    for i = 1:numUnits
+        spikeStore = s.(cluNames{i}).SpikeTimes(s.(cluNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(cluNames{i}).SpikeTimes < spikeHistVect(end));
+
+        jitterVals = rand(length(spikeStore),1)-0.5;
+        fakeSpikes = spikeStore + jitterVals;
+        tempSpikes(i,:) = hist(fakeSpikes,spikeHistVect);
+    end
+    [sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, tempSpikes, numLags);
+    jitSTAStore{j} = sta;
+end
+
+%also generate split spike STAs to have internal comparison. 
+for i = 1:numUnits
+    spikeStore = s.(cluNames{i}).SpikeTimes(s.(cluNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(cluNames{i}).SpikeTimes < spikeHistVect(end));
+    sel1 = randperm(length(spikeStore),round(length(spikeStore)/2));
+    sel2 = [1:length(spikeStore)];
+    sel2(ismember(sel1,sel2)) = [];
+    spikes1(i,:) = hist(spikeStore(sel1),spikeHistVect);
+    spikes2(i,:) = hist(spikeStore(sel2),spikeHistVect);
+end
+[sta1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes1, numLags);
+[sta2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes2, numLags);
+
+s.JitteredSTAs = jitSTAStore;
+s.SplitSTA1 = sta1;
+s.SplitSTA2 = sta2;
 
 
 s.DMRTimes = trueDMRtimes;
 s.DMRStep = dmrStep;
 s.DMRfaxis = faxis;
 
-s.SpikeArray = spikeArray;
-
-% %going to go through each thing and perform STRFs
-% for i = 1:numUnits
-%     disp(strcat('Working on Unit ',num2str(i)))
-%     %pulls spike times and times for alignment
-%     spikeTimes = s.(cluNames{i}).SpikeTimes;
-%     %lets pull the stuff based on all spikes
-%     
-%     indivStore = [];
-%     avStore = [];
-%     %pull out only the spikes during the desired window
-%     firstSpike = find(spikeTimes > dmrStore(1) - s.Parameters.STRFWin(1) ,1,'first');
-%     lastSpike = find(spikeTimes < dmrStore(end) - s.Parameters.STRFWin(2) ,1,'last');
-%     targetSpikes = spikeTimes(firstSpike:lastSpike);
-%     if targetSpikes
-%         masterData(i,masterInd) = length(targetSpikes);
-%         
-%         for k = 1:length(targetSpikes)
-%             findTarget = find(dmrStore - targetSpikes(k) > 0,1,'first');
-%             takeChunk = stimulus(:,findTarget+newWin(1):findTarget+newWin(2));
-%             indivStore(:,:,k) = takeChunk;
-%         end
-% %         avStore(:,:,i) = mean(indivStore,3);
-% %         s.(cluNames{i}).IndivStim = indivStore;
-%         s.(cluNames{i}).DMRAverage = mean(indivStore,3);
-% %         bigAvStore(:,:,i) = mean(squeeze(avStore(:,:,i,:)),3);
-% %         s.(cluNames{i}).FullAverage = mean(squeeze(avStore(:,:,i,:)),3);
-%     else
-% %         avStore(:,:,i) = ;
-%         s.(cluNames{i}).DMRAverage = zeros(size(stimulus,1),newWin(2)-newWin(1)+1);
-% %         bigAvStore(:,:,i) = mean(squeeze(avStore(:,:,i)),3);
-% %         s.(cluNames{i}).FullAverage = mean(squeeze(avStore(:,:,i)),3);
-%     end
-% end
-% masterHeader{masterInd} = 'NumSpikesDMR';
-% masterInd = masterInd + 1;
-
-
-
-
-%% Saving
-save(fullfile(pname,fname),'s','masterData','masterHeader');
-% save(fullfile(pname,strcat(fileName,'DMRData')),'sta','sta_sig','spikeArray','stimulus','faxis')
-save(fullfile(pname,strcat(fileName,'DMRData')),'sta','spikeArray','stimulus','faxis')
 
 %now lets remove other stuff
 rez = [];
@@ -922,151 +877,195 @@ synchWind = 0.001; %time difference within which spikes are considered synchrono
 rasterWindow = [-0.01025 0.01025];
 rasterVector = [-0.01:0.0005:0.01];
 
-
-for i = 1:numUnits
-    for j = 1:numUnits
-        disp(strcat('Running Cross Corr for Unit',num2str(cluNames{j}),'-aligned to',num2str(cluNames{i})))
-        [rasters] = crosscorrelogram(s.(cluNames{i}).SpikeTimes,s.(cluNames{j}).SpikeTimes,rasterWindow);
-        histStore = hist(rasters,rasterVector);
-        rasters = [];
-        trueStore{(i),(j)} = histStore;
+corrData = [];
+%First, do cross correlograms, split by shanks
+for i = 1:2
+    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
+    if findTars
+        disp(strcat('Performing Cross Corr for Shank-',num2str(i)))
+        corrName = strcat('trueStoreShank',num2str(i));
+        corrData.(corrName) = [];
+        for k = 1:length(findTars)
+            for j = 1:length(findTars)
+                disp(strcat('Running xCorr Shank-',num2str(i),'Unit',num2str(cluNames{findTars(j)}),'-aligned to',num2str(cluNames{findTars(k)})))
+                [rasters] = crosscorrelogram(s.(cluNames{findTars(k)}).SpikeTimes,s.(cluNames{findTars(j)}).SpikeTimes,rasterWindow);
+                histStore = hist(rasters,rasterVector);
+                rasters = [];
+                corrData.(corrName)(k,j,:) = histStore;
+            end
+        end
     end
 end
 
-s.CrossCorrs = trueStore;
-
-for i = 1:length(findFSIs)
-    for j = 1:length(findMSNs)
-%         disp(strcat('Running Cross Corr for Unit',num2str(cluNames{findMSNs(j)}),'-aligned to',num2str(cluNames{findFSIs(i)})))
-%         [rasters] = crosscorrelogram(s.(cluNames{findFSIs(i)}).SpikeTimes,s.(cluNames{findMSNs(j)}).SpikeTimes,rasterWindow);
-%         histStore = hist(rasters,rasterVector);
-%         rasters = [];
-%         trueStore{findFSIs(i),findMSNs(j)} = histStore;
-        %now lets try and remove synchronous FSIs spikes. This way, we can
-        %eliminate any peak in the FSI aligned MSN spikes. 
-        diffArray = [];
-        newFSIspike = s.(cluNames{findFSIs(i)}).SpikeTimes;
-        for k = length(s.(cluNames{findMSNs(j)}).SpikeTimes):-1:1
-            diffArray = s.(cluNames{findFSIs(i)}).SpikeTimes - s.(cluNames{findMSNs(j)}).SpikeTimes(k);
-            spikeFind = find(abs(diffArray) < synchWind);
-            newFSIspike(spikeFind) = [];
+%make wide cross correlograms
+rasterWindow = [-0.1025 0.1025];
+rasterVector = [-0.1:0.005:0.1];
+for i = 1:2
+    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
+    if findTars
+        disp(strcat('Performing Cross Corr for Shank-',num2str(i)))
+        corrName = strcat('wideStoreShank',num2str(i));
+        corrData.(corrName) = [];
+        for k = 1:length(findTars)
+            for j = 1:length(findTars)
+                disp(strcat('Running xCorr Shank-',num2str(i),'Unit',num2str(cluNames{findTars(j)}),'-aligned to',num2str(cluNames{findTars(k)})))
+                [rasters] = crosscorrelogram(s.(cluNames{findTars(k)}).SpikeTimes,s.(cluNames{findTars(j)}).SpikeTimes,rasterWindow);
+                histStore = hist(rasters,rasterVector);
+                rasters = [];
+                corrData.(corrName)(k,j,:) = histStore;
+            end
         end
-        [rasters] = crosscorrelogram(newFSIspike,s.(cluNames{findMSNs(j)}).SpikeTimes,rasterWindow);
-        histStore = hist(rasters,rasterVector);
-        rasters = [];
-        remStore{findFSIs(i),findMSNs(j)} = histStore;
-        
-        
-        %now lets run the jittered spikes
-        tempHist = [];
-        shuffTar = shuffSpikes{findMSNs(j)};
-        disp(strcat('Running Shuffle Cross Corr for Unit',num2str(cluNames{findMSNs(j)}),'-aligned to',num2str(cluNames{findFSIs(i)})))
-        for k = 1:shuffNum
-            [rasters] = crosscorrelogram(s.(cluNames{findFSIs(i)}).SpikeTimes,shuffTar(:,k),rasterWindow);
-            rasters(rasters < rasterWindow(1) | rasters > rasterWindow(2)) = [];
-            tempHist(:,k) = hist(rasters,rasterVector);
-        end
-        shuffStore{findFSIs(i),findMSNs(j)} = tempHist;
     end
 end
 
-s.CrossCorrJitter = shuffStore;
-s.CrossCorrRemSynch = remStore;
-
-hFig = figure;
-[B,I] = sort(s.PeakChanVals);
+%now we want to go through and remove synchronous spikes and generate
+%jittered xcorr
 rasterWindow = [-0.01025 0.01025];
 rasterVector = [-0.01:0.0005:0.01];
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.02 0.02], [0.01 0.01]);
-set(hFig, 'Position', [10 10 1800 1000])
-for i = 1:numUnits
-    disp(strcat('unit',num2str(i)))
-    %determine units greater than or equal to current unit
-%     tarUnits = i:numUnits;
-    for j = 1:numUnits
-        disp('Next Unit!')
-        histStore = s.CrossCorrs{i,j};
-        if j == i
-            histStore(21) = 0;
-        end
-        if ismember(I(i),findFSIs) && ismember(I(j),findMSNs);
-            subplot(numUnits,numUnits,numUnits*(i-1)+j)
-            hold on
-            plot(rasterVector,mean(s.CrossCorrJitter{I(i),I(j)}'),'Color',[0.7 0.7 0.7],'LineWidth',2)
-            Y = prctile(s.CrossCorrJitter{I(i),I(j)},[.5 99.5],2);
-            plot(rasterVector,Y(:,1),'Color',[0.7 0.7 0.7])
-            plot(rasterVector,Y(:,2),'Color',[0.7 0.7 0.7])
-            plot(rasterVector,smooth(s.CrossCorrRemSynch{I(i),I(j)},3),'c','LineWidth',2)
-            plot(rasterVector,smooth(histStore,3),'r','LineWidth',2)
-            hold on
-            plot([0 0],[0 max(histStore)],'r')
-            if max(histStore) < 1
-                ylim([0 1])
-            else
-                ylim([0 max(histStore)])
+for i = 1:2
+    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
+    if findTars
+        disp(strcat('Performing Jittered xCorr for Shank-',num2str(i)))
+        subFindFSIs = intersect(findTars,findFSIs);
+        subFindMSNs = intersect(findTars,findMSNs);
+        remName = strcat('RemStore',num2str(i));
+        corrData.(remName) = [];
+        shuffName = strcat('ShuffStore',num2str(i));
+        corrData.(shuffName) = [];
+        for k = 1:length(subFindFSIs)
+            for j = 1:length(subFindMSNs)
+                %now lets try and remove synchronous FSIs spikes. This way, we can
+                %eliminate any peak in the FSI aligned MSN spikes. 
+                diffArray = [];
+                newFSIspike = s.(cluNames{subFindFSIs(k)}).SpikeTimes;
+                for n = length(s.(cluNames{subFindMSNs(j)}).SpikeTimes):-1:1
+                    diffArray = s.(cluNames{subFindFSIs(k)}).SpikeTimes - s.(cluNames{subFindMSNs(j)}).SpikeTimes(n);
+                    spikeFind = find(abs(diffArray) < synchWind);
+                    newFSIspike(spikeFind) = [];
+                end
+                [rasters] = crosscorrelogram(newFSIspike,s.(cluNames{subFindMSNs(j)}).SpikeTimes,rasterWindow);
+                histStore = hist(rasters,rasterVector);
+                rasters = [];
+                corrData.(remName)(subFindFSIs(k),subFindMSNs(j),:) = histStore;
+                
+                %now lets run the jittered spikes
+                tempHist = [];
+                shuffTar = shuffSpikes{subFindMSNs(j)};
+                disp(strcat('Running Shuffle Cross Corr for Unit',num2str(cluNames{subFindMSNs(j)}),'-aligned to',num2str(cluNames{subFindFSIs(k)})))
+                parfor m = 1:shuffNum
+                    disp(m)
+                    [rasters] = crosscorrelogram(s.(cluNames{subFindFSIs(k)}).SpikeTimes,shuffTar(:,m),rasterWindow);
+                    rasters(rasters < rasterWindow(1) | rasters > rasterWindow(2)) = [];
+                    tempHist(:,m) = hist(rasters,rasterVector);
+                end
+                corrData.(shuffName){subFindFSIs(k),subFindMSNs(j)} = tempHist;
             end
-            xlim([-0.01 0.01])
-            set(gca,'xtick',[])
-            set(gca,'ytick',[])
-            set(gca,'TickLength',[0 0])
-            rasters = [];
-        elseif ismember(I(i),findFSIs) && ~ismember(I(j),findMSNs);
-            subplot(numUnits,numUnits,numUnits*(i-1)+j)
-            hold on
-%             plot(rasterVector,mean(shuffStore{I(i),I(j)}'),'Color',[0.7 0.7 0.7],'LineWidth',2)
-%             plot(rasterVector,mean(shuffStore{I(i),I(j)}')+std(shuffStore{I(i),I(j)}'/sqrt(shuffNum)),'Color',[0.7 0.7 0.7])
-%             plot(rasterVector,mean(shuffStore{I(i),I(j)}')-std(shuffStore{I(i),I(j)}'/sqrt(shuffNum)),'Color',[0.7 0.7 0.7])
-            plot(rasterVector,smooth(histStore,3),'r','LineWidth',2)
-            hold on
-            plot([0 0],[0 max(histStore)],'r')
-            if max(histStore) < 1
-                ylim([0 1])
-            else
-                ylim([0 max(histStore)])
-            end
-            xlim([-0.01 0.01])
-            set(gca,'xtick',[])
-            set(gca,'ytick',[])
-            set(gca,'TickLength',[0 0])
-            rasters = [];
-        else
-            subplot(numUnits,numUnits,numUnits*(i-1)+j)
-            plot(rasterVector,smooth(histStore,3),'k','LineWidth',2)
-            hold on
-            plot([0 0],[0 max(histStore)],'k')
-            if max(histStore) < 1
-                ylim([0 1])
-            else
-                ylim([0 max(histStore)])
-            end
-            xlim([-0.01 0.01])
-            set(gca,'xtick',[])
-            set(gca,'ytick',[])
-            set(gca,'TickLength',[0 0])
-            rasters = [];
         end
-        
-        %grey out non-identified units
-        if ~ismember(I(j),[findFSIs;findMSNs])
-            plot([0 0],[0 max(histStore)],'LineWidth',2,'Color',[0.7 0.7 0.7])
-            plot(rasterVector,smooth(histStore,3),'LineWidth',2,'Color',[0.7 0.7 0.7])
-        end
-        
-        %now lets try and plot out titles only for top row.
-        if i == 1
-            title(cluNames{I(j)})
-        end
-        
     end
 end
-spikeGraphName = strcat(fileName,'AllCrossCorr');
-savefig(hFig,spikeGraphName);
 
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+for bigInd = 1:2
+    findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals > 32*(bigInd-1)+1);
+    if findTars
+        hFig = figure;
+        testData = s.PeakChanVals(findTars);
+        [B,I] = sort(testData);
+        rasterWindow = [-0.01025 0.01025];
+        rasterVector = [-0.01:0.0005:0.01];
+        subplot = @(m,n,p) subtightplot (m, n, p, [0.001 0.001], [0.02 0.02], [0.01 0.01]);
+        set(hFig, 'Position', [10 10 1800 1000])
+        corrName = strcat('trueStoreShank',num2str(bigInd));
+        remName = strcat('RemStore',num2str(bigInd));
+        shuffName = strcat('ShuffStore',num2str(bigInd));
+        for i = 1:length(findTars)
+            disp(strcat('unit',cluNames{findTars(I(i))}))
+            for j = 1:length(findTars)
+                histStore = squeeze(corrData.(corrName)(I(i),I(j),:));
+                if j == i
+                    histStore(21) = 0;
+                end
+                if ismember(findTars(I(i)),intersect(findFSIs,findTars)) && ismember(findTars(I(j)),intersect(findMSNs,findTars));
+                    subplot(length(findTars),length(findTars),length(findTars)*(i-1)+j)
+                    hold on
+                    plot(rasterVector,mean(corrData.(shuffName){findTars(I(i)),findTars(I(j))}'),'Color',[0.7 0.7 0.7],'LineWidth',2)
+                    Y = prctile(corrData.(shuffName){findTars(I(i)),findTars(I(j))},[.5 99.5],2);
+                    plot(rasterVector,Y(:,1),'Color',[0.7 0.7 0.7])
+                    plot(rasterVector,Y(:,2),'Color',[0.7 0.7 0.7])
+                    plot(rasterVector,smooth(corrData.(remName)(findTars(I(i)),findTars(I(j)),:),3),'c','LineWidth',2)
+                    plot(rasterVector,smooth(histStore,3),'r','LineWidth',2)
+                    hold on
+                    plot([0 0],[0 max(histStore)],'g')
+                    if max(histStore) < 1
+                        ylim([0 1])
+                    else
+                        ylim([0 max(histStore)])
+                    end
+                    xlim([-0.01 0.01])
+                    set(gca,'xtick',[])
+                    set(gca,'ytick',[])
+                    set(gca,'TickLength',[0 0])
+                    rasters = [];
+                elseif ismember(findTars(I(i)),intersect(findFSIs,findTars)) && ~ismember(findTars(I(j)),intersect(findMSNs,findTars));
+                    subplot(length(findTars),length(findTars),length(findTars)*(i-1)+j)
+                    hold on
+                    plot(rasterVector,smooth(histStore,3),'r','LineWidth',2)
+                    hold on
+                    plot([0 0],[0 max(histStore)],'r')
+                    if max(histStore) < 1
+                        ylim([0 1])
+                    else
+                        ylim([0 max(histStore)])
+                    end
+                    xlim([-0.01 0.01])
+                    set(gca,'xtick',[])
+                    set(gca,'ytick',[])
+                    set(gca,'TickLength',[0 0])
+                    rasters = [];
+                else
+                    subplot(length(findTars),length(findTars),length(findTars)*(i-1)+j)
+                    plot(rasterVector,smooth(histStore,3),'k','LineWidth',2)
+                    hold on
+                    plot([0 0],[0 max(histStore)],'k')
+                    if max(histStore) < 1
+                        ylim([0 1])
+                    else
+                        ylim([0 max(histStore)])
+                    end
+                    xlim([-0.01 0.01])
+                    set(gca,'xtick',[])
+                    set(gca,'ytick',[])
+                    set(gca,'TickLength',[0 0])
+                    rasters = [];
+                end
+
+                %grey out non-identified units
+                if ~ismember(findTars(I(j)),[intersect(findFSIs,findTars);intersect(findMSNs,findTars)])
+                    plot([0 0],[0 max(histStore)],'LineWidth',2,'Color',[0.7 0.7 0.7])
+                    plot(rasterVector,smooth(histStore,3),'LineWidth',2,'Color',[0.7 0.7 0.7])
+                end
+
+                %now lets try and plot out titles only for top row.
+                if i == 1
+                    title(cluNames{findTars(I(j))})
+                end
+
+            end
+        end
+        
+        spikeGraphName = strcat(fileName,'Shank-',num2str(bigInd),'CrossCorr');
+        savefig(hFig,spikeGraphName);
+
+        %save as PDF with correct name
+        set(hFig,'Units','Inches');
+        pos = get(hFig,'Position');
+        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+        print(hFig,spikeGraphName,'-dpdf','-r0')
+    end
+end
+
+
 
 %now lets try and separate out tone and non-tone period spikes
 spikesNonTone = [];
@@ -1102,67 +1101,102 @@ end
 spikesNonTone(counterNonTone:counterNonTone - 1 + length(allSpikes)) = allSpikes;
 cluNonTone(counterNonTone:counterNonTone - 1 + length(allSpikes)) = allClu;
 
-%now we can separate out the clusters.
-
-% try doing this with either tone window spikes and non-tone spikes
-hFig = figure;
-[B,I] = sort(s.PeakChanVals);
-rasterWindow = [-0.01 0.01];
-rasterVector = [-0.01:0.0005:0.01];
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.02 0.02], [0.01 0.01]);
-set(hFig, 'Position', [10 80 1000 1000])
-for i = 1:numUnits
-    %determine units greater than or equal to current unit
-%     tarUnits = i:numUnits;
-    tarSpikesNonTone = spikesNonTone(cluNonTone == clu(I(i)));
-    tarSpikesTone = spikesTone(cluTone == clu(I(i)));
-    for j = 1:numUnits
-        disp('Next Unit!')
-        %plot out non-tone crossCorr
-        [rasters] = crosscorrelogram(tarSpikesNonTone,spikesNonTone(cluNonTone == clu(I(j))),rasterWindow);
-        histStore = hist(rasters,rasterVector);
-        if j == i
-            histStore(21) = 0;
+%now lets do the cross correlograms
+for i = 1:2
+    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
+    if findTars
+        disp(strcat('Performing Tone/NoneTone Cross Corr for Shank-',num2str(i)))
+        nameNonTone = strcat('NonTone',num2str(i));
+        nameTone = strcat('Tone',num2str(i));
+        for k = 1:length(findTars)
+            tarSpikesNonTone = spikesNonTone(cluNonTone == clu(findTars(k)));
+            tarSpikesTone = spikesTone(cluTone == clu(findTars(k)));
+            for j = 1:length(findTars)
+                disp(strcat('Running xCorr Shank-',num2str(i),'Unit',num2str(cluNames{findTars(j)}),'-aligned to',num2str(cluNames{findTars(k)})))
+                secSpikesNonTone = spikesNonTone(cluNonTone == clu(findTars(j)));
+                secSpikesTone = spikesTone(cluTone == clu(findTars(j)));
+                
+                [rasters] = crosscorrelogram(tarSpikesNonTone,secSpikesNonTone,rasterWindow);
+                histStore = hist(rasters,rasterVector);
+                if j == k
+                    histStore(21) = 0;
+                end
+                corrData.(nameNonTone)(k,j,:) = histStore;
+                
+                [rasters] = crosscorrelogram(tarSpikesTone,secSpikesTone,rasterWindow);
+                histStore = hist(rasters,rasterVector);
+                if j == k
+                    histStore(21) = 0;
+                end
+                corrData.(nameTone)(k,j,:) = histStore;
+            end
         end
-        nonToneStore{i,j} = histStore;
-        subplot(numUnits,numUnits,numUnits*(i-1)+j)
-        plot(rasterVector,histStore,'k','LineWidth',2)
-        max1 =max(histStore);
-        hold on
-        %plot out tone cross corr
-        [rasters] = crosscorrelogram(tarSpikesTone,spikesTone(cluTone == clu(I(j))),rasterWindow);
-        histStore = hist(rasters,rasterVector);
-        ToneStore{i,j} = histStore;
-        if j == i
-            histStore(21) = 0;
-        end
-        
-        plot(rasterVector,histStore,'m','LineWidth',2)
-        max2 = max(histStore);
-        plot([0 0],[0 max([max1,max2])],'r')
-        if max([max1,max2]) < 1
-            ylim([0 1])
-        else
-            ylim([0 max([max1,max2])])
-        end
-        xlim([-0.01 0.01])
-        set(gca,'xtick',[])
-        set(gca,'ytick',[])
-        set(gca,'TickLength',[0 0])
-        rasters = [];
     end
 end
-spikeGraphName = strcat(fileName,'TonevsBaseCrossCorr');
-savefig(hFig,spikeGraphName);
 
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
 
-s.CrossCorrTone = ToneStore;
-s.CrossCorrNonTone = nonToneStore;
+
+for bigInd = 1:2
+    findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals > 32*(bigInd-1)+1);
+    nameNonTone = strcat('NonTone',num2str(bigInd));
+    nameTone = strcat('Tone',num2str(bigInd));
+    if findTars
+        hFig = figure;
+        testData = s.PeakChanVals(findTars);
+        [B,I] = sort(testData);
+        rasterWindow = [-0.01025 0.01025];
+        rasterVector = [-0.01:0.0005:0.01];
+        subplot = @(m,n,p) subtightplot (m, n, p, [0.001 0.001], [0.02 0.02], [0.01 0.01]);
+        set(hFig, 'Position', [10 10 1800 1000])
+        nameTone = strcat('Tone',num2str(bigInd));
+        nameNonTone = strcat('NonTone',num2str(bigInd));
+        for i = 1:length(findTars)
+            disp(strcat('unit',cluNames{findTars(I(i))}))
+            for j = 1:length(findTars)
+                subplot(length(findTars),length(findTars),length(findTars)*(i-1)+j)
+                hold on
+                plot(rasterVector,smooth(corrData.(nameNonTone)(I(i),I(j),:),3),'k','LineWidth',2)
+                plot(rasterVector,smooth(corrData.(nameTone)(I(i),I(j),:),3),'m','LineWidth',2)
+                
+                %find max
+                maxNonTone = max(smooth(corrData.(nameNonTone)(I(i),I(j),:),3));
+                maxTone = max(smooth(corrData.(nameTone)(I(i),I(j),:),3));
+                maxMax = max([maxNonTone,maxTone]);
+                
+                if max(maxMax) < 1
+                    ylim([0 1])
+                else
+                    ylim([0 maxMax])
+                end
+                xlim([-0.01 0.01])
+                set(gca,'xtick',[])
+                set(gca,'ytick',[])
+                set(gca,'TickLength',[0 0])
+
+                %grey out non-identified units
+                if ~ismember(findTars(I(j)),[intersect(findFSIs,findTars);intersect(findMSNs,findTars)])
+                    plot(rasterVector,smooth(corrData.(nameNonTone)(I(i),I(j),:),3),'LineWidth',2,'Color',[0.7 0.7 0.7])
+                    plot(rasterVector,smooth(corrData.(nameTone)(I(i),I(j),:),3),'LineWidth',2,'Color',[0.7 0.7 0.7])
+                end
+
+                %now lets try and plot out titles only for top row.
+                if i == 1
+                    title(cluNames{I(j)})
+                end
+
+            end
+        end
+        
+        spikeGraphName = strcat(fileName,'Shank-',num2str(bigInd),'ToneCrossCorr');
+        savefig(hFig,spikeGraphName);
+
+        %save as PDF with correct name
+        set(hFig,'Units','Inches');
+        pos = get(hFig,'Position');
+        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+        print(hFig,spikeGraphName,'-dpdf','-r0')
+    end
+end
 
 %now try and pull spikes using a shuffle in which I shift by one trial (in
 %terms of the same stimulus). We need to first check and find these trials,
@@ -1210,69 +1244,85 @@ if length(subInd) > length(dioTimes)
     subInd(length(dioTimes)+1:end) = [];
 end
 
-hFig = figure;
-[B,I] = sort(s.PeakChanVals);
-tarWindow = [-0.4 0.4];
-rasterWindow = [-0.01 0.01];
-rasterVector = [-0.01:0.0005:0.01];
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.02 0.02], [0.01 0.01]);
-set(hFig, 'Position', [10 80 1000 1000])
-for i = 1:numUnits
-    for j = 1:numUnits
-        histStore = zeros(1,length(rasterVector));
-        disp('Next Unit!')
-        %plot out non-tone crossCorr
-        for k = 1:length(dioTimes)
-            tarSpikes = s.(cluNames{I(i)}).SpikeTimes - dioTimes(k);
-            tarSpikes(tarSpikes < tarWindow(1) | tarSpikes > tarWindow(2)) = [];
-            tarSpikesMatch = s.(cluNames{I(j)}).SpikeTimes - dioTimes(subInd(k));
-            tarSpikesMatch(tarSpikesMatch < tarWindow(1) | tarSpikesMatch > tarWindow(2)) = [];
-            if length(tarSpikes)>0 & length(tarSpikesMatch) > 0
-                [rasters] = crosscorrelogram(tarSpikes,tarSpikesMatch,rasterWindow);
-                tempHist = hist(rasters,rasterVector);
-                histStore = histStore + tempHist;
-                trialScrambleStore{i,j} = histStore;
-            end
-            
-        end
+for bigInd = 1:2
+    findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals > 32*(bigInd-1)+1);
+    if findTars
+        hFig = figure;
+        testData = s.PeakChanVals(findTars);
+        [B,I] = sort(testData);
+        rasterWindow = [-0.01025 0.01025];
+        rasterVector = [-0.01:0.0005:0.01];
+        subplot = @(m,n,p) subtightplot (m, n, p, [0.001 0.001], [0.02 0.02], [0.01 0.01]);
+        set(hFig, 'Position', [10 10 1800 1000])
+        nameShank = strcat('trialShuff',num2str(bigInd));
+        for i = 1:length(findTars)
+            disp(strcat('unit',cluNames{findTars(I(i))}))
+            for j = 1:length(findTars)
+                histStore = zeros(1,length(rasterVector));
+                for k = 1:length(subInd)
+                    tarSpikes = s.(cluNames{I(i)}).SpikeTimes - dioTimes(k);
+                    tarSpikes(tarSpikes < tarWindow(1) | tarSpikes > tarWindow(2)) = [];
+                    tarSpikesMatch = s.(cluNames{I(j)}).SpikeTimes - dioTimes(subInd(k));
+                    tarSpikesMatch(tarSpikesMatch < tarWindow(1) | tarSpikesMatch > tarWindow(2)) = [];
+                    if length(tarSpikes)>0 & length(tarSpikesMatch) > 0
+                        [rasters] = crosscorrelogram(tarSpikes,tarSpikesMatch,rasterWindow);
+                        tempHist = hist(rasters,rasterVector);
+                        histStore = histStore + tempHist;
+                        corrData.(nameShank){i,j} = histStore;
+                    end
+                end
+                
+                subplot(length(findTars),length(findTars),length(findTars)*(i-1)+j)
+                plot(rasterVector,histStore,'k','LineWidth',2)
+                max1 =max(histStore);
+                hold on
+                %plot out tone cross corr
 
-%         if j == i
-%             histStore(21) = 0;
-%         end
-        subplot(numUnits,numUnits,numUnits*(i-1)+j)
-        plot(rasterVector,histStore,'k','LineWidth',2)
-        max1 =max(histStore);
-        hold on
-        %plot out tone cross corr
-        
-        plot([0 0],[0 max1],'r')
-        if max1 < 1
-            ylim([0 1])
-        else
-            ylim([0 max1])
+                plot([0 0],[0 max1],'r')
+                if max1 < 1
+                    ylim([0 1])
+                else
+                    ylim([0 max1])
+                end
+                xlim([-0.01 0.01])
+                set(gca,'xtick',[])
+                set(gca,'ytick',[])
+                set(gca,'TickLength',[0 0])
+                rasters = [];
+                
+                %grey out non-identified units
+                if ~ismember(findTars(I(j)),[intersect(findFSIs,findTars);intersect(findMSNs,findTars)])
+                    plot(rasterVector,histStore,'LineWidth',2,'Color',[0.7 0.7 0.7])
+                end
+
+                %now lets try and plot out titles only for top row.
+                if i == 1
+                    title(cluNames{I(j)})
+                end
+
+            end
         end
-        xlim([-0.01 0.01])
-        set(gca,'xtick',[])
-        set(gca,'ytick',[])
-        set(gca,'TickLength',[0 0])
-        rasters = [];
+        
+        spikeGraphName = strcat(fileName,'Shank-',num2str(bigInd),'TrialShuffCrossCorr');
+        savefig(hFig,spikeGraphName);
+
+        %save as PDF with correct name
+        set(hFig,'Units','Inches');
+        pos = get(hFig,'Position');
+        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+        print(hFig,spikeGraphName,'-dpdf','-r0')
     end
 end
-spikeGraphName = strcat(fileName,'TrialShuffCrossCorr');
-savefig(hFig,spikeGraphName);
 
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
 
-s.CrossCorrTrialShuffle = trialScrambleStore;
+
+%% Saving
+save(fullfile(pname,fname),'s','masterData','masterHeader','corrData','-v7.3');
+% save(fullfile(pname,strcat(fileName,'DMRData')),'sta','sta_sig','spikeArray','stimulus','faxis')
+save(fullfile(pname,strcat(fileName,'DMRData')),'sta','spikeArray','stimulus','faxis')
 
  
 %% Plotting individual units
-
-
 for i = 1:numUnits
     spikeTimes = s.(cluNames{i}).SpikeTimes;
     findTuningSpikes = [1:find(spikeTimes < dmrStore(1),1,'last')];
@@ -1284,25 +1334,50 @@ end
 for i = 1:numUnits
     hFig = figure;
     set(hFig, 'Position', [10 80 1900 1000])
+    subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.02 0.02], [0.01 0.01]);
     % Column 1
     %plots average waveform
-    subplot(4,4,1)
+    subplot(1,4,1)
     hold on
-    plot(s.(cluNames{i}).medianWave,'k','LineWidth',2) 
-%     plot(s.(cluNames{i}).MeanDMRWave,'r','LineWidth',2)
-    if ismember(i,findFSIs)
-        title(strcat('PV AvRate:',num2str(s.(cluNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
-    elseif ismember(i,findMSNs)
-        title(strcat('MSN AvRate:',num2str(s.(cluNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
-%     elseif ismember(i,findCHATs)
-%         title(strcat('CHAT AverageFiringRate:',num2str(s.(cluNames{i}).AverageRate)))
+    if s.PeakChanVals(i) <=32
+        for j = 1:32
+            if masterData(i,indPkTr) < s.Parameters.PVLim(1) %is FSI
+                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[1 0 0]);
+            elseif masterData(i,indPkTr) > s.Parameters.PVLim(2) %is MSN
+                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 0 0]);
+            else %unknown
+                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
+            end
+        end
+        ylim([-33 1])
+        xlim([plotVect(1) plotVect(end)])
+        title(strcat('Shank1-AvRate:',num2str(s.(cluNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
     else
-        title(strcat('UNK AvRate:',num2str(s.(cluNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
+        for j = 1:32
+            if masterData(i,indPkTr) < s.Parameters.PVLim(1) %is FSI
+                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[1 0 0]);
+            elseif masterData(i,indPkTr) > s.Parameters.PVLim(2) %is MSN
+                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 0 0]);
+            else %unknown
+                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
+            end
+        end
+        ylim([-33 1])
+        xlim([plotVect(1) plotVect(end)])
+        title(strcat('Shank2-AvRate:',num2str(s.(cluNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
     end
-
+    %Column 2
+    %plot FR and velocity
+    subplot(4,4,2)
+    hold on
+    plot(newTimeVector,newVelVector/max(newVelVector),'b')
+    plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],s.(cluNames{i}).SessionFiring/max(s.(cluNames{i}).SessionFiring),'r')
+    xlim([newTimeVector(1),newTimeVector(end)])
+    ylim([-0.1,1])
+    title({fileName;cluNames{i}},'fontweight','bold', 'Interpreter', 'none');
     
     % plot histogram.
-    subplot(4,4,5)
+    subplot(4,4,6)
     plot(histBinVector,s.(cluNames{i}).AllHistograms,'k','LineWidth',2)
     hold on
     plot(histBinVector,s.(cluNames{i}).AllHistograms - s.(cluNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
@@ -1329,987 +1404,6 @@ for i = 1:numUnits
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     histLims = max(s.(cluNames{i}).AllHistograms + s.(cluNames{i}).HistogramStandardDeviation);
     ylim([0 histLims])
-    title('Histogram')
-
-    %plot out rasters, organized!
-    subplot(2,4,5)
-    plot(s.(cluNames{i}).AllRasters(:,1),...
-        s.(cluNames{i}).AllRasters(:,3),'k.','markersize',4)
-    hold on
-    plot([0 0],[ylim],'b');
-    plot([toneDur toneDur],[ylim],'b');
-    rasterFreqLines = zeros(numFreqs,2);
-    if numDBs ==1
-        rasterFreqLines(:,1) = cumsum((matrixTrialNum'));
-    elseif numDBs > 1
-        rasterFreqLines(:,1) = cumsum(sum(matrixTrialNum'));
-    end
-
-    rasterFreqLines(:,2) = uniqueFreqs;
-    %this generates green lines separating by Frequency
-    tempHold = 1;
-    for k = 1:size(uniqueFreqs,1)
-        plot(s.Parameters.RasterWindow,[tempHold+sum(matrixTrialNum(k,:)) tempHold+sum(matrixTrialNum(k,:))],'g','LineWidth',1)
-        tempHold = tempHold + sum(matrixTrialNum(k,:));
-    end
-    set(gca,'YTick',rasterFreqLines(:,1));
-    set(gca,'YTickLabel',rasterFreqLines(:,2));
-    set(gca,'Ydir','reverse')
-    ylim([0 totalTrialNum])
-    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
-    title('Descending = increase in amplitude and freq')
-
-    % Column 2
-%     %plots ISI
-%     subplot(4,4,2)
-%     hist(s.(cluNames{i}).ISIGraph,1000)
-%     histMax = max(hist(s.(cluNames{i}).ISIGraph,1000));
-%     line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
-%     xlim(s.Parameters.ClusterWindow)
-%     title({strcat('ISI RPV %: ',num2str(s.(cluNames{i}).RPVPercent));...
-%         strcat(num2str(s.(cluNames{i}).RPVNumber),'/',num2str(s.(cluNames{i}).TotalSpikeNumber))})
-
-    %plot FR and velocity
-    subplot(4,4,6)
-    hold on
-    plot(newTimeVector,newVelVector/max(newVelVector),'b')
-    plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],s.(cluNames{i}).SessionFiring/max(s.(cluNames{i}).SessionFiring),'r')
-    xlim([newTimeVector(1),newTimeVector(end)])
-    ylim([-0.1,1])
-    title({fileName;cluNames{i}},'fontweight','bold', 'Interpreter', 'none');
-    
-    %plot heatmap tuning curves
-    subplot(4,4,10)
-    imagesc(s.(cluNames{i}).BinTone')
-    colormap(parula)
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean Binned Resp (tone)')
-    
-    subplot(4,4,14)
-    imagesc(s.(cluNames{i}).BinGen')
-    colormap(parula)
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean Binned Resp (general)')
-    
-    
-    % Column 3
-    
-    %plot DMR response
-    subplot(2,2,2)
-    imagesc(reshape(sta(i,:),length(faxis),[]))
-    colormap('parula')
-    colorbar
-    format short
-    set(gca,'XTick',[0:20:numLags]);
-    set(gca,'XTickLabel',[dmrStep*100:-20*dmrStep:dmrStep]);
-    set(gca,'YTick',[1:10:length(faxis)]);
-    set(gca,'YTickLabel',[faxis([1:10:end])]);
-    title(strcat('DMR STA Based on',num2str(numDMRSpikes(i))))
-    
-%     %plot out thresholded DMR
-%     subplot(2,2,4)
-%     imagesc(reshape(sta_sig(i,:),length(faxis),[]))
-%     colormap('parula')
-%     colorbar
-%     format short
-%     set(gca,'XTick',[0:20:numLags]);
-%     set(gca,'XTickLabel',[dmrStep*100:-20*dmrStep:dmrStep]);
-%     set(gca,'YTick',[1:10:length(faxis)]);
-%     set(gca,'YTickLabel',[faxis([1:10:end])]);
-%     title('Thresholded DMR a=0.95')
-    
-%     freqs
-    
-    hold off
-    spikeGraphName = strcat(fileName,cluNames{i},'SpikeAnalysis');
-    savefig(hFig,spikeGraphName);
-
-    %save as PDF with correct name
-    set(hFig,'Units','Inches');
-    pos = get(hFig,'Position');
-    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-    print(hFig,spikeGraphName,'-dpdf','-r0')
-    
-    close
-
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-%% Pull response data!
-s.PosWidths = zeros(numDBs,numUnits,3); %store width of response for positive responses here. 
-s.NegWidths = zeros(numDBs,numUnits,3); %store width of response for negative responses here. 
-s.PosTots = zeros(numDBs,numUnits,3); %store total number of significant responses here
-s.NegTots = zeros(numDBs,numUnits,3);  %store total number of significant responses here
-s.PosCont = zeros(numDBs,numUnits,3); %store whether response is contiguous or not here
-s.NegCont = zeros(numDBs,numUnits,3); %store whether response is contiguous or not here
-s.PosEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
-s.NegEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
-s.PosGaussWidth = zeros(numDBs,numUnits,3); % will perform gaussian fit on binned spikes if there is sufficient significant values. Store half-peak width
-s.RespWidthPos = zeros(numFreqs,numDBs,numUnits,2); %width of firing rate, positive
-widthStore = zeros(numFreqs,numDBs,numUnits);
-bigWidth = [];
-for i = 1:numUnits
-    masterHolder = masterInd;
-    
-    %pulls spike times and times for alignment
-    spikeTimes = s.(cluNames{i}).SpikeTimes;
-    alignTimes = master(:,1);
-    
-    %calculates rasters based on spike information. 
-    [rasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.RasterWindow);
-    rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
-    fullRasterData = rasters;
-    
-    %pulls all spikes from a specific trial in the baseline period, holds
-    %the number of these spikes for calculation of average rate and std.
-    averageSpikeHolder = zeros(totalTrialNum,1);
-    for k = 1:totalTrialNum
-        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > s.Parameters.RasterWindow(1) & rasters(:,1) < 0),1);
-    end
-    averageRate = mean(averageSpikeHolder/(-s.Parameters.RasterWindow(1)));
-    averageSTD = std(averageSpikeHolder/(-s.Parameters.RasterWindow(1)));
-    averageSTE = averageSTD/(sqrt(totalTrialNum-1));
-    
-    %store average rate into master
-    masterData(i,masterHolder) = averageRate;
-    masterHeader{masterHolder} = 'Average Rate';
-    masterHolder = masterHolder + 1;
-    
-    
-    %calculates histograms of every single trial. 
-    fullHistHolder = zeros(length(histBinVector),totalTrialNum);
-    for k =1:totalTrialNum
-        if size(rasters(rasters(:,2) == k,:),1) > 0
-            [counts centers] = hist(rasters(rasters(:,2) == k,1),histBinVector);
-            fullHistHolder(:,k) = counts;
-        end
-    end
-    
-    %calculate standard deviation for each bin
-    histSTE = (std(fullHistHolder'))';
-    
-    [histCounts histCenters] = hist(rasters(:,1),histBinVector);
-    fullHistData = histCounts'/totalTrialNum/s.Parameters.histBin;
-    
-    %calculate significant response for combined histogram of all responses
-    %to all sounds.    
-%     [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master));
-    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,totalTrialNum,...
-        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
-    
-    disp(strcat('Baseline Spikes:',num2str(generalResponseHist.SpikeNumber),' Unit:',(cluNames{i})))
-    s.BaselineSpikes = generalResponseHist.SpikeNumber;
-    if generalResponseHist.Warning == 0 & generalResponseHist.SigSpikePos == 1 
-        s.SignificantSpikes(i) = 1;
-    end
-    
-    masterData(i,masterHolder) = generalResponseHist.MeanBaseline;
-    masterHeader{masterHolder} = 'BaselineRate';
-    masterHolder = masterHolder + 1;
-    
-    masterData(i,masterHolder) = generalResponseHist.SigSpikePos;
-    masterHeader{masterHolder} = 'PosSigGenHist';
-    masterHolder = masterHolder + 1;
-    
-    masterData(i,masterHolder) = generalResponseHist.SigSpikeNeg;
-    masterHeader{masterHolder} = 'NegSigGenHist';
-    masterHolder = masterHolder + 1;
-    
-    %allocates empty array.
-    organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
-    organizedRasters = cell(numFreqs,numDBs);
-    responseHistHolder = cell(numFreqs,numDBs);
-    histErr = zeros(numFreqs,numDBs,length(histBinVector));
-    latPeakBinStore = cell(numFreqs,numDBs);
-    latStore = zeros(numFreqs,numDBs);
-    peakStoreGen = zeros(numFreqs,numDBs);
-    binStoreTone = zeros(numFreqs,numDBs);
-    binStoreGen = zeros(numFreqs,numDBs);
-    probStoreTone = zeros(numFreqs,numDBs);
-    probStoreGen = zeros(numFreqs,numDBs);
-    freqSpecHist = zeros(numFreqs,histBinNum,1);
-    
-    
-    for k = 1:numFreqs
-        subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(k),3));
-        for l = 1:numDBs
-            targetTrials = master(master(:,2) == uniqueFreqs(k) & master(:,3) == subUniqueDB(l),4); %finds the trial number for all trials of given frequency and amplitude
-            findMatches = find(ismember(fullRasterData(:,2),targetTrials)); %uses these trial numbers to pull raster index
-            targetRasters = fullRasterData(findMatches,:); %extracts target rasters from all rasters using the above index.
-            organizedRasters{k,l} = targetRasters; %saves to organized rasters
-            [histCounts,histCenters] = hist(targetRasters(:,1),histBinVector); %calculates histogram with defined bin size
-            organizedHist(k,l,:) = histCounts/toneReps/s.Parameters.histBin; %saves histogram
-            specHist = fullHistHolder(:,targetTrials);
-            histErr(k,l,:) = std(specHist,0,2)/sqrt(length(targetTrials));
-            [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneWindow,s.Parameters.GenWindow,s.Parameters.RasterWindow,...
-                targetRasters,length(targetTrials),2,targetTrials,s.Parameters.latBin,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
-            latePeakBinStore{k,l} = latPeakBinOut;
-            latStore(k,l) = latPeakBinOut.ResponseLatency;
-            peakStoreFast(k,l) = latPeakBinOut.PeakRespFast;
-            peakStoreTone(k,l) = latPeakBinOut.PeakRespTone;
-            peakStoreGen(k,l) = latPeakBinOut.PeakRespGen;
-            binStoreFast(k,l) = mean(latPeakBinOut.BinnedSpikesFast);
-            binStoreTone(k,l) = mean(latPeakBinOut.BinnedSpikesTone);
-            binStoreGen(k,l) = mean(latPeakBinOut.BinnedSpikesGen);
-            probStoreTone(k,l) = latPeakBinOut.ProbSpikeTone;
-            probStoreGen(k,l) = latPeakBinOut.ProbSpikeGen;
-            binSigVals(k,l,:) = latPeakBinOut.BinSigVals;
-            binDiff(k,l,:) = latPeakBinOut.BinDiff;
-            latPeakBinOut = [];
-%             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
-            [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes(targetTrials),length(targetTrials),...
-        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
-            responseHistHolder{k,l} = responseHist;
-            if responseHist.SigSpikePos == 1%if have a significant response, check for width
-                [widthOut] = functionResponseWidth(responseHist);
-                if length(widthOut.Widths) > 0
-                    widthStore(k,l,i) = widthOut.Widths(1);
-                    widthLat(k,l,i) = widthOut.StartsEnds(1);
-                    bigWidth{k,l,i} = widthOut;
-                end
-            else
-                widthOut = [];
-            end
-        end
-        if numDBs == 1
-            freqSpecHist(k,:) = (squeeze(organizedHist(k,:,:)));
-        elseif numDBs > 1
-            freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
-        end
-        
-    end
-        disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
-    s.(cluNames{i}).AllRasters = fullRasterData;
-    s.(cluNames{i}).AllHistograms = fullHistData;
-    s.(cluNames{i}).IndividualHistograms = fullHistHolder; 
-    s.(cluNames{i}).HistogramStandardDeviation = histSTE;
-    s.(cluNames{i}).FreqDBRasters = organizedRasters;
-    s.(cluNames{i}).FreqDBHistograms = organizedHist;
-    s.(cluNames{i}).FreqDBHistogramErrors = histErr;
-    s.(cluNames{i}).FrequencyHistograms = freqSpecHist;
-    s.(cluNames{i}).AverageRate = averageRate;
-%     s.(cluNames{i}).SessionFiring = sessionFiring;
-    s.(cluNames{i}).AverageSTD = averageSTD;
-    s.(cluNames{i}).AverageSTE = averageSTE;
-    s.(cluNames{i}).HistBinVector = histBinVector;
-    s.(cluNames{i}).AllHistogramSig = generalResponseHist;
-    s.(cluNames{i}).SpecHistogramSig = responseHistHolder;
-    s.(cluNames{i}).LatPeakBin = latePeakBinStore;
-    s.(cluNames{i}).LatencyMap = latStore;
-    s.(cluNames{i}).PeakMapGen = peakStoreGen;
-    s.(cluNames{i}).PeakMapTone = peakStoreTone;
-    s.(cluNames{i}).BinFast = binStoreFast;
-    s.(cluNames{i}).BinTone = binStoreTone;
-    s.(cluNames{i}).BinGen = binStoreGen;
-    s.(cluNames{i}).BinDiff = binDiff;
-    s.(cluNames{i}).ProbTone = probStoreTone;
-    s.(cluNames{i}).ProbGen = probStoreGen;
-    s.(cluNames{i}).BinSigVals = binSigVals;
-    s.(cluNames{i}).WidthData = widthOut;
-    
-    %store some information about width
-    CFTrig = 0;
-    BFTrig = 0;
-    for j = 1:numDBs
-        sigThresh = 0.01;
-        %pull out sign of change, and significance value
-        if whiteStatus == 1
-            targetSig = squeeze(binSigVals(2:end,j,:));
-            targetSign = squeeze(binDiff(2:end,j,:));
-            targetBins = squeeze(binStoreFast(2:end,j,:));
-            
-        else
-            targetSig = squeeze(binSigVals(:,j,:));
-            targetSign = squeeze(binDiff(:,j,:));
-            targetBins = squeeze(binStoreFast(:,j,:));
-        end
-
-        for kk = 1:size(targetSig,2)
-            %first, deal with positives
-            findPos =  find(targetSig(:,kk) < sigThresh & targetSign(:,kk) > 0);
-            if findPos%in the event of positive and significant events
-                
-                if CFTrig == 0
-                    sigValLength = length(find(targetSig(:,kk) < sigThresh));
-                    if whiteStatus == 1
-                        if sigValLength == 1
-                            masterData(i,masterHolder) = uniqueFreqs(find(targetSig(:,kk)<sigThresh)+1);
-                        else
-                            masterData(i,masterHolder) = mean(uniqueFreqs(find(targetSig(:,kk)<sigThresh)+1));
-                        end
-                    else
-                        if sigValLength == 1
-                            masterData(i,masterHolder) = uniqueFreqs(find(targetSig(:,kk)<sigThresh));
-                        else
-                            masterData(i,masterHolder) = mean(uniqueFreqs(find(targetSig(:,kk)<sigThresh)));
-                        end
-                    end
-                    masterHeader{masterHolder} = 'CF';
-                    masterHolder = masterHolder + 1;
-                    disp('CF Detected')
-                    CFTrig = 1;
-                end
-                %determine number of significant values
-                if find(findPos == 1) | find(findPos == length(targetSig)) %determine if anything on the edge of the tuning range
-                    s.PosEdgeWarn(j,i,kk) = 1;
-                end
-                if length(findPos) > 1
-                    try
-                        x = [1:length(targetSig)];
-                        y = targetBins;
-                        f = fit(x',y,'gauss1'); %perform single gaussian fit
-                        newVect = [1:0.1:length(targetSig)];
-                        fVals = f(newVect);
-                        %find peak
-                        [peakVal peakInd] = max(fVals);
-
-                        %find half peak width
-                        firstBound = find(fVals(1:peakInd) - peakVal/2 > 0,1,'first');
-                        lastBound = find(fVals(peakInd:end) - peakVal/2 > 0,1,'last');
-                        s.PosGaussWidth(j,i,kk) = (lastBound + peakInd - firstBound)/10;
-                    catch
-                        s.PosGaussWidth(j,i,kk) = 0;
-                    end
-                end
-                s.PosTots(j,i,kk) = length(findPos);
-                diffFind = diff(findPos);
-                if diffFind == 1
-                    disp('All Consecutive!')
-                    s.PosCont(j,i,kk) = 1;
-                    %since all consecutive, width equals length of findPos
-                    s.PosWidths(j,i,kk) = length(findPos);
-                else
-                    disp('Not Consecutive, Finding Widest')
-                    s.PosCont(j,i,kk) = 0;
-%                     findSpaces = length(find(diffFind ~= 1)); %determine how many different segments there are
-                    findGaps = find(diffFind ~= 1);
-                    findGaps(2:end+1) = findGaps;
-                    findGaps(1) = 0;
-                    findGaps(end+1) = length(findPos);
-                    diffLengths = diff(findGaps);
-                    disp('Widest Point Found')
-                    s.PosWidths(j,i,kk) = max(diffLengths);
-                end
-                %find maximum value. This is BF. 
-                if j == numDBs & BFTrig == 0
-                    [M bfFind] = max(findPos);
-                    if whiteStatus == 1
-                        masterData(i,masterHolder) = uniqueFreqs(findPos(bfFind)+1);
-                    else
-                        masterData(i,masterHolder) = uniqueFreqs(findPos(bfFind));
-                    end
-                    masterHeader{masterHolder} = 'BF';
-                    masterHolder = masterHolder + 1;
-                    disp('BF Detected')
-                    BFTrig = 1;
-                end
-            else
-                disp('No Positives Found')
-            end
-            
-            %now do negative
-            sigThresh = 0.01;
-            findNeg =  find(targetSig(:,kk) < sigThresh & targetSign(:,kk) < 0);
-            if findNeg%in the event of positive and significant events
-                if find(findNeg == 1) | find(findNeg == length(targetSig))
-                    s.NegEdgeWarn(j,i,kk) = 1;
-                end
-                s.NegTots(j,i,kk) = length(findNeg);
-                diffFind = diff(findNeg);
-                if diffFind == 1
-                    disp('All Consecutive!')
-                    s.NegCont(j,i,kk) = 1;
-                    %since all consecutive, width equals length of findNeg
-                    s.NegWidths(j,i,kk) = length(findNeg);
-                else
-                    disp('Not Consecutive, Finding Widest')
-                    s.NegCont(j,i,kk) = 0;
-%                     findSpaces = length(find(diffFind ~= 1)); %determine how many different segments there are
-                    findGaps = find(diffFind ~= 1);
-                    findGaps(2:end+1) = findGaps;
-                    findGaps(1) = 0;
-                    findGaps(end+1) = length(findNeg);
-                    diffLengths = diff(findGaps);
-                    disp('Widest Point Found')
-                    s.NegWidths(j,i,kk) = max(diffLengths);
-                end
-            else
-                disp('No Negatives Found')
-            end
-        end
-        if j == numDBs & CFTrig == 0
-            masterData(i,masterHolder) = NaN;
-            masterHeader{masterHolder} = 'CF';
-            masterHolder = masterHolder + 1;
-            disp('NO CF')
-        end
-        
-        if j == numDBs & BFTrig == 0
-            masterData(i,masterHolder) = NaN;
-            masterHeader{masterHolder} = 'BF';
-            masterHolder = masterHolder + 1;
-            disp('NO BF')
-        end
-    end
-    
-    
-end
-s.WidthData = widthStore;
-s.WidthLatData = widthLat;
-s.FullWidth = bigWidth;
-
-masterInd = masterHolder;
-
-
-
-%% Plotting
-
-%First, lets plot waveforms. Split by shank.
-plotVect = [0:1/30000:53/30000];
-[indPkTr] = functionCellStringFind(masterHeader,'PeakTrough');
-indPkTr = indPkTr(1);
-for i = 1:2
-    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
-    if findTars
-        hFig = figure;
-        subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.02 0.07], [0.01 0.01]);
-        set(hFig, 'Position', [10 10 1900 1000])
-        for j = 1:length(findTars)
-            subplot(1,length(findTars),j)
-            hold on
-            for k = 1:32
-                if masterData(findTars(j),indPkTr) < s.Parameters.PVLim(1) %is FSI
-                    plot(plotVect,s.(cluNames{findTars(j)}).medianWave(32*(i-1)+k,:)/max(max(s.(cluNames{findTars(j)}).medianWave)) - k + 1,'LineWidth',2,'Color',[1 0 0]);
-                elseif masterData(findTars(j),indPkTr) > s.Parameters.PVLim(2) %is MSN
-                    plot(plotVect,s.(cluNames{findTars(j)}).medianWave(32*(i-1)+k,:)/max(max(s.(cluNames{findTars(j)}).medianWave)) - k + 1,'LineWidth',2,'Color',[0 0 0]);
-                else %unknown
-                    plot(plotVect,s.(cluNames{findTars(j)}).medianWave(32*(i-1)+k,:)/max(max(s.(cluNames{findTars(j)}).medianWave)) - k + 1,'LineWidth',2,'Color',[.7 .7 .7]);
-                end
-            end
-            title({(cluNames{findTars(j)});strcat('Num Spikes:',num2str(length(s.(cluNames{findTars(j)}).SpikeTimes)));strcat('Max Amp:',num2str(max(max(s.(cluNames{findTars(j)}).medianWave))))})
-            xlim([plotVect(1) plotVect(end)])
-            ylim([-33 1])
-            set(gca,'ytick',[])
-            set(gca,'yticklabel',[])
-        end
-        spikeGraphName = strcat(fileName,'Shank',num2str(i),'Waves');
-        savefig(hFig,spikeGraphName);
-
-        %save as PDF with correct name
-        set(hFig,'Units','Inches');
-        pos = get(hFig,'Position');
-        set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-        print(hFig,spikeGraphName,'-dpdf','-r0')
-    end
-end
-
-
-%first do cross correlograms. We want to first generate some kind of
-%shuffled comparison to calculate significance by which we can extract
-%putatively monosynaptic linked units. 
-shuffSpikes = cell(numUnits,1);
-shuffNum = 1000;
-shuffVal = 0.01; %since multiply by 0.5, need to double here. https://www.nature.com/articles/nn.2134#methods this paper uses +/- 5 ms
-for i = 1:numUnits
-    %determine number of spikes
-    tarSpikes = s.(cluNames{i}).SpikeTimes;
-    %generate random array
-    randArray = rand(length(tarSpikes),shuffNum) - 0.5;
-    shuffSpikes{i} = randArray*shuffVal + repmat(tarSpikes,1,shuffNum);
-end
-
-s.JitteredSpikes = shuffSpikes;
-
-%now lets actually do the targeted cross correlograms! Try to only target FSIs and
-%align MSN spikes to them. 
-findFSIs =find(masterData(:,indPkTr) < s.Parameters.PVLim(1));
-findMSNs = find(masterData(:,indPkTr) > s.Parameters.PVLim(2));
-
-synchWind = 0.001; %time difference within which spikes are considered synchronous.
-rasterWindow = [-0.01025 0.01025];
-rasterVector = [-0.01:0.0005:0.01];
-
-
-for i = 1:numUnits
-    for j = 1:numUnits
-        disp(strcat('Running Cross Corr for Unit',num2str(cluNames{j}),'-aligned to',num2str(cluNames{i})))
-        [rasters] = crosscorrelogram(s.(cluNames{i}).SpikeTimes,s.(cluNames{j}).SpikeTimes,rasterWindow);
-        histStore = hist(rasters,rasterVector);
-        rasters = [];
-        trueStore{(i),(j)} = histStore;
-    end
-end
-
-s.CrossCorrs = trueStore;
-trueStore = [];
-
-for i = 1:length(findFSIs)
-    for j = 1:length(findMSNs)
-%         disp(strcat('Running Cross Corr for Unit',num2str(cluNames{findMSNs(j)}),'-aligned to',num2str(cluNames{findFSIs(i)})))
-%         [rasters] = crosscorrelogram(s.(cluNames{findFSIs(i)}).SpikeTimes,s.(cluNames{findMSNs(j)}).SpikeTimes,rasterWindow);
-%         histStore = hist(rasters,rasterVector);
-%         rasters = [];
-%         trueStore{findFSIs(i),findMSNs(j)} = histStore;
-        %now lets try and remove synchronous FSIs spikes. This way, we can
-        %eliminate any peak in the FSI aligned MSN spikes. 
-        diffArray = [];
-        newFSIspike = s.(cluNames{findFSIs(i)}).SpikeTimes;
-        for k = length(s.(cluNames{findMSNs(j)}).SpikeTimes):-1:1
-            diffArray = s.(cluNames{findFSIs(i)}).SpikeTimes - s.(cluNames{findMSNs(j)}).SpikeTimes(k);
-            spikeFind = find(abs(diffArray) < synchWind);
-            newFSIspike(spikeFind) = [];
-        end
-        [rasters] = crosscorrelogram(newFSIspike,s.(cluNames{findMSNs(j)}).SpikeTimes,rasterWindow);
-        histStore = hist(rasters,rasterVector);
-        rasters = [];
-        remStore{findFSIs(i),findMSNs(j)} = histStore;
-        
-        
-        %now lets run the jittered spikes
-        tempHist = [];
-        shuffTar = shuffSpikes{findMSNs(j)};
-        disp(strcat('Running Shuffle Cross Corr for Unit',num2str(cluNames{findMSNs(j)}),'-aligned to',num2str(cluNames{findFSIs(i)})))
-        for k = 1:shuffNum
-            [rasters] = crosscorrelogram(s.(cluNames{findFSIs(i)}).SpikeTimes,shuffTar(:,k),rasterWindow);
-            rasters(rasters < rasterWindow(1) | rasters > rasterWindow(2)) = [];
-            tempHist(:,k) = hist(rasters,rasterVector);
-        end
-        shuffStore{findFSIs(i),findMSNs(j)} = tempHist;
-    end
-end
-
-s.CrossCorrJitter = shuffStore;
-s.CrossCorrRemSynch = remStore;
-
-hFig = figure;
-[B,I] = sort(s.PeakChanVals);
-rasterWindow = [-0.01025 0.01025];
-rasterVector = [-0.01:0.0005:0.01];
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.02 0.02], [0.01 0.01]);
-set(hFig, 'Position', [10 10 1800 1000])
-for i = 1:numUnits
-    %determine units greater than or equal to current unit
-%     tarUnits = i:numUnits;
-    for j = 1:numUnits
-        disp('Next Unit!')
-        
-        [rasters] = crosscorrelogram(s.(cluNames{I(i)}).SpikeTimes,s.(cluNames{I(j)}).SpikeTimes,rasterWindow);
-        histStore = hist(rasters,rasterVector);
-        if j == i
-            histStore(21) = 0;
-        end
-        if ismember(I(i),findFSIs) && ismember(I(j),findMSNs);
-            subplot(numUnits,numUnits,numUnits*(i-1)+j)
-            hold on
-            plot(rasterVector,mean(s.CrossCorrJitter{I(i),I(j)}'),'Color',[0.7 0.7 0.7],'LineWidth',2)
-            Y = prctile(s.CrossCorrJitter{I(i),I(j)},[.5 99.5],2);
-            plot(rasterVector,Y(:,1),'Color',[0.7 0.7 0.7])
-            plot(rasterVector,Y(:,2),'Color',[0.7 0.7 0.7])
-            plot(rasterVector,smooth(s.CrossCorrRemSynch{I(i),I(j)},3),'c','LineWidth',2)
-            plot(rasterVector,smooth(histStore,3),'r','LineWidth',2)
-            hold on
-            plot([0 0],[0 max(histStore)],'r')
-            if max(histStore) < 1
-                ylim([0 1])
-            else
-                ylim([0 max(histStore)])
-            end
-            xlim([-0.01 0.01])
-            set(gca,'xtick',[])
-            set(gca,'ytick',[])
-            set(gca,'TickLength',[0 0])
-            rasters = [];
-        elseif ismember(I(i),findFSIs) && ~ismember(I(j),findMSNs);
-            subplot(numUnits,numUnits,numUnits*(i-1)+j)
-            hold on
-%             plot(rasterVector,mean(shuffStore{I(i),I(j)}'),'Color',[0.7 0.7 0.7],'LineWidth',2)
-%             plot(rasterVector,mean(shuffStore{I(i),I(j)}')+std(shuffStore{I(i),I(j)}'/sqrt(shuffNum)),'Color',[0.7 0.7 0.7])
-%             plot(rasterVector,mean(shuffStore{I(i),I(j)}')-std(shuffStore{I(i),I(j)}'/sqrt(shuffNum)),'Color',[0.7 0.7 0.7])
-            plot(rasterVector,smooth(histStore,3),'r','LineWidth',2)
-            hold on
-            plot([0 0],[0 max(histStore)],'r')
-            if max(histStore) < 1
-                ylim([0 1])
-            else
-                ylim([0 max(histStore)])
-            end
-            xlim([-0.01 0.01])
-            set(gca,'xtick',[])
-            set(gca,'ytick',[])
-            set(gca,'TickLength',[0 0])
-            rasters = [];
-        else
-            subplot(numUnits,numUnits,numUnits*(i-1)+j)
-            plot(rasterVector,smooth(histStore,3),'k','LineWidth',2)
-            hold on
-            plot([0 0],[0 max(histStore)],'k')
-            if max(histStore) < 1
-                ylim([0 1])
-            else
-                ylim([0 max(histStore)])
-            end
-            xlim([-0.01 0.01])
-            set(gca,'xtick',[])
-            set(gca,'ytick',[])
-            set(gca,'TickLength',[0 0])
-            rasters = [];
-        end
-        
-        %grey out non-identified units
-        if ~ismember(I(j),[findFSIs;findMSNs])
-            plot([0 0],[0 max(histStore)],'LineWidth',2,'Color',[0.7 0.7 0.7])
-            plot(rasterVector,smooth(histStore,3),'LineWidth',2,'Color',[0.7 0.7 0.7])
-        end
-        
-        %now lets try and plot out titles only for top row.
-        if i == 1
-            title(cluNames{I(j)})
-        end
-        
-    end
-end
-spikeGraphName = strcat(fileName,'AllCrossCorr');
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
-%now lets try and separate out tone and non-tone period spikes
-spikesNonTone = [];
-spikesTone = [];
-cluNonTone = [];
-cluTone = [];
-allSpikes = spTimeSec;
-allClu = spClu;
-counterTone = 1;
-counterNonTone = 1; 
-for i = 1:length(dioTimes)
-    if rem(i,500) == 0 
-        disp('500 trials')
-    end
-    %subtract tone time
-    toneSub = allSpikes - dioTimes(i);
-    %extract all spikes up to the end of the tone
-    subSpikes = toneSub(toneSub < 0.1);
-    %find negative (non tone) and positive (tone) values
-    findNeg = find(subSpikes <= 0);
-    findPos = find(subSpikes > 0);
-    %store both spike times and cluster designations
-    spikesNonTone(counterNonTone:counterNonTone - 1 + length(findNeg)) = allSpikes(findNeg);
-    spikesTone(counterTone:counterTone - 1 + length(findPos)) = allSpikes(findPos);
-    cluNonTone(counterNonTone:counterNonTone - 1 + length(findNeg)) = allClu(findNeg);
-    cluTone(counterTone:counterTone - 1 + length(findPos)) = allClu(findPos);
-    %now we need to subtract out these spikes
-    allSpikes(1:length(subSpikes)) = [];
-    allClu(1:length(subSpikes)) = [];
-    counterTone = counterTone + length(findPos);
-    counterNonTone = counterNonTone + length(findNeg);
-end
-spikesNonTone(counterNonTone:counterNonTone - 1 + length(allSpikes)) = allSpikes;
-cluNonTone(counterNonTone:counterNonTone - 1 + length(allSpikes)) = allClu;
-
-%now we can separate out the clusters.
-
-% try doing this with either tone window spikes and non-tone spikes
-hFig = figure;
-[B,I] = sort(s.PeakChanVals);
-rasterWindow = [-0.01 0.01];
-rasterVector = [-0.01:0.0005:0.01];
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.02 0.02], [0.01 0.01]);
-set(hFig, 'Position', [10 80 1000 1000])
-for i = 1:numUnits
-    %determine units greater than or equal to current unit
-%     tarUnits = i:numUnits;
-    tarSpikesNonTone = spikesNonTone(cluNonTone == clu(I(i)));
-    tarSpikesTone = spikesTone(cluTone == clu(I(i)));
-    for j = 1:numUnits
-        disp('Next Unit!')
-        %plot out non-tone crossCorr
-        [rasters] = crosscorrelogram(tarSpikesNonTone,spikesNonTone(cluNonTone == clu(I(j))),rasterWindow);
-        histStore = hist(rasters,rasterVector);
-        if j == i
-            histStore(21) = 0;
-        end
-        nonToneStore{i,j} = histStore;
-        subplot(numUnits,numUnits,numUnits*(i-1)+j)
-        plot(rasterVector,histStore,'k','LineWidth',2)
-        max1 =max(histStore);
-        hold on
-        %plot out tone cross corr
-        [rasters] = crosscorrelogram(tarSpikesTone,spikesTone(cluTone == clu(I(j))),rasterWindow);
-        histStore = hist(rasters,rasterVector);
-        ToneStore{i,j} = histStore;
-        if j == i
-            histStore(21) = 0;
-        end
-        
-        plot(rasterVector,histStore,'m','LineWidth',2)
-        max2 = max(histStore);
-        plot([0 0],[0 max([max1,max2])],'r')
-        if max([max1,max2]) < 1
-            ylim([0 1])
-        else
-            ylim([0 max([max1,max2])])
-        end
-        xlim([-0.01 0.01])
-        set(gca,'xtick',[])
-        set(gca,'ytick',[])
-        set(gca,'TickLength',[0 0])
-        rasters = [];
-    end
-end
-spikeGraphName = strcat(fileName,'TonevsBaseCrossCorr');
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
-s.CrossCorrTone = ToneStore;
-s.CrossCorrNonTone = nonToneStore;
-
-%now try and pull spikes using a shuffle in which I shift by one trial (in
-%terms of the same stimulus). We need to first check and find these trials,
-%and figure out how to index it. 
-
-%first thing to do is basically streamline the dBs.
-newDBs = s.SoundData.dBs;
-for i = 1:s.SoundData.NumFreqs
-    findTars = find(s.SoundData.Frequencies == s.SoundData.UniqueFrequencies(i));
-    tarDBs = s.SoundData.dBs(findTars);
-    uniqueDBVals = unique(tarDBs);
-    for j = 1:length(uniqueDBVals)
-        findFreq = find(s.SoundData.Frequencies == s.SoundData.UniqueFrequencies(i));
-        findDBs = find(s.SoundData.dBs == uniqueDBVals(j));
-        specFind = intersect(findFreq,findDBs);
-        newDBs(specFind) = s.SoundData.UniqueDBs(j);
-    end
-end
-
-%now lets try and find the presentations of all the unique stimuli. First,
-%make a lookup table. 
-oldInd = [1:length(dioTimes)];
-newInd = [];
-counter = 1;
-for i= 1:s.SoundData.NumFreqs
-    for j = 1:s.SoundData.NumDBs
-        %find trials of particular frequency and db. 
-        findFreq = find(s.SoundData.Frequencies == s.SoundData.UniqueFrequencies(i));
-        findDBs = find(newDBs == s.SoundData.UniqueDBs(j));
-        specFind = intersect(findFreq,findDBs);
-        newInd(specFind,1) = counter;
-        newInd(specFind,2) = [1:length(specFind)];
-        counter = counter + 1;
-    end
-end
-
-subInd = [];
-for i = 1:counter - 1
-    testFind = find(newInd(:,1) == i);
-    subInd(testFind(1:end-1)) = testFind(2:end);
-    subInd(testFind(end)) = testFind(1);
-end
-subInd = subInd';
-if length(subInd) > length(dioTimes)
-    subInd(length(dioTimes)+1:end) = [];
-end
-
-hFig = figure;
-[B,I] = sort(s.PeakChanVals);
-tarWindow = [-0.4 0.4];
-rasterWindow = [-0.01 0.01];
-rasterVector = [-0.01:0.0005:0.01];
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.02 0.02], [0.01 0.01]);
-set(hFig, 'Position', [10 80 1000 1000])
-for i = 1:numUnits
-    for j = 1:numUnits
-        histStore = zeros(1,length(rasterVector));
-        disp('Next Unit!')
-        %plot out non-tone crossCorr
-        for k = 1:length(dioTimes)
-            tarSpikes = s.(cluNames{I(i)}).SpikeTimes - dioTimes(k);
-            tarSpikes(tarSpikes < tarWindow(1) | tarSpikes > tarWindow(2)) = [];
-            tarSpikesMatch = s.(cluNames{I(j)}).SpikeTimes - dioTimes(subInd(k));
-            tarSpikesMatch(tarSpikesMatch < tarWindow(1) | tarSpikesMatch > tarWindow(2)) = [];
-            if length(tarSpikes)>0 & length(tarSpikesMatch) > 0
-                [rasters] = crosscorrelogram(tarSpikes,tarSpikesMatch,rasterWindow);
-                tempHist = hist(rasters,rasterVector);
-                histStore = histStore + tempHist;
-                trialScrambleStore{i,j} = histStore;
-            end
-            
-        end
-
-%         if j == i
-%             histStore(21) = 0;
-%         end
-        subplot(numUnits,numUnits,numUnits*(i-1)+j)
-        plot(rasterVector,histStore,'k','LineWidth',2)
-        max1 =max(histStore);
-        hold on
-        %plot out tone cross corr
-        
-        plot([0 0],[0 max1],'r')
-        if max1 < 1
-            ylim([0 1])
-        else
-            ylim([0 max1])
-        end
-        xlim([-0.01 0.01])
-        set(gca,'xtick',[])
-        set(gca,'ytick',[])
-        set(gca,'TickLength',[0 0])
-        rasters = [];
-    end
-end
-spikeGraphName = strcat(fileName,'TrialShuffCrossCorr');
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
-s.CrossCorrTrialShuffle = trialScrambleStore;
-
-%% SAVE DATA
-
-
-save(fullfile(pname,fname),'s','masterData','masterHeader');
-
-
-%% NOW PLOT INDIVIDUAL UNITS
-
-
-for i = 1:numUnits
-    hFig = figure;
-    set(hFig, 'Position', [10 80 1900 1000])
-
-    %% Column 1
-    %plot out median wave form
-    subplot(1,4,1)
-    hold on
-    if s.PeakChanVals(i) <=32
-        for j = 1:32
-            if masterData(i,indPkTr) < s.Parameters.PVLim(1) %is FSI
-                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[1 0 0]);
-            elseif masterData(i,indPkTr) > s.Parameters.PVLim(2) %is MSN
-                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 0 0]);
-            else %unknown
-                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
-            end
-        end
-        ylim([-33 1])
-        xlim([plotVect(1) plotVect(end)])
-        title(strcat('Num Spikes:',num2str(length(s.(cluNames{i}).SpikeTimes)),'Max Amp:',num2str(max(max(s.(cluNames{i}).medianWave)))))
-    else
-        for j = 1:32
-            if masterData(i,indPkTr) < s.Parameters.PVLim(1) %is FSI
-                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[1 0 0]);
-            elseif masterData(i,indPkTr) > s.Parameters.PVLim(2) %is MSN
-                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 0 0]);
-            else %unknown
-                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
-            end
-        end
-        ylim([-33 1])
-        xlim([plotVect(1) plotVect(end)])
-        title(strcat('Num Spikes:',num2str(length(s.(cluNames{i}).SpikeTimes)),'Max Amp:',num2str(max(max(s.(cluNames{i}).medianWave)))))        
-    end
-    % plot histogram.
-    subplot(4,4,6)
-    plot(histBinVector,s.(cluNames{i}).AllHistograms,'k','LineWidth',2)
-    hold on
-    plot(histBinVector,s.(cluNames{i}).AllHistograms - s.(cluNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
-    plot(histBinVector,s.(cluNames{i}).AllHistograms + s.(cluNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
-    %plot significant values
-    plot(s.(cluNames{i}).AllHistogramSig.Centers(...
-        s.(cluNames{i}).AllHistogramSig.Histogram(:,3) == 1),...
-        s.(cluNames{i}).AllHistogramSig.Histogram(...
-        s.(cluNames{i}).AllHistogramSig.Histogram(:,3) == 1,1),...
-        'b*')
-    plot(s.(cluNames{i}).AllHistogramSig.Centers(...
-        s.(cluNames{i}).AllHistogramSig.Histogram(:,4) == 1),...
-        s.(cluNames{i}).AllHistogramSig.Histogram(...
-        s.(cluNames{i}).AllHistogramSig.Histogram(:,4) == 1,1),...
-        'bo')
-    %plot negative values for first tuning
-    plot(s.(cluNames{i}).AllHistogramSig.Centers(...
-        s.(cluNames{i}).AllHistogramSig.Histogram(:,6) == 1),...
-        s.(cluNames{i}).AllHistogramSig.Histogram(...
-        s.(cluNames{i}).AllHistogramSig.Histogram(:,6) == 1,1),...
-        'k*')
-    plot([0 0],[ylim],'b');
-    plot([toneDur toneDur],[ylim],'b');
-    xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Histogram')
 
     %plot out rasters, organized!
@@ -2340,9 +1434,9 @@ for i = 1:numUnits
     xlim([s.Parameters.RasterWindow(1) s.Parameters.RasterWindow(2)])
     title('Descending = increase in amplitude and freq')
 
-    %% Column 2
-    %Plot binned response during tone period
-    subplot(4,4,3)
+    % Column 3
+    %plot heatmap tuning curves
+    subplot(2,4,3)
     imagesc(s.(cluNames{i}).BinTone')
     colormap(parula)
     colorbar
@@ -2350,10 +1444,9 @@ for i = 1:numUnits
     set(gca,'XTickLabel',octaveRange(:,1));
     set(gca,'YTick',dbRange(:,2));
     set(gca,'YTickLabel',dbRange(:,1));
-    title({fileName;cluNames{i}},'fontweight','bold', 'Interpreter', 'none');
-
-    %Plot binned response during general period
-    subplot(4,4,7)
+    title('Mean Binned Resp (tone)')
+    
+    subplot(2,4,7)
     imagesc(s.(cluNames{i}).BinGen')
     colormap(parula)
     colorbar
@@ -2361,97 +1454,37 @@ for i = 1:numUnits
     set(gca,'XTickLabel',octaveRange(:,1));
     set(gca,'YTick',dbRange(:,2));
     set(gca,'YTickLabel',dbRange(:,1));
-    title('Mean Binned Response (general)')
-    %Plot peak response during tone period
-    subplot(4,4,11)
-    imagesc(s.(cluNames{i}).PeakMapTone')
-    colormap(parula)
+    title('Mean Binned Resp (general)')
+    
+    
+    % Column 4
+    
+    %plot DMR response
+    subplot(2,4,4)
+    imagesc(reshape(sta(i,:),length(faxis),[]))
+    colormap('parula')
     colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Peak Response (tone)')
-    %Plot peak response during general period
-    subplot(4,4,15)
-    imagesc(s.(cluNames{i}).PeakMapGen')
-    colormap(parula)
-    colorbar
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    set(gca,'YTick',dbRange(:,2));
-    set(gca,'YTickLabel',dbRange(:,1));
-    title('Peak Response (general)')
-
-    %% Column 3
-    %plot heatmap organized by frequency
-    subplot(4,4,4)
-    imagesc(s.(cluNames{i}).FrequencyHistograms(:,:))
-    colormap(parula)
-    colorbar
-    set(gca,'YTick',octaveRange(:,2));
-    set(gca,'YTickLabel',octaveRange(:,1));
-    set(gca,'XTick',[1:10:size(histBinVector,2)]);
-    set(gca,'XTickLabel',histBinVector(1:20:end));
-    histBinZero = interp1(histBinVector,1:1:size(histBinVector,2),0);
-    histBinTone = interp1(histBinVector,1:1:size(histBinVector,2),toneDur);
-    line([histBinZero histBinZero],[0 numFreqs],'LineWidth',3,'Color','green')
-    line([histBinZero histBinZero],[0 numFreqs],'LineWidth',2,'Color','black')
-    line([histBinTone histBinTone],[0 numFreqs],'LineWidth',3,'Color','green')
-    line([histBinTone histBinTone],[0 numFreqs],'LineWidth',2,'Color','black')
-%         title('Heatmap by Frequency and Time Max')
-    title('Frequency Arranged Heatmap')
-    %plot out binned spikes (tone)
-    subplot(4,4,8)
-    hold on
-    for cInd = 1:numDBs
-        plot(s.(cluNames{i}).BinDiff(:,cInd,1),'Color',[cInd/numDBs 0 0])
-        %find significant points, by p < 0.05
-        findSigs = find(s.(cluNames{i}).BinSigVals(:,cInd,1)<0.05);
-        plot(findSigs,s.(cluNames{i}).BinDiff(findSigs,cInd,1),'g*')
-        %find significant points, by p < 0.01
-        findSigs = find(s.(cluNames{i}).BinSigVals(:,cInd,1)<0.01);
-        plot(findSigs,s.(cluNames{i}).BinDiff(findSigs,cInd,1),'go')
-    end
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    ylabel('Binned Spikes/Fast Period')
-    title('Tuning Curves Across Fast Period')
-
-    %plot out binned spikes (tone)
-
-    subplot(4,4,12)
-    hold on
-    for cInd = 1:numDBs
-        plot(s.(cluNames{i}).BinDiff(:,cInd,2),'Color',[cInd/numDBs 0 0])
-        %find significant points, by p < 0.05
-        findSigs = find(s.(cluNames{i}).BinSigVals(:,cInd,2)<0.05);
-        plot(findSigs,s.(cluNames{i}).BinDiff(findSigs,cInd,2),'g*')
-        %find significant points, by p < 0.01
-        findSigs = find(s.(cluNames{i}).BinSigVals(:,cInd,2)<0.01);
-        plot(findSigs,s.(cluNames{i}).BinDiff(findSigs,cInd,2),'go')
-    end
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    ylabel('Binned Spikes/Tone Period')
-    title('Tuning Curves Across Tone Period')
-    %plot out binned spikes (general)
-    subplot(4,4,16)
-    hold on
-    for cInd = 1:numDBs
-        plot(s.(cluNames{i}).BinDiff(:,cInd,3),'Color',[cInd/numDBs 0 0])
-        %find significant points, by p < 0.05
-        findSigs = find(s.(cluNames{i}).BinSigVals(:,cInd,3)<0.05);
-        plot(findSigs,s.(cluNames{i}).BinDiff(findSigs,cInd,3),'g*')
-        %find significant points, by p < 0.01
-        findSigs = find(s.(cluNames{i}).BinSigVals(:,cInd,3)<0.01);
-        plot(findSigs,s.(cluNames{i}).BinDiff(findSigs,cInd,3),'go')
-    end
-    set(gca,'XTick',octaveRange(:,2));
-    set(gca,'XTickLabel',octaveRange(:,1));
-    ylabel('Binned Spikes/Gen Period')
-    title('Tuning Curves Across General Period')
-
+    format short
+    set(gca,'XTick',[0:20:numLags]);
+    set(gca,'XTickLabel',[dmrStep*100:-20*dmrStep:dmrStep]);
+    set(gca,'YTick',[1:10:length(faxis)]);
+    set(gca,'YTickLabel',[faxis([1:10:end])]);
+    title(strcat('DMR STA Based on',num2str(numDMRSpikes(i))))
+    
+%     %plot out thresholded DMR
+%     subplot(2,4,8)
+%     imagesc(reshape(sta_sig(i,:),length(faxis),[]))
+%     colormap('parula')
+%     colorbar
+%     format short
+%     set(gca,'XTick',[0:20:numLags]);
+%     set(gca,'XTickLabel',[dmrStep*100:-20*dmrStep:dmrStep]);
+%     set(gca,'YTick',[1:10:length(faxis)]);
+%     set(gca,'YTickLabel',[faxis([1:10:end])]);
+%     title('Thresholded DMR a=0.95')
+    
+%     freqs
+    
     hold off
     spikeGraphName = strcat(fileName,cluNames{i},'SpikeAnalysis');
     savefig(hFig,spikeGraphName);
@@ -2465,5 +1498,6 @@ for i = 1:numUnits
     close
 
 end
+
 
 
