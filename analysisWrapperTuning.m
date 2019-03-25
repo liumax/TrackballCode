@@ -421,7 +421,152 @@ condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
 %16, or 80. 
 widthHistVect = [0:1:40];
 
+%now lets generate half-width values
+
+for i = 1:length(bigMaster)
+    testWave = interpWaveStore(i,:);
+    %determine max
+    maxVal = max(testWave(1:150));
+    halfFirst = find(testWave(1:150) > maxVal/2,1,'first');
+    halfSecond = find(testWave(halfFirst:end) > maxVal/2,1,'last');
+    halfWidth(i) = halfSecond/300000;
+end
+
 %% first figure, OVERVIEW OF FIRING RATES AND PEAK TROUGH, RESPONSE TYPES ETC
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.1 0.1], [0.1 0.1]);
+hFig = figure;
+set(hFig, 'Position', [10 80 500 1000])
+
+%column 1
+%plot spike width vs coefficient of variation
+subplot(3,1,1)
+hold on
+
+plot(bigMaster(:,indPkTr),bigMaster(:,indISI),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indISI),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indISI),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indISI),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('ISI Coefficient of Variation')
+set(gca,'TickDir','out');
+
+%now plot out spike width vs half width
+subplot(3,1,2)
+hold on
+
+plot(bigMaster(:,indPkTr),halfWidth(:),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),halfWidth(bigMaster(:,indCellType) == 0),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),halfWidth(bigMaster(:,indCellType) == 1),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),halfWidth(bigMaster(:,indCellType) == 2),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('Half-Width (ms)')
+set(gca,'TickDir','out');
+
+%plot out spike width with FR
+subplot(3,1,3)
+hold on
+
+plot(bigMaster(:,indPkTr),bigMaster(:,indBaseFire),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indBaseFire),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indBaseFire),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indBaseFire),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('Baseline Firing Rate')
+set(gca,'TickDir','out');
+
+spikeGraphName = 'WaveformAnalysis';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+%plot out pie chart of difference cells
+
+cellDist = [length(findMSNs),length(findPVs),length(findCHATs)];
+pie(cellDist)
+labels = {strcat('MSNs(',num2str(length(findMSNs)),')'),strcat('PVs(',num2str(length(findPVs)),')'),strcat('ChATs(',num2str(length(findCHATs)),')')};
+detZero = find(cellDist == 0);
+labels(detZero) = [];
+legend(labels,'Location','eastoutside','Orientation','vertical')
+
+spikeGraphName = 'CellTypePieChart';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%plot out MSN and FSI pie charts
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+
+subplot(2,2,1)
+hold on
+waveHolder = [];
+waveHolder = interpWaveStore(findMSNs,:);
+plot(waveHolder')
+title('MSN Waveforms')
+
+%plot distribution of response types
+subplot(2,2,3)
+holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+det = hist(det,[-2:1:1]);
+pie(det)
+labels = {'Neg','Mix','None','Pos'};
+detZero = find(det == 0);
+labels(detZero) = [];
+legend(labels,'Location','eastoutside','Orientation','vertical')
+title(strcat('MSNs n=',num2str(length(findMSNs))))
+
+%plot out PV stuff
+
+subplot(2,2,2)
+hold on
+waveHolder = [];
+waveHolder = interpWaveStore(findPVs,:);
+plot(waveHolder')
+title('PV Waveforms')
+
+%plot distribution of response types
+subplot(2,2,4)
+holder = bigMaster(findPVs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+det = hist(det,[-2:1:1]);
+pie(det)
+labels = {'Neg','Mix','None','Pos'};
+detZero = find(det == 0);
+labels(detZero) = [];
+legend(labels,'Location','eastoutside','Orientation','vertical')
+title(strcat('PVs n=',num2str(length(findPVs))))
+
+spikeGraphName = 'PVMSNPieCharts';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+
+
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -431,27 +576,30 @@ set(hFig, 'Position', [10 80 1900 1000])
 subplot(4,4,1)
 hold on
 
+plot(bigMaster(:,indPkTr),bigMaster(:,indISI),'.','Color',[0.7 0.7 0.7])
 plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indISI),'k.')
 plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indISI),'r.')
 plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indISI),'g.')
 xlabel('Peak Trough (ms)')
 ylabel('ISI Coefficient of Variation')
 
-%now plot out spike width vs peak trough ratio
+%now plot out spike width vs half width
 subplot(4,4,5)
 hold on
 
-plot(bigMaster(:,indPkTr),pkTroughRatioStore(:),'k.')
-plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),pkTroughRatioStore(bigMaster(:,indCellType) == 1),'r.')
-plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),pkTroughRatioStore(bigMaster(:,indCellType) == 2),'g.')
+plot(bigMaster(:,indPkTr),halfWidth(:),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),halfWidth(bigMaster(:,indCellType) == 0),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),halfWidth(bigMaster(:,indCellType) == 1),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),halfWidth(bigMaster(:,indCellType) == 2),'g.')
 xlabel('Peak Trough (ms)')
-ylabel('Peak Trough Amplitude Ratio')
+ylabel('Half-Width (ms)')
 
 %plot out spike width with FR
 subplot(4,4,9)
 hold on
 
-plot(bigMaster(:,indPkTr),bigMaster(:,indBaseFire),'k.')
+plot(bigMaster(:,indPkTr),bigMaster(:,indBaseFire),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indBaseFire),'k.')
 plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indBaseFire),'r.')
 plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indBaseFire),'g.')
 xlabel('Peak Trough (ms)')
@@ -1774,11 +1922,26 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %now lets plot BF vs width with points overlaid
 hFig = figure;
+tester = unique(bfStore);%pull all frequencies
+tester = tester(~isnan(tester)); %remove nan values
+bfMeanStore = NaN(length(tester),2);
+for i = 1:length(tester)
+    bfPVs = find(bfStore(tarCells(tarPVs)) == tester(i));
+    if length(bfPVs)>0 && length(~isnan(firstWidthPV(5,pvIndex(bfPVs)))) > 2
+        bfMeanStore(i,2) = nanmean(firstWidthPV(5,pvIndex(bfPVs)));
+    end
+    bfMSNs = find(bfStore(tarCells(tarMSNs)) == tester(i));
+    if length(bfMSNs) > 0 && length(~isnan(firstWidthMSN(5,msnsIndex(bfMSNs)))) > 2
+        bfMeanStore(i,1) = nanmean(firstWidthMSN(5,msnsIndex(bfMSNs)));
+    end
+end
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [80 80 1900 1000])
 plot(bfStore(tarCells(tarPVs)),firstWidthPV(5,pvIndex),'ro')
 hold on
-plot(bfStore(tarCells(tarMSNs)),firstWidthMSN(5,msnsIndex),'k.')
+plot(bfStore(tarCells(tarMSNs)),firstWidthMSN(5,msnsIndex),'ko')
+plot(tester,bfMeanStore(:,1),'k','LineWidth',2)
+plot(tester,bfMeanStore(:,2),'r','LineWidth',2)
 xlabel('BF')
 ylabel('Tuning Width')
 title('FSI (r) or MSN (k) Width vs BF')
