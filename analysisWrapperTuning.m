@@ -1932,7 +1932,7 @@ set(gca,'XTickLabel',{'<=20','30','40','60','70'});
 ylim(ylimThresh)
 
 subplot(2,2,3)
-hist(firstWidthPV(5,pvIndex),[1:1:16])
+hist(widthValsPV,[1:1:16])
 xlim([0.5 16.5])
 ylim(ylimWidth)
 ylabel('Number of Cells')
@@ -1941,7 +1941,7 @@ title(strcat('Tuning Width (FSIs) Mean:',num2str(mean(firstWidthPV(5,pvIndex))),
 % title('Tuning Width (FSIs)')
 
 subplot(2,2,4)
-hist(firstWidthMSN(5,msnsIndex),[1:1:16])
+hist(widthValsMSN,[1:1:16])
 xlim([0.5 16.5])
 ylim(ylimWidth)
 ylabel('Number of Cells')
@@ -2000,16 +2000,16 @@ for i = 1:5
     %find PVs with threshold of a target value
     finder = find(threshStorePV == i);
     if finder
-        hist(firstWidthPV(5,pvIndex(finder)),[1:1:16])
-        testVal = mean(firstWidthPV(5,pvIndex(finder)));
+        hist(sigWidthPV(i,finder),[1:1:16])
+        testVal = mean(sigWidthPV(i,(finder)));
         title(strcat('FSI Width for Amp Level',num2str(i),'Mean',num2str(testVal)))
     end
     subplot(2,5,i+5)
     %find MSNs with threshold of a target value
     finder = find(threshStoreMSN == i);
     if finder
-        hist(firstWidthMSN(5,msnsIndex(finder)),[1:1:16])
-        testVal = mean(firstWidthMSN(5,msnsIndex(finder)));
+        hist(sigWidthMSN(i,(finder)),[1:1:16])
+        testVal = mean(sigWidthMSN(i,(finder)));
         title(strcat('MSN Width for Amp Level',num2str(i),'Mean',num2str(testVal)))
     end
 end
@@ -2028,12 +2028,12 @@ hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [80 80 1900 1000])
 subplot(2,1,1)
-plot(bfStore(tarCells(tarPVs)),firstWidthPV(5,pvIndex),'k.')
+plot(bfStore(tarCells(tarPVs)),sigWidthPV(5,:),'k.')
 xlabel('BF')
 ylabel('Tuning Width')
 title('FSI Width vs BF')
 subplot(2,1,2)
-plot(bfStore(tarCells(tarMSNs)),firstWidthMSN(5,msnsIndex),'k.')
+plot(bfStore(tarCells(tarMSNs)),sigWidthMSN(5,:),'k.')
 xlabel('BF')
 ylabel('Tuning Width')
 title('MSN Width vs BF')
@@ -2054,21 +2054,21 @@ tester = tester(~isnan(tester)); %remove nan values
 bfMeanStore = NaN(length(tester),2);
 for i = 1:length(tester)
     bfPVs = find(bfStore(tarCells(tarPVs)) == tester(i));
-    if length(bfPVs)>0 && length(~isnan(firstWidthPV(5,pvIndex(bfPVs)))) > 2
-        bfMeanStore(i,2) = nanmean(firstWidthPV(5,pvIndex(bfPVs)));
+    if length(bfPVs)>0 && length(~isnan(sigWidthPV(5,(bfPVs)))) > 2
+        bfMeanStore(i,2) = nanmean(sigWidthPV(5,(bfPVs)));
     end
     bfMSNs = find(bfStore(tarCells(tarMSNs)) == tester(i));
-    if length(bfMSNs) > 0 && length(~isnan(firstWidthMSN(5,msnsIndex(bfMSNs)))) > 2
-        bfMeanStore(i,1) = nanmean(firstWidthMSN(5,msnsIndex(bfMSNs)));
+    if length(bfMSNs) > 0 && length(~isnan(sigWidthMSN(5,(bfMSNs)))) > 2
+        bfMeanStore(i,1) = nanmean(sigWidthMSN(5,(bfMSNs)));
     end
 end
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [80 80 1900 1000])
-plot(bfStore(tarCells(tarPVs)),firstWidthPV(5,pvIndex),'ro')
+plot(bfStore(tarCells(tarPVs)),sigWidthPV(5,:),'ro')
 hold on
-plot(bfStore(tarCells(tarMSNs)),firstWidthMSN(5,msnsIndex),'ko')
-plot(tester,bfMeanStore(:,1),'k','LineWidth',2)
-plot(tester,bfMeanStore(:,2),'r','LineWidth',2)
+plot(bfStore(tarCells(tarMSNs)),sigWidthMSN(5,:),'ko')
+plot(tester,bfMeanStore(:,1),'k*','LineWidth',2)
+plot(tester,bfMeanStore(:,2),'r*','LineWidth',2)
 xlabel('BF')
 ylabel('Tuning Width')
 title('FSI (r) or MSN (k) Width vs BF')
