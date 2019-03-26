@@ -228,9 +228,142 @@ for i = 1:numFiles
     
     %store BFs
     bfStore(bigMasterInd:bigMasterInd + numUnits - 1) = masterData(:,12);
+    
+    %now lets try to get corrcoef from binDiff values (tempBinStore)
+    binDiffCorrVals = [];
+    for j = 1:numUnits
+        val1 = reshape(squeeze(tempBinStore(:,:,j)),1,[]);
+        for k = 1:numUnits
+            val2 = reshape(squeeze(tempBinStore(:,:,k)),1,[]);
+            tempCorrVal = corrcoef(val1,val2);
+            binDiffCorrVals(j,k) = tempCorrVal(2);
+            %also calculate distances between units
+            distVal(j,k) = sqrt(((floor(masterData(j,1)) - floor(masterData(k,1)))*25)^2 + ((masterData(j,2) - masterData(k,2))*250)^2);
+        end
+    end
+    findPVs = find(masterData(:,5) < 0.0004 & masterData(:,6) > 1.1);
+    findMSNs = find(masterData(:,5) > 0.0005 & masterData(:,6) > 1.1); 
+    findCHATs = find(masterData(:,6) < 1.1);
+    corrCoefData.CorrCoefs = binDiffCorrVals;
+    corrCoefData.CellType = NaN(numUnits,1);
+    corrCoefData.CellType(findPVs) = 1;
+    corrCoefData.CellType(findMSNs) = 0;
+    corrCoefData.CellType(findCHATs) = 4;
+    corrCoefData.Distance = distVal;
+    bigCorrStore{i} = corrCoefData;
+    corrCoefData = [];
+    distVal = [];
+    
+    
     bigMasterInd = bigMasterInd + numUnits;
         
 end
+
+%% now lets march through the correlation coefficient data and see what we pull out. First things first, I want to remove all the excess values, since I dont want double counting. 
+%lets define interactions! There are three cell types, and therefore six
+%interactions: FSI-MSN, FSI-ChAT, FSI-FSI, MSN-ChAT, MSN-MSN, ChAT-ChAT. 
+
+%lets number these. I want the most common first, going up into the less
+%common. so:
+
+% MSN-MSN: 0
+% MSN-FSI: 1
+% FSI-FSI: 2
+% MSN-ChAT: 4
+% FSI-ChAT: 5
+% ChAT-ChAT: 8
+
+
+corrCount = 1;
+cellCount = 1;
+for i = 1:length(bigCorrStore)
+    dataset = bigCorrStore{i};
+    %now lets try and linearize this dataset. 
+    numUnits = length(dataset.CellType);
+    for j = 1:numUnits
+        corrValStore(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefs(j,j+1:end);
+        distValStore(corrCount:corrCount + numUnits - j - 1) = dataset.Distance(j,j+1:end);
+        interTypeStore(corrCount:corrCount + numUnits - j - 1) = dataset.CellType(j)+ dataset.CellType(j+1:end);
+        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,1) = i;
+        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,2) = j+cellCount-1;
+        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,3) = cellCount + (j+1:numUnits) - 1;
+        corrCount = corrCount + numUnits - j;
+    end
+    cellCount = cellCount + numUnits;
+end
+
+%now lets clean up the dataset. Remove all NaNs. 
+corrValStore(isnan(interTypeStore)) = [];
+distValStore(isnan(interTypeStore)) = [];
+cellTrackerStore(isnan(interTypeStore),:) = [];
+interTypeStore(isnan(interTypeStore)) = [];
+
+%lets look in general at within neuron corrcoefs. 
+corrHistVect = [-1:0.05:1];
+
+%just MSNs, close
+selDist = 150;
+selInterType = 0;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+figure
+hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
+
+%just FSIs, close
+selDist = 150;
+selInterType = 2;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+figure
+hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+corrValfsifsi = hist(corrValStore(findTarCorr),corrHistVect);
+
+%MSN vs FSI, close
+selDist = 150;
+selInterType = 1;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+figure
+hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+corrValfsimsn = hist(corrValStore(findTarCorr),corrHistVect);
+
+%MSN vs ChAT, close
+selDist = 150;
+selInterType = 5;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+figure
+hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+corrValmsnchat = hist(corrValStore(findTarCorr),corrHistVect);
+
+%plot cumdists?
+figure
+hold on
+plot(cumsum(corrValmsnmsn)/sum(corrValmsnmsn),'k')
+plot(cumsum(corrValfsifsi)/sum(corrValfsifsi),'c')
+plot(cumsum(corrValfsimsn)/sum(corrValfsimsn),'r')
+
+%try plotting by distance for first 150. 
+selInterType = 1;
+for i = 1:9
+    selDist = (i-1)*25;
+    tempTar = intersect(find(distValStore == selDist),find(interTypeStore == selInterType));
+    distCorrHistStore(:,i) = hist(corrValStore(tempTar),corrHistVect);
+    normDistCorrHistStore(:,i) = distCorrHistStore(:,i)/max(distCorrHistStore(:,i));
+end
+
+figure
+for i = 1:9
+    subplot(9,1,i)
+    plot(corrHistVect,normDistCorrHistStore(:,i));
+end
+
+
 
 
 %% Lets look at the waveforms a bit more carefully
