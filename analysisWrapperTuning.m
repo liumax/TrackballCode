@@ -1,7 +1,7 @@
 %This is code to do wrapper functions on analysisTuningWithWhite output
 %data. Takes in s and masterData in, and is meant to output overall
 %information about the population. This will be for data from baseline
-%tuning recordings. 
+%tuning recordings.
 
 
 %% identify files, pull names, extraction via loop
@@ -33,7 +33,7 @@ pkTroughTimeStore = [];
 %parameters
 masterHeaderSize = 12; %only want the first 12 values of masterData. 
 
-%actually extract files. 
+%actually extract files.
 for i = 1:numFiles
     %load the target file
     disp(strcat('Analyzing File:',num2str(i)))
@@ -55,7 +55,7 @@ for i = 1:numFiles
     %generate a finder for non-white noise tones
     toneFinder = find(s.TrialMatrix(:,2) ~= 0);
 %     toneFinder(toneFinder > length(s.SoundData.TrialMatrix)) = [];
-    %now lets also generate a trial matrix for all tone times. 
+    %now lets also generate a trial matrix for all tone times.
     trialMatrix = [];
     trialMatrix = s.SoundData.TrialMatrix;
     %now we need to go through and replace the actual real DB values with
@@ -72,7 +72,7 @@ for i = 1:numFiles
     %up to the nearest ten.
     trialMatrix(:,3) = round(trialMatrix(:,3)/10)*10;
     uniqueDBs = unique(trialMatrix(:,3));
-    %pull from masterData, store in overall. 
+    %pull from masterData, store in overall.
     bigMaster(bigMasterInd:bigMasterInd + numUnits - 1,:) = masterData(:,1:12);
     %now pull overall designations of pos/neg/mix/no response
     [indPosSig] = functionCellStringFind(masterHeader,'PosSigGenHist');
@@ -81,7 +81,7 @@ for i = 1:numFiles
     holder = masterData(:,[indPosSig,indNegSig]);
     holder(:,2) = holder(:,2) * -2;
     respVect(:,bigMasterInd:bigMasterInd + numUnits - 1) = (holder(:,1) + holder(:,2))'; %note that here, -2 = neg, -1 = mix, 0 = no, 1 = pos
-    %find the peak to trough value ratio in waveforms. 
+    %find the peak to trough value ratio in waveforms.
     numCells = length(s.DesignationName);
     desigName = s.DesignationName;
     for j = 1:numCells
@@ -139,17 +139,19 @@ for i = 1:numFiles
             disp('No Max Value Found')
         end
 
-        %find appropriate histogram, store. 
+        %find appropriate histogram, store.
         if length(row) == 1
             dbVal = col;
             freqVal= row;
-%             tempHist(:,j) = squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+s.SoundData.WhiteNoise,end-5+dbVal,:));
+%             tempHist(:,j) =
+%             squeeze(s.(desigName{j}).FreqDBHistograms(freqVal+s.SoundData.WhiteNoise,end-5+dbVal,:));
             dbStore(j) = dbVal;
             freqStore(j) = freqVal;
         else
-%             tempHist(:,j) = zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
+%             tempHist(:,j) =
+%             zeros(length(s.(desigName{j}).FreqDBHistograms(1,1,:)),1);
         end
-        %now we need to pull the peak values from the 70DB band. 
+        %now we need to pull the peak values from the 70DB band.
         tarVals = s.(desigName{j}).BinTone(1+s.SoundData.WhiteNoise:end,end);
         ind1 = s.SoundData.NumDBs - 1;
         ind2 = s.SoundData.NumDBs;
@@ -200,7 +202,8 @@ for i = 1:numFiles
         tempWidthStore(end+sizeDiff,:,:) = zeros(sizeDiff,size(tempWidthStore,2),size(tempWidthStore,3));
     end
     widthLatStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempWidthStore;
-%         bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) = tempMaxStore;
+%         bigMaxStore(bigMasterInd:bigMasterInd + numUnits - 1) =
+%         tempMaxStore;
 %     bigHistStore(:,bigMasterInd:bigMasterInd + numUnits - 1) = tempHist;
     bigDBStore(bigMasterInd:bigMasterInd + numUnits - 1) = dbStore;
     bigFreqStore(bigMasterInd:bigMasterInd + numUnits - 1) = freqStore;
@@ -225,9 +228,142 @@ for i = 1:numFiles
     
     %store BFs
     bfStore(bigMasterInd:bigMasterInd + numUnits - 1) = masterData(:,12);
+    
+    %now lets try to get corrcoef from binDiff values (tempBinStore)
+    binDiffCorrVals = [];
+    for j = 1:numUnits
+        val1 = reshape(squeeze(tempBinStore(:,:,j)),1,[]);
+        for k = 1:numUnits
+            val2 = reshape(squeeze(tempBinStore(:,:,k)),1,[]);
+            tempCorrVal = corrcoef(val1,val2);
+            binDiffCorrVals(j,k) = tempCorrVal(2);
+            %also calculate distances between units
+            distVal(j,k) = sqrt(((floor(masterData(j,1)) - floor(masterData(k,1)))*25)^2 + ((masterData(j,2) - masterData(k,2))*250)^2);
+        end
+    end
+    findPVs = find(masterData(:,5) < 0.0004 & masterData(:,6) > 1.1);
+    findMSNs = find(masterData(:,5) > 0.0005 & masterData(:,6) > 1.1); 
+    findCHATs = find(masterData(:,6) < 1.1);
+    corrCoefData.CorrCoefs = binDiffCorrVals;
+    corrCoefData.CellType = NaN(numUnits,1);
+    corrCoefData.CellType(findPVs) = 1;
+    corrCoefData.CellType(findMSNs) = 0;
+    corrCoefData.CellType(findCHATs) = 4;
+    corrCoefData.Distance = distVal;
+    bigCorrStore{i} = corrCoefData;
+    corrCoefData = [];
+    distVal = [];
+    
+    
     bigMasterInd = bigMasterInd + numUnits;
         
 end
+
+%% now lets march through the correlation coefficient data and see what we pull out. First things first, I want to remove all the excess values, since I dont want double counting. 
+%lets define interactions! There are three cell types, and therefore six
+%interactions: FSI-MSN, FSI-ChAT, FSI-FSI, MSN-ChAT, MSN-MSN, ChAT-ChAT. 
+
+%lets number these. I want the most common first, going up into the less
+%common. so:
+
+% MSN-MSN: 0
+% MSN-FSI: 1
+% FSI-FSI: 2
+% MSN-ChAT: 4
+% FSI-ChAT: 5
+% ChAT-ChAT: 8
+
+
+corrCount = 1;
+cellCount = 1;
+for i = 1:length(bigCorrStore)
+    dataset = bigCorrStore{i};
+    %now lets try and linearize this dataset. 
+    numUnits = length(dataset.CellType);
+    for j = 1:numUnits
+        corrValStore(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefs(j,j+1:end);
+        distValStore(corrCount:corrCount + numUnits - j - 1) = dataset.Distance(j,j+1:end);
+        interTypeStore(corrCount:corrCount + numUnits - j - 1) = dataset.CellType(j)+ dataset.CellType(j+1:end);
+        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,1) = i;
+        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,2) = j+cellCount-1;
+        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,3) = cellCount + (j+1:numUnits) - 1;
+        corrCount = corrCount + numUnits - j;
+    end
+    cellCount = cellCount + numUnits;
+end
+
+%now lets clean up the dataset. Remove all NaNs. 
+corrValStore(isnan(interTypeStore)) = [];
+distValStore(isnan(interTypeStore)) = [];
+cellTrackerStore(isnan(interTypeStore),:) = [];
+interTypeStore(isnan(interTypeStore)) = [];
+
+%lets look in general at within neuron corrcoefs. 
+corrHistVect = [-1:0.05:1];
+
+%just MSNs, close
+selDist = 150;
+selInterType = 0;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+figure
+hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
+
+%just FSIs, close
+selDist = 150;
+selInterType = 2;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+figure
+hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+corrValfsifsi = hist(corrValStore(findTarCorr),corrHistVect);
+
+%MSN vs FSI, close
+selDist = 150;
+selInterType = 1;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+figure
+hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+corrValfsimsn = hist(corrValStore(findTarCorr),corrHistVect);
+
+%MSN vs ChAT, close
+selDist = 150;
+selInterType = 5;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+figure
+hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+corrValmsnchat = hist(corrValStore(findTarCorr),corrHistVect);
+
+%plot cumdists?
+figure
+hold on
+plot(cumsum(corrValmsnmsn)/sum(corrValmsnmsn),'k')
+plot(cumsum(corrValfsifsi)/sum(corrValfsifsi),'c')
+plot(cumsum(corrValfsimsn)/sum(corrValfsimsn),'r')
+
+%try plotting by distance for first 150. 
+selInterType = 1;
+for i = 1:9
+    selDist = (i-1)*25;
+    tempTar = intersect(find(distValStore == selDist),find(interTypeStore == selInterType));
+    distCorrHistStore(:,i) = hist(corrValStore(tempTar),corrHistVect);
+    normDistCorrHistStore(:,i) = distCorrHistStore(:,i)/max(distCorrHistStore(:,i));
+end
+
+figure
+for i = 1:9
+    subplot(9,1,i)
+    plot(corrHistVect,normDistCorrHistStore(:,i));
+end
+
+
 
 
 %% Lets look at the waveforms a bit more carefully
@@ -268,8 +404,8 @@ stem3(widthVal/300000,halfWidth/300000,bigMaster(:,8))
 findCHATs = find(bigMaster(:,indCellType) == 2);
 
 
-findPVs = find(bigMaster(:,5) < 0.0004);
-findMSNs = find(bigMaster(:,5) > 0.0005); 
+findPVs = find(bigMaster(:,5) < 0.0004 & bigMaster(:,6) > 1.1);
+findMSNs = find(bigMaster(:,5) > 0.0005 & bigMaster(:,6) > 1.1); 
 
 
 %% Pull tuning widths
@@ -278,6 +414,70 @@ pvWidths = widthStore(:,findPVs,:);
 msnWidths = widthStore(:,findMSNs,:);
 firstWidthMSN = msnWidths(:,:,2);
 firstWidthPV = pvWidths(:,:,2);
+
+%calculate widths with height based system
+bigWidthHeightStore = [];
+for i = 1:length(bigMaster)
+    testValues = squeeze(binValBigStore(:,:,i));
+    for j = 1:size(testValues,2)
+        [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues(:,j),0.1,3);
+        bigWidthHeightStore(j,:,i) = widthVals;
+        bigWidthMaxPosStore(j,i) = maxPos;
+        bigWidthMaxValStore(j,i) = maxVal;
+        bigWidthCutVal(j,i) = cutVal;
+    end
+end
+
+%now lets just pull out the outward search, since this looks to be far more
+%accurate
+bigWidthSelWidth = bigWidthHeightStore(:,[1,3],:);
+
+%now lets try and plot out things!
+counter = 1;
+for i = 1:length(bigMaster)
+    if ismember(i,[1,101,201,301,401,501,601])
+        hFig = figure;
+        counter = 1;
+    end
+    subplot(10,10,counter)
+%     plotData = squeeze(binValBigStore(:,5,i));
+    plotData = smooth(squeeze(binValBigStore(:,5,i)),3);
+    
+    if ismember(i,findPVs)
+        plot(plotData,'r','LineWidth',2)
+    elseif ismember(i,findMSNs)
+        plot(plotData,'k','LineWidth',2)
+    else
+        plot(plotData,'Color',[0.7 0.7 0.7],'LineWidth',2)
+    end
+    hold on
+    plot([1 16],[0 0],'k')
+    plot([1 16],[bigWidthCutVal(5,i) bigWidthCutVal(5,i)],'c','LineWidth',2)
+    plot([bigWidthMaxPosStore(5,i) - bigWidthSelWidth(5,1,i) bigWidthMaxPosStore(5,i) - bigWidthSelWidth(5,1,i)],[0 max(squeeze(binValBigStore(:,5,i)))],'g','LineWidth',2)
+    plot([bigWidthMaxPosStore(5,i) + bigWidthSelWidth(5,2,i) bigWidthMaxPosStore(5,i) + bigWidthSelWidth(5,2,i)],[0 max(squeeze(binValBigStore(:,5,i)))],'g','LineWidth',2)
+    plot([bigWidthMaxPosStore(5,i) bigWidthMaxPosStore(5,i)],[0 max(squeeze(binValBigStore(:,5,i)))],'m','LineWidth',2)
+    xlim([1 16])
+    counter = counter + 1;
+end
+
+%just plot FSIs
+hFig = figure;
+tarDB = 1;
+plotScale = ceil(sqrt(length(findPVs)));
+for i = 1:length(findPVs)
+    subplot(10,10,i)
+%     plotData = squeeze(binValBigStore(:,5,i));
+    plotData = smooth(squeeze(binValBigStore(:,tarDB,findPVs(i))),3);
+    plot(plotData,'r','LineWidth',2)
+    hold on
+    plot([1 16],[0 0],'k')
+    plot([1 16],[bigWidthCutVal(tarDB,findPVs(i)) bigWidthCutVal(tarDB,findPVs(i))],'c','LineWidth',2)
+    plot([bigWidthMaxPosStore(tarDB,findPVs(i)) - bigWidthSelWidth(tarDB,1,findPVs(i)) bigWidthMaxPosStore(tarDB,findPVs(i)) - bigWidthSelWidth(tarDB,1,findPVs(i))],[0 max(squeeze(binValBigStore(:,tarDB,findPVs(i))))],'g','LineWidth',2)
+    plot([bigWidthMaxPosStore(tarDB,findPVs(i)) + bigWidthSelWidth(tarDB,2,findPVs(i)) bigWidthMaxPosStore(tarDB,findPVs(i)) + bigWidthSelWidth(tarDB,2,findPVs(i))],[0 max(squeeze(binValBigStore(:,tarDB,findPVs(i))))],'g','LineWidth',2)
+    plot([bigWidthMaxPosStore(tarDB,findPVs(i)) bigWidthMaxPosStore(tarDB,findPVs(i))],[0 max(squeeze(binValBigStore(:,tarDB,findPVs(i))))],'m','LineWidth',2)
+    xlim([1 16])
+end
+
 
 %% Go through and store specific values. MSNs
 %now we need to go through systematically. Store values like threshold
@@ -301,7 +501,7 @@ for i = 1:length(firstWidthMSN)
         infoStoreMSN(i,5) = 0;
     else
         disp('Sufficient Responses Found')
-        %this assumes that there is stuff! now try and find things. 
+        %this assumes that there is stuff! now try and find things.
         currVect = firstWidthMSN(:,i);
         %calculate threshold value in different ways, one by the first
         %point after, one at the last zero.
@@ -312,7 +512,7 @@ for i = 1:length(firstWidthMSN)
             %now check to see if monotonic increasing
             infoStoreMSN(i,3) = threshVal; %store threshold value
             %now store width at level above threshold. If threshold equals
-            %lowest value, take that width. 
+            %lowest value, take that width.
             if threshVal < length(currVect) - 1;
                 infoStoreMSN(i,4) = currVect(threshVal+1);
             else
@@ -365,7 +565,7 @@ for i = 1:length(firstWidthPV)
         infoStorePV(i,5) = 0;
     else
         disp('Sufficient Responses Found')
-        %this assumes that there is stuff! now try and find things. 
+        %this assumes that there is stuff! now try and find things.
         currVect = firstWidthPV(:,i);
         %calculate threshold value in different ways, one by the first
         %point after, one at the last zero.
@@ -418,40 +618,186 @@ condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
 [indNegSig] = functionCellStringFind(masterHeader,'NegSigGenHist');
 
 %make vector for width. if neuron responds to everything, that makes 5 *
-%16, or 80. 
+%16, or 80.
 widthHistVect = [0:1:40];
 
+%now lets generate half-width values
+
+for i = 1:length(bigMaster)
+    testWave = interpWaveStore(i,:);
+    %determine max
+    maxVal = max(testWave(1:150));
+    halfFirst = find(testWave(1:150) > maxVal/2,1,'first');
+    halfSecond = find(testWave(halfFirst:end) > maxVal/2,1,'last');
+    halfWidth(i) = halfSecond/300000;
+end
+
 %% first figure, OVERVIEW OF FIRING RATES AND PEAK TROUGH, RESPONSE TYPES ETC
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.1 0.1], [0.1 0.1]);
+hFig = figure;
+set(hFig, 'Position', [10 80 500 1000])
+
+%column 1 plot spike width vs coefficient of variation
+subplot(3,1,1)
+hold on
+
+plot(bigMaster(:,indPkTr),bigMaster(:,indISI),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indISI),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indISI),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indISI),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('ISI Coefficient of Variation')
+set(gca,'TickDir','out');
+
+%now plot out spike width vs half width
+subplot(3,1,2)
+hold on
+
+plot(bigMaster(:,indPkTr),halfWidth(:),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),halfWidth(bigMaster(:,indCellType) == 0),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),halfWidth(bigMaster(:,indCellType) == 1),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),halfWidth(bigMaster(:,indCellType) == 2),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('Half-Width (ms)')
+set(gca,'TickDir','out');
+
+%plot out spike width with FR
+subplot(3,1,3)
+hold on
+
+plot(bigMaster(:,indPkTr),bigMaster(:,indBaseFire),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indBaseFire),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indBaseFire),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indBaseFire),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('Baseline Firing Rate')
+set(gca,'TickDir','out');
+
+spikeGraphName = 'WaveformAnalysis';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+%plot out pie chart of difference cells
+
+cellDist = [length(findMSNs),length(findPVs),length(findCHATs)];
+pie(cellDist)
+labels = {strcat('MSNs(',num2str(length(findMSNs)),')'),strcat('PVs(',num2str(length(findPVs)),')'),strcat('ChATs(',num2str(length(findCHATs)),')')};
+detZero = find(cellDist == 0);
+labels(detZero) = [];
+legend(labels,'Location','eastoutside','Orientation','vertical')
+
+spikeGraphName = 'CellTypePieChart';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%plot out MSN and FSI pie charts
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
 
-%column 1
-%plot spike width vs coefficient of variation
+subplot(2,2,1)
+hold on
+waveHolder = [];
+waveHolder = interpWaveStore(findMSNs,:);
+plot(waveHolder')
+title('MSN Waveforms')
+
+%plot distribution of response types
+subplot(2,2,3)
+holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+det = hist(det,[-2:1:1]);
+pie(det)
+labels = {'Neg','Mix','None','Pos'};
+detZero = find(det == 0);
+labels(detZero) = [];
+legend(labels,'Location','eastoutside','Orientation','vertical')
+title(strcat('MSNs n=',num2str(length(findMSNs))))
+
+%plot out PV stuff
+
+subplot(2,2,2)
+hold on
+waveHolder = [];
+waveHolder = interpWaveStore(findPVs,:);
+plot(waveHolder')
+title('PV Waveforms')
+
+%plot distribution of response types
+subplot(2,2,4)
+holder = bigMaster(findPVs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+det = hist(det,[-2:1:1]);
+pie(det)
+labels = {'Neg','Mix','None','Pos'};
+detZero = find(det == 0);
+labels(detZero) = [];
+legend(labels,'Location','eastoutside','Orientation','vertical')
+title(strcat('PVs n=',num2str(length(findPVs))))
+
+spikeGraphName = 'PVMSNPieCharts';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+
+%column 1 plot spike width vs coefficient of variation
 subplot(4,4,1)
 hold on
 
+plot(bigMaster(:,indPkTr),bigMaster(:,indISI),'.','Color',[0.7 0.7 0.7])
 plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indISI),'k.')
 plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indISI),'r.')
 plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indISI),'g.')
 xlabel('Peak Trough (ms)')
 ylabel('ISI Coefficient of Variation')
 
-%now plot out spike width vs peak trough ratio
+%now plot out spike width vs half width
 subplot(4,4,5)
 hold on
 
-plot(bigMaster(:,indPkTr),pkTroughRatioStore(:),'k.')
-plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),pkTroughRatioStore(bigMaster(:,indCellType) == 1),'r.')
-plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),pkTroughRatioStore(bigMaster(:,indCellType) == 2),'g.')
+plot(bigMaster(:,indPkTr),halfWidth(:),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),halfWidth(bigMaster(:,indCellType) == 0),'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),halfWidth(bigMaster(:,indCellType) == 1),'r.')
+plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),halfWidth(bigMaster(:,indCellType) == 2),'g.')
 xlabel('Peak Trough (ms)')
-ylabel('Peak Trough Amplitude Ratio')
+ylabel('Half-Width (ms)')
 
 %plot out spike width with FR
 subplot(4,4,9)
 hold on
 
-plot(bigMaster(:,indPkTr),bigMaster(:,indBaseFire),'k.')
+plot(bigMaster(:,indPkTr),bigMaster(:,indBaseFire),'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indBaseFire),'k.')
 plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indBaseFire),'r.')
 plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indBaseFire),'g.')
 xlabel('Peak Trough (ms)')
@@ -604,7 +950,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0
 plotWid = ceil(sqrt(length(findPVs)));
 for i = 1:length(findPVs)
     subplot(plotWid,plotWid,i)
-    imagesc(binValBigStore(2:end,:,findPVs(i))')
+    imagesc(binValBigStore(:,:,findPVs(i))')
     colormap('parula')
     set(gca,'YTick',[]);
     set(gca,'XTick',[]);
@@ -625,7 +971,7 @@ set(hFig, 'Position', [10 80 1900 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(findPVs)
     subplot(plotWid,plotWid,i)
-    imagesc(sigValConv(2:end,:,findPVs(i))',clims)
+    imagesc(sigValConv(:,:,findPVs(i))',clims)
     colormap('parula')
     set(gca,'YTick',[]);
     set(gca,'XTick',[]);
@@ -647,7 +993,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0
 plotWid = ceil(sqrt(length(findMSNs)));
 for i = 1:length(findMSNs)
     subplot(plotWid,plotWid,i)
-    imagesc(binValBigStore(2:end,:,findMSNs(i))')
+    imagesc(binValBigStore(:,:,findMSNs(i))')
     colormap('parula')
     set(gca,'YTick',[]);
     set(gca,'XTick',[]);
@@ -668,7 +1014,7 @@ set(hFig, 'Position', [10 80 1900 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
 for i = 1:length(findMSNs)
     subplot(plotWid,plotWid,i)
-    imagesc(sigValConv(2:end,:,findMSNs(i))',clims)
+    imagesc(sigValConv(:,:,findMSNs(i))',clims)
     colormap('parula')
     set(gca,'YTick',[]);
     set(gca,'XTick',[]);
@@ -687,8 +1033,8 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %% now lets select for units with a minimum width of 3 at the tone window.
 %180905 new attempt. Will threshold by units that respond to at least two
-%things during tone period significantly. 
-tester = max(widthStore(:,:,2));%###########
+%things during tone period significantly.
+tester = max(widthStore(:,:,2));
 tarCells = find(tester >= 3);
 
 %first, we want to eliminate non-significant latencies
@@ -703,9 +1049,9 @@ widthLatConv = binSig.*widthLatStore;
 latConv(latConv == 0) = NaN;
 
 %lets separate white noise from the rest
-latConvWhite = latConv(1,:,:);
-latConvTone = latConv(2:end,:,:);
-latConvWidthTone = widthLatConv(2:end,:,:);
+% latConvWhite = latConv(1,:,:);
+latConvTone = latConv(:,:,:);
+latConvWidthTone = widthLatConv(:,:,:);
 
 %now lets extract targeted latencies. THIS IS FOR BIGGEST RESPONSE
 for i = 1:length(tarCells);
@@ -730,11 +1076,10 @@ hist(tarLats(tarPVs),latHistVect)
 xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(tarPVs)), ' FSI Min Latency Tone'))
 
-% subplot(3,2,2)
-% hist(minLatTonePV,latHistVect)
-% xlim([latHistVect(1) latHistVect(end)])
-% title(strcat(num2str(length(find(~isnan(minLatTonePV)))),' FSI Min Latency Pure Tone'))
-% % title('FSI Min Latency Pure Tone')
+% subplot(3,2,2) hist(minLatTonePV,latHistVect) xlim([latHistVect(1)
+% latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(minLatTonePV)))),' FSI Min
+% Latency Pure Tone')) % title('FSI Min Latency Pure Tone')
 
 subplot(3,2,3)
 hist(tarLats(tarMSNs),latHistVect)
@@ -742,18 +1087,17 @@ xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(tarMSNs)),' MSN Min Latency Tone'))
 % title('MSN Min Latency White Noise')
 
-% subplot(3,2,4)
-% hist(minLatToneMSN,latHistVect)
-% xlim([latHistVect(1) latHistVect(end)])
-% title(strcat(num2str(length(find(~isnan(minLatToneMSN)))),' MSN Min Latency Pure Tone'))
-% % title('MSN Min Latency Pure Tone')
+% subplot(3,2,4) hist(minLatToneMSN,latHistVect) xlim([latHistVect(1)
+% latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(minLatToneMSN)))),' MSN Min
+% Latency Pure Tone')) % title('MSN Min Latency Pure Tone')
 
 subplot(3,1,3)
 hold on
 bar(1:2,[nanmean(tarLats(tarPVs)),nanmean(tarLats(tarMSNs))],'w')
 errorbar(1:2,[nanmean(tarLats(tarPVs)),nanmean(tarLats(tarMSNs))],[nanstd(tarLats(tarPVs)),nanstd(tarLats(tarMSNs))])
-% xticks([1:4])
-% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+% xticks([1:4]) xticklabels({'FSI White','MSN White','FSI Tone','MSN
+% Tone'})
 
 spikeGraphName = 'width3BigRespLat';
 savefig(hFig,spikeGraphName);
@@ -766,20 +1110,20 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %lets look at just 70dB
 
-minLatWhitePV = squeeze((latConvWhite(:,5,tarCells(tarPVs))));
-minLatWhiteMSN = squeeze((latConvWhite(:,5,tarCells(tarMSNs))));
+% minLatWhitePV = squeeze((latConvWhite(:,5,tarCells(tarPVs))));
+% minLatWhiteMSN = squeeze((latConvWhite(:,5,tarCells(tarMSNs))));
 minLatTonePV = squeeze((min(latConvTone(:,5,tarCells(tarPVs)))));
 minLatToneMSN = squeeze((min(latConvTone(:,5,tarCells(tarMSNs)))));
 
 latHistVect = [0:0.001:0.1];
 
 hFig = figure;
-set(hFig, 'Position', [10 80 1900 1000])
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
-subplot(3,2,1)
-hist(minLatWhitePV,latHistVect)
-xlim([latHistVect(1) latHistVect(end)])
-title(strcat(num2str(length(find(~isnan(tarPVs)))), ' FSI Min Latency White Noise'))
+% set(hFig, 'Position', [10 80 1900 1000])
+% subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+% subplot(3,2,1)
+% hist(minLatWhitePV,latHistVect)
+% xlim([latHistVect(1) latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(tarPVs)))), ' FSI Min Latency White Noise'))
 
 subplot(3,2,2)
 hist(minLatTonePV,latHistVect)
@@ -787,11 +1131,11 @@ xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(find(~isnan(tarPVs)))),' FSI Min Latency Pure Tone'))
 % title('FSI Min Latency Pure Tone')
 
-subplot(3,2,3)
-hist(minLatWhiteMSN,latHistVect)
-xlim([latHistVect(1) latHistVect(end)])
-title(strcat(num2str(length(find(~isnan(tarMSNs)))),' MSN Min Latency White Noise'))
-% title('MSN Min Latency White Noise')
+% subplot(3,2,3)
+% hist(minLatWhiteMSN,latHistVect)
+% xlim([latHistVect(1) latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(tarMSNs)))),' MSN Min Latency White Noise'))
+% % title('MSN Min Latency White Noise')
 
 subplot(3,2,4)
 hist(minLatToneMSN,latHistVect)
@@ -801,10 +1145,10 @@ title(strcat(num2str(length(find(~isnan(tarMSNs)))),' MSN Min Latency Pure Tone'
 
 subplot(3,1,3)
 hold on
-bar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],'w')
-errorbar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],[nanstd(minLatWhitePV),nanstd(minLatWhiteMSN),nanstd(minLatTonePV),nanstd(minLatToneMSN)])
-% xticks([1:4])
-% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+bar(1:2,[nanmean(minLatTonePV),nanmean(minLatToneMSN)],'w')
+errorbar(1:2,[nanmean(minLatTonePV),nanmean(minLatToneMSN)],[nanstd(minLatTonePV),nanstd(minLatToneMSN)])
+% xticks([1:4]) xticklabels({'FSI White','MSN White','FSI Tone','MSN
+% Tone'})
 
 spikeGraphName = 'width3MinLat';
 savefig(hFig,spikeGraphName);
@@ -817,7 +1161,7 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %the results of this demonstrate that there is a weak difference in latency
 %that is insignificant. Looking at histograms, looks like this might be in
-%part due to a number of slower responding PV cells. 
+%part due to a number of slower responding PV cells.
 
 %lets try and look on a recording by recording basis
 tarRec = recStore(tarCells)';
@@ -839,7 +1183,7 @@ end
 tarRec(:,4) = tarLats;
 tester = [-.2:0.0005:0.4];
 %Doesnt look like a per-recording analysis will pull out anything different
-%really. 
+%really.
 
 
 
@@ -851,7 +1195,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0
 plotWid = ceil(sqrt(length(tarPVs)));
 for i = 1:length(tarPVs)
     subplot(plotWid,plotWid,i)
-    imagesc(binValBigStore(2:end,:,tarCells(tarPVs(i)))')
+    imagesc(binValBigStore(:,:,tarCells(tarPVs(i)))')
     colormap('parula')
     set(gca,'YTick',[]);
     set(gca,'XTick',[]);
@@ -873,7 +1217,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0
 plotWid = ceil(sqrt(length(tarMSNs)));
 for i = 1:length(tarMSNs)
     subplot(plotWid,plotWid,i)
-    imagesc(binValBigStore(2:end,:,tarCells(tarMSNs(i)))')
+    imagesc(binValBigStore(:,:,tarCells(tarMSNs(i)))')
     colormap('parula')
     set(gca,'YTick',[]);
     set(gca,'XTick',[]);
@@ -944,8 +1288,8 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-%we can also now try and do this for all units. 
-%lets z score everything first
+%we can also now try and do this for all units. lets z score everything
+%first
 % tarHists = fineHist;
 latFineHist(:,1) = 0;
 latFineHist(:,end) = 0;
@@ -1054,8 +1398,8 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-% now lets try and plot out width, threshold, with the width of 3 setup. 
-%first do PVs. 
+% now lets try and plot out width, threshold, with the width of 3 setup.
+%first do PVs.
 threshStorePV = [];
 for i = 1:length(tarPVs)
     tester = sigValConv(2:end,:,tarCells(tarPVs(i)));
@@ -1083,7 +1427,7 @@ end
 
 ylimThresh = [0 30];
 ylimWidth = [0 10];
-%plot this out. 
+%plot this out.
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [10 80 1900 1000])
@@ -1131,7 +1475,7 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-% plot out BFs of width 3 selected units. 
+% plot out BFs of width 3 selected units.
 
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
@@ -1281,11 +1625,10 @@ hist(tarLats(tarPVs),latHistVect)
 xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(tarPVs)), ' FSI Min Latency Tone'))
 
-% subplot(3,2,2)
-% hist(minLatTonePV,latHistVect)
-% xlim([latHistVect(1) latHistVect(end)])
-% title(strcat(num2str(length(find(~isnan(minLatTonePV)))),' FSI Min Latency Pure Tone'))
-% % title('FSI Min Latency Pure Tone')
+% subplot(3,2,2) hist(minLatTonePV,latHistVect) xlim([latHistVect(1)
+% latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(minLatTonePV)))),' FSI Min
+% Latency Pure Tone')) % title('FSI Min Latency Pure Tone')
 
 subplot(3,2,3)
 hist(tarLats(tarMSNs),latHistVect)
@@ -1293,18 +1636,17 @@ xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(tarMSNs)),' MSN Min Latency Tone'))
 % title('MSN Min Latency White Noise')
 
-% subplot(3,2,4)
-% hist(minLatToneMSN,latHistVect)
-% xlim([latHistVect(1) latHistVect(end)])
-% title(strcat(num2str(length(find(~isnan(minLatToneMSN)))),' MSN Min Latency Pure Tone'))
-% % title('MSN Min Latency Pure Tone')
+% subplot(3,2,4) hist(minLatToneMSN,latHistVect) xlim([latHistVect(1)
+% latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(minLatToneMSN)))),' MSN Min
+% Latency Pure Tone')) % title('MSN Min Latency Pure Tone')
 
 subplot(3,1,3)
 hold on
 bar(1:2,[nanmean(tarLats(tarPVs)),nanmean(tarLats(tarMSNs))],'w')
 errorbar(1:2,[nanmean(tarLats(tarPVs)),nanmean(tarLats(tarMSNs))],[nanstd(tarLats(tarPVs)),nanstd(tarLats(tarMSNs))])
-% xticks([1:4])
-% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+% xticks([1:4]) xticklabels({'FSI White','MSN White','FSI Tone','MSN
+% Tone'})
 
 spikeGraphName = '5ValBigRespLat';
 savefig(hFig,spikeGraphName);
@@ -1316,9 +1658,9 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %lets look at just 70dB
-
-minLatWhitePV = squeeze((latConvWhite(:,5,tarCells(tarPVs))));
-minLatWhiteMSN = squeeze((latConvWhite(:,5,tarCells(tarMSNs))));
+% 
+% minLatWhitePV = squeeze((latConvWhite(:,5,tarCells(tarPVs))));
+% minLatWhiteMSN = squeeze((latConvWhite(:,5,tarCells(tarMSNs))));
 minLatTonePV = squeeze((min(latConvTone(:,5,tarCells(tarPVs)))));
 minLatToneMSN = squeeze((min(latConvTone(:,5,tarCells(tarMSNs)))));
 
@@ -1327,22 +1669,22 @@ latHistVect = [0:0.001:0.1];
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
-subplot(3,2,1)
-hist(minLatWhitePV,latHistVect)
-xlim([latHistVect(1) latHistVect(end)])
-title(strcat(num2str(length(find(~isnan(tarPVs)))), ' FSI Min Latency White Noise'))
-
+% subplot(3,2,1)
+% hist(minLatWhitePV,latHistVect)
+% xlim([latHistVect(1) latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(tarPVs)))), ' FSI Min Latency White Noise'))
+% 
 subplot(3,2,2)
 hist(minLatTonePV,latHistVect)
 xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(find(~isnan(tarPVs)))),' FSI Min Latency Pure Tone'))
 % title('FSI Min Latency Pure Tone')
 
-subplot(3,2,3)
-hist(minLatWhiteMSN,latHistVect)
-xlim([latHistVect(1) latHistVect(end)])
-title(strcat(num2str(length(find(~isnan(tarMSNs)))),' MSN Min Latency White Noise'))
-% title('MSN Min Latency White Noise')
+% subplot(3,2,3)
+% hist(minLatWhiteMSN,latHistVect)
+% xlim([latHistVect(1) latHistVect(end)])
+% title(strcat(num2str(length(find(~isnan(tarMSNs)))),' MSN Min Latency White Noise'))
+% % title('MSN Min Latency White Noise')
 
 subplot(3,2,4)
 hist(minLatToneMSN,latHistVect)
@@ -1352,10 +1694,10 @@ title(strcat(num2str(length(find(~isnan(tarMSNs)))),' MSN Min Latency Pure Tone'
 
 subplot(3,1,3)
 hold on
-bar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],'w')
-errorbar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],[nanstd(minLatWhitePV),nanstd(minLatWhiteMSN),nanstd(minLatTonePV),nanstd(minLatToneMSN)])
-% xticks([1:4])
-% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+bar(1:2,[nanmean(minLatTonePV),nanmean(minLatToneMSN)],'w')
+errorbar(1:2,[nanmean(minLatTonePV),nanmean(minLatToneMSN)],[nanstd(minLatTonePV),nanstd(minLatToneMSN)])
+% xticks([1:4]) xticklabels({'FSI White','MSN White','FSI Tone','MSN
+% Tone'})
 
 spikeGraphName = '5ValMinLat';
 savefig(hFig,spikeGraphName);
@@ -1368,7 +1710,7 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %the results of this demonstrate that there is a weak difference in latency
 %that is insignificant. Looking at histograms, looks like this might be in
-%part due to a number of slower responding PV cells. 
+%part due to a number of slower responding PV cells.
 
 %lets try and look on a recording by recording basis
 tarRec = recStore(tarCells)';
@@ -1390,7 +1732,7 @@ end
 tarRec(:,4) = tarLats;
 tester = [-.2:0.0005:0.4];
 %Doesnt look like a per-recording analysis will pull out anything different
-%really. 
+%really.
 
 
 
@@ -1402,7 +1744,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0
 plotWid = ceil(sqrt(length(tarPVs)));
 for i = 1:length(tarPVs)
     subplot(plotWid,plotWid,i)
-    imagesc(binValBigStore(2:end,:,tarCells(tarPVs(i)))')
+    imagesc(binValBigStore(:,:,tarCells(tarPVs(i)))')
     colormap('parula')
     set(gca,'YTick',[]);
     set(gca,'XTick',[]);
@@ -1424,7 +1766,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0
 plotWid = ceil(sqrt(length(tarMSNs)));
 for i = 1:length(tarMSNs)
     subplot(plotWid,plotWid,i)
-    imagesc(binValBigStore(2:end,:,tarCells(tarMSNs(i)))')
+    imagesc(binValBigStore(:,:,tarCells(tarMSNs(i)))')
     colormap('parula')
     set(gca,'YTick',[]);
     set(gca,'XTick',[]);
@@ -1495,8 +1837,8 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-%we can also now try and do this for all units. 
-%lets z score everything first
+%we can also now try and do this for all units. lets z score everything
+%first
 % tarHists = fineHist;
 latFineHist(:,1) = 0;
 latFineHist(:,end) = 0;
@@ -1605,8 +1947,74 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-% now lets try and plot out width, threshold, with the width of 3 setup. 
-%first do PVs. 
+%now lets pull the height based width values, and the centers of these
+%"responses"
+% pvHeightWidth = bigWidthSelWidth(:,:,tarCells(tarPVs));
+% msnHeightWidth = bigWidthSelWidth(:,:,tarCells(tarMSNs));
+tarCellHeightWidth = bigWidthSelWidth(:,:,tarCells);
+
+% pvMaxPos = bigWidthMaxPosStore(:,tarCells(tarPVs));
+% msnMaxPos = bigWidthMaxPosStore(:,tarCells(tarMSNs));
+tarCellMaxPos = bigWidthMaxPosStore(:,tarCells);
+
+%now lets determine whether significant values exist at each DB level.
+sigCut = 0.05;
+abbrevSig = signSigStore(:,:,tarCells);
+for i = 1:length(tarCells)
+    tester = min(squeeze(abbrevSig(:,:,i)));
+    tester(tester <= sigCut) = 10;
+    tester(tester < 10) = 0;
+    tester(tester == 10) = 1;
+    
+    sigStore5Val(:,i) = tester;
+end
+sigStore5Val(sigStore5Val~=1) = 0;
+
+%ok, now we have significant values, max points, and the detected width in
+%each direction. Lets try and pull things out now?
+
+sigWidthStore = zeros(size(sigStore5Val));
+sideWarnLow = zeros(size(sigStore5Val));
+sideWarnHi = zeros(size(sigStore5Val));
+for i = 1:length(tarCells)
+    for j = 1:size(sigStore5Val,1)
+        %first, check if there is a significant value
+        if sigStore5Val(j,i) == 1
+            %now check for width values. If NaN on either side, determine
+            %edge.
+            %start with lower edge. 
+            if isnan(tarCellHeightWidth(j,1,i))
+                lowWidth = tarCellMaxPos(j,i);
+                sideWarnLow(j,i) = 1;
+            else
+                lowWidth = tarCellHeightWidth(j,1,i);
+            end
+            if isnan(tarCellHeightWidth(j,2,i))
+                hiWidth = 16 - tarCellMaxPos(j,i);
+                sideWarnHi(j,i) = 1;
+            else
+                hiWidth = tarCellHeightWidth(j,2,i);
+            end
+            sigWidthStore(j,i) = hiWidth + lowWidth;
+        end
+    end
+end
+
+%now separate to MSNs vs FSIs
+sigWidthPV = sigWidthStore(:,tarPVs);
+sigWidthMSN = sigWidthStore(:,tarMSNs);
+
+%now lets just do some ugly stuff and look only at 70dB point. 
+widthValsPV = sigWidthPV(5,:);
+widthValsMSN = sigWidthMSN(5,:);
+
+widthHistVect = [0:0.5:16];
+histValPV = hist(widthValsPV,widthHistVect);
+histValMSN = hist(widthValsMSN,widthHistVect);
+
+
+% now lets try and plot out width, threshold, with the width of 3 setup.
+%first do PVs.
 threshStorePV = [];
 for i = 1:length(tarPVs)
     tester = sigValConv(2:end,:,tarCells(tarPVs(i)));
@@ -1634,7 +2042,7 @@ end
 
 ylimThresh = [0 30];
 ylimWidth = [0 10];
-%plot this out. 
+%plot this out.
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [10 80 1900 1000])
@@ -1657,7 +2065,7 @@ set(gca,'XTickLabel',{'<=20','30','40','60','70'});
 ylim(ylimThresh)
 
 subplot(2,2,3)
-hist(firstWidthPV(5,pvIndex),[1:1:16])
+hist(widthValsPV,[1:1:16])
 xlim([0.5 16.5])
 ylim(ylimWidth)
 ylabel('Number of Cells')
@@ -1666,7 +2074,7 @@ title(strcat('Tuning Width (FSIs) Mean:',num2str(mean(firstWidthPV(5,pvIndex))),
 % title('Tuning Width (FSIs)')
 
 subplot(2,2,4)
-hist(firstWidthMSN(5,msnsIndex),[1:1:16])
+hist(widthValsMSN,[1:1:16])
 xlim([0.5 16.5])
 ylim(ylimWidth)
 ylabel('Number of Cells')
@@ -1682,7 +2090,7 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-% plot out BFs of width 3 selected units. 
+% plot out BFs of width 3 selected units.
 
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
@@ -1725,16 +2133,16 @@ for i = 1:5
     %find PVs with threshold of a target value
     finder = find(threshStorePV == i);
     if finder
-        hist(firstWidthPV(5,pvIndex(finder)),[1:1:16])
-        testVal = mean(firstWidthPV(5,pvIndex(finder)));
+        hist(sigWidthPV(i,finder),[1:1:16])
+        testVal = mean(sigWidthPV(i,(finder)));
         title(strcat('FSI Width for Amp Level',num2str(i),'Mean',num2str(testVal)))
     end
     subplot(2,5,i+5)
     %find MSNs with threshold of a target value
     finder = find(threshStoreMSN == i);
     if finder
-        hist(firstWidthMSN(5,msnsIndex(finder)),[1:1:16])
-        testVal = mean(firstWidthMSN(5,msnsIndex(finder)));
+        hist(sigWidthMSN(i,(finder)),[1:1:16])
+        testVal = mean(sigWidthMSN(i,(finder)));
         title(strcat('MSN Width for Amp Level',num2str(i),'Mean',num2str(testVal)))
     end
 end
@@ -1753,12 +2161,12 @@ hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [80 80 1900 1000])
 subplot(2,1,1)
-plot(bfStore(tarCells(tarPVs)),firstWidthPV(5,pvIndex),'k.')
+plot(bfStore(tarCells(tarPVs)),sigWidthPV(5,:),'k.')
 xlabel('BF')
 ylabel('Tuning Width')
 title('FSI Width vs BF')
 subplot(2,1,2)
-plot(bfStore(tarCells(tarMSNs)),firstWidthMSN(5,msnsIndex),'k.')
+plot(bfStore(tarCells(tarMSNs)),sigWidthMSN(5,:),'k.')
 xlabel('BF')
 ylabel('Tuning Width')
 title('MSN Width vs BF')
@@ -1774,11 +2182,26 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %now lets plot BF vs width with points overlaid
 hFig = figure;
+tester = unique(bfStore);%pull all frequencies
+tester = tester(~isnan(tester)); %remove nan values
+bfMeanStore = NaN(length(tester),2);
+for i = 1:length(tester)
+    bfPVs = find(bfStore(tarCells(tarPVs)) == tester(i));
+    if length(bfPVs)>0 && length(~isnan(sigWidthPV(5,(bfPVs)))) > 2
+        bfMeanStore(i,2) = nanmean(sigWidthPV(5,(bfPVs)));
+    end
+    bfMSNs = find(bfStore(tarCells(tarMSNs)) == tester(i));
+    if length(bfMSNs) > 0 && length(~isnan(sigWidthMSN(5,(bfMSNs)))) > 2
+        bfMeanStore(i,1) = nanmean(sigWidthMSN(5,(bfMSNs)));
+    end
+end
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [80 80 1900 1000])
-plot(bfStore(tarCells(tarPVs)),firstWidthPV(5,pvIndex),'ro')
+plot(bfStore(tarCells(tarPVs)),sigWidthPV(5,:),'ro')
 hold on
-plot(bfStore(tarCells(tarMSNs)),firstWidthMSN(5,msnsIndex),'k.')
+plot(bfStore(tarCells(tarMSNs)),sigWidthMSN(5,:),'ko')
+plot(tester,bfMeanStore(:,1),'k*','LineWidth',2)
+plot(tester,bfMeanStore(:,2),'r*','LineWidth',2)
 xlabel('BF')
 ylabel('Tuning Width')
 title('FSI (r) or MSN (k) Width vs BF')
@@ -1839,8 +2262,8 @@ subplot(3,1,3)
 hold on
 bar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],'w')
 errorbar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],[nanstd(minLatWhitePV),nanstd(minLatWhiteMSN),nanstd(minLatTonePV),nanstd(minLatToneMSN)])
-% xticks([1:4])
-% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+% xticks([1:4]) xticklabels({'FSI White','MSN White','FSI Tone','MSN
+% Tone'})
 
 spikeGraphName = 'latencyPlot';
 savefig(hFig,spikeGraphName);
@@ -1851,7 +2274,7 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-%plot using latencies from width finder. 
+%plot using latencies from width finder.
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
@@ -1882,8 +2305,8 @@ subplot(3,1,3)
 hold on
 bar(1:4,[nanmean(minLatWhitePVWidth),nanmean(minLatWhiteMSNWidth),nanmean(minLatTonePVWidth),nanmean(minLatToneMSNWidth)],'w')
 errorbar(1:4,[nanmean(minLatWhitePVWidth),nanmean(minLatWhiteMSNWidth),nanmean(minLatTonePVWidth),nanmean(minLatToneMSNWidth)],[nanstd(minLatWhitePVWidth),nanstd(minLatWhiteMSNWidth),nanstd(minLatTonePVWidth),nanstd(minLatToneMSNWidth)])
-% xticks([1:4])
-% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+% xticks([1:4]) xticklabels({'FSI White','MSN White','FSI Tone','MSN
+% Tone'})
 
 spikeGraphName = 'WidLatencyPlot';
 savefig(hFig,spikeGraphName);
@@ -1894,7 +2317,7 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 %based on this, there clearly is some failure of width based latency
-%calculations. 
+%calculations.
 
 
 %now lets look at specific amplitudes?
@@ -1935,8 +2358,8 @@ subplot(3,1,3)
 hold on
 bar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],'w')
 errorbar(1:4,[nanmean(minLatWhitePV),nanmean(minLatWhiteMSN),nanmean(minLatTonePV),nanmean(minLatToneMSN)],[nanstd(minLatWhitePV),nanstd(minLatWhiteMSN),nanstd(minLatTonePV),nanstd(minLatToneMSN)])
-% xticks([1:4])
-% xticklabels({'FSI White','MSN White','FSI Tone','MSN Tone'})
+% xticks([1:4]) xticklabels({'FSI White','MSN White','FSI Tone','MSN
+% Tone'})
 
 spikeGraphName = 'latencyPlot70DB';
 savefig(hFig,spikeGraphName);
@@ -1955,10 +2378,10 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 pvTarget = find(infoStorePV(:,5)==1);
 msnTarget = find(infoStoreMSN(:,5)==1);
-%limit by same 5 value limit. 
+%limit by same 5 value limit.
 
 sigLim = 5;
-%find 
+%find
 tester = binSig(2:end,:,findPVs);
 counter = 1;
 for i = 1:length(findPVs)
@@ -2074,7 +2497,7 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %% Now lets look at what the threshold of activation is. 
 
-%first do PVs. 
+%first do PVs.
 threshStorePV = [];
 for i = 1:length(pvTarget)
     tester = sigValConv(2:end,:,findPVs(pvTarget(i)));
@@ -2095,7 +2518,7 @@ for i = 1:length(msnTarget)
 end
 
 
-%plot this out. 
+%plot this out.
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [10 80 1900 1000])
@@ -2178,8 +2601,8 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 % Now plot out latencies?
 
-% minLatWhitePV = squeeze(min(latConvWhite(:,:,findPVs)));
-% minLatWhiteMSN = squeeze(min(latConvWhite(:,:,findMSNs)));
+% minLatWhitePV = squeeze(min(latConvWhite(:,:,findPVs))); minLatWhiteMSN =
+% squeeze(min(latConvWhite(:,:,findMSNs)));
 minLatTonePV = squeeze(min(min(latConvTone(:,:,findPVs(pvTarget)))));
 minLatToneMSN = squeeze(min(min(latConvTone(:,:,findMSNs(msnTarget)))));
 hFig = figure;
@@ -2214,8 +2637,7 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-%plot for everything. 
-%first do PVs. 
+%plot for everything. first do PVs.
 threshStorePV = [];
 for i = 1:length(findPVs)
     tester = sigValConv(2:end,:,findPVs(i));
@@ -2245,7 +2667,7 @@ for i = 1:length(findMSNs)
 %     threshStoreMSN(i) = testFind;
 end
 
-%plot this out. 
+%plot this out.
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [10 80 1900 1000])
@@ -2292,27 +2714,25 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 ranksum(threshStorePV,threshStoreMSN)
 ranksum(firstWidthPV(5,pvTarget),firstWidthMSN(5,msnTarget))
 
-%These plots and stats indicate the following: 
-%overall, if we look at all cells, there isnt a significant change in
-%threshold between MSNs and FSIs. This is code the relies upon the first
-%detected significant response, however, so it is susceptible to noise.
-%However, things do look somewhat different in the plot.
-%Looking at the overall though, there definitely appears to be a
-%significant difference in the tuning width, which is in part driven
-%strongly by the fact that many MSNs are non-responsive. 
+%These plots and stats indicate the following: overall, if we look at all
+%cells, there isnt a significant change in threshold between MSNs and FSIs.
+%This is code the relies upon the first detected significant response,
+%however, so it is susceptible to noise. However, things do look somewhat
+%different in the plot. Looking at the overall though, there definitely
+%appears to be a significant difference in the tuning width, which is in
+%part driven strongly by the fact that many MSNs are non-responsive.
 
 %If we look at only neurons that have somewhat correctly shaped tuning
 %curves, we find that both threshold and width are skewed in favor of FSIs
-%in a significant fashion. 
+%in a significant fashion.
 
 %as a next step, lets examine the plots with MSNs taht are labeled as
-%having positive responses. 
+%having positive responses.
 
-%plot for JUST significant responders
-%first do PVs. 
+%plot for JUST significant responders first do PVs.
 
 sigLim = 5;
-%find 
+%find
 tester = binSig(2:end,:,findPVs);
 counter = 1;
 for i = 1:length(findPVs)
@@ -2363,7 +2783,7 @@ for i = 1:length(sigMSNs)
 %     threshStoreMSN(i) = testFind;
 end
 
-%plot this out. 
+%plot this out.
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [10 80 1900 1000])
@@ -2412,7 +2832,7 @@ ranksum(firstWidthPV(5,sigPVs),firstWidthMSN(5,sigMSNs))
 
 %If we only include neurons that have responses that are not to white
 %noises at at least 5 points, then we see a significant difference in
-%threshold and width. 
+%threshold and width.
 
 %lets apply these groups to latency calculations
 
@@ -2475,7 +2895,7 @@ ranksum(minmin5ValPV,minmin5ValMSN)
 ranksum(minminLatTarPV,minminLatTarMSN)
 
 
-%now lets try just looking at max amplitude. 
+%now lets try just looking at max amplitude.
 
 minmin5ValPV = (minLat5ValPV(5,:));
 minmin5ValMSN = (minLat5ValMSN(5,:));
