@@ -9,7 +9,7 @@ function medWFs = extractMedianWFs(clu, st, Fs, datPath, dataType, dataSize, cha
 % >> cluSub = clu(ismember(clu, cids(cgs==2))); % and same for spike times
 %
 % - clu [nSpikes,1] cluster identities %MAX spClu
-% - st [nSpikes,1] spike times (sec) %MAX spTimeSec
+% - st [nSpikes,1] spike times in trodes sampletime 190327 edit %MAX spTime
 % - Fs [1,1] sampling frequency %MAX 30000
 % - datPath [string] filename %MAX (for phy.dat) E:\maxKilo\maxFsiXcorr5
 % - dataType [string] e.g. 'int16' %Max 'int16'
@@ -36,9 +36,12 @@ medWFs = zeros(nClu, nCh, nWFsamps);
 for q = 1:nClu
     fprintf(1, 'cluster %d (%d/%d)\n', cids(q), q, nClu);
     theseST = st(clu==cids(q));
+    %now lets add a limiter to avoid issues of exceeding bounds
+    theseST((theseST + wfWin(2) > size(mmf.Data.x,2))) = [];
+    theseST((theseST + wfWin(1) < 1)) = [];
     
     nWFsToLoad = min(nWFsToLoad, length(theseST));
-    extractST = round(theseST(randperm(length(theseST), nWFsToLoad))*Fs);
+    extractST = round(theseST(randperm(length(theseST), nWFsToLoad)));
     
     theseWF = zeros(nWFsToLoad, nCh, nWFsamps);
     for i=1:nWFsToLoad
