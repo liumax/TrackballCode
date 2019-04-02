@@ -188,6 +188,7 @@ for i = 1:numFiles
         
         fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:binSize:0.4])/binSize/length(toneFinder);
         nameStore{bigMasterInd + j -1} = targetFiles{i};
+        recNumStore(bigMasterInd+j-1) = i;
         unitStore{bigMasterInd + j -1} = desigName{j};
     end
     halfWidthTimeStore(bigMasterInd:bigMasterInd + numUnits - 1) = halfWidthTime;
@@ -278,6 +279,16 @@ for i = 1:numFiles
         
 end
 
+%% determine unit balance for each recording
+
+for i = 1:numFiles
+    %find targets
+    tarFind = find(recNumStore == i);
+    %now find number of MSNs and FSIs
+    cellRecStore(i,1) = length(find(bigMaster(tarFind,7) == 0));
+    cellRecStore(i,2) = length(find(bigMaster(tarFind,7) == 1));
+end
+
 %% now lets march through the correlation coefficient data and see what we pull out. First things first, I want to remove all the excess values, since I dont want double counting. 
 %lets define interactions! There are three cell types, and therefore six
 %interactions: FSI-MSN, FSI-ChAT, FSI-FSI, MSN-ChAT, MSN-MSN, ChAT-ChAT. 
@@ -291,6 +302,48 @@ end
 % MSN-ChAT: 4
 % FSI-ChAT: 5
 % ChAT-ChAT: 8
+
+%First, lets use this as a platform to determine the number of possible FSI
+%-MSN pairs I can sample within a reasonable distance of each other
+tarCorrs = [2,9,10,13,15,16];
+
+corrCount = 1;
+cellCount = 1;
+for i = 1:length(tarCorrs)
+    dataset = bigCorrStore{tarCorrs(i)};
+    %now lets try and linearize this dataset. 
+    numUnits = length(dataset.CellType);
+    for j = 1:numUnits
+        corrValStoreRestrict(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefs(j,j+1:end);
+        distValStoreRestrict(corrCount:corrCount + numUnits - j - 1) = dataset.Distance(j,j+1:end);
+        interTypeStoreRestrict(corrCount:corrCount + numUnits - j - 1) = dataset.CellType(j)+ dataset.CellType(j+1:end);
+        corrValSigStoreRestrict(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefSig(j,j+1:end);
+        cellTrackerStoreRestrict(corrCount:corrCount + numUnits - j - 1,1) = i;
+        cellTrackerStoreRestrict(corrCount:corrCount + numUnits - j - 1,2) = j+cellCount-1;
+        cellTrackerStoreRestrict(corrCount:corrCount + numUnits - j - 1,3) = cellCount + (j+1:numUnits) - 1;
+        cellTrackerStoreRestrict(corrCount:corrCount + numUnits - j - 1,4) = dataset.CellType(j);
+        cellTrackerStoreRestrict(corrCount:corrCount + numUnits - j - 1,5) = dataset.CellType(j+1:numUnits);
+        cellTrackerStoreRestrict(corrCount:corrCount + numUnits - j - 1,6) = bigMaster(j+cellCount-1,2);
+        cellTrackerStoreRestrict(corrCount:corrCount + numUnits - j - 1,7) = bigMaster(cellCount + (j+1:numUnits) - 1,2);
+        
+        corrCount = corrCount + numUnits - j;
+    end
+    cellCount = cellCount + numUnits;
+end
+
+%now lets clean up the dataset. Remove all NaNs. 
+corrValStoreRestrict(isnan(interTypeStoreRestrict)) = [];
+distValStoreRestrict(isnan(interTypeStoreRestrict)) = [];
+cellTrackerStoreRestrict(isnan(interTypeStoreRestrict),:) = [];
+corrValSigStoreRestrict(isnan(interTypeStoreRestrict)) = [];
+interTypeStoreRestrict(isnan(interTypeStoreRestrict)) = [];
+
+%MSN vs FSI, close
+selDist = 10000;
+selInterType = 1;
+
+
+findTarCorr = intersect(find(distValStoreRestrict <= selDist),find(interTypeStoreRestrict == selInterType));
 
 
 corrCount = 1;
@@ -332,32 +385,57 @@ selDist = 150;
 selInterType = 0;
 
 findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
+hFig = figure;
 corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
 sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
 corrValmsnmsnSig = hist(corrValStore(sigInt),corrHistVect);
 hold on
-bar(corrHistVect,corrValmsnmsn)
+bar(corrHistVect,corrValmsnmsn,'w')
 bar(corrHistVect,corrValmsnmsnSig,'k')
 % hist(corrValStore(findTarCorr),corrHistVect)
 xlim([-1 1])
+set(gca,'TickDir','out');
 % corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
+xlabel('Correlation Coefficient')
+ylabel('Number of Pairwise Comparisons')
+
+
+spikeGraphName = 'TuningCorrelationMSN';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %just FSIs, close
 selDist = 150;
 selInterType = 2;
 
-
 findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
+hFig = figure;
 corrValfsifsi = hist(corrValStore(findTarCorr),corrHistVect);
 sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
 corrValfsifsiSig = hist(corrValStore(sigInt),corrHistVect);
 hold on
-bar(corrHistVect,corrValfsifsi)
+bar(corrHistVect,corrValfsifsi,'w')
 bar(corrHistVect,corrValfsifsiSig,'k')
 % hist(corrValStore(findTarCorr),corrHistVect)
 xlim([-1 1])
+set(gca,'TickDir','out');
+xlabel('Correlation Coefficient')
+ylabel('Number of Pairwise Comparisons')
+
+
+spikeGraphName = 'TuningCorrelationFSI';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 %MSN vs FSI, close
@@ -366,15 +444,118 @@ selInterType = 1;
 
 
 findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
+hFig = figure;
 corrValfsimsn = hist(corrValStore(findTarCorr),corrHistVect);
 sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
 corrValfsimsnSig = hist(corrValStore(sigInt),corrHistVect);
 hold on
-bar(corrHistVect,corrValfsimsn)
+bar(corrHistVect,corrValfsimsn,'w')
 bar(corrHistVect,corrValfsimsnSig,'k')
 % hist(corrValStore(findTarCorr),corrHistVect)
 xlim([-1 1])
+set(gca,'TickDir','out');
+xlabel('Correlation Coefficient')
+ylabel('Number of Pairwise Comparisons')
+
+
+spikeGraphName = 'TuningCorrelationFSIMSN';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%NOW DO THESE ALL FAR
+%just MSNs, close
+selDist = 1200;
+selInterType = 0;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+hFig = figure;
+corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
+sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
+corrValmsnmsnSig = hist(corrValStore(sigInt),corrHistVect);
+hold on
+bar(corrHistVect,corrValmsnmsn,'w')
+bar(corrHistVect,corrValmsnmsnSig,'k')
+% hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+set(gca,'TickDir','out');
+% corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
+xlabel('Correlation Coefficient')
+ylabel('Number of Pairwise Comparisons')
+
+
+spikeGraphName = 'allDistTuningCorrelationMSN';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%just FSIs, close
+selDist = 1200;
+selInterType = 2;
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+hFig = figure;
+corrValfsifsi = hist(corrValStore(findTarCorr),corrHistVect);
+sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
+corrValfsifsiSig = hist(corrValStore(sigInt),corrHistVect);
+hold on
+bar(corrHistVect,corrValfsifsi,'w')
+bar(corrHistVect,corrValfsifsiSig,'k')
+% hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+set(gca,'TickDir','out');
+xlabel('Correlation Coefficient')
+ylabel('Number of Pairwise Comparisons')
+
+
+spikeGraphName = 'allDistTuningCorrelationFSI';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%MSN vs FSI, close
+selDist = 1200;
+selInterType = 1;
+
+
+findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+hFig = figure;
+corrValfsimsn = hist(corrValStore(findTarCorr),corrHistVect);
+sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
+corrValfsimsnSig = hist(corrValStore(sigInt),corrHistVect);
+hold on
+bar(corrHistVect,corrValfsimsn,'w')
+bar(corrHistVect,corrValfsimsnSig,'k')
+% hist(corrValStore(findTarCorr),corrHistVect)
+xlim([-1 1])
+set(gca,'TickDir','out');
+xlabel('Correlation Coefficient')
+ylabel('Number of Pairwise Comparisons')
+
+
+spikeGraphName = 'allDistTuningCorrelationFSIMSN';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
 
 %MSN vs ChAT, close
 selDist = 150;
@@ -861,7 +1042,7 @@ stem3(widthVal/300000,halfWidth/300000,bigMaster(:,8))
 % 
 % findMSNs = find(bigMaster(:,indCellType) == 0);
 
-findCHATs = find(bigMaster(:,indCellType) == 2);
+findCHATs = find(bigMaster(:,5) > 0.0005 & bigMaster(:,6) < 1.1);
 
 
 findPVs = find(bigMaster(:,5) < 0.0004 & bigMaster(:,6) > 1.1);
@@ -1547,6 +1728,7 @@ subplot(3,2,1)
 hist(tarLats(tarPVs),latHistVect)
 xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(tarPVs)), ' FSI Min Latency Tone'))
+set(gca,'TickDir','out');
 
 % subplot(3,2,2) hist(minLatTonePV,latHistVect) xlim([latHistVect(1)
 % latHistVect(end)])
@@ -1557,6 +1739,7 @@ subplot(3,2,3)
 hist(tarLats(tarMSNs),latHistVect)
 xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(tarMSNs)),' MSN Min Latency Tone'))
+set(gca,'TickDir','out');
 % title('MSN Min Latency White Noise')
 
 % subplot(3,2,4) hist(minLatToneMSN,latHistVect) xlim([latHistVect(1)
@@ -1568,6 +1751,7 @@ subplot(3,1,3)
 hold on
 bar(1:2,[nanmean(tarLats(tarPVs)),nanmean(tarLats(tarMSNs))],'w')
 errorbar(1:2,[nanmean(tarLats(tarPVs)),nanmean(tarLats(tarMSNs))],[nanstd(tarLats(tarPVs)),nanstd(tarLats(tarMSNs))])
+set(gca,'TickDir','out');
 % xticks([1:4]) xticklabels({'FSI White','MSN White','FSI Tone','MSN
 % Tone'})
 
@@ -1601,6 +1785,7 @@ subplot(3,2,2)
 hist(minLatTonePV,latHistVect)
 xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(find(~isnan(tarPVs)))),' FSI Min Latency Pure Tone'))
+set(gca,'TickDir','out');
 % title('FSI Min Latency Pure Tone')
 
 % subplot(3,2,3)
@@ -1613,12 +1798,14 @@ subplot(3,2,4)
 hist(minLatToneMSN,latHistVect)
 xlim([latHistVect(1) latHistVect(end)])
 title(strcat(num2str(length(find(~isnan(tarMSNs)))),' MSN Min Latency Pure Tone'))
+set(gca,'TickDir','out');
 % title('MSN Min Latency Pure Tone')
 
 subplot(3,1,3)
 hold on
 bar(1:2,[nanmean(minLatTonePV),nanmean(minLatToneMSN)],'w')
 errorbar(1:2,[nanmean(minLatTonePV),nanmean(minLatToneMSN)],[nanstd(minLatTonePV),nanstd(minLatToneMSN)])
+set(gca,'TickDir','out');
 % xticks([1:4]) xticklabels({'FSI White','MSN White','FSI Tone','MSN
 % Tone'})
 
@@ -1718,6 +1905,7 @@ hFig = figure;
 hold on
 plot([-.2:0.0005:0.4],mean(zHists((tarPVs),:))-mean(zHists((tarPVs),401)),'r')
 plot([-.2:0.0005:0.4],mean(zHists((tarMSNs),:))-mean(zHists((tarMSNs),401)),'k')
+set(gca,'TickDir','out');
 spikeGraphName = '5ValAverageZPlotsMSNrFSIb';
 savefig(hFig,spikeGraphName);
 
@@ -1731,6 +1919,7 @@ hFig = figure;
 hold on
 plot([-.2:0.0005:0.4],mean(zHists((tarPVs),:))-mean(zHists((tarPVs),401)),'r')
 plot([-.2:0.0005:0.4],mean(zHists((tarMSNs),:))-mean(zHists((tarMSNs),401)),'k')
+set(gca,'TickDir','out');
 % xlim([-0.02 0.05])
 xlim([0 0.02])
 spikeGraphName = '5ValAverageZPlotsMSNrFSIbZOOM';
@@ -1751,6 +1940,7 @@ for i = 1:length(tarMSNs)
     plot([-.2:0.0005:0.4],zHists((tarMSNs(i)),:),'k')
 end
 xlim([0 0.02])
+set(gca,'TickDir','out');
 spikeGraphName = '5ValPVMSNzOverallPlotIndiv';
 savefig(hFig,spikeGraphName);
 
@@ -1816,6 +2006,7 @@ for i = 1:length(specFind)
 end
 
 xlim([0 0.05])
+set(gca,'TickDir','out');
 spikeGraphName = '5ValPVMSNzSelFreqs';
 savefig(hFig,spikeGraphName);
 
@@ -1852,11 +2043,13 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05])
 subplot(2,1,1)
 hist(latStore(tarMSNs),latHistVect)
 xlim([latHistVect(1) latHistVect(end)])
+set(gca,'TickDir','out');
 title('MSN Latency Selected Freqs 5ms Smooth')
 
 subplot(2,1,2)
 hist(latStore(tarPVs),latHistVect)
 xlim([latHistVect(1) latHistVect(end)])
+set(gca,'TickDir','out');
 title('FSI Latency Selected Freqs 5ms Smooth')
 % title('FSI Min Latency Pure Tone')
 
@@ -1963,46 +2156,50 @@ end
 
 %set ylimits for plots
 
-ylimThresh = [0 30];
-ylimWidth = [0 10];
+ylimThresh = [0 35];
+ylimWidth = [0 15];
 %plot this out.
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [10 80 1900 1000])
 subplot(2,2,1)
-hist(threshStorePV,[1:1:5])
+hist(threshStorePV,[1:1:5],'r')
 xlim([0.5 5.5])
 ylim(ylimThresh)
 ylabel('Number of Cells')
 xlabel('Amplitude of Threshold Response (dB)')
 set(gca,'XTickLabel',{'<=20','30','40','60','70'});
 title(strcat('Amplitude Threshold (FSIs) Mean:',num2str(mean(threshStorePV)),'pval',num2str(ranksum(threshStorePV,threshStoreMSN))))
+set(gca,'TickDir','out');
 
-subplot(2,2,2)
-hist(threshStoreMSN,[1:1:5])
+subplot(2,2,3)
+hist(threshStoreMSN,[1:1:5],'k')
 xlim([0.5 5.5])
 title(strcat('Amplitude Threshold (MSNs) Mean:',num2str(mean(threshStoreMSN))))
 ylabel('Number of Cells')
 xlabel('Amplitude of Threshold Response (dB)')
 set(gca,'XTickLabel',{'<=20','30','40','60','70'});
 ylim(ylimThresh)
+set(gca,'TickDir','out');
 
-subplot(2,2,3)
-hist(widthValsPV,[1:1:16])
+subplot(2,2,2)
+hist(widthValsPV,[1:1:16],'r')
 xlim([0.5 16.5])
 ylim(ylimWidth)
 ylabel('Number of Cells')
 xlabel('Tuning Curve Width (0.2 octaves)')
-title(strcat('Tuning Width (FSIs) Mean:',num2str(mean(firstWidthPV(5,pvIndex))),'pval',num2str(ranksum(firstWidthPV(5,pvIndex),firstWidthMSN(5,msnsIndex)))))
+title(strcat('70 dB Tuning Width (FSIs) Mean:',num2str(mean(widthValsPV)),'pval',num2str(ranksum(widthValsPV,widthValsMSN))))
 % title('Tuning Width (FSIs)')
+set(gca,'TickDir','out');
 
 subplot(2,2,4)
-hist(widthValsMSN,[1:1:16])
+hist(widthValsMSN,[1:1:16],'k')
 xlim([0.5 16.5])
 ylim(ylimWidth)
 ylabel('Number of Cells')
 xlabel('Tuning Curve Width (0.2 octaves)')
-title(strcat('Tuning Width (MSNs) Mean:',num2str(mean(firstWidthMSN(5,msnsIndex)))))
+title(strcat('70 dB Tuning Width (MSNs) Mean:',num2str(mean(widthValsMSN))))
+set(gca,'TickDir','out');
 
 spikeGraphName = '5ValIntensityThreshAndWidth';
 savefig(hFig,spikeGraphName);
@@ -2016,25 +2213,33 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 % plot out BFs of width 3 selected units.
 
 hFig = figure;
+xlims = [4000 32000];
+ylims = [0 15];
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [10 80 1900 1000])
 subplot(2,1,1)
-hist(bfStore(tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000])
+hist(bfStore(tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000],'r')
 set(gca,'xscale','log')
-xlim([4000 32000])
+xlim(xlims)
+ylim(ylims)
+% xlim([4000 32000])
 ylabel('Number of Cells')
 xlabel('Best Frequency (Hz)')
 % set(gca,'XTickLabel',{'<=20','30','40','60','70'});
 title('BFs (FSIs)')
+set(gca,'TickDir','out');
 
 subplot(2,1,2)
-hist(bfStore(tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000])
+hist(bfStore(tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000],'k')
 set(gca,'xscale','log')
-xlim([4000 32000])
+xlim(xlims)
+ylim(ylims)
+% xlim([4000 32000])
 ylabel('Number of Cells')
 xlabel('Best Frequency (Hz)')
 % set(gca,'XTickLabel',{'<=20','30','40','60','70'});
 title('BFs (MSNs)')
+set(gca,'TickDir','out');
 
 
 spikeGraphName = '5ValBFPlot';
@@ -2054,21 +2259,24 @@ set(hFig, 'Position', [80 80 1900 1000])
 for i = 1:5
     subplot(2,5,i)
     %find PVs with threshold of a target value
-    finder = find(threshStorePV == i);
-    if finder
-        hist(sigWidthPV(i,finder),[1:1:16])
-        testVal = mean(sigWidthPV(i,(finder)));
-        title(strcat('FSI Width for Amp Level',num2str(i),'Mean',num2str(testVal)))
+    finderPV = find(threshStorePV == i);
+    finderMSN = find(threshStoreMSN == i);
+    if finderPV
+        hist(sigWidthPV(i,finderPV),[1:1:16],'r')
+        testVal = mean(sigWidthPV(i,(finderPV)));
+        title(strcat('FSI Width for Amp Level',num2str(i),'Mean',num2str(testVal),'pval',num2str(ranksum(sigWidthPV(i,finderPV),sigWidthMSN(i,finderMSN)))))
+        set(gca,'TickDir','out');
     end
     subplot(2,5,i+5)
     %find MSNs with threshold of a target value
-    finder = find(threshStoreMSN == i);
-    if finder
-        hist(sigWidthMSN(i,(finder)),[1:1:16])
-        testVal = mean(sigWidthMSN(i,(finder)));
+    if finderMSN
+        hist(sigWidthMSN(i,(finderMSN)),[1:1:16],'k')
+        testVal = mean(sigWidthMSN(i,(finderMSN)));
         title(strcat('MSN Width for Amp Level',num2str(i),'Mean',num2str(testVal)))
+        set(gca,'TickDir','out');
     end
 end
+set(gca,'TickDir','out');
 
 spikeGraphName = '5ValPlotWidthBasedOnThreshAmp';
 savefig(hFig,spikeGraphName);
@@ -2079,6 +2287,81 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
+
+%now lets isolate the units that are responsive at 20 dB and see how widths
+%change over dB
+
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
+set(hFig, 'Position', [80 80 1900 1000])
+targetThresh = 1;
+finderPV = find(threshStorePV == targetThresh);
+finderMSN = find(threshStoreMSN == targetThresh);
+ylims = [0 13];
+xlims = [0 16];
+
+for i = 1:5
+    subplot(2,5,i)
+    %find PVs with threshold of a target value
+    if finderPV
+        hist(sigWidthPV(i,finderPV),[1:1:16],'r')
+        testVal = mean(sigWidthPV(i,(finderPV)));
+        title(strcat('FSI Width for Amp Level',num2str(i),'Mean',num2str(testVal),'pval',num2str(ranksum(sigWidthPV(i,finderPV),sigWidthMSN(i,finderMSN)))))
+        set(gca,'TickDir','out');
+        ylim(ylims)
+        xlim(xlims)
+    end
+    subplot(2,5,i+5)
+    %find MSNs with threshold of a target value
+    if finderMSN
+        hist(sigWidthMSN(i,(finderMSN)),[1:1:16],'k')
+        testVal = mean(sigWidthMSN(i,(finderMSN)));
+        title(strcat('MSN Width for Amp Level',num2str(i),'Mean',num2str(testVal)))
+        set(gca,'TickDir','out');
+        ylim(ylims)
+        xlim(xlims)
+    end
+end
+set(gca,'TickDir','out');
+
+spikeGraphName = '5ValPlotWidthJust20ThreshAcrossDB';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%now lets plot out individual changes in width for MSNs and PVs
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
+set(hFig, 'Position', [80 80 1900 1000])
+targetThresh = 1;
+finderPV = find(threshStorePV == targetThresh);
+finderMSN = find(threshStoreMSN == targetThresh);
+hold on
+% for i = 1:length(finderPV)
+%     plot(sigWidthPV(:,finderPV(i)),'r.-')
+% end
+errorbar(mean(sigWidthPV(:,finderPV)'),std(sigWidthPV(:,finderPV)')/sqrt(length(finderPV)),'r','LineWidth',2);
+% for i = 1:length(finderMSN)
+%     plot(sigWidthMSN(:,finderMSN(i)),'k.-')
+% end
+errorbar(mean(sigWidthMSN(:,finderMSN)'),std(sigWidthMSN(:,finderMSN)')/sqrt(length(finderMSN)),'k','LineWidth',2);
+set(gca,'TickDir','out');
+
+spikeGraphName = '5ValPlotMeanWidthChangeAcrossDBs';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
 %now lets plot BF vs width.
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
@@ -2088,11 +2371,13 @@ plot(bfStore(tarCells(tarPVs)),sigWidthPV(5,:),'k.')
 xlabel('BF')
 ylabel('Tuning Width')
 title('FSI Width vs BF')
+set(gca,'TickDir','out');
 subplot(2,1,2)
 plot(bfStore(tarCells(tarMSNs)),sigWidthMSN(5,:),'k.')
 xlabel('BF')
 ylabel('Tuning Width')
 title('MSN Width vs BF')
+set(gca,'TickDir','out');
 
 spikeGraphName = '5ValPlotBFvsWidth';
 savefig(hFig,spikeGraphName);
@@ -2125,6 +2410,7 @@ hold on
 plot(bfStore(tarCells(tarMSNs)),sigWidthMSN(5,:),'ko')
 plot(tester,bfMeanStore(:,1),'k*','LineWidth',2)
 plot(tester,bfMeanStore(:,2),'r*','LineWidth',2)
+set(gca,'TickDir','out');
 xlabel('BF')
 ylabel('Tuning Width')
 title('FSI (r) or MSN (k) Width vs BF')
