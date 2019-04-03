@@ -170,8 +170,6 @@ for i = 1:numFiles
 end
 
 
-
-
 msns = find(fullMaster(:,1) == 0);
 pvs = find(fullMaster(:,1) == 1);
 
