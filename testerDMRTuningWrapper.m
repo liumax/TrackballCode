@@ -23,6 +23,7 @@ nameStore = [];
 unitStore = [];
 halfWidthTimeStore = [];
 pkTroughTimeStore = [];
+dmrSpikeNum = [];
 
 %parameters
 masterHeaderSize = 12; %only want the first 12 values of masterData. 
@@ -183,6 +184,7 @@ for i = 1:numFiles
         fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[histLims(1):binSize:histLims(2)])/binSize/length(toneFinder);
         nameStore{bigMasterInd + j -1} = targetFiles{i};
         unitStore{bigMasterInd + j -1} = desigName{j};
+        dmrSpikeNum(bigMasterInd + j - 1) = length(find(s.(desigName{j}).SpikeTimes > s.SoundData.DMRPulses(1) & s.(desigName{j}).SpikeTimes < s.SoundData.DMRPulses(end)));
     end
     halfWidthTimeStore(bigMasterInd:bigMasterInd + numUnits - 1) = halfWidthTime;
     pkTroughTimeStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughTime;
@@ -269,7 +271,7 @@ for i = 1:numFiles
     
     %lets add some code to extract out STA data!
     bigSTAstore(bigMasterInd:bigMasterInd + numUnits - 1,:) = s.STAs;
-    
+    bigSTASigstore(bigMasterInd:bigMasterInd + numUnits - 1,:) = s.STASig;
     
     bigMasterInd = bigMasterInd + numUnits;
         
@@ -460,6 +462,26 @@ for i = 1:length(sigCorrPosCells)
     imagesc(squeeze(binValBigStore(:,:,sigCorrPosCells(i)))')
     colormap('parula')
 end
+
+%now lets plot out STAs
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.02 0.02], [0.03 0.03], [0.03 0.03]);
+axisSize = ceil(sqrt(length(sigCorrNegCells)));
+for i = 1:length(sigCorrNegCells)
+    subplot(axisSize,axisSize,i)
+    imagesc(reshape(bigSTASigstore(sigCorrNegCells(i),:),100,100))
+    colormap('parula')
+end
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.02 0.02], [0.03 0.03], [0.03 0.03]);
+axisSize = ceil(sqrt(length(sigCorrPosCells)));
+for i = 1:length(sigCorrPosCells)
+    subplot(axisSize,axisSize,i)
+    imagesc(reshape(bigSTASigstore(sigCorrPosCells(i),:),100,100))
+    colormap('parula')
+end
+
 
 %plot out overall histograms?
 hFig = figure;
@@ -992,6 +1014,18 @@ selWidthMSN(:,sum(sigWidthMSN) == 0) = [];
 
 
 %% Now lets start processing the STA data. 
+
+
+findPVs = find(bigMaster(:,5) < 0.0004 & bigMaster(:,6) > 1.1);
+findMSNs = find(bigMaster(:,5) > 0.0005 & bigMaster(:,6) > 1.1); 
+%first of all, we need to invalidate STAs with too few spikes
+minSpikes = 200;
+fewSpikes = find(dmrSpikeNum < minSpikes);
+
+dmrMSN = findMSNs;
+dmrMSN(ismember(dmrMSN,fewSpikes)) = [];
+dmrPV = findPVs;
+dmrPV(ismember(dmrPV,fewSpikes)) = [];
 
 %first, reshape the STAs!
 for i = 1:length(bigDBStore)

@@ -788,7 +788,7 @@ xlim([-1 1])
 
 
 %% calculate widths with height based system
-widthPercent = 0.1;
+widthPercent = 0.5;
 
 bigWidthHeightStore = [];
 for i = 1:length(bigMaster)
@@ -824,69 +824,69 @@ end
 bigWidthSelWidthLaser = bigWidthHeightStoreLaser(:,[1,3],:);
 
 %now lets try and plot out things!
-tarDB = 3;
-smoothWin = 3;
-counter = 1;
-for i = 1:length(bigMaster)
-    if ismember(i,[1,101,201,301,401,501,601])
-        hFig = figure;
-        counter = 1;
-    end
-    subplot(10,10,counter)
-%     plotData = squeeze(binValBigStore(:,5,i));
-    plotData = binValBigStore{i};
-    plotData = plotData(:,tarDB);
-    plotData = smooth(plotData,smoothWin);
-    
-    if ismember(i,findPVs)
-        plot(plotData,'r','LineWidth',2)
-    elseif ismember(i,findMSNs)
-        plot(plotData,'k','LineWidth',2)
-    else
-        plot(plotData,'Color',[0.7 0.7 0.7],'LineWidth',2)
-    end
-    hold on
-    plot([1 freqNumStore(i)],[0 0],'k')
-    plot([1 freqNumStore(i)],[bigWidthCutVal(tarDB,i) bigWidthCutVal(tarDB,i)],'c','LineWidth',2)
-    plot([bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i) bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i)],[0 max(plotData)],'g','LineWidth',2)
-    plot([bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i) bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i)],[0 max(plotData)],'g','LineWidth',2)
-    plot([bigWidthMaxPosStore(tarDB,i) bigWidthMaxPosStore(tarDB,i)],[0 max(plotData)],'m','LineWidth',2)
-    xlim([1 freqNumStore(i)])
-    counter = counter + 1;
-end
-
-
-%now lets try and plot out things!
-tarDB = 1;
-smoothWin = 3;
-counter = 1;
-for i = 1:length(bigMaster)
-    if ismember(i,[1,101,201,301,401,501,601])
-        hFig = figure;
-        counter = 1;
-    end
-    subplot(10,10,counter)
-%     plotData = squeeze(binValBigStore(:,5,i));
-    plotData = binValBigStoreLaser{i};
-    plotData = plotData(:,tarDB);
-    plotData = smooth(plotData,smoothWin);
-    
-    if ismember(i,findPVs)
-        plot(plotData,'r','LineWidth',2)
-    elseif ismember(i,findMSNs)
-        plot(plotData,'k','LineWidth',2)
-    else
-        plot(plotData,'Color',[0.7 0.7 0.7],'LineWidth',2)
-    end
-    hold on
-    plot([1 freqNumStore(i)],[0 0],'k')
-    plot([1 freqNumStore(i)],[bigWidthCutVal(tarDB,i) bigWidthCutVal(tarDB,i)],'c','LineWidth',2)
-    plot([bigWidthMaxPosStoreLaser(tarDB,i) - bigWidthSelWidthLaser(tarDB,1,i) bigWidthMaxPosStoreLaser(tarDB,i) - bigWidthSelWidthLaser(tarDB,1,i)],[0 max(plotData)],'g','LineWidth',2)
-    plot([bigWidthMaxPosStoreLaser(tarDB,i) + bigWidthSelWidthLaser(tarDB,2,i) bigWidthMaxPosStoreLaser(tarDB,i) + bigWidthSelWidthLaser(tarDB,2,i)],[0 max(plotData)],'g','LineWidth',2)
-    plot([bigWidthMaxPosStoreLaser(tarDB,i) bigWidthMaxPosStoreLaser(tarDB,i)],[0 max(plotData)],'m','LineWidth',2)
-    xlim([1 freqNumStore(i)])
-    counter = counter + 1;
-end
+% tarDB = 3;
+% smoothWin = 3;
+% counter = 1;
+% for i = 1:length(bigMaster)
+%     if ismember(i,[1,101,201,301,401,501,601])
+%         hFig = figure;
+%         counter = 1;
+%     end
+%     subplot(10,10,counter)
+% %     plotData = squeeze(binValBigStore(:,5,i));
+%     plotData = binValBigStore{i};
+%     plotData = plotData(:,tarDB);
+%     plotData = smooth(plotData,smoothWin);
+%     
+%     if ismember(i,findPVs)
+%         plot(plotData,'r','LineWidth',2)
+%     elseif ismember(i,findMSNs)
+%         plot(plotData,'k','LineWidth',2)
+%     else
+%         plot(plotData,'Color',[0.7 0.7 0.7],'LineWidth',2)
+%     end
+%     hold on
+%     plot([1 freqNumStore(i)],[0 0],'k')
+%     plot([1 freqNumStore(i)],[bigWidthCutVal(tarDB,i) bigWidthCutVal(tarDB,i)],'c','LineWidth',2)
+%     plot([bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i) bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i)],[0 max(plotData)],'g','LineWidth',2)
+%     plot([bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i) bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i)],[0 max(plotData)],'g','LineWidth',2)
+%     plot([bigWidthMaxPosStore(tarDB,i) bigWidthMaxPosStore(tarDB,i)],[0 max(plotData)],'m','LineWidth',2)
+%     xlim([1 freqNumStore(i)])
+%     counter = counter + 1;
+% end
+% 
+% 
+% %now lets try and plot out things!
+% tarDB = 1;
+% smoothWin = 3;
+% counter = 1;
+% for i = 1:length(bigMaster)
+%     if ismember(i,[1,101,201,301,401,501,601])
+%         hFig = figure;
+%         counter = 1;
+%     end
+%     subplot(10,10,counter)
+% %     plotData = squeeze(binValBigStore(:,5,i));
+%     plotData = binValBigStoreLaser{i};
+%     plotData = plotData(:,tarDB);
+%     plotData = smooth(plotData,smoothWin);
+%     
+%     if ismember(i,findPVs)
+%         plot(plotData,'r','LineWidth',2)
+%     elseif ismember(i,findMSNs)
+%         plot(plotData,'k','LineWidth',2)
+%     else
+%         plot(plotData,'Color',[0.7 0.7 0.7],'LineWidth',2)
+%     end
+%     hold on
+%     plot([1 freqNumStore(i)],[0 0],'k')
+%     plot([1 freqNumStore(i)],[bigWidthCutVal(tarDB,i) bigWidthCutVal(tarDB,i)],'c','LineWidth',2)
+%     plot([bigWidthMaxPosStoreLaser(tarDB,i) - bigWidthSelWidthLaser(tarDB,1,i) bigWidthMaxPosStoreLaser(tarDB,i) - bigWidthSelWidthLaser(tarDB,1,i)],[0 max(plotData)],'g','LineWidth',2)
+%     plot([bigWidthMaxPosStoreLaser(tarDB,i) + bigWidthSelWidthLaser(tarDB,2,i) bigWidthMaxPosStoreLaser(tarDB,i) + bigWidthSelWidthLaser(tarDB,2,i)],[0 max(plotData)],'g','LineWidth',2)
+%     plot([bigWidthMaxPosStoreLaser(tarDB,i) bigWidthMaxPosStoreLaser(tarDB,i)],[0 max(plotData)],'m','LineWidth',2)
+%     xlim([1 freqNumStore(i)])
+%     counter = counter + 1;
+% end
 
 
 %% Lets look at width values
@@ -1012,9 +1012,103 @@ histValPVLaser = hist(widthValsPVLaser,widthHistVect);
 histValMSNLaser = hist(widthValsMSNLaser,widthHistVect);
 
 
-signrank(sigWidthMSN(1,:),sigWidthMSNLaser(1,:))
-signrank(sigWidthMSN(2,:),sigWidthMSNLaser(2,:))
-signrank(sigWidthMSN(3,:),sigWidthMSNLaser(3,:))
+% signrank(sigWidthMSN(1,:),sigWidthMSNLaser(1,:))
+% signrank(sigWidthMSN(2,:),sigWidthMSNLaser(2,:))
+% signrank(sigWidthMSN(3,:),sigWidthMSNLaser(3,:))
+
+%okay, thats significant, but what about selecting for good units?
+sigCut = 0.05;
+for i = 1:length(binValBigStoreLaser)
+    %determine when sig and pos for baseline
+    signStore = sign(binValBigStore{i});
+    signSig = signStore.* sigValBigStore{i};
+    numSig(i) = length(find(signSig < sigCut & signSig > 0));
+    %determine when sig and pos for other
+    signStoreLaser = sign(binValBigStoreLaser{i});
+    signSigLaser = signStoreLaser.* sigValBigStoreLaser{i};
+    numSigLaser(i) = length(find(signSigLaser < sigCut & signSigLaser > 0));
+    %determine overlap matrix of laser and non-laser (for pulling stuff
+    %like latency)
+    signSig(signSig <= 0) = NaN;
+    signSigLaser(signSigLaser <= 0) = NaN;
+    tmpHold = signSig.*signSigLaser;
+    tmpHold(~isnan(tmpHold)) = 1;
+    overlapMatrix{i} = tmpHold;
+end
+
+% tarCells = find(numSig > 5);
+% tarPVs = intersect(tarCells,findPVs);
+% tarMSNs = intersect(tarCells,findMSNs);
+% 
+% signrank(sigWidthStore(1,tarMSNs),sigWidthStoreLaser(1,tarMSNs))
+% signrank(sigWidthStore(2,tarMSNs),sigWidthStoreLaser(2,tarMSNs))
+% signrank(sigWidthStore(3,tarMSNs),sigWidthStoreLaser(3,tarMSNs))
+% 
+% signrank(sigWidthStore(1,tarPVs),sigWidthStoreLaser(1,tarPVs))
+% signrank(sigWidthStore(2,tarPVs),sigWidthStoreLaser(2,tarPVs))
+% signrank(sigWidthStore(3,tarPVs),sigWidthStoreLaser(3,tarPVs))
+
+%NOT SIGNIFICANT!
+
+
+%now lets go through and see which units had significant changes to size of
+%response
+for i = 1:length(binValBigStoreLaser)
+    sigAmpStore(i,1) = signrank(reshape(binValBigStoreLaser{i},1,[]),reshape(binValBigStore{i},1,[]));
+    testData = binValBigStoreLaser{i} - binValBigStore{i};
+    changeDir(i) = sign(mean(mean(testData)));
+    sigAmpStore(i,2) = signrank(reshape(testData,1,[]));
+    
+end
+
+tarCells = find(sigAmpStore(:,1) < 0.05);
+tarPVs = intersect(tarCells,findPVs);
+tarMSNs = intersect(tarCells,findMSNs);
+
+signrank(sigWidthStore(1,tarMSNs),sigWidthStoreLaser(1,tarMSNs))
+signrank(sigWidthStore(2,tarMSNs),sigWidthStoreLaser(2,tarMSNs))
+signrank(sigWidthStore(3,tarMSNs),sigWidthStoreLaser(3,tarMSNs))
+
+
+tarDB = 2;
+for i = 1:3
+    tarDB = i;
+    finder = find(sigWidthStore(tarDB,tarMSNs) == 0);
+    find2 = find(sigWidthStoreLaser(tarDB,tarMSNs) == 0);
+    finder = unique([finder,find2]);
+    tester = sigWidthStore(:,tarMSNs);
+    test2 = sigWidthStoreLaser(:,tarMSNs);
+    tester(:,finder) = [];
+    test2(:,finder) = [];
+    signrank(tester(tarDB,:),test2(tarDB,:))
+    hFig = figure;
+    plot(tester(tarDB,:),test2(tarDB,:),'r.')
+    hold on
+    plot([0 max(tester(tarDB,:))],[0 max(tester(tarDB,:))],'k')
+    spikeGraphName = strcat('ScatterWidthFor',num2str(i));
+    savefig(hFig,spikeGraphName);
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
+end
+
+
+
+signrank(sigWidthStore(1,tarPVs),sigWidthStoreLaser(1,tarPVs))
+signrank(sigWidthStore(2,tarPVs),sigWidthStoreLaser(2,tarPVs))
+signrank(sigWidthStore(3,tarPVs),sigWidthStoreLaser(3,tarPVs))
+
+tarDB = 1;
+figure
+hold on
+for i = 1:tarMSNs
+plot([1 2],[0 sigWidthStoreLaser(tarDB,tarMSNs(i))-sigWidthStore(tarDB,tarMSNs(i))])
+end
+plot([1 2],[0 0],'k','LineWidth',2)
+
 
 figure
 hold on
