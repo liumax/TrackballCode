@@ -1367,9 +1367,16 @@ for i = 1:counter - 1
     subInd(testFind(1:end-1)) = testFind(2:end);
     subInd(testFind(end)) = testFind(1);
 end
+
+try
+    targetDIOs = s.SoundData.ToneTimes;
+catch
+    targetDIOs = s.TrialMatrix(:,1);
+end
+
 subInd = subInd';
-if length(subInd) > length(dioTimes)
-    subInd(length(dioTimes)+1:end) = [];
+if length(subInd) > length(targetDIOs)
+    subInd(length(targetDIOs)+1:end) = [];
 end
 
 tarWindow = [-0.01 0.01];
@@ -1390,9 +1397,9 @@ for bigInd = 1:2
             for j = 1:length(findTars)
                 histStore = zeros(1,length(rasterVector));
                 for k = 1:length(subInd)
-                    tarSpikes = s.(cluNames{I(i)}).SpikeTimes - dioTimes(k);
+                    tarSpikes = s.(cluNames{I(i)}).SpikeTimes - targetDIOs(k);
                     tarSpikes(tarSpikes < tarWindow(1) | tarSpikes > tarWindow(2)) = [];
-                    tarSpikesMatch = s.(cluNames{I(j)}).SpikeTimes - dioTimes(subInd(k));
+                    tarSpikesMatch = s.(cluNames{I(j)}).SpikeTimes - targetDIOs(subInd(k));
                     tarSpikesMatch(tarSpikesMatch < tarWindow(1) | tarSpikesMatch > tarWindow(2)) = [];
                     if length(tarSpikes)>0 & length(tarSpikesMatch) > 0
                         [rasters] = crosscorrelogram(tarSpikes,tarSpikesMatch,rasterWindow);
