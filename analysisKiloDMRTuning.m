@@ -5,9 +5,9 @@
 
 
 %for testing purposes
-% fileName = '190123ML181105E_RAudStr3526pen1rec1tuningAndDMR';
+fileName = '190123ML181105E_RAudStr3526pen1rec1tuningAndDMR';
 % fileName = '190206ML181105F_RAudStr3633pen2rec1tuningDMR'
-fileName = '190205ML181105C_RAudStr3667pen2rec1tuningDMR';
+% fileName = '190205ML181105C_RAudStr3667pen2rec1tuningDMR';
 % fileName = '190123_ML181105D_R_AudStr_3106_pen1_rec1_tuningAndDMR'
 %% Constants
 
@@ -1166,12 +1166,17 @@ allSpikes = spTimeSec;
 allClu = spClu;
 counterTone = 1;
 counterNonTone = 1; 
-for i = 1:length(dioTimes)
+try
+    toneTimes = s.TrialMatrix(:,1);
+catch
+    toneTimes = dioTimes;
+end
+for i = 1:length(toneTimes)
     if rem(i,500) == 0 
         disp('500 trials')
     end
     %subtract tone time
-    toneSub = allSpikes - dioTimes(i);
+    toneSub = allSpikes - toneTimes(i);
     %extract all spikes up to the end of the tone
     subSpikes = toneSub(toneSub < 0.1);
     %find negative (non tone) and positive (tone) values
@@ -1333,7 +1338,7 @@ subInd = subInd';
 if length(subInd) > length(dioTimes)
     subInd(length(dioTimes)+1:end) = [];
 end
-tarWindow = [-0.2 0.4 ]
+tarWindow = [-0.2 0.4];
 for bigInd = 1:2
     findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals > 32*(bigInd-1)+1);
     if findTars
