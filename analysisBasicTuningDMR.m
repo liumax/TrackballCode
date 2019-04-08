@@ -762,33 +762,33 @@ end
 [sta1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes1, numLags);
 [sta2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes2, numLags);
 
-%now lets try and do the rotating shift of the spike train. 
-numShifts = 100;
-shiftVal = floor(length(spikeArray)/numShifts);
-
-corrCoeffStore= zeros(numShifts,numUnits);
-for i = 1:numShifts
-    disp(strcat('Shift Number-',num2str(i)))
-    %shuffle the spikes
-    altArray(:,1:length(spikeArray) - shiftVal*i) = spikeArray(:,shiftVal*i+1:end);
-    altArray(:,length(spikeArray) - shiftVal*i+1:length(spikeArray)) = spikeArray(:,1:shiftVal*i);
-    %split in half? 
-    tester = randperm(floor(length(spikeArray)/2));
-    altHalf1 = zeros(numUnits,length(spikeArray));
-    altHalf1(:,tester) = altArray(:,tester);
-    revTest = [1:1:length(spikeArray)];
-    revTest(tester) = [];
-    altHalf2 = zeros(numUnits,length(spikeArray));
-    altHalf2(:,revTest) = altArray(:,revTest);
-    %now generate new STA
-    [staAlt1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, altHalf1, numLags);
-    [staAlt2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, altHalf2, numLags);
-    %now we need to do unit by unit correlation coefficients
-    for j = 1:numUnits
-        tester = corrcoef(staAlt1(j,:),staAlt2(j,:));
-        corrCoefStore(j,i) = tester(2);
-    end
-end
+% %now lets try and do the rotating shift of the spike train. 
+% numShifts = 100;
+% shiftVal = floor(length(spikeArray)/numShifts);
+% 
+% corrCoeffStore= zeros(numShifts,numUnits);
+% for i = 1:numShifts
+%     disp(strcat('Shift Number-',num2str(i)))
+%     %shuffle the spikes
+%     altArray(:,1:length(spikeArray) - shiftVal*i) = spikeArray(:,shiftVal*i+1:end);
+%     altArray(:,length(spikeArray) - shiftVal*i+1:length(spikeArray)) = spikeArray(:,1:shiftVal*i);
+%     %split in half? 
+%     tester = randperm(floor(length(spikeArray)/2));
+%     altHalf1 = zeros(numUnits,length(spikeArray));
+%     altHalf1(:,tester) = altArray(:,tester);
+%     revTest = [1:1:length(spikeArray)];
+%     revTest(tester) = [];
+%     altHalf2 = zeros(numUnits,length(spikeArray));
+%     altHalf2(:,revTest) = altArray(:,revTest);
+%     %now generate new STA
+%     [staAlt1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, altHalf1, numLags);
+%     [staAlt2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, altHalf2, numLags);
+%     %now we need to do unit by unit correlation coefficients
+%     for j = 1:numUnits
+%         tester = corrcoef(staAlt1(j,:),staAlt2(j,:));
+%         corrCoefStore(j,i) = tester(2);
+%     end
+% end
 
 
 
