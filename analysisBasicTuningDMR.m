@@ -719,6 +719,79 @@ masterData(:,masterInd) = sum(spikeArray'); masterHeader{masterInd} = 'SpikesPer
 s.STAs = sta;
 s.STASig = sta_sig;
 
+%lets now generate some STA based data by reshaping and pulling time and
+%frequency information. We will also extract the RTF.
+
+
+%first, reshape the STAs!
+for i = 1:numUnits
+    tmpStore = reshape(sta_sig(i,:),numLags,[]);
+    newSTA(:,:,i) = tmpStore;
+    newTMP = tmpStore;
+    newTMP(tmpStore >=0) = 0;
+    negSTA(:,:,i) = newTMP;
+    tmpStore(tmpStore <= 0) = 0;
+    posSTA(:,:,i) = tmpStore;
+end
+
+
+
+%to determine peak and width, lets compress along time axis or freq axis.. 
+smoothWind = 1;
+for i = 1:numUnits
+    compTimingPos(:,i) = sum(posSTA(:,:,i));
+    compTimingNeg(:,i) =  sum(negSTA(:,:,i));
+    compWidthPos(:,i) = smooth(sum(posSTA(:,:,i)'),smoothWind);
+    compWidthNeg(:,i) = smooth(sum(negSTA(:,:,i)'),smoothWind);
+end
+
+
+
+%now lets test significance of
+%response. The first step is to generate the actual split of spikes and the
+%STAs that are generated from that.
+% also generate split spike STAs to have internal comparison. 
+for i = 1:numUnits
+    spikeStore = s.(desigNames{i}).SpikeTimes(s.(desigNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(desigNames{i}).SpikeTimes < spikeHistVect(end));
+    sel1 = randperm(length(spikeStore),round(length(spikeStore)/2));
+    sel2 = [1:length(spikeStore)];
+    sel2(ismember(sel1,sel2)) = [];
+    spikes1(i,:) = hist(spikeStore(sel1),spikeHistVect);
+    spikes2(i,:) = hist(spikeStore(sel2),spikeHistVect);
+end
+[sta1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes1, numLags);
+[sta2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes2, numLags);
+
+%now lets try and do the rotating shift of the spike train. 
+numShifts = 100;
+shiftVal = floor(length(spikeArray)/numShifts);
+
+corrCoeffStore= zeros(numShifts,numUnits);
+for i = 1:numShifts
+    disp(strcat('Shift Number-',num2str(i)))
+    %shuffle the spikes
+    altArray(:,1:length(spikeArray) - shiftVal*i) = spikeArray(:,shiftVal*i+1:end);
+    altArray(:,length(spikeArray) - shiftVal*i+1:length(spikeArray)) = spikeArray(:,1:shiftVal*i);
+    %split in half? 
+    tester = randperm(floor(length(spikeArray)/2));
+    altHalf1 = zeros(numUnits,length(spikeArray));
+    altHalf1(:,tester) = altArray(:,tester);
+    revTest = [1:1:length(spikeArray)];
+    revTest(tester) = [];
+    altHalf2 = zeros(numUnits,length(spikeArray));
+    altHalf2(:,revTest) = altArray(:,revTest);
+    %now generate new STA
+    [staAlt1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, altHalf1, numLags);
+    [staAlt2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, altHalf2, numLags);
+    %now we need to do unit by unit correlation coefficients
+    for j = 1:numUnits
+        tester = corrcoef(staAlt1(j,:),staAlt2(j,:));
+        corrCoefStore(j,i) = tester(2);
+    end
+end
+
+
+
 % %now lets generate jittered spike trains and see what this produces?
 % jitterNum = 100;
 % jitterTime = 0.3; %+/- 150 ms. 
@@ -781,7 +854,7 @@ end
 %% Saving
 save(fullfile(pname,fname),'s','masterData','masterHeader');
 % save(fullfile(pname,strcat(fileName,'DMRData')),'sta','sta_sig','spikeArray','stimulus','faxis')
-save(fullfile(pname,strcat(fileName,'DMRData')),'sta','spikeArray','stimulus','faxis')
+save(fullfile(pname,strcat(fileName,'DMRData')),'sta','spikeArray','stimulus','faxis','spikeHistVect')
 
 %% Plotting shanks!
 hFig = figure;
