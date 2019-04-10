@@ -842,29 +842,25 @@ end
 [indNegSig] = functionCellStringFind(masterHeader,'NegSigGenHist');
 set(hFig, 'Position', [10 80 1900 1000])
 
-%plot response to white noise as heatmaps for both shanks
-whiteStore = [];
-genStore = [];
+%plot response to all tones
+respStore = [];
 zeroPoint = find(histBinVector < 0,1,'last');
-%z score these responses so that things will display a bit more nicely. Or
-%alternatively use normalized rates. switch to normalized rates. 
+%z score these responses so that things will display a bit more nicely.
+tarWindows = [0.05,s.Parameters.ToneWindow(2),s.Parameters.GenWindow(2)];
+zlims = [-20 20];
+targetX = [0:40:length(histBinVector)];
+targetX(1) = 1;
 for i = 1:numUnits
-%     if std(s.(desigNames{i}).FrequencyHistograms(1,1:zeroPoint)) > 0
-    if mean(s.(desigNames{i}).FrequencyHistograms(1,1:zeroPoint)) > 0
-%         whiteStore(:,i) = (s.(desigNames{i}).FrequencyHistograms(1,:)-mean(s.(desigNames{i}).FrequencyHistograms(1,1:zeroPoint)))/std(s.(desigNames{i}).FrequencyHistograms(1,1:zeroPoint));
-        whiteStore(:,i) = (s.(desigNames{i}).FrequencyHistograms(1,:)-mean(s.(desigNames{i}).FrequencyHistograms(1,1:zeroPoint)))/(max((s.(desigNames{i}).FrequencyHistograms(1,:))-mean(s.(desigNames{i}).FrequencyHistograms(1,1:zeroPoint))));
-    else
-        whiteStore(:,i) = NaN(length(s.(desigNames{i}).FrequencyHistograms(1,:)),1);
-    end
-%     if std(mean(s.(desigNames{i}).FrequencyHistograms(2:end,1:zeroPoint)))
-    if mean(mean(s.(desigNames{i}).FrequencyHistograms(2:end,1:zeroPoint)))
-%         genStore(:,i) = (mean(s.(desigNames{i}).FrequencyHistograms(2:end,:))-mean(mean(s.(desigNames{i}).FrequencyHistograms(2:end,1:zeroPoint))))/std(mean(s.(desigNames{i}).FrequencyHistograms(2:end,1:zeroPoint)));
-        genStore(:,i) = (mean(s.(desigNames{i}).FrequencyHistograms(2:end,:))-mean(mean(s.(desigNames{i}).FrequencyHistograms(2:end,1:zeroPoint))))/(max(mean(s.(desigNames{i}).FrequencyHistograms(2:end,:)))-mean(mean(s.(desigNames{i}).FrequencyHistograms(2:end,1:zeroPoint))));
-    else
-        genStore(:,i) = NaN(length(s.(desigNames{i}).FrequencyHistograms(1,:)),1);
-    end
+    respStore(:,i) = (s.(desigNames{i}).AllHistograms-mean(s.(desigNames{i}).AllHistograms(1:zeroPoint)))/std(s.(desigNames{i}).AllHistograms(1:zeroPoint));
+    respStore(:,i) = respStore(:,i)/max(respStore(:,i));
     %pull overall maps
-    fullDiffs(:,:,i) = squeeze(mean(s.(desigNames{i}).BinDiff,2));
+    tarBinDiff = squeeze(mean(s.(desigNames{i}).BinDiff,2));
+    for j = 1:size(s.(desigNames{i}).BinDiff,3)
+        %fast window is hardcoded for 50 ms. Others are target defined. 
+        fullDiffs(:,j,i) = (tarBinDiff(:,j)/tarWindows(j) - s.(desigNames{i}).AverageRate)/s.(desigNames{i}).AverageSTD;
+    end
+%     fullDiffs(:,:,i) = bsxfun(@rdivide, squeeze(mean(s.(desigNames{i}).BinDiff,2)), squeeze(mean(s.(desigNames{i}).BinDiff,2)));
+%     fullDiffs(:,:,i) = squeeze(mean(s.(desigNames{i}).BinDiff,2))./max(abs(squeeze(mean(s.(desigNames{i}).BinDiff,2))))';
 end
 
 [indShankDes] = functionCellStringFind(masterHeader,'Shank Designation');
@@ -887,35 +883,64 @@ findPVshank1 = intersect(findPVs,findShank1);
 % findCHATshank1 = intersect(findCHATs,findShank1);
 
 subplot(2,4,1)
-imagesc((genStore(:,s.SortedPeakWaveOrder(findShank1))'),[-1 1])
+imagesc((respStore(:,s.SortedPeakWaveOrder(findShank1))'),[-1 1])
 colormap(map)
 colorbar
-title('Resp to Tones, BaseNorm FR LogScale')
+hold on
+for i = 1:length(findPVshank1)
+    plot([0 length(respStore)],[s.SortedPeakWaveOrder(findPVshank1(i)) s.SortedPeakWaveOrder(findPVshank1(i))],'g','LineWidth',2)
+end
+ylim([0.5 length(findShank1)+0.5])
+xlim([0.5 length(respStore)+0.5])
+set(gca, 'Ydir', 'reverse')
+set(gca,'XTick',targetX);
+set(gca,'XTickLabel',histBinVector(targetX));
+title('Shank 1 PSTH, ZScore')
 
 subplot(2,4,2)
-imagesc(squeeze(fullDiffs(:,1,s.SortedPeakWaveOrder(findShank1)))')
-colormap parula
+hold on
+imagesc(squeeze(fullDiffs(:,1,s.SortedPeakWaveOrder(findShank1)))',zlims)
+for i = 1:length(findPVshank1)
+    plot([0 size(fullDiffs,1)],[s.SortedPeakWaveOrder(findPVshank1(i)) s.SortedPeakWaveOrder(findPVshank1(i))],'g','LineWidth',2)
+end
+% colormap parula
 colorbar
-title(strcat(fileName,'Bin Subtracted Fast Period'))
+ylim([0.5 length(findShank1)+0.5])
+xlim([0.5 size(fullDiffs,1)+0.5])
+set(gca, 'Ydir', 'reverse')
+title(strcat(fileName,'BinSubFast (Z)'), 'Interpreter', 'none')
 set(gca,'XTick',octaveRange(:,2));
 set(gca,'XTickLabel',octaveRange(:,1));
 
 subplot(2,4,3)
-imagesc(squeeze(fullDiffs(:,2,s.SortedPeakWaveOrder(findShank1)))')
-colormap parula
+hold on
+imagesc(squeeze(fullDiffs(:,2,s.SortedPeakWaveOrder(findShank1)))',zlims)
+for i = 1:length(findPVshank1)
+    plot([0 size(fullDiffs,1)],[s.SortedPeakWaveOrder(findPVshank1(i)) s.SortedPeakWaveOrder(findPVshank1(i))],'g','LineWidth',2)
+end
+% colormap parula
 colorbar
-title('Bin Subtracted Tone Period')
+ylim([0.5 length(findShank1)+0.5])
+xlim([0.5 size(fullDiffs,1)+0.5])
+title('BinSubTone (Z)')
+set(gca, 'Ydir', 'reverse')
 set(gca,'XTick',octaveRange(:,2));
 set(gca,'XTickLabel',octaveRange(:,1));
 
 subplot(2,4,4)
-imagesc(squeeze(fullDiffs(:,3,s.SortedPeakWaveOrder(findShank1)))')
-colormap parula
+hold on
+imagesc(squeeze(fullDiffs(:,3,s.SortedPeakWaveOrder(findShank1)))',zlims)
+for i = 1:length(findPVshank1)
+    plot([0 size(fullDiffs,1)],[s.SortedPeakWaveOrder(findPVshank1(i)) s.SortedPeakWaveOrder(findPVshank1(i))],'g','LineWidth',2)
+end
+% colormap parula
 colorbar
-title('Bin Subtracted Gen Period')
+title('BinSubGeneral (Z)')
+ylim([0.5 length(findShank1)+0.5])
+xlim([0.5 size(fullDiffs,1)+0.5])
+set(gca, 'Ydir', 'reverse')
 set(gca,'XTick',octaveRange(:,2));
 set(gca,'XTickLabel',octaveRange(:,1));
-
 
 
 findShank2 = find(masterData(:,indShankDes) == 2);
@@ -925,32 +950,62 @@ findPVshank2 = intersect(findPVs,findShank2);
 % findCHATshank2 = intersect(findCHATs,findShank2);
 
 subplot(2,4,5)
-imagesc((genStore(:,s.SortedPeakWaveOrder(findShank2))'),[-1 1])
-colormap(map)
+hold on
+imagesc((respStore(:,s.SortedPeakWaveOrder(findShank2))'),[-1 1])
+for i = 1:length(findPVshank2)
+    plot([0 length(respStore)],[s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1) s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1)],'g','LineWidth',2)
+end
+% colormap(map)
 colorbar
-title('Resp to Tones, BaseNorm FR LogScale')
+ylim([0.5 length(findShank2)+0.5])
+xlim([0.5 length(respStore)+0.5])
+set(gca,'XTick',targetX);
+set(gca,'XTickLabel',histBinVector(targetX));
+set(gca, 'Ydir', 'reverse')
+title('Shank 2 PSTH, ZScore')
 
 subplot(2,4,6)
-imagesc(squeeze(fullDiffs(:,1,s.SortedPeakWaveOrder(findShank2)))')
-colormap parula
+hold on
+imagesc(squeeze(fullDiffs(:,1,s.SortedPeakWaveOrder(findShank2)))',zlims)
+for i = 1:length(findPVshank2)
+    plot([0 size(fullDiffs,1)],[s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1) s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1)],'g','LineWidth',2)
+end
+% colormap parula
 colorbar
-title('Bin Subtracted Fast Period')
+title('BinSubFast (Z)')
+ylim([0.5 length(findShank2)+0.5])
+xlim([0.5 size(fullDiffs,1)+0.5])
+set(gca, 'Ydir', 'reverse')
 set(gca,'XTick',octaveRange(:,2));
 set(gca,'XTickLabel',octaveRange(:,1));
 
 subplot(2,4,7)
-imagesc(squeeze(fullDiffs(:,2,s.SortedPeakWaveOrder(findShank2)))')
-colormap parula
+hold on
+imagesc(squeeze(fullDiffs(:,2,s.SortedPeakWaveOrder(findShank2)))',zlims)
+for i = 1:length(findPVshank2)
+    plot([0 size(fullDiffs,1)],[s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1) s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1)],'g','LineWidth',2)
+end
+% colormap parula
 colorbar
-title('Bin Subtracted Tone Period')
+title('BinSubTone (Z)')
+ylim([0.5 length(findShank2)+0.5])
+xlim([0.5 size(fullDiffs,1)+0.5])
+set(gca, 'Ydir', 'reverse')
 set(gca,'XTick',octaveRange(:,2));
 set(gca,'XTickLabel',octaveRange(:,1));
 
 subplot(2,4,8)
-imagesc(squeeze(fullDiffs(:,3,s.SortedPeakWaveOrder(findShank2)))')
-colormap parula
+hold on
+imagesc(squeeze(fullDiffs(:,3,s.SortedPeakWaveOrder(findShank2)))',zlims)
+for i = 1:length(findPVshank2)
+    plot([0 size(fullDiffs,1)],[s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1) s.SortedPeakWaveOrder(findPVshank2(i))-length(findShank1)],'g','LineWidth',2)
+end
+% colormap parula
 colorbar
-title('Bin Subtracted Gen Period')
+title('BinSubGeneral (Z)')
+ylim([0.5 length(findShank2)+0.5])
+xlim([0.5 size(fullDiffs,1)+0.5])
+set(gca, 'Ydir', 'reverse')
 set(gca,'XTick',octaveRange(:,2));
 set(gca,'XTickLabel',octaveRange(:,1));
 
@@ -962,6 +1017,7 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
 
 %% Plotting individual units
 
