@@ -1164,7 +1164,7 @@ for i = 1:numUnits
     set(gca,'XTickLabel',[dmrStep*100:-20*dmrStep:dmrStep]);
     set(gca,'YTick',[1:10:length(faxis)]);
     set(gca,'YTickLabel',[faxis([1:10:end])]);
-    title('Thresholded DMR a=0.95')
+    title(strcat('Thresholded DMR a=0.95 SelfCorr = ',num2str(s.RealCorrStore(i))))
     
 %     freqs
     
