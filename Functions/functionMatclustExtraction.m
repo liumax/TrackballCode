@@ -10,7 +10,7 @@ function [s, truncatedNames] = functionMatclustExtraction(rpvTime,...
 dupSelectLim = 0.20;
 spikeHolder = cell(0,0);
 expPower = 4;
-rpvPercentCutoff = 5; %percent cutoff for RPVs. in %, so this is actually like 0.05
+rpvPercentCutoff = 1; %percent cutoff for RPVs. in %, so this is actually like 0.05
 % rpvSpikeCutoff = 100; %raw spike number cutoff for RPVs
 
 artifactJitter = 0.0005; %in seconds!
