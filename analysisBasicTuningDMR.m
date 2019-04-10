@@ -1,7 +1,4 @@
 
-
-
-
 %% Constants and things you might want to tweak
 
 %TOGGLES FOR ENABLING/DISABLING FEATURES
@@ -718,10 +715,8 @@ masterData(:,masterInd) = sum(spikeArray'); masterHeader{masterInd} = 'SpikesPer
 
 s.STAs = sta;
 s.STASig = sta_sig;
-
 %lets now generate some STA based data by reshaping and pulling time and
 %frequency information. We will also extract the RTF.
-
 
 %first, reshape the STAs!
 for i = 1:numUnits
@@ -734,8 +729,6 @@ for i = 1:numUnits
     posSTA(:,:,i) = tmpStore;
 end
 
-
-
 %to determine peak and width, lets compress along time axis or freq axis.. 
 smoothWind = 1;
 for i = 1:numUnits
@@ -745,87 +738,53 @@ for i = 1:numUnits
     compWidthNeg(:,i) = smooth(sum(negSTA(:,:,i)'),smoothWind);
 end
 
+%now lets test significance of the responses. Since this requires many
+%loops to get things done, I think the best idea is to actually downsample
+%down to a 5ms time step, so that I can still get through things, show
+%significance 
 
-
-%now lets test significance of
-%response. The first step is to generate the actual split of spikes and the
-%STAs that are generated from that.
-% also generate split spike STAs to have internal comparison. 
-for i = 1:numUnits
-    spikeStore = s.(desigNames{i}).SpikeTimes(s.(desigNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(desigNames{i}).SpikeTimes < spikeHistVect(end));
-    sel1 = randperm(length(spikeStore),round(length(spikeStore)/2));
-    sel2 = [1:length(spikeStore)];
-    sel2(ismember(sel1,sel2)) = [];
-    spikes1(i,:) = hist(spikeStore(sel1),spikeHistVect);
-    spikes2(i,:) = hist(spikeStore(sel2),spikeHistVect);
+%the way in which I will do that is by smoothing by 5, then downsampling by
+%5. 
+dsLags = 20;
+dsStimulus = [];
+for i = 1:length(faxis)
+    dsStimulus(i,:) = downsample(smooth(stimulus(i,:),5),5)*5;
 end
-[sta1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes1, numLags);
-[sta2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes2, numLags);
-
-% %now lets try and do the rotating shift of the spike train. 
-% numShifts = 100;
-% shiftVal = floor(length(spikeArray)/numShifts);
-% 
-% corrCoeffStore= zeros(numShifts,numUnits);
-% for i = 1:numShifts
-%     disp(strcat('Shift Number-',num2str(i)))
-%     %shuffle the spikes
-%     altArray(:,1:length(spikeArray) - shiftVal*i) = spikeArray(:,shiftVal*i+1:end);
-%     altArray(:,length(spikeArray) - shiftVal*i+1:length(spikeArray)) = spikeArray(:,1:shiftVal*i);
-%     %split in half? 
-%     tester = randperm(floor(length(spikeArray)/2));
-%     altHalf1 = zeros(numUnits,length(spikeArray));
-%     altHalf1(:,tester) = altArray(:,tester);
-%     revTest = [1:1:length(spikeArray)];
-%     revTest(tester) = [];
-%     altHalf2 = zeros(numUnits,length(spikeArray));
-%     altHalf2(:,revTest) = altArray(:,revTest);
-%     %now generate new STA
-%     [staAlt1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, altHalf1, numLags);
-%     [staAlt2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, altHalf2, numLags);
-%     %now we need to do unit by unit correlation coefficients
-%     for j = 1:numUnits
-%         tester = corrcoef(staAlt1(j,:),staAlt2(j,:));
-%         corrCoefStore(j,i) = tester(2);
-%     end
-% end
 
 
+for i = 1:numUnits
+    dsSpikes(i,:) = downsample(smooth(spikeArray(i,:),5),5)*5;
+end
 
-% %now lets generate jittered spike trains and see what this produces?
-% jitterNum = 100;
-% jitterTime = 0.3; %+/- 150 ms. 
-% for j = 1:jitterNum
-%     disp(j)
-%     for i = 1:numUnits
-%         
-%         spikeStore = s.(desigNames{i}).SpikeTimes(s.(desigNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(desigNames{i}).SpikeTimes < spikeHistVect(end));
-% 
-%         jitterVals = rand(length(spikeStore),1)-0.5;
-%         fakeSpikes = spikeStore + jitterVals;
-%         tempSpikes(i,:) = hist(fakeSpikes,spikeHistVect);
-%         
-%     end
-%     [sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, tempSpikes, numLags);
-%     jitSTAStore{j} = sta;
-% end
-% 
-% %also generate split spike STAs to have internal comparison. 
-% for i = 1:numUnits
-%     spikeStore = s.(desigNames{i}).SpikeTimes(s.(desigNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(desigNames{i}).SpikeTimes < spikeHistVect(end));
-%     sel1 = randperm(length(spikeStore),round(length(spikeStore)/2));
-%     sel2 = [1:length(spikeStore)];
-%     sel2(ismember(sel1,sel2)) = [];
-%     spikes1(i,:) = hist(spikeStore(sel1),spikeHistVect);
-%     spikes2(i,:) = hist(spikeStore(sel2),spikeHistVect);
-% end
-% [sta1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes1, numLags);
-% [sta2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes2, numLags);
-% 
-% s.JitteredSTAs = jitSTAStore;
-% s.SplitSTA1 = sta1;
-% s.SplitSTA2 = sta2;
 
+tempVect = linspace(dmrTimes(1),dmrTimes(2),length(dsStimulus));
+
+dsDMRtimes = interp1(ttlOnsetTime,dmrDIO,tempVect);
+
+dsDmrStep = mean(mode(diff(dsDMRtimes)));
+% newWin = round(s.Parameters.STRFWin/dsDmrStep);
+
+dsSpikeHistVect = dsDMRtimes+dsDmrStep/2;
+
+%Now lets generate split STAs to calculate correlation. 
+randVals = randperm(length(dsSpikes),floor(length(dsSpikes)/2));
+splitSpikes1 = zeros(size(dsSpikes));
+splitSpikes1(:,randVals) = dsSpikes(:,randVals);
+randVals2 = [1:1:length(dsSpikes)];
+randVals2(randVals) = [];
+splitSpikes2 = zeros(size(dsSpikes));
+splitSpikes2(:,randVals2) = dsSpikes(:,randVals2);
+disp('Calculating Correlation Coefficient of Split STA')
+[sta1, stabigmat, spkcountvec] = quick_calc_sta(dsStimulus, splitSpikes1, dsLags);
+[sta2, stabigmat, spkcountvec] = quick_calc_sta(dsStimulus, splitSpikes2, dsLags);
+
+%now lets generate correlation coefficients. 
+for i = 1:numUnits
+    tester = corrcoef(sta1(i,:),sta2(i,:));
+    realCorrStore(i) = tester(2);
+end
+
+s.RealCorrStore = realCorrStore;
 
 s.DMRTimes = trueDMRtimes;
 s.DMRStep = dmrStep;
