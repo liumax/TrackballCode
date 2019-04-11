@@ -86,6 +86,9 @@ for i = 1:numFiles
     desigName = s.DesignationName;
     for j = 1:numCells
         disp(desigName{j})
+        %store RPVs
+        rpvStore(bigMasterInd + j -1) = s.(desigName{j}).RPVPercent;
+        rpvNumStore(bigMasterInd + j -1) = s.(desigName{j}).RPVNumber;
         %pull up cell average waveforms
         cellWaves = s.(desigName{j}).AverageWaveForms;
         %now pull up which one is biggest
@@ -96,7 +99,6 @@ for i = 1:numFiles
         interpVect = [1:0.1:40];
         interpWave = interp1(1:40,chosenWave,interpVect,'spline');
         %now find peak value
-
         [pkVal pkInd] = max(interpWave(100:end));
         pkInd = pkInd + 100 - 1;
         %now we need to find the minimum following the peak
@@ -1047,7 +1049,11 @@ findCHATs = find(bigMaster(:,5) > 0.0005 & bigMaster(:,6) < 1.1);
 
 findPVs = find(bigMaster(:,5) < 0.0004 & bigMaster(:,6) > 1.1);
 findMSNs = find(bigMaster(:,5) > 0.0005 & bigMaster(:,6) > 1.1); 
-
+badRPV = find(rpvStore > 0.5);
+findBads = intersect(findPVs,badRPV);
+findPVs(ismember(findPVs,findBads)) = [];
+findBads = intersect(findMSNs,badRPV);
+findMSNs(ismember(findMSNs,findBads)) = [];
 
 %% Pull tuning widths
 %pull widths
