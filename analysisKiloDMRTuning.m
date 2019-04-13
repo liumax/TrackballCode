@@ -813,10 +813,7 @@ rez = [];
 % stimulus = [];
 indivOut = [];
 
-%% Save!
-save(fullfile(pname,fname),'s','masterData','masterHeader');
-% save(fullfile(pname,strcat(fileName,'DMRData')),'sta','sta_sig','spikeArray','stimulus','faxis')
-save(fullfile(pname,strcat(fileName,'DMRData')),'sta','spikeArray','stimulus','faxis','spikeHistVect')
+
 
 %% Plotting
 
@@ -1434,7 +1431,7 @@ end
 %% Saving
 save(fullfile(pname,fname),'s','masterData','masterHeader','corrData','-v7.3');
 % save(fullfile(pname,strcat(fileName,'DMRData')),'sta','sta_sig','spikeArray','stimulus','faxis')
-save(fullfile(pname,strcat(fileName,'DMRData')),'sta','spikeArray','stimulus','faxis')
+save(fullfile(pname,strcat(fileName,'DMRData')),'sta','spikeArray','stimulus','faxis','spikeHistVect')
 
  
 %% Plotting individual units
