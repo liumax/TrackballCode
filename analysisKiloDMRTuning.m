@@ -841,7 +841,7 @@ plotVect = [0:1/30000:53/30000];
 [indPkTr] = functionCellStringFind(masterHeader,'PeakTrough');
 indPkTr = indPkTr(1);
 for i = 1:2
-    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
+    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals >= 32*(i-1)+1);
     if findTars
         hFig = figure;
         subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.02 0.07], [0.01 0.01]);
@@ -904,7 +904,7 @@ rasterVector = [-0.01:0.0005:0.01];
 corrData = [];
 %First, do cross correlograms, split by shanks
 for i = 1:2
-    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
+    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals >= 32*(i-1)+1);
     if findTars
         disp(strcat('Performing Cross Corr for Shank-',num2str(i)))
         corrName = strcat('trueStoreShank',num2str(i));
@@ -925,7 +925,7 @@ end
 rasterWindow = [-0.1025 0.1025];
 rasterVector = [-0.1:0.005:0.1];
 for i = 1:2
-    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
+    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals >= 32*(i-1)+1);
     if findTars
         disp(strcat('Performing Cross Corr for Shank-',num2str(i)))
         corrName = strcat('wideStoreShank',num2str(i));
@@ -948,7 +948,7 @@ rasterWindow = [-0.01025 0.01025];
 rasterVector = [-0.01:0.0005:0.01];
 prctileBounds = [.5 99.5];
 for i = 1:2
-    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
+    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals >= 32*(i-1)+1);
     if findTars
         disp(strcat('Performing Jittered xCorr for Shank-',num2str(i)))
         trueName = strcat('trueStoreShank',num2str(i));
@@ -1056,7 +1056,7 @@ end
 %plot out cross correlograms, zero eliminated cross corr, and jittered
 %baseline with 99%ile bounds
 for bigInd = 1:2
-    findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals > 32*(bigInd-1)+1);
+    findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals >= 32*(bigInd-1)+1);
     if findTars
         hFig = figure;
         testData = s.PeakChanVals(findTars);
@@ -1209,7 +1209,7 @@ cluNonTone(counterNonTone:counterNonTone - 1 + length(allSpikes)) = allClu;
 
 %now lets do the cross correlograms
 for i = 1:2
-    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals > 32*(i-1)+1);
+    findTars = find(s.PeakChanVals <= 32*i & s.PeakChanVals >= 32*(i-1)+1);
     if findTars
         disp(strcat('Performing Tone/NoneTone Cross Corr for Shank-',num2str(i)))
         nameNonTone = strcat('NonTone',num2str(i));
@@ -1243,7 +1243,7 @@ end
 
 
 for bigInd = 1:2
-    findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals > 32*(bigInd-1)+1);
+    findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals >= 32*(bigInd-1)+1);
     nameNonTone = strcat('NonTone',num2str(bigInd));
     nameTone = strcat('Tone',num2str(bigInd));
     if findTars
@@ -1357,7 +1357,7 @@ if length(subInd) > length(targetDIOs)
 end
 tarWindow = [-0.2 0.4];
 for bigInd = 1:2
-    findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals > 32*(bigInd-1)+1);
+    findTars = find(s.PeakChanVals <= 32*bigInd & s.PeakChanVals >= 32*(bigInd-1)+1);
     if findTars
         hFig = figure;
         testData = s.PeakChanVals(findTars);
