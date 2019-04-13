@@ -5,7 +5,8 @@
 
 
 %for testing purposes
-fileName = '190123ML181105E_RAudStr3526pen1rec1tuningAndDMR';
+fileName = '190405ML190307A_RAudStrPen1Rec1_3375TuningDMR'
+% fileName = '190123ML181105E_RAudStr3526pen1rec1tuningAndDMR';
 % fileName = '190206ML181105F_RAudStr3633pen2rec1tuningDMR'
 % fileName = '190205ML181105C_RAudStr3667pen2rec1tuningDMR';
 % fileName = '190123_ML181105D_R_AudStr_3106_pen1_rec1_tuningAndDMR'
@@ -79,18 +80,18 @@ if dateVal < 190211
 %     sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR400-6400-approx1kHz.mat';
 %     % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
 %     ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimesCORRECTFreqSampling.mat';
-    sprFile = 'Y:\Max\dmrOutputFiles\extractedDMR400-6400-approx1kHz.mat';
+    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR400-6400-approx1kHz.mat';
     % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
-    ttlInfo = 'Y:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimesCORRECTFreqSampling.mat';
+    ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimesCORRECTFreqSampling.mat';
 
 %     ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-400flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
 else 
 %     sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR4kHz-16kHz_10mindsT30dsF5.mat';
 %     % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
 %     ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-4000flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
-    sprFile = 'Y:\Max\dmrOutputFiles\extractedDMR4kHz-16kHz_10mindsT30dsF5.mat';
+    sprFile = 'Z:\Max\dmrOutputFiles\extractedDMR4kHz-16kHz_10mindsT30dsF5.mat';
     % dsTTLFile = 'E:\GIT\cleanDMR\DMR10mindsT5ttlPos.mat';
-    ttlInfo = 'Y:\Max\dmrOutputFiles\dmr-4000flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
+    ttlInfo = 'Z:\Max\dmrOutputFiles\dmr-4000flo-64000fhi-4SM-40TM-40db-192000khz-6DF-10min40dBTTLADJUSTdmrStimTimeAndTTLTimes.mat';
 end
 s.Parameters.MinFreq = 4000;
 s.Parameters.MaxFreq = 64000;
@@ -759,50 +760,63 @@ end
 s.STAs = sta;
 s.STASig = sta_sig;
 
-%now lets generate jittered spike trains and see what this produces?
-jitterNum = 100;
-jitterTime = 0.3; %+/- 150 ms. 
-for j = 1:jitterNum
-%     disp(j)
-    tempSpikes = [];
-    for i = 1:numUnits
-        spikeStore = s.(cluNames{i}).SpikeTimes(s.(cluNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(cluNames{i}).SpikeTimes < spikeHistVect(end));
 
-        jitterVals = rand(length(spikeStore),1)-0.5;
-        fakeSpikes = spikeStore + jitterVals;
-        tempSpikes(i,:) = hist(fakeSpikes,spikeHistVect);
-    end
-    [sta, stabigmat, spkcountvec] = quick_calc_sta(stimulus, tempSpikes, numLags);
-    jitSTAStore{j} = sta;
+dsLags = 20;
+dsStimulus = [];
+for i = 1:length(faxis)
+    dsStimulus(i,:) = downsample(smooth(stimulus(i,:),5),5)*5;
 end
 
-%also generate split spike STAs to have internal comparison. 
+
 for i = 1:numUnits
-    spikeStore = s.(cluNames{i}).SpikeTimes(s.(cluNames{i}).SpikeTimes > spikeHistVect(1) + s.Parameters.STRFWin(1) & s.(cluNames{i}).SpikeTimes < spikeHistVect(end));
-    sel1 = randperm(length(spikeStore),round(length(spikeStore)/2));
-    sel2 = [1:length(spikeStore)];
-    sel2(ismember(sel1,sel2)) = [];
-    spikes1(i,:) = hist(spikeStore(sel1),spikeHistVect);
-    spikes2(i,:) = hist(spikeStore(sel2),spikeHistVect);
+    dsSpikes(i,:) = downsample(smooth(spikeArray(i,:),5),5)*5;
 end
-[sta1, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes1, numLags);
-[sta2, stabigmat, spkcountvec] = quick_calc_sta(stimulus, spikes2, numLags);
 
-s.JitteredSTAs = jitSTAStore;
-s.SplitSTA1 = sta1;
-s.SplitSTA2 = sta2;
 
+tempVect = linspace(dmrTimes(1),dmrTimes(2),length(dsStimulus));
+
+dsDMRtimes = interp1(ttlOnsetTime,dmrDIO,tempVect);
+
+dsDmrStep = mean(mode(diff(dsDMRtimes)));
+% newWin = round(s.Parameters.STRFWin/dsDmrStep);
+
+dsSpikeHistVect = dsDMRtimes+dsDmrStep/2;
+
+%Now lets generate split STAs to calculate correlation. 
+randVals = randperm(length(dsSpikes),floor(length(dsSpikes)/2));
+splitSpikes1 = zeros(size(dsSpikes));
+splitSpikes1(:,randVals) = dsSpikes(:,randVals);
+randVals2 = [1:1:length(dsSpikes)];
+randVals2(randVals) = [];
+splitSpikes2 = zeros(size(dsSpikes));
+splitSpikes2(:,randVals2) = dsSpikes(:,randVals2);
+disp('Calculating Correlation Coefficient of Split STA')
+[sta1, stabigmat, spkcountvec] = quick_calc_sta(dsStimulus, splitSpikes1, dsLags);
+[sta2, stabigmat, spkcountvec] = quick_calc_sta(dsStimulus, splitSpikes2, dsLags);
+
+%now lets generate correlation coefficients. 
+for i = 1:numUnits
+    tester = corrcoef(sta1(i,:),sta2(i,:));
+    realCorrStore(i) = tester(2);
+end
+
+s.RealCorrStore = realCorrStore;
 
 s.DMRTimes = trueDMRtimes;
 s.DMRStep = dmrStep;
 s.DMRfaxis = faxis;
 
-
+s.SpikeArray = spikeArray;
 %now lets remove other stuff
 rez = [];
-spikeArray = [];
-stimulus = [];
+% spikeArray = [];
+% stimulus = [];
 indivOut = [];
+
+%% Save!
+save(fullfile(pname,fname),'s','masterData','masterHeader');
+% save(fullfile(pname,strcat(fileName,'DMRData')),'sta','sta_sig','spikeArray','stimulus','faxis')
+save(fullfile(pname,strcat(fileName,'DMRData')),'sta','spikeArray','stimulus','faxis','spikeHistVect')
 
 %% Plotting
 
