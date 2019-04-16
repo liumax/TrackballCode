@@ -3,7 +3,7 @@ clear
 targets = what;
 targetFiles = targets.mat;
 
-masterIndex = strfind(targetFiles,'ML');
+masterIndex = strfind(targetFiles,'Analysis');
 masterIndex = find(not(cellfun('isempty', masterIndex)));
 targetFiles = targetFiles(masterIndex);
 
@@ -180,7 +180,7 @@ for i = 1:numFiles
         disp('About to do fine overall histogram')
         %generate a finer scale histogram across all tones
         tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.TrialMatrix(toneFinder,1),histLims);
-        
+        fineHistVect = [histLims(1):binSize:histLims(2)];
         fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[histLims(1):binSize:histLims(2)])/binSize/length(toneFinder);
         nameStore{bigMasterInd + j -1} = targetFiles{i};
         unitStore{bigMasterInd + j -1} = desigName{j};
@@ -273,10 +273,21 @@ for i = 1:numFiles
     bigSTAstore(bigMasterInd:bigMasterInd + numUnits - 1,:) = s.STAs;
     bigSTASigstore(bigMasterInd:bigMasterInd + numUnits - 1,:) = s.STASig;
     
+    %now lets pull significance information from STA
+    newTarget = targetFiles{i};
+    newTarget = newTarget(1:end-22);
+    newTarget = [newTarget,'DMRData.mat'];
+    load(newTarget)
+    
+    bigStoreSTACorr(bigMasterInd:bigMasterInd + numUnits - 1) = realCorrStore(1:numUnits);
+    bigStoreSTACorrBase(bigMasterInd:bigMasterInd + numUnits - 1,:) = corrCoefStore(1:numUnits,:);
+    bigStoreSpikeNum(bigMasterInd:bigMasterInd + numUnits - 1) = sum(spikeArray');
     bigMasterInd = bigMasterInd + numUnits;
         
 end
 
+faxis = s.DMRfaxis;
+toneFreqs = s.SoundData.UniqueFrequencies;
 
 %% now lets march through the correlation coefficient data and see what we pull out. First things first, I want to remove all the excess values, since I dont want double counting. 
 %lets define interactions! There are three cell types, and therefore six
@@ -469,7 +480,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.02 0.02], [0.03 0.03], [0.03 0.03])
 axisSize = ceil(sqrt(length(sigCorrNegCells)));
 for i = 1:length(sigCorrNegCells)
     subplot(axisSize,axisSize,i)
-    imagesc(reshape(bigSTASigstore(sigCorrNegCells(i),:),100,100))
+    imagesc(reshape(bigSTASigstore(sigCorrNegCells(i),:),length(faxis),[]))
     colormap('parula')
 end
 
@@ -478,7 +489,7 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.02 0.02], [0.03 0.03], [0.03 0.03])
 axisSize = ceil(sqrt(length(sigCorrPosCells)));
 for i = 1:length(sigCorrPosCells)
     subplot(axisSize,axisSize,i)
-    imagesc(reshape(bigSTASigstore(sigCorrPosCells(i),:),100,100))
+    imagesc(reshape(bigSTASigstore(sigCorrPosCells(i),:),length(faxis),[]))
     colormap('parula')
 end
 
@@ -1015,6 +1026,18 @@ selWidthMSN(:,sum(sigWidthMSN) == 0) = [];
 
 %% Now lets start processing the STA data. 
 
+%find significant dmr stas
+zCorr = (bigStoreSTACorr - mean(bigStoreSTACorrBase'))./std(bigStoreSTACorrBase');
+for i= 1:length(bigStoreSTACorr)
+    corrPrctile(i,:) = prctile(bigStoreSTACorrBase(i,:),[0.5 99.5]);
+end
+
+zlim = 3;
+sigUnitZ = find(zCorr > zlim);
+sigUnitPrct = find(bigStoreSTACorr - corrPrctile(:,2)' > 0);
+%these produce more or less overlapping distributions. Can probably use
+%iether one. Lets be a bit more lax and use the prct measure. 
+
 
 findPVs = find(bigMaster(:,5) < 0.0004 & bigMaster(:,6) > 1.1);
 findMSNs = find(bigMaster(:,5) > 0.0005 & bigMaster(:,6) > 1.1); 
@@ -1024,23 +1047,256 @@ fewSpikes = find(dmrSpikeNum < minSpikes);
 
 dmrMSN = findMSNs;
 dmrMSN(ismember(dmrMSN,fewSpikes)) = [];
+dmrMSN = intersect(dmrMSN,sigUnitPrct);
 dmrPV = findPVs;
 dmrPV(ismember(dmrPV,fewSpikes)) = [];
+dmrPV = intersect(dmrPV,sigUnitPrct);
+
+%plot out spiking rate for DMR
+histVectSpikeNum = [0:5:40];
+figure
+subplot(2,1,1)
+hist(dmrSpikeNum(dmrPV)/(10*60),histVectSpikeNum)
+subplot(2,1,2)
+hist(dmrSpikeNum(dmrMSN)/(10*60),histVectSpikeNum)
+
+%calculate phase locking index
+% PLI = (max(bigSTAstore') - min(bigSTAstore'))./(dmrSpikeNum/(10*60)*sqrt(8));
+PLI = (max(bigSTAstore') - min(bigSTAstore'))./(dmrSpikeNum*38.8520);
+
+histVectSpikeNum = [0:0.05:1];
+figure
+subplot(2,1,1)
+hist(PLI(dmrPV),histVectSpikeNum)
+subplot(2,1,2)
+hist(PLI(dmrMSN),histVectSpikeNum)
 
 %first, reshape the STAs!
 for i = 1:length(bigDBStore)
-    tmpStore = reshape(bigSTAstore(i,:),100,100);
+    tmpStore = reshape(bigSTASigstore(i,:),length(faxis),[]);
     newSTA(:,:,i) = tmpStore;
-    tmpStore(tmpStore < 0) = 0;
+    newTMP = tmpStore;
+    newTMP(tmpStore >=0) = 0;
+    negSTA(:,:,i) = newTMP;
+    tmpStore(tmpStore <= 0) = 0;
     posSTA(:,:,i) = tmpStore;
 end
 
 %to determine peak and width, lets compress along time axis. 
+smoothWind = 1;
+for i = 1:length(bigDBStore)
+    compTimingPos(:,i) = sum(posSTA(:,:,i));
+    compTimingNeg(:,i) =  sum(negSTA(:,:,i));
+    compWidthPos(:,i) = smooth(sum(posSTA(:,:,i)'),smoothWind);
+    compWidthNeg(:,i) = smooth(sum(negSTA(:,:,i)'),smoothWind);
+    
+end
+% 
+% figure
+% hold on
+% for i = 1:length(bigDBStore)
+%     plot(compWidthPos(:,i))
+%     plot(smooth(compWidthPos(:,i),5),'r')
+%     
+% end
+% 
+% %peak to peak distance for old datasets seems to be 5. Lets keep a 5
+% %smoothing for these. 
+
+%now lets go through the shits. Pull widths and timings. 
+dmrWidthPos = [];
+dmrBFPos = [];
+dmrWidthNeg = [];
+dmrBFNeg = [];
+widthPer = 0.5;
+for i = 1:length(bigDBStore)
+    %pull peak modulation timing. 
+    [maxVal dmrTimePos(i)] = max(compTimingPos(:,i));
+    [minVal dmrTimeNeg(i)] = min(compTimingPos(:,i));
+    %pull widths
+    [dmrWidthPos(i,1:4),dmrBFPos(i),maxVal,cutVal] = functionHeightBasedTuningWidth(compWidthPos(:,i),widthPer,1);
+    [dmrWidthNeg(i,1:4),dmrBFNeg(i),maxVal,cutVal] = functionHeightBasedTuningWidth(-1*compWidthNeg(:,i),widthPer,1);
+end
+
+dmrWidthPos (:,[2,4]) = [];
+dmrWidthNeg (:,[2,4]) = [];
+
+%first, lets just make plots of tuning curves of pure tones vs DMR.
+%start with PVs
+axisDef = ceil(sqrt(length(dmrPV)));
+hFig = figure;
+for i = 1:length(dmrPV)
+    %pull tuning curve average from top three amplitudes
+    toneWidth = binValBigStore(:,:,dmrPV(i));
+    toneWidth = mean(toneWidth(:,end-2:end)');
+    %make subplot
+    subplot(axisDef,axisDef,i)
+    hold on
+    plot(toneFreqs,toneWidth/max(toneWidth),'k')
+    plot(faxis,compWidthPos(:,dmrPV(i))/max(compWidthPos(:,dmrPV(i))),'r')
+    plot(faxis,-1*compWidthNeg(:,dmrPV(i))/min(compWidthNeg(:,dmrPV(i))),'b')
+    xlim([faxis(1) faxis(end)])
+    set(gca, 'XScale', 'log')
+end
+
+%Then MSNs
+axisDef = ceil(sqrt(length(dmrMSN)));
+hFig = figure;
+for i = 1:length(dmrMSN)
+    %pull tuning curve average from top three amplitudes
+    toneWidth = binValBigStore(:,:,dmrMSN(i));
+    toneWidth = mean(toneWidth(:,end-2:end)');
+    %make subplot
+    subplot(axisDef,axisDef,i)
+    hold on
+    plot(toneFreqs,toneWidth/max(toneWidth),'k')
+    plot(faxis,compWidthPos(:,dmrMSN(i))/max(compWidthPos(:,dmrMSN(i))),'r')
+    plot(faxis,-1*compWidthNeg(:,dmrMSN(i))/min(compWidthNeg(:,dmrMSN(i))),'b')
+    xlim([faxis(1) faxis(end)])
+    set(gca, 'XScale', 'log')
+end
+
+%now lets plot out temporal information. 
+smoothWind = 6;
+timeStep = 9.9800e-04;
+%FSI first
+axisDef = ceil(sqrt(length(dmrPV)));
+hFig = figure;
+for i = 1:length(dmrPV)
+    %make subplot
+    subplot(axisDef,axisDef,i)
+    hold on
+    plot(fineHistVect,smooth(fineHist(dmrPV(i),:),smoothWind)/max(smooth(fineHist(dmrPV(i),:),smoothWind)),'k')
+    plot([timeStep:timeStep:timeStep*100],compTimingPos(end:-1:1,dmrPV(i))/max(compTimingPos(:,dmrPV(i))),'r')
+    plot([timeStep:timeStep:timeStep*100],-1*compTimingNeg(end:-1:1,dmrPV(i))/min(compTimingNeg(:,dmrPV(i))),'b')
+    xlim([0 0.1])
+%     set(gca, 'XScale', 'log')
+end
+
+%Then MSNs
+axisDef = ceil(sqrt(length(dmrMSN)));
+hFig = figure;
+for i = 1:length(dmrMSN)
+    %make subplot
+    subplot(axisDef,axisDef,i)
+    hold on
+    plot(fineHistVect,smooth(fineHist(dmrMSN(i),:),smoothWind)/max(smooth(fineHist(dmrMSN(i),:),smoothWind)),'k')
+    plot([timeStep:timeStep:timeStep*100],compTimingPos(end:-1:1,dmrMSN(i))/max(compTimingPos(:,dmrMSN(i))),'r')
+    plot([timeStep:timeStep:timeStep*100],-1*compTimingNeg(end:-1:1,dmrMSN(i))/min(compTimingNeg(:,dmrMSN(i))),'b')
+    xlim([0 0.1])
+%     set(gca, 'XScale', 'log')
+end
 
 
+%now lets pull out the RTFs
+stepSize = timeStep;
+timeSteps = 100;
+rtf = [];
+for i = 1:length(bigDBStore)
+    [tmf, xmf, rtf] = sta2rtf(reshape(bigSTAstore(i,:),length(faxis),[]), [stepSize:stepSize:stepSize*100], faxis, 40, 4, 'n');
+    rtfStore(:,:,i) = rtf;
+    temp1 = flip(rtf(:,1:16),2);
+    temp2 = rtf(:,16:end);
+    flipRTF(:,:,i) = temp1 + temp2; %second dimension should be temporal mod. First dimension frequency mod. 
+    rtfModTemp(:,i) = sum(flipRTF(:,:,i));
+    rtfModSpect(:,i) = sum(flipRTF(:,:,i)');
+end
+
+%plot out STA, STA SIG, and RTF
+%FSI first
+% axisDef = ceil(sqrt(length(dmrPV)));
+
+for i = 1:length(dmrPV)
+    hFig = figure;
+    set(hFig, 'Position', [10 10 500 1000])
+    %make subplot
+    subplot(3,1,1)
+    imagesc(reshape(bigSTAstore(dmrPV(i),:),length(faxis),[]))
+    colormap('parula')
+    title('STA')
+    subplot(3,1,2)
+    imagesc(newSTA(:,:,dmrPV(i)))
+    colormap('parula')
+    title('STA Sig')
+    subplot(3,1,3)
+    imagesc(flipRTF(:,:,dmrPV(i)))
+    colormap('parula')
+end
+
+% 
+% for i = 1:length(dmrMSN)
+%     hFig = figure;
+%     set(hFig, 'Position', [10 10 500 1000])
+%     %make subplot
+%     subplot(3,1,1)
+%     imagesc(reshape(bigSTAstore(dmrMSN(i),:),length(faxis),[]))
+%     colormap('parula')
+%     title('STA')
+%     subplot(3,1,2)
+%     imagesc(newSTA(:,:,dmrMSN(i)))
+%     colormap('parula')
+%     title('STA Sig')
+%     subplot(3,1,3)
+%     imagesc(flipRTF(:,:,dmrMSN(i)))
+%     colormap('parula')
+% end
 
 
+axisDef = ceil(sqrt(length(bigDBStore)));
+figure
+for i = 1:length(bigDBStore)
+    subplot(axisDef,axisDef,i)
+    if ismember(i,dmrPV)
+        plot(rtfModTemp(:,i),'r')
+    elseif ismember(i,dmrMSN)
+        plot(rtfModTemp(:,i),'k')
+    else
+        plot(rtfModTemp(:,i),'Color',[0.7 0.7 0.7])
+    end
+%     plot(rtfModTemp(:,i))
+end
 
+axisDef = ceil(sqrt(length(bigDBStore)));
+figure
+for i = 1:length(bigDBStore)
+    subplot(axisDef,axisDef,i)
+    if ismember(i,dmrPV)
+        plot(rtfModSpect(:,i),'r')
+    elseif ismember(i,dmrMSN)
+        plot(rtfModSpect(:,i),'k')
+    else
+        plot(rtfModSpect(:,i),'Color',[0.7 0.7 0.7])
+    end
+end
+
+figure
+axisDef = ceil(sqrt(length(dmrPV)));
+for i = 1:length(dmrPV)
+    subplot(axisDef,axisDef,i)
+    plot(rtfModSpect(:,dmrPV(i)),'r')
+end
+
+figure
+axisDef = ceil(sqrt(length(dmrMSN)));
+for i = 1:length(dmrMSN)
+    subplot(axisDef,axisDef,i)
+    plot(rtfModSpect(:,dmrMSN(i)),'k')
+end
+
+
+figure
+axisDef = ceil(sqrt(length(dmrPV)));
+for i = 1:length(dmrPV)
+    subplot(axisDef,axisDef,i)
+    plot(rtfModTemp(:,dmrPV(i)),'r')
+end
+
+figure
+axisDef = ceil(sqrt(length(dmrMSN)));
+for i = 1:length(dmrMSN)
+    subplot(axisDef,axisDef,i)
+    plot(rtfModTemp(:,dmrMSN(i)),'k')
+end
 
 
 
