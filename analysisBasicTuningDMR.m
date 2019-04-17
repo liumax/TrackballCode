@@ -1142,7 +1142,7 @@ for i = 1:numUnits
     set(gca,'YTickLabel',dbRange(:,1));
     title('Mean Binned Resp (tone)')
     
-    subplot(4,4,11)
+    subplot(4,3,11)
     imagesc(s.(desigNames{i}).BinGen')
     colormap(parula)
     colorbar
