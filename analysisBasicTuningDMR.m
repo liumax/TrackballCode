@@ -1190,7 +1190,11 @@ for i = 1:numUnits
     maxx = max(xbincenter);
     plot([minx-1 maxx+1], [pspk{i} pspk{i}], 'k--');
     xlim([minx-2 maxx+2]);
-    ylim([0 maxmax]);
+    if ~isnan(maxmax)
+        ylim([0 maxmax]);
+    else
+        ylim([0 1])
+    end
     xlabel('Projection (SD)');
     ylabel('P(spk|x)');
 %     freqs
