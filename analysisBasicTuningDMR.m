@@ -784,6 +784,15 @@ for i = 1:numUnits
     realCorrStore(i) = tester(2);
 end
 
+disp('Extracting Nonlinearities in Response')
+%now lets extract nonlinearities
+nonLinearBin = 15;
+for i = 1:numUnits
+    [xprior, xposterior] = ne_sta_stimulus_projection(reshape(s.STAs(i,:),length(faxis),[]), spikeArray(i,:),stimulus);
+    [px{i},pspk{i},pxspk{i},xbincenter] = calc_px_pspk_pxspk(xprior,xposterior, nonLinearBin);
+end
+disp('Finished extracting nonlinearities...')
+
 s.RealCorrStore = realCorrStore;
 
 s.DMRTimes = trueDMRtimes;
@@ -791,6 +800,10 @@ s.DMRStep = dmrStep;
 s.DMRfaxis = faxis;
 
 s.SpikeArray = spikeArray;
+s.NonLinear.px = px;
+s.NonLinear.pspk = pspk;
+s.NonLinear.pxspk = pxspk;
+s.NonLinear.xbins = xbincenter;
 
 %% Pull waveforms from different time periods, so we can plot them out.
 
@@ -1026,7 +1039,7 @@ for i = 1:numUnits
     set(hFig, 'Position', [10 80 1900 1000])
     % Column 1
     %plots average waveform
-    subplot(4,4,1)
+    subplot(4,3,1)
     hold on
     plot(s.(desigNames{i}).MeanTuningWave,'k','LineWidth',2)
     plot(s.(desigNames{i}).MeanDMRWave,'r','LineWidth',2)
@@ -1042,7 +1055,7 @@ for i = 1:numUnits
 
     
     % plot histogram.
-    subplot(4,4,5)
+    subplot(4,3,4)
     plot(histBinVector,s.(desigNames{i}).AllHistograms,'k','LineWidth',2)
     hold on
     plot(histBinVector,s.(desigNames{i}).AllHistograms - s.(desigNames{i}).HistogramStandardDeviation,'b','LineWidth',1)
@@ -1072,7 +1085,7 @@ for i = 1:numUnits
     title('Histogram')
 
     %plot out rasters, organized!
-    subplot(2,4,5)
+    subplot(2,3,4)
     plot(s.(desigNames{i}).AllRasters(:,1),...
         s.(desigNames{i}).AllRasters(:,3),'k.','markersize',4)
     hold on
@@ -1101,7 +1114,7 @@ for i = 1:numUnits
 
     % Column 2
     %plots ISI
-    subplot(4,4,2)
+    subplot(4,3,2)
     hist(s.(desigNames{i}).ISIGraph,1000)
     histMax = max(hist(s.(desigNames{i}).ISIGraph,1000));
     line([s.Parameters.RPVTime s.Parameters.RPVTime],[0 histMax],'LineWidth',1,'Color','red')
@@ -1110,7 +1123,7 @@ for i = 1:numUnits
         strcat(num2str(s.(desigNames{i}).RPVNumber),'/',num2str(s.(desigNames{i}).TotalSpikeNumber))})
 
     %plot FR and velocity
-    subplot(4,4,6)
+    subplot(4,3,5)
     hold on
     plot(newTimeVector,newVelVector/max(newVelVector),'b')
     plot([newTimeVector(1):s.Parameters.SpeedFiringBins:newTimeVector(end)],s.(desigNames{i}).SessionFiring/max(s.(desigNames{i}).SessionFiring),'r')
@@ -1119,7 +1132,7 @@ for i = 1:numUnits
     title({fileName;desigNames{i}},'fontweight','bold', 'Interpreter', 'none');
     
     %plot heatmap tuning curves
-    subplot(4,4,10)
+    subplot(4,3,8)
     imagesc(s.(desigNames{i}).BinTone')
     colormap(parula)
     colorbar
@@ -1129,7 +1142,7 @@ for i = 1:numUnits
     set(gca,'YTickLabel',dbRange(:,1));
     title('Mean Binned Resp (tone)')
     
-    subplot(4,4,14)
+    subplot(4,4,11)
     imagesc(s.(desigNames{i}).BinGen')
     colormap(parula)
     colorbar
@@ -1143,7 +1156,7 @@ for i = 1:numUnits
     % Column 3
     
     %plot DMR response
-    subplot(2,2,2)
+    subplot(3,3,3)
     imagesc(reshape(sta(i,:),length(faxis),[]))
     colormap('parula')
     colorbar
@@ -1155,7 +1168,7 @@ for i = 1:numUnits
     title(strcat('DMR STA Based on',num2str(sum(spikeArray(i,:)))))
     
     %plot out thresholded DMR
-    subplot(2,2,4)
+    subplot(3,3,6)
     imagesc(reshape(sta_sig(i,:),length(faxis),[]))
     colormap('parula')
     colorbar
@@ -1166,6 +1179,20 @@ for i = 1:numUnits
     set(gca,'YTickLabel',[faxis([1:10:end])]);
     title(strcat('Thresholded DMR a=0.95 SelfCorr = ',num2str(s.RealCorrStore(i))))
     
+    %plot nonlinearity
+    subplot(3,3,9)
+    hold on
+    nl = pspk{i} .* pxspk{i} ./ px{i};
+
+    maxmax = max(nl);
+    plot(xbincenter, nl, 'ko-', 'markerfacecolor', 'k');
+    minx = min(xbincenter);
+    maxx = max(xbincenter);
+    plot([minx-1 maxx+1], [pspk{i} pspk{i}], 'k--');
+    xlim([minx-2 maxx+2]);
+    ylim([0 maxmax]);
+    xlabel('Projection (SD)');
+    ylabel('P(spk|x)');
 %     freqs
     
     hold off
