@@ -150,19 +150,42 @@ elseif prevFile == 1
     n = load(saveName);
     %load deleted units
     if isfield(n.s,'DeletedUnits')
+        disp('Duplicates Found')
         s.DeletedUnits = n.s.DeletedUnits;
         %now delete bad units
         delUnits = fields(s.DeletedUnits);
         for indCount = 1:length(delUnits)
             s = rmfield(s,delUnits{indCount});
         end
+        %now we need to convert names into numbers for finding?
+        for i = 1:length(s.DesignationName)
+            findt = strfind(s.DesignationName{i},'t');
+            findt = findt(1);
+            findc = strfind(s.DesignationName{i},'c');
+            findr = strfind(s.DesignationName{i},'r');
+            numVals(i) = str2num([s.DesignationName{i}(findt+1:findc-1),'9',s.DesignationName{i}(findr+1:end)]);
+        end
+        
+        for i = 1:length(n.s.DesignationName)
+            findt = strfind(n.s.DesignationName{i},'t');
+            findt = findt(1);
+            findc = strfind(n.s.DesignationName{i},'c');
+            findr = strfind(n.s.DesignationName{i},'r');
+            numValsPrev(i) = str2num([n.s.DesignationName{i}(findt+1:findc-1),'9',n.s.DesignationName{i}(findr+1:end)]);
+        end
+        %find intersect
+        [C,ia,ib] = intersect(numVals,numValsPrev);
+        %ia is the set of names that I want. 
+        
+        
         %replace designation array and names. 
-        s.DesignationArray = n.s.DesignationArray;
-        s.DesignationName = n.s.DesignationName;
+        s.DesignationArray = s.DesignationArray(ia,:);
+        s.DesignationName = s.DesignationName(ia);
     else
+        disp('No Duplicates Found')
         %replace designation array and names. 
-        s.DesignationArray = n.s.DesignationArray;
-        s.DesignationName = n.s.DesignationName;
+        s.DesignationArray = s.DesignationArray;
+        s.DesignationName = s.DesignationName;
     end
     
     disp('Finished! Closing original file')
