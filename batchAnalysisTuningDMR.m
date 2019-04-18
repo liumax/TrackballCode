@@ -28,7 +28,7 @@ for masterCount = 1:numFolders
     
 %     periodFinder = strfind(fileName,'.');
 %     fileName = fileName(1:periodFinder-1);
-testerAnalysisTuningAndDMR;
+analysisBasicTuningDMR;
 %     try
 %         testerAnalysisTuningAndDMR;
 %     catch
