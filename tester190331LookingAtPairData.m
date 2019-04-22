@@ -404,9 +404,16 @@ bar(histVectCorr,selBinToneCorr,'r')
 %now lets plot out the histograms for each. 
 for i = 1:length(orderFile)
     hFig = figure;
-    set(hFig, 'Position', [10 80 500 1000])
+    set(hFig, 'Position', [10 80 1000 1000])
 %     borderControl = ceil(sqrt(length(orderFile)));
     subplot = @(m,n,p) subtightplot (m, n, p, [0.03 0.03], [0.05 0.05], [0.05 0.05]);
+    subplot(2,2,1)
+    hold on
+    plot(xAxVals,truexCorr(:,i),'r','LineWidth',2)
+    plot(xAxVals,rangeBounds(:,i),'Color',[0.7 0.7 0.7])
+    plot(xAxVals,rangeBoundsPRCTL(:,2,i),'Color',[0.7 0.7 0.7])
+    plot(xAxVals,rangeBoundsPRCTL(:,1,i),'Color',[0.7 0.7 0.7])
+    subplot(1,2,2)
     numFreqs = size(fsiHistStore{i},1);
     for j = 1:numFreqs
         hold on
