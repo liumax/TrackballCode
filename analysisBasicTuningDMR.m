@@ -155,7 +155,12 @@ elseif prevFile == 1
         %now delete bad units
         delUnits = fields(s.DeletedUnits);
         for indCount = 1:length(delUnits)
-            s = rmfield(s,delUnits{indCount});
+            try
+                s = rmfield(s,delUnits{indCount});
+            catch
+                disp('Field Not Found, Perhaps Already Removed?')
+                disp(delUnits{indCount})
+            end
         end
         %now we need to convert names into numbers for finding?
         for i = 1:length(s.DesignationName)
