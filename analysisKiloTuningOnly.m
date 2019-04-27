@@ -7,13 +7,14 @@
 %for testing purposes
 % fileName = '180718_ML180619B_L_AudStr_pen1_3000_fullTuning'
 % fileName = '180718_ML180619C_R_AudStr_pen1_3000_fullTuning'
-fileName = '180315_ML180306C_R17_3218mid1_fullTuning'
+fileName = '180614_ML180515A_R17_2886_fullTuning'
 % fileName = '180717_ML180619A_R_AudStr_pen2_2850_fullTuning'
 %% Constants
 
 %PARAMETERS FOR BASIC ARRANGEMENT OF DATA
 s.Parameters.RasterWindow = [-5 6]; %ratio for raster window. will be multiplied by toneDur
 s.Parameters.ToneWindow = [0 1];
+s.Parameters.BaseWindow = [-4 0];
 s.Parameters.GenWindow = [0 2];
 s.Parameters.RPVTime = 0.002; %time limit in seconds for consideration as an RPV
 s.Parameters.ClusterWindow = [-0.01 0.03]; %window in seconds for displaying RPV info
@@ -230,6 +231,7 @@ totalTrialNum = length(soundData.Frequencies);
 s.Parameters.RasterWindow = s.Parameters.RasterWindow * toneDur;
 s.Parameters.ToneWindow = s.Parameters.ToneWindow * toneDur;
 s.Parameters.GenWindow = s.Parameters.GenWindow * toneDur;
+s.Parameters.BaseWindow = s.Parameters.BaseWindow * toneDur;
 calcWindow = s.Parameters.calcWindow*toneDur;
 rasterAxis=[s.Parameters.RasterWindow(1):0.001:s.Parameters.RasterWindow(2)-0.001];
 histBinNum = (s.Parameters.RasterWindow(2)-s.Parameters.RasterWindow(1))/s.Parameters.histBin
@@ -534,10 +536,10 @@ s.RepArray = repArray;
 
 %% Generate master
 %form master matrix
-trialNum = length(tuningDIO);
+trialNum = length(dioTimes);
 master = zeros(trialNum,5);
 
-master(:,1) = tuningDIO;
+master(:,1) = dioTimes;
 %master(:,2) is frequency
 master(:,2) = s.SoundData.Frequencies(1:trialNum);
 %master(:,3) is dB
@@ -606,9 +608,9 @@ jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRot
 jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
 velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
 length(s.RotaryData.Velocity);
-for i = 1:length(tuningDIO)
+for i = 1:length(dioTimes)
     %find the time from the velocity trace closest to the actual stim time
-    targetInd = find(newTimeVector - tuningDIO(i) > 0,1,'first');
+    targetInd = find(newTimeVector - dioTimes(i) > 0,1,'first');
     %pull appropriate velocity data
     if targetInd < length(newTimeVector) - jumpsForward
         velRaster(:,i) = newVelVector([targetInd+jumpsBack:targetInd+jumpsForward]);
