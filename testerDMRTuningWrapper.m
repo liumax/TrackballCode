@@ -24,6 +24,9 @@ unitStore = [];
 halfWidthTimeStore = [];
 pkTroughTimeStore = [];
 dmrSpikeNum = [];
+bigpspk = [];
+bigpx = [];
+bigpxspk = [];
 
 %parameters
 masterHeaderSize = 12; %only want the first 12 values of masterData. 
@@ -110,6 +113,11 @@ for i = 1:numFiles
         halfFirst = find(interpWave(1:pkInd) > pkVal/2,1,'first');
         halfSecond = find(interpWave(halfFirst:end) < pkVal/2,1,'first');
         halfWidthTime(j) = halfSecond;
+        
+        %now extract non-linearities
+        bigpspk(bigMasterInd + j - 1) = s.NonLinear.pspk{j};
+        bigpx(bigMasterInd + j - 1,:) = s.NonLinear.px{j};
+        bigpxspk(bigMasterInd + j - 1,:) = s.NonLinear.pxspk{j};
 
         %pull out binned values for entire tone period, as well as
         %significance
@@ -225,49 +233,6 @@ for i = 1:numFiles
     %store BFs
     bfStore(bigMasterInd:bigMasterInd + numUnits - 1) = masterData(:,12);
     
-    %now lets try to get corrcoef from binDiff values (tempBinStore)
-    shuffBinDiffCorrVals = [];
-    binDiffCorrVals = [];
-    binDiffCorrValSig = [];
-    for j = 1:numUnits
-        val1 = reshape(squeeze(tempBinStore(:,:,j)),1,[]);
-        for k = 1:numUnits
-            val2 = reshape(squeeze(tempBinStore(:,:,k)),1,[]);
-            tempCorrVal = corrcoef(val1,val2);
-            binDiffCorrVals(j,k) = tempCorrVal(2);
-            %now do shuffled versions
-            numShuff = 1000;
-            for l = 1:numShuff
-                shuffVal = randperm(length(val2));
-                shuffVal = val2(shuffVal);
-                tempCorrVal = corrcoef(val1,shuffVal);
-                shuffBinDiffCorrVals(l) = tempCorrVal(2);
-            end
-            %calculate percentile
-            prctileVals = prctile(shuffBinDiffCorrVals,[0.5 99.5]);
-            if binDiffCorrVals(j,k) < prctileVals(1) || binDiffCorrVals(j,k) > prctileVals(2)
-                binDiffCorrValSig(j,k) = 1;
-            else
-                binDiffCorrValSig(j,k) = 0;
-            end
-            shuffBinDiffCorrVals = [];
-            %also calculate distances between units
-            distVal(j,k) = sqrt(((floor(masterData(j,1)) - floor(masterData(k,1)))*25)^2 + ((masterData(j,2) - masterData(k,2))*250)^2);
-        end
-    end
-    findPVs = find(masterData(:,5) < 0.0004 & masterData(:,6) > 1.1);
-    findMSNs = find(masterData(:,5) > 0.0005 & masterData(:,6) > 1.1); 
-    findCHATs = find(masterData(:,6) < 1.1);
-    corrCoefData.CorrCoefs = binDiffCorrVals;
-    corrCoefData.CorrCoefSig = binDiffCorrValSig;
-    corrCoefData.CellType = NaN(numUnits,1);
-    corrCoefData.CellType(findPVs) = 1;
-    corrCoefData.CellType(findMSNs) = 0;
-    corrCoefData.CellType(findCHATs) = 4;
-    corrCoefData.Distance = distVal;
-    bigCorrStore{i} = corrCoefData;
-    corrCoefData = [];
-    distVal = [];
     
     %lets add some code to extract out STA data!
     bigSTAstore(bigMasterInd:bigMasterInd + numUnits - 1,:) = s.STAs;
@@ -288,586 +253,6 @@ end
 
 faxis = s.DMRfaxis;
 toneFreqs = s.SoundData.UniqueFrequencies;
-
-%% now lets march through the correlation coefficient data and see what we pull out. First things first, I want to remove all the excess values, since I dont want double counting. 
-%lets define interactions! There are three cell types, and therefore six
-%interactions: FSI-MSN, FSI-ChAT, FSI-FSI, MSN-ChAT, MSN-MSN, ChAT-ChAT. 
-
-%lets number these. I want the most common first, going up into the less
-%common. so:
-
-% MSN-MSN: 0
-% MSN-FSI: 1
-% FSI-FSI: 2
-% MSN-ChAT: 4
-% FSI-ChAT: 5
-% ChAT-ChAT: 8
-
-
-corrCount = 1;
-cellCount = 1;
-for i = 1:length(bigCorrStore)
-    dataset = bigCorrStore{i};
-    %now lets try and linearize this dataset. 
-    numUnits = length(dataset.CellType);
-    for j = 1:numUnits
-        corrValStore(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefs(j,j+1:end);
-        distValStore(corrCount:corrCount + numUnits - j - 1) = dataset.Distance(j,j+1:end);
-        interTypeStore(corrCount:corrCount + numUnits - j - 1) = dataset.CellType(j)+ dataset.CellType(j+1:end);
-        corrValSigStore(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefSig(j,j+1:end);
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,1) = i;
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,2) = j+cellCount-1;
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,3) = cellCount + (j+1:numUnits) - 1;
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,4) = dataset.CellType(j);
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,5) = dataset.CellType(j+1:numUnits);
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,6) = bigMaster(j+cellCount-1,2);
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,7) = bigMaster(cellCount + (j+1:numUnits) - 1,2);
-        
-        corrCount = corrCount + numUnits - j;
-    end
-    cellCount = cellCount + numUnits;
-end
-
-%now lets clean up the dataset. Remove all NaNs. 
-corrValStore(isnan(interTypeStore)) = [];
-distValStore(isnan(interTypeStore)) = [];
-cellTrackerStore(isnan(interTypeStore),:) = [];
-corrValSigStore(isnan(interTypeStore)) = [];
-interTypeStore(isnan(interTypeStore)) = [];
-
-%lets look in general at within neuron corrcoefs. 
-corrHistVect = [-1:0.05:1];
-
-%just MSNs, close
-selDist = 150;
-selInterType = 0;
-
-findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
-corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
-sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
-corrValmsnmsnSig = hist(corrValStore(sigInt),corrHistVect);
-hold on
-bar(corrHistVect,corrValmsnmsn)
-bar(corrHistVect,corrValmsnmsnSig,'k')
-% hist(corrValStore(findTarCorr),corrHistVect)
-xlim([-1 1])
-% corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
-
-%just FSIs, close
-selDist = 150;
-selInterType = 2;
-
-
-findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
-corrValfsifsi = hist(corrValStore(findTarCorr),corrHistVect);
-sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
-corrValfsifsiSig = hist(corrValStore(sigInt),corrHistVect);
-hold on
-bar(corrHistVect,corrValfsifsi)
-bar(corrHistVect,corrValfsifsiSig,'k')
-% hist(corrValStore(findTarCorr),corrHistVect)
-xlim([-1 1])
-
-
-%MSN vs FSI, close
-selDist = 150;
-selInterType = 1;
-
-
-findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
-corrValfsimsn = hist(corrValStore(findTarCorr),corrHistVect);
-sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
-corrValfsimsnSig = hist(corrValStore(sigInt),corrHistVect);
-hold on
-bar(corrHistVect,corrValfsimsn)
-bar(corrHistVect,corrValfsimsnSig,'k')
-% hist(corrValStore(findTarCorr),corrHistVect)
-xlim([-1 1])
-
-%MSN vs ChAT, close
-selDist = 150;
-selInterType = 5;
-
-
-findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
-corrValmsnchat = hist(corrValStore(findTarCorr),corrHistVect);
-sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
-corrValmsnchatSig = hist(corrValStore(sigInt),corrHistVect);
-hold on
-bar(corrHistVect,corrValmsnchat)
-bar(corrHistVect,corrValmsnchatSig,'k')
-xlim([-1 1])
-
-
-%plot cumdists?
-figure
-hold on
-plot(corrHistVect,cumsum(corrValmsnmsn)/sum(corrValmsnmsn),'k')
-plot(corrHistVect,cumsum(corrValfsifsi)/sum(corrValfsifsi),'c')
-plot(corrHistVect,cumsum(corrValfsimsn)/sum(corrValfsimsn),'r')
-
-%try plotting by distance for first 150. 
-selInterType = 1;
-for i = 1:9
-    selDist = (i-1)*25;
-    tempTar = intersect(find(distValStore == selDist),find(interTypeStore == selInterType));
-    distCorrHistStore(:,i) = hist(corrValStore(tempTar),corrHistVect);
-    normDistCorrHistStore(:,i) = distCorrHistStore(:,i)/max(distCorrHistStore(:,i));
-end
-
-figure
-for i = 1:9
-    subplot(9,1,i)
-    plot(corrHistVect,normDistCorrHistStore(:,i));
-end
-
-%now lets try and dig into the units that I'm pulling out. Lets pull out
-%significant MSN-FSI and split between negative and positive. 
-selInterType = 1;
-selDist = 200;
-findSigCorrNeg = find(corrValSigStore == 1 & interTypeStore == selInterType & corrValStore < 0 & distValStore < selDist);
-findSigCorrPos = find(corrValSigStore == 1 & interTypeStore == selInterType & corrValStore > 0 & distValStore < selDist);
-
-%now we need to look at cellTrackerStore and extract the MSNs
-for i = 1:length(findSigCorrNeg)
-    testCells = cellTrackerStore(findSigCorrNeg(i),:);
-    if testCells(4) == 0
-        sigCorrNegCells(i) = testCells(2);
-    elseif testCells(5) == 0
-        sigCorrNegCells(i) = testCells(3);
-    end
-end
-
-for i = 1:length(findSigCorrPos)
-    testCells = cellTrackerStore(findSigCorrPos(i),:);
-    if testCells(4) == 0
-        sigCorrPosCells(i) = testCells(2);
-    elseif testCells(5) == 0
-        sigCorrPosCells(i) = testCells(3);
-    end
-end
-%this process can generate duplicates if a single cell has multiple
-%negative correlations with neighboring FSIs. Eliminate duplicates. 
-sigCorrNegCells = unique(sigCorrNegCells);
-sigCorrPosCells = unique(sigCorrPosCells);
-
-
-%now lets plot out tuning curves
-hFig = figure;
-subplot = @(m,n,p) subtightplot (m, n, p, [0.02 0.02], [0.03 0.03], [0.03 0.03]);
-axisSize = ceil(sqrt(length(sigCorrNegCells)));
-for i = 1:length(sigCorrNegCells)
-    subplot(axisSize,axisSize,i)
-    imagesc(squeeze(binValBigStore(:,:,sigCorrNegCells(i)))')
-    colormap('parula')
-end
-
-hFig = figure;
-axisSize = ceil(sqrt(length(sigCorrPosCells)));
-for i = 1:length(sigCorrPosCells)
-    subplot(axisSize,axisSize,i)
-    imagesc(squeeze(binValBigStore(:,:,sigCorrPosCells(i)))')
-    colormap('parula')
-end
-
-%now lets plot out STAs
-hFig = figure;
-subplot = @(m,n,p) subtightplot (m, n, p, [0.02 0.02], [0.03 0.03], [0.03 0.03]);
-axisSize = ceil(sqrt(length(sigCorrNegCells)));
-for i = 1:length(sigCorrNegCells)
-    subplot(axisSize,axisSize,i)
-    imagesc(reshape(bigSTASigstore(sigCorrNegCells(i),:),length(faxis),[]))
-    colormap('parula')
-end
-
-hFig = figure;
-subplot = @(m,n,p) subtightplot (m, n, p, [0.02 0.02], [0.03 0.03], [0.03 0.03]);
-axisSize = ceil(sqrt(length(sigCorrPosCells)));
-for i = 1:length(sigCorrPosCells)
-    subplot(axisSize,axisSize,i)
-    imagesc(reshape(bigSTASigstore(sigCorrPosCells(i),:),length(faxis),[]))
-    colormap('parula')
-end
-
-
-%plot out overall histograms?
-hFig = figure;
-hold on
-for i = 1:length(sigCorrNegCells)
-    plot(smooth(fineHist(sigCorrNegCells(i),:),11)/max(smooth(fineHist(sigCorrNegCells(i),:),11)) + i/2)
-end
-
-hFig = figure;
-hold on
-for i = 1:length(sigCorrPosCells)
-    plot(smooth(fineHist(sigCorrPosCells(i),:),11)/max(smooth(fineHist(sigCorrPosCells(i),:),11)) + i/2)
-end
-
-
-%seem to see some holes in the negative corr, and some positive responses
-%in the positive. This is good news I suppose?
-
-
-%now lets look at the MSN-MSN interactions of the targeted cells. 
-selDist = 200;
-selType = 0;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-counter = 1;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(cellTrackerStore(:,2) == sigCorrNegCells(i));
-    findRow2 = find(cellTrackerStore(:,3) == sigCorrNegCells(i));
-    
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(cellTrackerStore(:,2) == sigCorrPosCells(i));
-    findRow2 = find(cellTrackerStore(:,3) == sigCorrPosCells(i));
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
-
-%now lets do the same, but eliminate possibility for double counting
-%interactions, which may exist now. 
-selDist = 200;
-selType = 0;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-counter = 1;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
-    findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
-    findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
-
-%now lets try and do it only for cells within the same group. 
-selDist = 200;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-counter = 1;
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(ismember(otherVals,sigCorrNegCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(ismember(otherVals,sigCorrNegCells));
-        findRow2 = findRow2(otherVals);
-    end
-    
-    
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-tempTrack = cellTrackerStore;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(ismember(otherVals,sigCorrPosCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(ismember(otherVals,sigCorrPosCells));
-        findRow2 = findRow2(otherVals);
-    end
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
-
-%now lets try and do it only for cells not in the same group. 
-selDist = 200;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-counter = 1;
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(ismember(otherVals,sigCorrPosCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(ismember(otherVals,sigCorrPosCells));
-        findRow2 = findRow2(otherVals);
-    end
-    
-    
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-tempTrack = cellTrackerStore;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(ismember(otherVals,sigCorrNegCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(ismember(otherVals,sigCorrNegCells));
-        findRow2 = findRow2(otherVals);
-    end
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
-
-%now lets try and do it only for cells not in either group. 
-selDist = 200;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-counter = 1;
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
-        findRow2 = findRow2(otherVals);
-    end
-    
-    
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-tempTrack = cellTrackerStore;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
-        findRow2 = findRow2(otherVals);
-    end
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
 
 %% Find cell types
 %now plot things!
@@ -1020,10 +405,6 @@ selWidthMSN = sigWidthMSN;
 selWidthMSN(:,sum(sigWidthMSN) == 0) = [];
 
 
-%hmmm not seeing very significant differences in width here...at amplitude
-%= 1 we see something, but thats pretty much it. 
-
-
 %% Now lets start processing the STA data. 
 
 %find significant dmr stas
@@ -1052,24 +433,99 @@ dmrPV = findPVs;
 dmrPV(ismember(dmrPV,fewSpikes)) = [];
 dmrPV = intersect(dmrPV,sigUnitPrct);
 
-%plot out spiking rate for DMR
-histVectSpikeNum = [0:5:40];
-figure
-subplot(2,1,1)
-hist(dmrSpikeNum(dmrPV)/(10*60),histVectSpikeNum)
-subplot(2,1,2)
-hist(dmrSpikeNum(dmrMSN)/(10*60),histVectSpikeNum)
+%plot out spiking rate for DMR and PLI
 
 %calculate phase locking index
 % PLI = (max(bigSTAstore') - min(bigSTAstore'))./(dmrSpikeNum/(10*60)*sqrt(8));
 PLI = (max(bigSTAstore') - min(bigSTAstore'))./(dmrSpikeNum*38.8520);
 
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1200 800])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+histVectSpikeNum = [0:1:40];
+subplot(2,3,1)
+hist(dmrSpikeNum(dmrPV)/(10*60),histVectSpikeNum)
+title(['Hist Mean FR FSIs n=',num2str(length(dmrPV))])
+subplot(2,3,4)
+hist(dmrSpikeNum(dmrMSN)/(10*60),histVectSpikeNum)
+title(['Hist Mean FR MSNs n=',num2str(length(dmrMSN))])
+%plot out spike rate minus baseline rate from tones
+histVectSpikeNum = [-1:0.1:1];
+subplot(2,3,2)
+hist((dmrSpikeNum(dmrPV)/(10*60)- bigMaster(dmrPV,8)')./(dmrSpikeNum(dmrPV)/(10*60)+ bigMaster(dmrPV,8)'),histVectSpikeNum)
+title('Hist Mod Index FSIs')
+subplot(2,3,5)
+hist((dmrSpikeNum(dmrMSN)/(10*60)- bigMaster(dmrMSN,8)')./(dmrSpikeNum(dmrMSN)/(10*60)+ bigMaster(dmrMSN,8)'),histVectSpikeNum)
+title('Hist Mod Index MSNs')
+
+%now plot out PLI
 histVectSpikeNum = [0:0.05:1];
-figure
-subplot(2,1,1)
+subplot(2,3,3)
 hist(PLI(dmrPV),histVectSpikeNum)
-subplot(2,1,2)
+title('PLI FSI')
+subplot(2,3,6)
 hist(PLI(dmrMSN),histVectSpikeNum)
+title('PLI MSN')
+
+spikeGraphName = 'STA FR Change FR PLI';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%plot out STAs
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
+axisVal = ceil(sqrt(length(dmrPV)));
+for i = 1:length(dmrPV)
+    subplot(axisVal,axisVal,i)
+    imagesc(reshape(bigSTASigstore(dmrPV(i),:),length(faxis),[]))
+    colormap('parula')
+    set(gca,'xtick',[])
+    set(gca,'xticklabel',[])
+    set(gca,'ytick',[])
+    set(gca,'yticklabel',[])
+end
+
+spikeGraphName = 'fsiSTAs';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
+axisVal = ceil(sqrt(length(dmrMSN)));
+for i = 1:length(dmrMSN)
+    subplot(axisVal,axisVal,i)
+    imagesc(reshape(bigSTASigstore(dmrMSN(i),:),length(faxis),[]))
+    colormap('parula')
+    set(gca,'xtick',[])
+    set(gca,'xticklabel',[])
+    set(gca,'ytick',[])
+    set(gca,'yticklabel',[])
+end
+
+spikeGraphName = 'msnSTAs';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
 
 %first, reshape the STAs!
 for i = 1:length(bigDBStore)
@@ -1083,7 +539,8 @@ for i = 1:length(bigDBStore)
 end
 
 %to determine peak and width, lets compress along time axis. 
-smoothWind = 1;
+smoothWind = 7;
+% smoothWind = 1;
 for i = 1:length(bigDBStore)
     compTimingPos(:,i) = sum(posSTA(:,:,i));
     compTimingNeg(:,i) =  sum(negSTA(:,:,i));
@@ -1091,6 +548,81 @@ for i = 1:length(bigDBStore)
     compWidthNeg(:,i) = smooth(sum(negSTA(:,:,i)'),smoothWind);
     
 end
+
+
+
+%Lets examine BFs
+[maxVal staBFPos] = max(compWidthPos);
+staBFPos = faxis(staBFPos);
+
+[maxVal staBFNeg] = min(compWidthNeg);
+staBFNeg = faxis(staBFNeg);
+
+%BF store from master data is sketchy. Pull directly from final amplitude
+%of binDiff. 
+
+[maxVal toneBF] = max(squeeze(binValBigStore(:,end,:)));
+uniqueFreqs = s.SoundData.UniqueFrequencies;
+toneBF = uniqueFreqs(toneBF);
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1500 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.05 0.05]);
+subplot(2,3,1)
+hold on
+loglog(staBFPos(dmrPV),toneBF(dmrPV),'r.')
+plot([4000 64000],[4000 64000],'k')
+set(gca,'TickDir','out')
+xlabel('STA BF (Hz)')
+ylabel('Pure Tone BF (Hz)')
+title('FSI Positive BF Comparison')
+
+subplot(2,3,4)
+hold on
+loglog(staBFPos(dmrMSN),toneBF(dmrMSN),'r.')
+plot([4000 64000],[4000 64000],'k')
+set(gca,'TickDir','out')
+xlabel('STA BF (Hz)')
+ylabel('Pure Tone BF (Hz)')
+title('MSN Positive BF Comparison')
+
+subplot(2,3,2)
+hold on
+loglog(staBFNeg(dmrPV),toneBF(dmrPV),'r.')
+plot([4000 64000],[4000 64000],'k')
+set(gca,'TickDir','out')
+xlabel('STA BF (Hz)')
+ylabel('Pure Tone BF (Hz)')
+title('FSI Negative BF Comparison')
+
+subplot(2,3,5)
+hold on
+loglog(staBFNeg(dmrMSN),toneBF(dmrMSN),'r.')
+plot([4000 64000],[4000 64000],'k')
+set(gca,'TickDir','out')
+xlabel('STA BF (Hz)')
+ylabel('Pure Tone BF (Hz)')
+title('MSN Negative BF Comparison')
+
+
+subplot(2,3,3)
+hold on
+loglog(staBFNeg(dmrPV),staBFPos(dmrPV),'r.')
+plot([4000 64000],[4000 64000],'k')
+set(gca,'TickDir','out')
+xlabel('STA BF (Neg) (Hz)')
+ylabel('STA BF (Pos) (Hz)')
+title('FSI STA BF Comparison')
+
+subplot(2,3,6)
+hold on
+loglog(staBFNeg(dmrMSN),staBFPos(dmrMSN),'r.')
+plot([4000 64000],[4000 64000],'k')
+set(gca,'TickDir','out')
+xlabel('STA BF (Neg) (Hz)')
+ylabel('STA BF (Pos) (Hz)')
+title('MSN STA BF Comparison')
+
 % 
 % figure
 % hold on
@@ -1125,6 +657,8 @@ dmrWidthNeg (:,[2,4]) = [];
 %start with PVs
 axisDef = ceil(sqrt(length(dmrPV)));
 hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
 for i = 1:length(dmrPV)
     %pull tuning curve average from top three amplitudes
     toneWidth = binValBigStore(:,:,dmrPV(i));
@@ -1137,11 +671,26 @@ for i = 1:length(dmrPV)
     plot(faxis,-1*compWidthNeg(:,dmrPV(i))/min(compWidthNeg(:,dmrPV(i))),'b')
     xlim([faxis(1) faxis(end)])
     set(gca, 'XScale', 'log')
+    set(gca,'xtick',[])
+    set(gca,'xticklabel',[])
+    set(gca,'ytick',[])
+    set(gca,'yticklabel',[])
 end
+
+spikeGraphName = 'FSIFreqWidths';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %Then MSNs
 axisDef = ceil(sqrt(length(dmrMSN)));
 hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
 for i = 1:length(dmrMSN)
     %pull tuning curve average from top three amplitudes
     toneWidth = binValBigStore(:,:,dmrMSN(i));
@@ -1154,7 +703,311 @@ for i = 1:length(dmrMSN)
     plot(faxis,-1*compWidthNeg(:,dmrMSN(i))/min(compWidthNeg(:,dmrMSN(i))),'b')
     xlim([faxis(1) faxis(end)])
     set(gca, 'XScale', 'log')
+    set(gca,'xtick',[])
+    set(gca,'xticklabel',[])
+    set(gca,'ytick',[])
+    set(gca,'yticklabel',[])
 end
+
+spikeGraphName = 'MSNFreqWidths';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%now lets calculate widths based on half height. 
+heightBench = 0.5;
+%From pure tone:
+
+%calculate widths with height based system
+bigWidthHeightStore = [];
+for i = 1:length(bigMaster)
+    testValues = squeeze(binValBigStore(:,:,i));
+    for j = 1:size(testValues,2)
+        [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues(:,j),heightBench,3);
+        bigWidthHeightStore(j,:,i) = widthVals;
+        bigWidthMaxPosStore(j,i) = maxPos;
+        bigWidthMaxValStore(j,i) = maxVal;
+        bigWidthCutVal(j,i) = cutVal;
+    end
+end
+
+%now lets just pull out the outward search, since this looks to be far more
+%accurate
+bigWidthSelWidth = bigWidthHeightStore(:,[1,3],:);
+tarCells = [1:length(bigMaster)];
+tarPVs = findPVs;
+tarMSNs = findMSNs;
+%now lets pull the height based width values, and the centers of these
+%"responses"
+tarCellHeightWidth = bigWidthSelWidth(:,:,tarCells);
+tarCellMaxPos = bigWidthMaxPosStore(:,tarCells);
+
+
+sigWidthStore = [];
+sideWarnLow = [];
+sideWarnHi = [];
+for i = 1:length(tarCells)
+    for j = 1:size(tarCellHeightWidth,1)
+        %now check for width values. If NaN on either side, determine
+        %edge.
+        %start with lower edge. 
+        if isnan(tarCellHeightWidth(j,1,i))
+            lowWidth = tarCellMaxPos(j,i);
+            sideWarnLow(j,i) = 1;
+        else
+            lowWidth = tarCellHeightWidth(j,1,i);
+        end
+        if isnan(tarCellHeightWidth(j,2,i))
+            hiWidth = 16 - tarCellMaxPos(j,i);
+            sideWarnHi(j,i) = 1;
+        else
+            hiWidth = tarCellHeightWidth(j,2,i);
+        end
+        sigWidthStore(j,i) = hiWidth + lowWidth;
+    end
+end
+
+
+bigStoreSTAPosWidth = [];
+for i = 1:length(bigMaster)
+    testValues = squeeze(compWidthPos(:,i));
+    [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues,heightBench,3);
+    bigStoreSTAPosWidth(:,i) = widthVals;
+    bigStoreSTAPosWidthPeakFreq(i) = maxPos;
+    bigStoreSTAPosWidthPeakVal(i) = maxVal;
+    bigStoreSTAPosWidthCutVal(i) = cutVal;
+end
+
+%now lets just pull out the outward search, since this looks to be far more
+%accurate
+bigStoreSTAPosWidthSel = bigStoreSTAPosWidth([1,3],:);
+
+tarCells = [1:length(bigMaster)];
+tarPVs = findPVs;
+tarMSNs = findMSNs;
+%now lets pull the height based width values, and the centers of these
+%"responses"
+tarCellHeightWidth = bigStoreSTAPosWidthSel(:,tarCells);
+tarCellMaxPos = bigStoreSTAPosWidthPeakFreq(tarCells);
+
+
+sigWidthStoreSTAPos = [];
+sideWarnLowSTAPos = [];
+sideWarnHiSTAPos = [];
+for i = 1:length(tarCells)
+    %now check for width values. If NaN on either side, determine
+    %edge.
+    %start with lower edge. 
+    if isnan(tarCellHeightWidth(1,i))
+        lowWidth = tarCellMaxPos(i);
+        sideWarnLowSTAPos(i) = 1;
+    else
+        lowWidth = tarCellHeightWidth(1,i);
+    end
+    if isnan(tarCellHeightWidth(2,i))
+        hiWidth = length(faxis) - tarCellMaxPos(i);
+        sideWarnHiSTAPos(i) = 1;
+    else
+        hiWidth = tarCellHeightWidth(2,i);
+    end
+    sigWidthStoreSTAPos(i) = hiWidth + lowWidth;
+end
+
+%compare max amplitude pure tones to STAs
+
+ampTar = 5;
+
+%octaves per step??
+unitsTone = 0.2;
+unitsSTA = 4/39;
+
+widthCompFSI = [sigWidthStore(ampTar,dmrPV)*unitsTone;sigWidthStoreSTAPos(dmrPV)*unitsSTA];
+widthCompMSN = [sigWidthStore(ampTar,dmrMSN)*unitsTone;sigWidthStoreSTAPos(dmrMSN)*unitsSTA];
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+
+subplot(2,1,1)
+hold on
+for i = 1:length(dmrPV)
+    plot([1 2],[widthCompFSI(1,i) widthCompFSI(2,i)],'Color',[0.7 0.7 0.7])
+end
+errorbar([1 2],[nanmean(widthCompFSI(1,:)) nanmean(widthCompFSI(2,:))],[nanstd(widthCompFSI(1,:))/sqrt(length(dmrPV)) nanstd(widthCompFSI(2,:))/sqrt(length(dmrPV))],'k','LineWidth',2)
+xlim([0.5 2.5])
+set(gca,'TickDir','out');
+title('Change in FSI HalfWidth')
+subplot(2,1,2)
+hold on
+for i = 1:length(dmrMSN)
+    plot([1 2],[widthCompMSN(1,i) widthCompMSN(2,i)],'Color',[0.7 0.7 0.7])
+end
+errorbar([1 2],[nanmean(widthCompMSN(1,:)) nanmean(widthCompMSN(2,:))],[nanstd(widthCompMSN(1,:))/sqrt(length(dmrMSN)) nanstd(widthCompMSN(2,:))/sqrt(length(dmrMSN))],'k','LineWidth',2)
+xlim([0.5 2.5])
+set(gca,'TickDir','out');
+title('Change in MSN HalfWidth')
+
+spikeGraphName = 'HalfWidthSTAvsPureTone';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%Now lets go to 0.2 of height
+%now lets calculate widths based on half height. 
+heightBench = 0.2;
+%From pure tone:
+
+%calculate widths with height based system
+bigWidthHeightStore = [];
+for i = 1:length(bigMaster)
+    testValues = squeeze(binValBigStore(:,:,i));
+    for j = 1:size(testValues,2)
+        [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues(:,j),heightBench,3);
+        bigWidthHeightStore(j,:,i) = widthVals;
+        bigWidthMaxPosStore(j,i) = maxPos;
+        bigWidthMaxValStore(j,i) = maxVal;
+        bigWidthCutVal(j,i) = cutVal;
+    end
+end
+
+%now lets just pull out the outward search, since this looks to be far more
+%accurate
+bigWidthSelWidth = bigWidthHeightStore(:,[1,3],:);
+tarCells = [1:length(bigMaster)];
+tarPVs = findPVs;
+tarMSNs = findMSNs;
+%now lets pull the height based width values, and the centers of these
+%"responses"
+tarCellHeightWidth = bigWidthSelWidth(:,:,tarCells);
+tarCellMaxPos = bigWidthMaxPosStore(:,tarCells);
+
+
+sigWidthStore = [];
+sideWarnLow = [];
+sideWarnHi = [];
+for i = 1:length(tarCells)
+    for j = 1:size(tarCellHeightWidth,1)
+        %now check for width values. If NaN on either side, determine
+        %edge.
+        %start with lower edge. 
+        if isnan(tarCellHeightWidth(j,1,i))
+            lowWidth = tarCellMaxPos(j,i);
+            sideWarnLow(j,i) = 1;
+        else
+            lowWidth = tarCellHeightWidth(j,1,i);
+        end
+        if isnan(tarCellHeightWidth(j,2,i))
+            hiWidth = 16 - tarCellMaxPos(j,i);
+            sideWarnHi(j,i) = 1;
+        else
+            hiWidth = tarCellHeightWidth(j,2,i);
+        end
+        sigWidthStore(j,i) = hiWidth + lowWidth;
+    end
+end
+
+
+bigStoreSTAPosWidth = [];
+for i = 1:length(bigMaster)
+    testValues = squeeze(compWidthPos(:,i));
+    [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues,heightBench,3);
+    bigStoreSTAPosWidth(:,i) = widthVals;
+    bigStoreSTAPosWidthPeakFreq(i) = maxPos;
+    bigStoreSTAPosWidthPeakVal(i) = maxVal;
+    bigStoreSTAPosWidthCutVal(i) = cutVal;
+end
+
+%now lets just pull out the outward search, since this looks to be far more
+%accurate
+bigStoreSTAPosWidthSel = bigStoreSTAPosWidth([1,3],:);
+
+tarCells = [1:length(bigMaster)];
+tarPVs = findPVs;
+tarMSNs = findMSNs;
+%now lets pull the height based width values, and the centers of these
+%"responses"
+tarCellHeightWidth = bigStoreSTAPosWidthSel(:,tarCells);
+tarCellMaxPos = bigStoreSTAPosWidthPeakFreq(tarCells);
+
+
+sigWidthStoreSTAPos = [];
+sideWarnLowSTAPos = [];
+sideWarnHiSTAPos = [];
+for i = 1:length(tarCells)
+    %now check for width values. If NaN on either side, determine
+    %edge.
+    %start with lower edge. 
+    if isnan(tarCellHeightWidth(1,i))
+        lowWidth = tarCellMaxPos(i);
+        sideWarnLowSTAPos(i) = 1;
+    else
+        lowWidth = tarCellHeightWidth(1,i);
+    end
+    if isnan(tarCellHeightWidth(2,i))
+        hiWidth = length(faxis) - tarCellMaxPos(i);
+        sideWarnHiSTAPos(i) = 1;
+    else
+        hiWidth = tarCellHeightWidth(2,i);
+    end
+    sigWidthStoreSTAPos(i) = hiWidth + lowWidth;
+end
+
+%compare max amplitude pure tones to STAs
+
+ampTar = 5;
+
+%octaves per step??
+unitsTone = 0.2;
+unitsSTA = 4/39;
+
+widthCompFSI = [sigWidthStore(ampTar,dmrPV)*unitsTone;sigWidthStoreSTAPos(dmrPV)*unitsSTA];
+widthCompMSN = [sigWidthStore(ampTar,dmrMSN)*unitsTone;sigWidthStoreSTAPos(dmrMSN)*unitsSTA];
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+
+subplot(2,1,1)
+hold on
+for i = 1:length(dmrPV)
+    plot([1 2],[widthCompFSI(1,i) widthCompFSI(2,i)],'Color',[0.7 0.7 0.7])
+end
+errorbar([1 2],[nanmean(widthCompFSI(1,:)) nanmean(widthCompFSI(2,:))],[nanstd(widthCompFSI(1,:))/sqrt(length(dmrPV)) nanstd(widthCompFSI(2,:))/sqrt(length(dmrPV))],'k','LineWidth',2)
+xlim([0.5 2.5])
+set(gca,'TickDir','out');
+title('Change in FSI 20% Width')
+subplot(2,1,2)
+hold on
+for i = 1:length(dmrMSN)
+    plot([1 2],[widthCompMSN(1,i) widthCompMSN(2,i)],'Color',[0.7 0.7 0.7])
+end
+errorbar([1 2],[nanmean(widthCompMSN(1,:)) nanmean(widthCompMSN(2,:))],[nanstd(widthCompMSN(1,:))/sqrt(length(dmrMSN)) nanstd(widthCompMSN(2,:))/sqrt(length(dmrMSN))],'k','LineWidth',2)
+xlim([0.5 2.5])
+set(gca,'TickDir','out');
+title('Change in MSN 20% Width')
+
+spikeGraphName = 'Width20%STAvsPureTone';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+
+
+
 
 %now lets plot out temporal information. 
 smoothWind = 6;
@@ -1186,6 +1039,81 @@ for i = 1:length(dmrMSN)
     xlim([0 0.1])
 %     set(gca, 'XScale', 'log')
 end
+
+
+%lets try and pull peak positive mod and peak negative mod. 
+[maxVal peakTimePos] = max(compTimingPos);
+peakTimePos = (100-peakTimePos)*timeStep;
+
+[maxVal peakTimeNeg] = min(compTimingNeg);
+peakTimeNeg = (100-peakTimeNeg)*timeStep;
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+subplot(2,2,1)
+hist(peakTimePos(dmrPV),[0:0.005:0.1])
+xlabel('Time (sec)')
+ylabel('Number of Units')
+set(gca,'TickDir','out');
+title('FSI Latency (Positive Response)')
+subplot(2,2,3)
+hist(peakTimePos(dmrMSN),[0:0.005:0.1])
+xlabel('Time (sec)')
+ylabel('Number of Units')
+set(gca,'TickDir','out');
+title('MSN Latency (Positive Response)')
+
+subplot(2,2,2)
+hist(peakTimeNeg(dmrPV),[0:0.005:0.1])
+xlabel('Time (sec)')
+ylabel('Number of Units')
+set(gca,'TickDir','out');
+title('FSI Latency (Negative Response)')
+subplot(2,2,4)
+hist(peakTimeNeg(dmrMSN),[0:0.005:0.1])
+xlabel('Time (sec)')
+ylabel('Number of Units')
+set(gca,'TickDir','out');
+title('MSN Latency (Negative Response)')
+
+spikeGraphName = 'STALatencyIndivHist';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%just plot averages
+
+
+hFig = figure;
+hold on
+set(hFig, 'Position', [10 80 500 500])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+tester = mean(compTimingPos(:,dmrPV)');
+plot([timeStep:timeStep:timeStep*100],tester(end:-1:1)/max(tester),'r')
+tester = mean(compTimingPos(:,dmrMSN)');
+plot([timeStep:timeStep:timeStep*100],tester(end:-1:1)/max(tester),'k')
+tester = mean(compTimingNeg(:,dmrPV)');
+plot([timeStep:timeStep:timeStep*100],-1*tester(end:-1:1)/min(tester),'r')
+tester = mean(compTimingNeg(:,dmrMSN)');
+plot([timeStep:timeStep:timeStep*100],-1*tester(end:-1:1)/min(tester),'k')
+
+xlabel('Time (sec)')
+ylabel('Normalized Stimulus Strength (a.u.)')
+set(gca,'TickDir','out');
+
+spikeGraphName = 'STALatencyPopulationMean';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 %now lets pull out the RTFs
@@ -1223,6 +1151,55 @@ for i = 1:length(dmrPV)
     colormap('parula')
 end
 
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
+axisVal = ceil(sqrt(length(dmrPV)));
+for i = 1:length(dmrPV)
+    subplot(axisVal,axisVal,i)
+    imagesc(flipRTF(:,:,dmrPV(i)))
+    set(gca, 'YDir', 'normal');
+    colormap('parula')
+    set(gca,'xtick',[])
+    set(gca,'xticklabel',[])
+    set(gca,'ytick',[])
+    set(gca,'yticklabel',[])
+end
+
+spikeGraphName = 'fsiRTFs';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
+axisVal = ceil(sqrt(length(dmrMSN)));
+for i = 1:length(dmrMSN)
+    subplot(axisVal,axisVal,i)
+    imagesc(flipRTF(:,:,dmrMSN(i)))
+    set(gca, 'YDir', 'normal');
+    colormap('parula')
+    set(gca,'xtick',[])
+    set(gca,'xticklabel',[])
+    set(gca,'ytick',[])
+    set(gca,'yticklabel',[])
+end
+
+spikeGraphName = 'msnRTFs';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
 % 
 % for i = 1:length(dmrMSN)
 %     hFig = figure;
@@ -1241,64 +1218,155 @@ end
 %     colormap('parula')
 % end
 
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
+% axisDef = ceil(sqrt(length(bigDBStore)));
+% figure
+% for i = 1:length(bigDBStore)
+%     subplot(axisDef,axisDef,i)
+%     if ismember(i,dmrPV)
+%         plot(rtfModTemp(:,i),'r')
+%     elseif ismember(i,dmrMSN)
+%         plot(rtfModTemp(:,i),'k')
+%     else
+%         plot(rtfModTemp(:,i),'Color',[0.7 0.7 0.7])
+%     end
+% %     plot(rtfModTemp(:,i))
+% end
 
-axisDef = ceil(sqrt(length(bigDBStore)));
+
+
+% axisDef = ceil(sqrt(length(bigDBStore)));
+% figure
+% for i = 1:length(bigDBStore)
+%     subplot(axisDef,axisDef,i)
+%     if ismember(i,dmrPV)
+%         plot(rtfModSpect(:,i),'r')
+%     elseif ismember(i,dmrMSN)
+%         plot(rtfModSpect(:,i),'k')
+%     else
+%         plot(rtfModSpect(:,i),'Color',[0.7 0.7 0.7])
+%     end
+% end
+
+%plot out temporal
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
 figure
-for i = 1:length(bigDBStore)
-    subplot(axisDef,axisDef,i)
-    if ismember(i,dmrPV)
-        plot(rtfModTemp(:,i),'r')
-    elseif ismember(i,dmrMSN)
-        plot(rtfModTemp(:,i),'k')
-    else
-        plot(rtfModTemp(:,i),'Color',[0.7 0.7 0.7])
-    end
-%     plot(rtfModTemp(:,i))
-end
-
-axisDef = ceil(sqrt(length(bigDBStore)));
-figure
-for i = 1:length(bigDBStore)
-    subplot(axisDef,axisDef,i)
-    if ismember(i,dmrPV)
-        plot(rtfModSpect(:,i),'r')
-    elseif ismember(i,dmrMSN)
-        plot(rtfModSpect(:,i),'k')
-    else
-        plot(rtfModSpect(:,i),'Color',[0.7 0.7 0.7])
-    end
-end
-
-figure
-axisDef = ceil(sqrt(length(dmrPV)));
-for i = 1:length(dmrPV)
-    subplot(axisDef,axisDef,i)
-    plot(rtfModSpect(:,dmrPV(i)),'r')
-end
-
-figure
-axisDef = ceil(sqrt(length(dmrMSN)));
-for i = 1:length(dmrMSN)
-    subplot(axisDef,axisDef,i)
-    plot(rtfModSpect(:,dmrMSN(i)),'k')
-end
-
+plot(rtfModTemp(:,dmrPV)./max(rtfModTemp(:,dmrPV)))
 
 figure
-axisDef = ceil(sqrt(length(dmrPV)));
-for i = 1:length(dmrPV)
-    subplot(axisDef,axisDef,i)
-    plot(rtfModTemp(:,dmrPV(i)),'r')
+plot(rtfModTemp(:,dmrMSN)./max(rtfModTemp(:,dmrMSN)))
+
+for i = 1:length(bigMaster)
+    [peakTempModVal(i) peakTempModInd(i)] = max(rtfModTemp(:,i));
 end
+
+tmfFold = tmf(16:end);
+
+
+%plot out spectral
+figure
+plot(rtfModSpect(:,dmrPV)./max(rtfModSpect(:,dmrPV)))
 
 figure
-axisDef = ceil(sqrt(length(dmrMSN)));
-for i = 1:length(dmrMSN)
-    subplot(axisDef,axisDef,i)
-    plot(rtfModTemp(:,dmrMSN(i)),'k')
+plot(rtfModSpect(:,dmrMSN)./max(rtfModSpect(:,dmrMSN)))
+
+for i = 1:length(bigMaster)
+    [peakSpectModVal(i) peakSpectModInd(i)] = max(rtfModSpect(:,i));
 end
 
 
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.08 0.08], [0.08 0.08], [0.05 0.05]);
+subplot(2,2,1)
+hist(tmfFold(peakTempModInd(dmrPV)),[0:mean(diff(tmfFold)):tmfFold(end)])
+set(gca,'TickDir','out')
+xlabel('Temporal BMF (cyc/sec)')
+ylabel('Number of Units')
+title('FSI Temporal Best Mod Freq')
+subplot(2,2,3)
+hist(tmfFold(peakTempModInd(dmrMSN)),[0:mean(diff(tmfFold)):tmfFold(end)])
+set(gca,'TickDir','out')
+xlabel('Temporal BMF (cyc/sec)')
+ylabel('Number of Units')
+title('MSN Temporal Best Mod Freq')
+subplot(2,2,2)
+hist(xmf(peakSpectModInd(dmrPV)),[0:mean(diff(xmf)):xmf(end)])
+set(gca,'TickDir','out')
+xlabel('Spectral BMF (cyc/octave)')
+ylabel('Number of Units')
+title('FSI Spectral Best Mod Freq')
+subplot(2,2,4)
+hist(xmf(peakSpectModInd(dmrMSN)),[0:mean(diff(xmf)):xmf(end)])
+set(gca,'TickDir','out')
+xlabel('Spectral BMF (cyc/octave)')
+ylabel('Number of Units')
+title('MSN Spectral Best Mod Freq')
+
+
+spikeGraphName = 'BMFs Temporal Spectral';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%% Lets now look at non-linearities
+nl = bigpspk' .* bigpxspk; 
+nl = nl ./ bigpx;
+
+%non-normalized
+
+figure
+subplot(2,1,1)
+hold on
+plot(nl(dmrPV,:)')
+plot(mean(nl(dmrPV,:)),'r','LineWidth',2)
+subplot(2,1,2)
+hold on
+plot(nl(dmrMSN,:)')
+plot(mean(nl(dmrMSN,:)),'r','LineWidth',2)
+
+figure
+subplot(2,1,1)
+hold on
+plot(nl(dmrPV,:)'./max(nl(dmrPV,:)'))
+plot(mean(nl(dmrPV,:))/max(mean(nl(dmrPV,:))),'r','LineWidth',2)
+subplot(2,1,2)
+hold on
+plot(nl(dmrMSN,:)'./max(nl(dmrMSN,:)'))
+plot(mean(nl(dmrMSN,:))/max(mean(nl(dmrMSN,:))),'r','LineWidth',2)
+
+%lets calculate skew?
+skewVal = sum(((nl - mean(nl')').^3)./(size(nl,2)*std(nl').^3)',2);
+hFig = figure;
+set(hFig, 'Position', [10 80 500 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.08 0.08], [0.08 0.08], [0.05 0.05]);
+subplot(2,1,1)
+hist(skewVal(dmrPV),[0:0.2:3])
+set(gca,'TickDir','out')
+xlabel('Skew of Non-Linearity')
+ylabel('Number of Units')
+title('FSI Skew')
+subplot(2,1,2)
+hist(skewVal(dmrMSN),[0:0.2:3])
+set(gca,'TickDir','out')
+xlabel('Skew of Non-Linearity')
+ylabel('Number of Units')
+title('MSN Skew')
+
+
+spikeGraphName = 'Skew Plot';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
