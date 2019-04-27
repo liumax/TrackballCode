@@ -69,6 +69,7 @@ for i = 1:length(targetFiles)
         %these value from the raster.
     numTones = s.SoundData.ToneRepetitions;
     numDBs = s.SoundData.NumDBs;
+    numFreqs = s.SoundData.NumFreqs;
     subNum = numTones*numDBs*s.SoundData.WhiteNoise
     
     for j = 1:numUnits
@@ -101,7 +102,19 @@ for i = 1:length(targetFiles)
         toneWind = 2;
         binDiffValFSI{overCount + j - 1} = squeeze(s.(tester{fsiInd(j)}).BinDiff(1+s.SoundData.WhiteNoise:end,1:s.SoundData.NumDBs,toneWind));
         binDiffValMSN{overCount + j - 1} = squeeze(s.(tester{msnInd(j)}).BinDiff(1+s.SoundData.WhiteNoise:end,1:s.SoundData.NumDBs,toneWind));
-        
+        %grab trial by trial data so I can do that kind of noise
+        %correlation analysis
+        tmpDataFSI = [];
+        tmpDataMSN = [];
+        for k = 1:numDBs
+            for l = 1+s.SoundData.WhiteNoise:numFreqs
+                %load the correct data
+                tmpDataFSI(:,k,l-s.SoundData.WhiteNoise) = s.(tester{fsiInd(j)}).LatPeakBin{l,k}.BinnedSpikesTone-s.(tester{fsiInd(j)}).LatPeakBin{l,k}.BinnedSpikesToneBase;
+                tmpDataMSN(:,k,l-s.SoundData.WhiteNoise) = s.(tester{msnInd(j)}).LatPeakBin{l,k}.BinnedSpikesTone-s.(tester{msnInd(j)}).LatPeakBin{l,k}.BinnedSpikesToneBase;
+            end
+        end
+        trialDataFSI{overCount + j - 1} = tmpDataFSI;
+        trialDataMSN{overCount + j - 1} = tmpDataMSN;
         
         %and grab correlation coefficient of binned baseline subtracted tone window responses
         toneWind = 2;
@@ -263,26 +276,76 @@ findBad = unique(findBad);
 %make good index
 findGood = [1:length(orderFile)];
 findGood(findBad) = [];
+
+
+%now lets calculate asymmetry indices! This is A = (R-L)/(R+L), with R
+%being area under right hand side, and L being area under L side.
+
+Rs = sum(truexCorr(11:20,:));
+Ls = sum(truexCorr(22:31,:));
+
+asymmetryVal = (Rs - Ls)./(Rs + Ls);
+
+Rs = (truexCorr(11:20,:));
+Ls = (truexCorr(22:31,:));
+
+asymmetryVal = (Rs - Ls)./(Rs + Ls);
+asymmetryVal = abs(asymmetryVal);
+asymmetryVal = mean(asymmetryVal);
     
+%it looks like the asymmetry index is at best a poor method to look at this
+%kind of issue. 
 
 %plot out true correlations
 hFig = figure;
 set(hFig, 'Position', [10 80 1800 1200])
 % borderControl = ceil(sqrt(length(orderFile)));
-subplot = @(m,n,p) subtightplot (m, n, p, [0.03 0.03], [0.05 0.05], [0.05 0.05]);
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
 xAxVals = [-0.01:0.0005:0.01];
 for i = 1:length(orderFile);
 %     subplot(borderControl,borderControl,i)
     subplot(6,4,i)
     hold on
-    plot(xAxVals,truexCorr(:,i),'r','LineWidth',2)
+    if ismember(i,findGood)
+        plot(xAxVals,truexCorr(:,i),'r','LineWidth',2)
+    else
+        plot(xAxVals,truexCorr(:,i),'k','LineWidth',2)
+    end
     plot(xAxVals,rangeBounds(:,i),'Color',[0.7 0.7 0.7])
     plot(xAxVals,rangeBoundsPRCTL(:,2,i),'Color',[0.7 0.7 0.7])
     plot(xAxVals,rangeBoundsPRCTL(:,1,i),'Color',[0.7 0.7 0.7])
+    title(num2str(asymmetryVal(i)))
 end
 
 
 spikeGraphName = 'AllCrossCorrSig';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%lets reflect over zero to see symmetry. Keep the post-zero in the correct
+%direction, reverse the other side. 
+%plot out true correlations
+hFig = figure;
+set(hFig, 'Position', [10 80 1800 1200])
+% borderControl = ceil(sqrt(length(orderFile)));
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+xAxVals = [-0.01:0.0005:0.01];
+for i = 1:length(orderFile);
+%     subplot(borderControl,borderControl,i)
+    subplot(6,4,i)
+    hold on
+    plot(xAxVals(21:end),truexCorr(21:end,i),'r','LineWidth',2)
+    plot(xAxVals(21:end),truexCorr(21:-1:1,i),'k','LineWidth',2)
+    title(num2str(asymmetryVal(i)))
+end
+
+
+spikeGraphName = 'AllCrossCorrSigReflect';
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -342,6 +405,7 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
 
 
 %% lets look at tuning curve correlations
@@ -435,6 +499,73 @@ for i = 1:length(orderFile)
     print(hFig,spikeGraphName,'-dpdf','-r0')
     
 end
+
+
+%Plot trial by trial correlations?
+sigCutoff = 0.05;
+
+for i = 1:length(orderFile)
+    counter = 1;
+    counter2 = 1;
+    numFreqs = size(trialDataFSI{i},3);
+    numDBs = size(trialDataMSN{i},2);
+    fsiData = trialDataFSI{i};
+    msnData = trialDataMSN{i};
+    hFig = figure;
+    set(hFig, 'Position', [10 10 1500 800])
+%     borderControl = ceil(sqrt(length(orderFile)));
+    subplot = @(m,n,p) subtightplot (m, n, p, [0.03 0.03], [0.05 0.05], [0.05 0.05]);
+    for j = 1:numFreqs
+        for k = 1:numDBs
+            subplot(numDBs,numFreqs,(k-1)*numFreqs + j)
+            hold on
+            %store all spikes
+            bigStore(counter:counter + length(fsiData(:,k,j)) - 1,:) = [fsiData(:,k,j)-mean(fsiData(:,k,j)),msnData(:,k,j)-mean(msnData(:,k,j))];
+            counter = counter + length(fsiData(:,k,j));
+            %store just significant FSI response spikes
+            sigTar = signStore{i,1};
+            
+            if sigTar(j,k) < sigCutoff
+                bigStore2(counter2:counter2 + length(fsiData(:,k,j)) - 1,:) = [fsiData(:,k,j)-mean(fsiData(:,k,j)),msnData(:,k,j)-mean(msnData(:,k,j))];
+                counter2 = counter2 + length(fsiData(:,k,j));
+            end
+            
+            
+            plot(fsiData(:,k,j),msnData(:,k,j),'k.')
+            [b,bintr,bintjm] = gmregress(fsiData(:,k,j),msnData(:,k,j),sigCutoff);
+            plot([min(fsiData(:,k,j)) max(fsiData(:,k,j))],[min(fsiData(:,k,j))*b(2) + b(1) max(fsiData(:,k,j))*b(2) + b(1)],'r')
+            set(gca,'xtick',[])
+            set(gca,'xticklabel',[])
+            set(gca,'ytick',[])
+            set(gca,'yticklabel',[])
+        end
+    end
+    
+    spikeGraphName = strcat('TrialCorr-',num2str(i));
+    savefig(hFig,spikeGraphName);
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
+    
+    %keep bigstore data.
+    storeBigStore{i} = bigStore;
+    storeBigStore2{i} = bigStore2;
+    
+end
+
+for i = 1:24
+    tester = corrcoef(storeBigStore{i}(:,1),storeBigStore{i}(:,2));
+    corrTrial(i) = tester(2);
+end
+for i = 1:24
+    tester = corrcoef(storeBigStore2{i}(:,1),storeBigStore2{i}(:,2));
+    corrTrial2(i) = tester(2);
+end
+
+
 
 %% Lets plot Rasters!
 
@@ -689,10 +820,24 @@ for i = 1:length(orderFile)
     end
       
     meanVal(i) = nanmean(nanmean(latMSNcomb{i} - latFSIcomb{i}));
+    %lets just look at 70dB
+    valMSN = latMSNcomb{i}(:,end);
+    valFSI = latFSIcomb{i}(:,end);
+    try
+        valLatSig70dB(i) = signrank(valMSN,valFSI);
+    catch
+        valLatSig70dB(i) = NaN;
+    end
+      
+    meanVal70dB(i) = nanmean(nanmean(latMSNcomb{i} - latFSIcomb{i}));
 end
 
 valLatSig(findBad) = [];
 meanVal(findBad) = [];
+
+
+%% Looking at trial by trial differences.
+%for this analysis, we will look at latPeakBin data. 
 
 
 
