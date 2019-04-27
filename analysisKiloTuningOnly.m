@@ -532,330 +532,124 @@ s.TrialMatrix = master;
 s.TrialNumbers = matrixTrialNum;
 s.RepArray = repArray;
 
-%% Pull response data!
-s.PosWidths = zeros(numDBs,numUnits,3); %store width of response for positive responses here. 
-s.NegWidths = zeros(numDBs,numUnits,3); %store width of response for negative responses here. 
-s.PosTots = zeros(numDBs,numUnits,3); %store total number of significant responses here
-s.NegTots = zeros(numDBs,numUnits,3);  %store total number of significant responses here
-s.PosCont = zeros(numDBs,numUnits,3); %store whether response is contiguous or not here
-s.NegCont = zeros(numDBs,numUnits,3); %store whether response is contiguous or not here
-s.PosEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
-s.NegEdgeWarn = zeros(numDBs,numUnits,3); %store whether significant responses abut an edge
-s.PosGaussWidth = zeros(numDBs,numUnits,3); % will perform gaussian fit on binned spikes if there is sufficient significant values. Store half-peak width
-s.RespWidthPos = zeros(numFreqs,numDBs,numUnits,2); %width of firing rate, positive
-widthStore = zeros(numFreqs,numDBs,numUnits);
-bigWidth = [];
-for i = 1:numUnits
-    masterHolder = masterInd;
-    
-    %pulls spike times and times for alignment
-    spikeTimes = s.(cluNames{i}).SpikeTimes;
-    alignTimes = master(:,1);
-    
-    %calculates rasters based on spike information. 
-    [rasters] = functionBasicRaster(spikeTimes,alignTimes,s.Parameters.RasterWindow);
-    rasters(:,3) = master(rasters(:,2),5); %adds information about frequency/amplitude
-    fullRasterData = rasters;
-    
-    %pulls all spikes from a specific trial in the baseline period, holds
-    %the number of these spikes for calculation of average rate and std.
-    averageSpikeHolder = zeros(totalTrialNum,1);
-    for k = 1:totalTrialNum
-        averageSpikeHolder(k) = size(find(rasters(:,2) == k & rasters(:,1) > s.Parameters.RasterWindow(1) & rasters(:,1) < 0),1);
-    end
-    averageRate = mean(averageSpikeHolder/(-s.Parameters.RasterWindow(1)));
-    averageSTD = std(averageSpikeHolder/(-s.Parameters.RasterWindow(1)));
-    averageSTE = averageSTD/(sqrt(totalTrialNum-1));
-    
-    %store average rate into master
-    masterData(i,masterHolder) = averageRate;
-    masterHeader{masterHolder} = 'Average Rate';
-    masterHolder = masterHolder + 1;
-    
-    
-    %calculates histograms of every single trial. 
-    fullHistHolder = zeros(length(histBinVector),totalTrialNum);
-    for k =1:totalTrialNum
-        if size(rasters(rasters(:,2) == k,:),1) > 0
-            [counts centers] = hist(rasters(rasters(:,2) == k,1),histBinVector);
-            fullHistHolder(:,k) = counts;
-        end
-    end
-    
-    %calculate standard deviation for each bin
-    histSTE = (std(fullHistHolder'))';
-    
-    [histCounts histCenters] = hist(rasters(:,1),histBinVector);
-    fullHistData = histCounts'/totalTrialNum/s.Parameters.histBin;
-    
-    %calculate significant response for combined histogram of all responses
-    %to all sounds.    
-%     [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,length(master));
-    [generalResponseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,totalTrialNum,...
-        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
-    
-    disp(strcat('Baseline Spikes:',num2str(generalResponseHist.SpikeNumber),' Unit:',(cluNames{i})))
-    s.BaselineSpikes = generalResponseHist.SpikeNumber;
-    if generalResponseHist.Warning == 0 & generalResponseHist.SigSpikePos == 1 
-        s.SignificantSpikes(i) = 1;
-    end
-    
-    masterData(i,masterHolder) = generalResponseHist.MeanBaseline;
-    masterHeader{masterHolder} = 'BaselineRate';
-    masterHolder = masterHolder + 1;
-    
-    masterData(i,masterHolder) = generalResponseHist.SigSpikePos;
-    masterHeader{masterHolder} = 'PosSigGenHist';
-    masterHolder = masterHolder + 1;
-    
-    masterData(i,masterHolder) = generalResponseHist.SigSpikeNeg;
-    masterHeader{masterHolder} = 'NegSigGenHist';
-    masterHolder = masterHolder + 1;
-    
-    %allocates empty array.
-    organizedHist = zeros(numFreqs,numDBs,length(histBinVector));
-    organizedRasters = cell(numFreqs,numDBs);
-    responseHistHolder = cell(numFreqs,numDBs);
-    histErr = zeros(numFreqs,numDBs,length(histBinVector));
-    latPeakBinStore = cell(numFreqs,numDBs);
-    latStore = zeros(numFreqs,numDBs);
-    peakStoreGen = zeros(numFreqs,numDBs);
-    binStoreTone = zeros(numFreqs,numDBs);
-    binStoreGen = zeros(numFreqs,numDBs);
-    probStoreTone = zeros(numFreqs,numDBs);
-    probStoreGen = zeros(numFreqs,numDBs);
-    freqSpecHist = zeros(numFreqs,histBinNum,1);
-    
-    
-    for k = 1:numFreqs
-        subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(k),3));
-        for l = 1:numDBs
-            targetTrials = master(master(:,2) == uniqueFreqs(k) & master(:,3) == subUniqueDB(l),4); %finds the trial number for all trials of given frequency and amplitude
-            findMatches = find(ismember(fullRasterData(:,2),targetTrials)); %uses these trial numbers to pull raster index
-            targetRasters = fullRasterData(findMatches,:); %extracts target rasters from all rasters using the above index.
-            organizedRasters{k,l} = targetRasters; %saves to organized rasters
-            [histCounts,histCenters] = hist(targetRasters(:,1),histBinVector); %calculates histogram with defined bin size
-            organizedHist(k,l,:) = histCounts/toneReps/s.Parameters.histBin; %saves histogram
-            specHist = fullHistHolder(:,targetTrials);
-            histErr(k,l,:) = std(specHist,0,2)/sqrt(length(targetTrials));
-            [latPeakBinOut] = functionLatPeakBinCalculation(s.Parameters.ToneWindow,s.Parameters.GenWindow,s.Parameters.RasterWindow,...
-                targetRasters,length(targetTrials),2,targetTrials,s.Parameters.latBin,s.Parameters.PercentCutoff,s.Parameters.BaselineCutoff);
-            latePeakBinStore{k,l} = latPeakBinOut;
-            latStore(k,l) = latPeakBinOut.ResponseLatency;
-            peakStoreFast(k,l) = latPeakBinOut.PeakRespFast;
-            peakStoreTone(k,l) = latPeakBinOut.PeakRespTone;
-            peakStoreGen(k,l) = latPeakBinOut.PeakRespGen;
-            binStoreFast(k,l) = mean(latPeakBinOut.BinnedSpikesFast);
-            binStoreTone(k,l) = mean(latPeakBinOut.BinnedSpikesTone);
-            binStoreGen(k,l) = mean(latPeakBinOut.BinnedSpikesGen);
-            probStoreTone(k,l) = latPeakBinOut.ProbSpikeTone;
-            probStoreGen(k,l) = latPeakBinOut.ProbSpikeGen;
-            binSigVals(k,l,:) = latPeakBinOut.BinSigVals;
-            binDiff(k,l,:) = latPeakBinOut.BinDiff;
-            latPeakBinOut = [];
-%             [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes,toneReps);
-            [responseHist] = functionBasicResponseSignificance(s,calcWindow,spikeTimes,alignTimes(targetTrials),length(targetTrials),...
-        s.Parameters.minSpikes,s.Parameters.latBin,[s.Parameters.RasterWindow(1),0],s.Parameters.zLimit,s.Parameters.minSigSpikes,s.Parameters.SigSmoothWindow);
-            responseHistHolder{k,l} = responseHist;
-            if responseHist.SigSpikePos == 1%if have a significant response, check for width
-                [widthOut] = functionResponseWidth(responseHist);
-                if length(widthOut.Widths) > 0
-                    widthStore(k,l,i) = widthOut.Widths(1);
-                    widthLat(k,l,i) = widthOut.StartsEnds(1);
-                    bigWidth{k,l,i} = widthOut;
-                end
-            else
-                widthOut = [];
-            end
-        end
-        if numDBs == 1
-            freqSpecHist(k,:) = (squeeze(organizedHist(k,:,:)));
-        elseif numDBs > 1
-            freqSpecHist(k,:) = mean(squeeze(organizedHist(k,:,:)));
-        end
-        
-    end
-        disp(strcat('Raster and Histogram Extraction Complete: Unit ',num2str(i),' Out of ',num2str(numUnits)))
-    s.(cluNames{i}).AllRasters = fullRasterData;
-    s.(cluNames{i}).AllHistograms = fullHistData;
-    s.(cluNames{i}).IndividualHistograms = fullHistHolder; 
-    s.(cluNames{i}).HistogramStandardDeviation = histSTE;
-    s.(cluNames{i}).FreqDBRasters = organizedRasters;
-    s.(cluNames{i}).FreqDBHistograms = organizedHist;
-    s.(cluNames{i}).FreqDBHistogramErrors = histErr;
-    s.(cluNames{i}).FrequencyHistograms = freqSpecHist;
-    s.(cluNames{i}).AverageRate = averageRate;
-%     s.(cluNames{i}).SessionFiring = sessionFiring;
-    s.(cluNames{i}).AverageSTD = averageSTD;
-    s.(cluNames{i}).AverageSTE = averageSTE;
-    s.(cluNames{i}).HistBinVector = histBinVector;
-    s.(cluNames{i}).AllHistogramSig = generalResponseHist;
-    s.(cluNames{i}).SpecHistogramSig = responseHistHolder;
-    s.(cluNames{i}).LatPeakBin = latePeakBinStore;
-    s.(cluNames{i}).LatencyMap = latStore;
-    s.(cluNames{i}).PeakMapGen = peakStoreGen;
-    s.(cluNames{i}).PeakMapTone = peakStoreTone;
-    s.(cluNames{i}).BinFast = binStoreFast;
-    s.(cluNames{i}).BinTone = binStoreTone;
-    s.(cluNames{i}).BinGen = binStoreGen;
-    s.(cluNames{i}).BinDiff = binDiff;
-    s.(cluNames{i}).ProbTone = probStoreTone;
-    s.(cluNames{i}).ProbGen = probStoreGen;
-    s.(cluNames{i}).BinSigVals = binSigVals;
-    s.(cluNames{i}).WidthData = widthOut;
-    
-    %store some information about width
-    CFTrig = 0;
-    BFTrig = 0;
+%% Generate master
+%form master matrix
+trialNum = length(tuningDIO);
+master = zeros(trialNum,5);
+
+master(:,1) = tuningDIO;
+%master(:,2) is frequency
+master(:,2) = s.SoundData.Frequencies(1:trialNum);
+%master(:,3) is dB
+master(:,3) = s.SoundData.dBs(1:trialNum);
+%master(:,4) is trial number (chronological)
+master(:,4) = 1:1:trialNum;
+%master(:,5) is trial num, arranging trials in order from small dB to large
+%dB, and low freq to high freq. frequency is larger category.
+sortingCounter = 1;
+for i = 1:numFreqs
+    subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(i),3));
     for j = 1:numDBs
-        sigThresh = 0.01;
-        %pull out sign of change, and significance value
-        if whiteStatus == 1
-            targetSig = squeeze(binSigVals(2:end,j,:));
-            targetSign = squeeze(binDiff(2:end,j,:));
-            targetBins = squeeze(binStoreFast(2:end,j,:));
-            
-        else
-            targetSig = squeeze(binSigVals(:,j,:));
-            targetSign = squeeze(binDiff(:,j,:));
-            targetBins = squeeze(binStoreFast(:,j,:));
-        end
-
-        for kk = 1:size(targetSig,2)
-            %first, deal with positives
-            findPos =  find(targetSig(:,kk) < sigThresh & targetSign(:,kk) > 0);
-            if findPos%in the event of positive and significant events
-                
-                if CFTrig == 0
-                    sigValLength = length(find(targetSig(:,kk) < sigThresh));
-                    if whiteStatus == 1
-                        if sigValLength == 1
-                            masterData(i,masterHolder) = uniqueFreqs(find(targetSig(:,kk)<sigThresh)+1);
-                        else
-                            masterData(i,masterHolder) = mean(uniqueFreqs(find(targetSig(:,kk)<sigThresh)+1));
-                        end
-                    else
-                        if sigValLength == 1
-                            masterData(i,masterHolder) = uniqueFreqs(find(targetSig(:,kk)<sigThresh));
-                        else
-                            masterData(i,masterHolder) = mean(uniqueFreqs(find(targetSig(:,kk)<sigThresh)));
-                        end
-                    end
-                    masterHeader{masterHolder} = 'CF';
-                    masterHolder = masterHolder + 1;
-                    disp('CF Detected')
-                    CFTrig = 1;
-                end
-                %determine number of significant values
-                if find(findPos == 1) | find(findPos == length(targetSig)) %determine if anything on the edge of the tuning range
-                    s.PosEdgeWarn(j,i,kk) = 1;
-                end
-                if length(findPos) > 1
-                    try
-                        x = [1:length(targetSig)];
-                        y = targetBins;
-                        f = fit(x',y,'gauss1'); %perform single gaussian fit
-                        newVect = [1:0.1:length(targetSig)];
-                        fVals = f(newVect);
-                        %find peak
-                        [peakVal peakInd] = max(fVals);
-
-                        %find half peak width
-                        firstBound = find(fVals(1:peakInd) - peakVal/2 > 0,1,'first');
-                        lastBound = find(fVals(peakInd:end) - peakVal/2 > 0,1,'last');
-                        s.PosGaussWidth(j,i,kk) = (lastBound + peakInd - firstBound)/10;
-                    catch
-                        s.PosGaussWidth(j,i,kk) = 0;
-                    end
-                end
-                s.PosTots(j,i,kk) = length(findPos);
-                diffFind = diff(findPos);
-                if diffFind == 1
-                    disp('All Consecutive!')
-                    s.PosCont(j,i,kk) = 1;
-                    %since all consecutive, width equals length of findPos
-                    s.PosWidths(j,i,kk) = length(findPos);
-                else
-                    disp('Not Consecutive, Finding Widest')
-                    s.PosCont(j,i,kk) = 0;
-%                     findSpaces = length(find(diffFind ~= 1)); %determine how many different segments there are
-                    findGaps = find(diffFind ~= 1);
-                    findGaps(2:end+1) = findGaps;
-                    findGaps(1) = 0;
-                    findGaps(end+1) = length(findPos);
-                    diffLengths = diff(findGaps);
-                    disp('Widest Point Found')
-                    s.PosWidths(j,i,kk) = max(diffLengths);
-                end
-                %find maximum value. This is BF. 
-                if j == numDBs & BFTrig == 0
-                    [M bfFind] = max(findPos);
-                    if whiteStatus == 1
-                        masterData(i,masterHolder) = uniqueFreqs(findPos(bfFind)+1);
-                    else
-                        masterData(i,masterHolder) = uniqueFreqs(findPos(bfFind));
-                    end
-                    masterHeader{masterHolder} = 'BF';
-                    masterHolder = masterHolder + 1;
-                    disp('BF Detected')
-                    BFTrig = 1;
-                end
-            else
-                disp('No Positives Found')
-            end
-            
-            %now do negative
-            sigThresh = 0.01;
-            findNeg =  find(targetSig(:,kk) < sigThresh & targetSign(:,kk) < 0);
-            if findNeg%in the event of positive and significant events
-                if find(findNeg == 1) | find(findNeg == length(targetSig))
-                    s.NegEdgeWarn(j,i,kk) = 1;
-                end
-                s.NegTots(j,i,kk) = length(findNeg);
-                diffFind = diff(findNeg);
-                if diffFind == 1
-                    disp('All Consecutive!')
-                    s.NegCont(j,i,kk) = 1;
-                    %since all consecutive, width equals length of findNeg
-                    s.NegWidths(j,i,kk) = length(findNeg);
-                else
-                    disp('Not Consecutive, Finding Widest')
-                    s.NegCont(j,i,kk) = 0;
-%                     findSpaces = length(find(diffFind ~= 1)); %determine how many different segments there are
-                    findGaps = find(diffFind ~= 1);
-                    findGaps(2:end+1) = findGaps;
-                    findGaps(1) = 0;
-                    findGaps(end+1) = length(findNeg);
-                    diffLengths = diff(findGaps);
-                    disp('Widest Point Found')
-                    s.NegWidths(j,i,kk) = max(diffLengths);
-                end
-            else
-                disp('No Negatives Found')
-            end
-        end
-        if j == numDBs & CFTrig == 0
-            masterData(i,masterHolder) = NaN;
-            masterHeader{masterHolder} = 'CF';
-            masterHolder = masterHolder + 1;
-            disp('NO CF')
-        end
-        
-        if j == numDBs & BFTrig == 0
-            masterData(i,masterHolder) = NaN;
-            masterHeader{masterHolder} = 'BF';
-            masterHolder = masterHolder + 1;
-            disp('NO BF')
-        end
+        sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == subUniqueDB(j));
+        master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
+        sortingCounter = sortingCounter + size(sortingFinder,1);
     end
-    
-    
 end
-s.WidthData = widthStore;
-s.WidthLatData = widthLat;
-s.FullWidth = bigWidth;
 
-masterInd = masterHolder;
+%% Extract data from rotary encoder.
+
+targetFolderSearch = dir;%pulls dir from DIO folder
+targetFileNames = {targetFolderSearch.name}';%pulls names section
+targetFileFinder = strfind(targetFileNames,'D3'); %examines names for D1
+targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
+targetFiles = {targetFileNames{targetFileFinder}};%pulls out actual file name
+
+if length(targetFiles) == 0
+    targetFolderSearch = dir;%pulls dir from DIO folder
+    targetFileNames = {targetFolderSearch.name}';%pulls names section
+    targetFileFinder = strfind(targetFileNames,'Din3'); %examines names for D1
+    targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
+    targetFiles = {targetFileNames{targetFileFinder}};%pulls out actual file name
+end
+D3FileName = targetFiles{1};
+
+%pull D2 info (laser ID)
+targetFolderSearch = dir;%pulls dir from DIO folder
+targetFileNames = {targetFolderSearch.name}';%pulls names section
+targetFileFinder = strfind(targetFileNames,'D4'); %examines names for D1
+targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
+targetFiles = {targetFileNames{targetFileFinder}};%pulls out actual file name
+
+if length(targetFiles) == 0
+    targetFolderSearch = dir;%pulls dir from DIO folder
+    targetFileNames = {targetFolderSearch.name}';%pulls names section
+    targetFileFinder = strfind(targetFileNames,'Din4'); %examines names for D1
+    targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
+    targetFiles = {targetFileNames{targetFileFinder}};%pulls out actual file name
+end
+D4FileName = targetFiles{1};
+
+[funcOut] = functionNewRotaryExtraction(D3FileName,D4FileName);
+%now we need to fix the timing.
+funcOut.Distance(:,1) = funcOut.Distance(:,1) - timeFirst*s.Parameters.trodesFS;
+s.RotaryData = funcOut;
+funcOut = [];
+disp('Rotary Encoder Data Extracted')
+%181217 data output is now in trodes samples, at 1ms intervals. Need to fix this! 
+% newTimes = [(round(timeMin*(1/interpStep)))*interpStep:interpStep:(round(timeMax*(1/interpStep)))*interpStep];
+newTimeVector = [s.RotaryData.Distance(1,1)/s.Parameters.trodesFS:s.Parameters.InterpolationStepRotary:s.RotaryData.Distance(end,1)/s.Parameters.trodesFS];
+newDistVector = interp1(s.RotaryData.Distance(:,1),s.RotaryData.Distance(:,2),newTimeVector);
+newVelVector = interp1(s.RotaryData.Distance(1:end-1,1)/s.Parameters.trodesFS,s.RotaryData.Velocity,newTimeVector);
+
+%rasterize this data
+jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
+jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
+velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
+length(s.RotaryData.Velocity);
+for i = 1:length(tuningDIO)
+    %find the time from the velocity trace closest to the actual stim time
+    targetInd = find(newTimeVector - tuningDIO(i) > 0,1,'first');
+    %pull appropriate velocity data
+    if targetInd < length(newTimeVector) - jumpsForward
+        velRaster(:,i) = newVelVector([targetInd+jumpsBack:targetInd+jumpsForward]);
+    else
+        velRaster(:,i) = zeros(jumpsForward-jumpsBack+1,1);
+    end
+end
+%make average trace:
+averageVel = mean(velRaster,2);
+velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
+velZero = find(velVector >= 0,1,'first');
+
+%Change toggle for ROC analysis if insufficient running is found
+if s.RotaryData.Distance(end,2) < 10;
+    toggleROC = 0;
+    disp('Resetting ROC Toggle Due to Lack of Movement')
+end
+
+
+figure
+subplot(2,1,1)
+plot(newTimeVector,newVelVector)
+xlim([newTimeVector(1),newTimeVector(end)])
+title('Velocity Over Session (cm/s)')
+subplot(2,1,2)
+hold on
+plot(velVector,averageVel,'r','LineWidth',2)
+plot([0 0],[ylim],'b');
+xlim([velVector(1) velVector(end)])
+title('Average Velocity Traces')
+
+%% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
+
+[overOut,indivOut,s,masterData,masterHeader,masterInd] = functionTuningDataExtraction(numUnits,numDBs,numFreqs,uniqueFreqs,s,masterData,masterHeader,masterInd,histBinVector,trialNum,master,cluNames,calcWindow,histBinNum,whiteStatus);
+s.NonLaserOverall = overOut;
+for i = 1:numUnits
+    fn = fieldnames(indivOut.(cluNames{i}));
+    for j = 1:length(fn)
+        s.(cluNames{i}).(fn{j}) = indivOut.(cluNames{i}).(fn{j});
+    end
+end
 
 
 
