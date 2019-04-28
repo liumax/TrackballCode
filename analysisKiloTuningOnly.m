@@ -7,7 +7,7 @@
 %for testing purposes
 % fileName = '180718_ML180619B_L_AudStr_pen1_3000_fullTuning'
 % fileName = '180718_ML180619C_R_AudStr_pen1_3000_fullTuning'
-fileName = '180614_ML180515A_R17_2886_fullTuning'
+fileName = '180315_ML180306C_R17_3218mid1_fullTuning'
 % fileName = '180717_ML180619A_R_AudStr_pen2_2850_fullTuning'
 %% Constants
 
@@ -144,7 +144,8 @@ chanMap = getfield(rez.ops,'chanMap');
 %extract only the clusters I want
 tester = ismember(spClu,clu);
 newClu = spClu(tester);
-newST = spTimeSec(tester);
+% newST = spTimeSec(tester);
+newST = spTime(tester);
 
 tarPath = strcat(pwd,'\',fileName,'.phy.dat');
 medWFs = extractMedianWFs(newClu, newST, 30000,tarPath, 'int16', [64,nSamp], chanMap, 1);
