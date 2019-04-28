@@ -20,7 +20,8 @@ function medWFs = extractMedianWFs(clu, st, Fs, datPath, dataType, dataSize, cha
 nWFsToLoad = 1000; % I find this to be enough, but 100 not enough. Could try other values.
 
 % window is -0.5 to 1.25ms
-wfWin = -round(0.5/1000*Fs):round(1.25/1000*Fs); nWFsamps = numel(wfWin);
+wfWin = -round(0.5/1000*Fs):round(1.25/1000*Fs); 
+nWFsamps = numel(wfWin);
 
 nChInFile = dataSize(1);
 nSamp = dataSize(2);
@@ -37,17 +38,18 @@ for q = 1:nClu
     fprintf(1, 'cluster %d (%d/%d)\n', cids(q), q, nClu);
     theseST = st(clu==cids(q));
     %now lets add a limiter to avoid issues of exceeding bounds
-    theseST((theseST + wfWin(2) > size(mmf.Data.x,2))) = [];
+    theseST((theseST + wfWin(end) > length(mmf.Data.x))) = [];
     theseST((theseST + wfWin(1) < 1)) = [];
     
     nWFsToLoad = min(nWFsToLoad, length(theseST));
     extractST = round(theseST(randperm(length(theseST), nWFsToLoad)));
     
     theseWF = zeros(nWFsToLoad, nCh, nWFsamps);
-    for i=1:nWFsToLoad
-%         disp(strcat('q:',num2str(q),'i:',num2str(i)))
-        tempWF = mmf.Data.x(1:nChInFile,extractST(i)+wfWin(1):extractST(i)+wfWin(end));
-        theseWF(i,:,:) = tempWF(chanMap,:);
+    for n=1:nWFsToLoad
+%         disp(strcat('q:',num2str(q),'n:',num2str(n)))
+%         disp(strcat('Value:',num2str(extractST(n)),',Size:',num2str(length(mmf.Data.x))))
+        tempWF = mmf.Data.x(1:nChInFile,extractST(n)+wfWin(1):extractST(n)+wfWin(end));
+        theseWF(n,:,:) = tempWF(chanMap,:);
     end
     
     
