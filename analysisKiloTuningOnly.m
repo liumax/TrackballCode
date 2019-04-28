@@ -83,8 +83,8 @@ spfolder = 'kilosortoutput\';
 %get clusters
 [cids, cgs] = readClusterGroupsCSV([clustfolder 'cluster_group.tsv']);
 phyGoodClusters = cids(cgs==2);
-clu=phyGoodClusters;
-numClu = numel(clu);
+goodClu=phyGoodClusters;
+numClu = numel(goodClu);
 
 %get the full sp trains from kilosortfinal directory
 spAmp = readNPY([spfolder 'amplitudes.npy']);
@@ -113,20 +113,20 @@ end
 %This outputs a bunch of spikes and their designations. we need to
 %appropriately sort these now. First lets generate the right names
 cluNames = [];
-numUnits = length(clu);
+numUnits = length(goodClu);
 for i = 1:numUnits
-    cluNames{i} = strcat('clu',num2str(clu(i)));
+    cluNames{i} = strcat('clu',num2str(goodClu(i)));
 end
 s.DesignationName = cluNames;
 for i = 1:numUnits
-    tarSpikes = find(spClu == clu(i));
+    tarSpikes = find(spClu == goodClu(i));
     s.(cluNames{i}).SpikeTimes = spTimeSec(tarSpikes);
 end
 
 %determine peak channel for given cluster. remember that cluster names are
 %zero indexed!!
 
-s.PeakChanVals = cluPkChan(clu+1);
+s.PeakChanVals = cluPkChan(goodClu+1);
 
 %generate master array for 2-d storage of important values
 masterData = zeros(numUnits,10);
@@ -142,7 +142,7 @@ nSamp = filenamestruct.bytes/(64*dataTypeNBytes);  % Number of samples per chann
 %get channel map
 chanMap = getfield(rez.ops,'chanMap');
 %extract only the clusters I want
-tester = ismember(spClu,clu);
+tester = ismember(spClu,goodClu);
 newClu = spClu(tester);
 % newST = spTimeSec(tester);
 newST = spTime(tester);
