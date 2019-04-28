@@ -7,7 +7,7 @@
 %for testing purposes
 % fileName = '180718_ML180619B_L_AudStr_pen1_3000_fullTuning'
 % fileName = '180718_ML180619C_R_AudStr_pen1_3000_fullTuning'
-fileName = '180315_ML180306C_R17_3218mid1_fullTuning'
+fileName = '180614_ML180515A_R17_2886_fullTuning'
 % fileName = '180717_ML180619A_R_AudStr_pen2_2850_fullTuning'
 %% Constants
 
@@ -558,90 +558,6 @@ for i = 1:numFreqs
         sortingCounter = sortingCounter + size(sortingFinder,1);
     end
 end
-
-%% Extract data from rotary encoder.
-
-targetFolderSearch = dir;%pulls dir from DIO folder
-targetFileNames = {targetFolderSearch.name}';%pulls names section
-targetFileFinder = strfind(targetFileNames,'D3'); %examines names for D1
-targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
-targetFiles = {targetFileNames{targetFileFinder}};%pulls out actual file name
-
-if length(targetFiles) == 0
-    targetFolderSearch = dir;%pulls dir from DIO folder
-    targetFileNames = {targetFolderSearch.name}';%pulls names section
-    targetFileFinder = strfind(targetFileNames,'Din3'); %examines names for D1
-    targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
-    targetFiles = {targetFileNames{targetFileFinder}};%pulls out actual file name
-end
-D3FileName = targetFiles{1};
-
-%pull D2 info (laser ID)
-targetFolderSearch = dir;%pulls dir from DIO folder
-targetFileNames = {targetFolderSearch.name}';%pulls names section
-targetFileFinder = strfind(targetFileNames,'D4'); %examines names for D1
-targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
-targetFiles = {targetFileNames{targetFileFinder}};%pulls out actual file name
-
-if length(targetFiles) == 0
-    targetFolderSearch = dir;%pulls dir from DIO folder
-    targetFileNames = {targetFolderSearch.name}';%pulls names section
-    targetFileFinder = strfind(targetFileNames,'Din4'); %examines names for D1
-    targetFileFinder = find(~cellfun(@isempty,targetFileFinder));%extracts index of correct file
-    targetFiles = {targetFileNames{targetFileFinder}};%pulls out actual file name
-end
-D4FileName = targetFiles{1};
-
-[funcOut] = functionNewRotaryExtraction(D3FileName,D4FileName);
-%now we need to fix the timing.
-funcOut.Distance(:,1) = funcOut.Distance(:,1) - timeFirst*s.Parameters.trodesFS;
-s.RotaryData = funcOut;
-funcOut = [];
-disp('Rotary Encoder Data Extracted')
-%181217 data output is now in trodes samples, at 1ms intervals. Need to fix this! 
-% newTimes = [(round(timeMin*(1/interpStep)))*interpStep:interpStep:(round(timeMax*(1/interpStep)))*interpStep];
-newTimeVector = [s.RotaryData.Distance(1,1)/s.Parameters.trodesFS:s.Parameters.InterpolationStepRotary:s.RotaryData.Distance(end,1)/s.Parameters.trodesFS];
-newDistVector = interp1(s.RotaryData.Distance(:,1),s.RotaryData.Distance(:,2),newTimeVector);
-newVelVector = interp1(s.RotaryData.Distance(1:end-1,1)/s.Parameters.trodesFS,s.RotaryData.Velocity,newTimeVector);
-
-%rasterize this data
-jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
-jumpsForward = round(s.Parameters.RasterWindow(2)/s.Parameters.InterpolationStepRotary);
-velRaster = zeros(jumpsForward-jumpsBack+1,totalTrialNum);
-length(s.RotaryData.Velocity);
-for i = 1:length(dioTimes)
-    %find the time from the velocity trace closest to the actual stim time
-    targetInd = find(newTimeVector - dioTimes(i) > 0,1,'first');
-    %pull appropriate velocity data
-    if targetInd < length(newTimeVector) - jumpsForward
-        velRaster(:,i) = newVelVector([targetInd+jumpsBack:targetInd+jumpsForward]);
-    else
-        velRaster(:,i) = zeros(jumpsForward-jumpsBack+1,1);
-    end
-end
-%make average trace:
-averageVel = mean(velRaster,2);
-velVector = [s.Parameters.RasterWindow(1):s.Parameters.InterpolationStepRotary:s.Parameters.RasterWindow(2)];
-velZero = find(velVector >= 0,1,'first');
-
-%Change toggle for ROC analysis if insufficient running is found
-if s.RotaryData.Distance(end,2) < 10;
-    toggleROC = 0;
-    disp('Resetting ROC Toggle Due to Lack of Movement')
-end
-
-
-figure
-subplot(2,1,1)
-plot(newTimeVector,newVelVector)
-xlim([newTimeVector(1),newTimeVector(end)])
-title('Velocity Over Session (cm/s)')
-subplot(2,1,2)
-hold on
-plot(velVector,averageVel,'r','LineWidth',2)
-plot([0 0],[ylim],'b');
-xlim([velVector(1) velVector(end)])
-title('Average Velocity Traces')
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
 
