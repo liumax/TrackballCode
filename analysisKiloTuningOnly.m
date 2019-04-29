@@ -7,7 +7,7 @@
 %for testing purposes
 % fileName = '180718_ML180619B_L_AudStr_pen1_3000_fullTuning'
 % fileName = '180718_ML180619C_R_AudStr_pen1_3000_fullTuning'
-fileName = '180315_ML180306C_R17_3218mid1_fullTuning'
+fileName = '180622_ML180515C_R17_pen3_2640_fullTuning'
 % fileName = '180717_ML180619A_R_AudStr_pen2_2850_fullTuning'
 %% Constants
 
@@ -516,7 +516,19 @@ disp('DIO data successfully extracted and stored.')
 
 timeFinder = find(master(:,1) > spTimeSec(end));
 master(timeFinder,:) = [];
+dioTimes(timeFinder) = [];
 totalTrialNum = length(master);
+trialMatrix(timeFinder,:) = [];
+%now fix raster designations!
+sortingCounter = 1;
+for i = 1:numFreqs
+    subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(i),3));
+    for j = 1:numDBs
+        sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == subUniqueDB(j));
+        master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
+        sortingCounter = sortingCounter + size(sortingFinder,1);
+    end
+end
 disp('Time Filter Applied')
 
 %now we want to determine how many trials were present for each tone. This
@@ -534,30 +546,6 @@ s.TrialMatrix = master;
 
 s.TrialNumbers = matrixTrialNum;
 s.RepArray = repArray;
-
-%% Generate master
-%form master matrix
-trialNum = length(dioTimes);
-master = zeros(trialNum,5);
-
-master(:,1) = dioTimes;
-%master(:,2) is frequency
-master(:,2) = s.SoundData.Frequencies(1:trialNum);
-%master(:,3) is dB
-master(:,3) = s.SoundData.dBs(1:trialNum);
-%master(:,4) is trial number (chronological)
-master(:,4) = 1:1:trialNum;
-%master(:,5) is trial num, arranging trials in order from small dB to large
-%dB, and low freq to high freq. frequency is larger category.
-sortingCounter = 1;
-for i = 1:numFreqs
-    subUniqueDB = unique(trialMatrix(trialMatrix(:,2) == uniqueFreqs(i),3));
-    for j = 1:numDBs
-        sortingFinder = find(master(:,2) == uniqueFreqs(i) & master(:,3) == subUniqueDB(j));
-        master(sortingFinder,5) = sortingCounter:1:sortingCounter + size(sortingFinder,1) - 1;
-        sortingCounter = sortingCounter + size(sortingFinder,1);
-    end
-end
 
 %% Extract data from rotary encoder.
 
@@ -600,9 +588,16 @@ funcOut = [];
 disp('Rotary Encoder Data Extracted')
 %181217 data output is now in trodes samples, at 1ms intervals. Need to fix this! 
 % newTimes = [(round(timeMin*(1/interpStep)))*interpStep:interpStep:(round(timeMax*(1/interpStep)))*interpStep];
-newTimeVector = [s.RotaryData.Distance(1,1)/s.Parameters.trodesFS:s.Parameters.InterpolationStepRotary:s.RotaryData.Distance(end,1)/s.Parameters.trodesFS];
-newDistVector = interp1(s.RotaryData.Distance(:,1),s.RotaryData.Distance(:,2),newTimeVector);
-newVelVector = interp1(s.RotaryData.Distance(1:end-1,1)/s.Parameters.trodesFS,s.RotaryData.Velocity,newTimeVector);
+if isempty(s.RotaryData.Velocity)
+    newTimeVector = [spTimeSec(1):s.Parameters.InterpolationStepRotary:spTimeSec(end)];
+    newDistVector = zeros(length(newTimeVector),1);
+    newVelVector = zeros(length(newTimeVector),1);
+    s.RotaryData.Distance = [double(spTime(1)),0;double(spTime(end)),0];
+else
+    newTimeVector = [s.RotaryData.Distance(1,1)/s.Parameters.trodesFS:s.Parameters.InterpolationStepRotary:s.RotaryData.Distance(end,1)/s.Parameters.trodesFS];
+    newDistVector = interp1(s.RotaryData.Distance(:,1),s.RotaryData.Distance(:,2),newTimeVector);
+    newVelVector = interp1(s.RotaryData.Distance(1:end-1,1)/s.Parameters.trodesFS,s.RotaryData.Velocity,newTimeVector);
+end
 
 %rasterize this data
 jumpsBack = round(s.Parameters.RasterWindow(1)/s.Parameters.InterpolationStepRotary);
@@ -645,7 +640,7 @@ title('Average Velocity Traces')
 
 %% Process spiking information: extract rasters and histograms, both general and specific to frequency/db
 
-[overOut,indivOut,s,masterData,masterHeader,masterInd] = functionTuningDataExtraction(numUnits,numDBs,numFreqs,uniqueFreqs,s,masterData,masterHeader,masterInd,histBinVector,trialNum,master,cluNames,calcWindow,histBinNum,whiteStatus);
+[overOut,indivOut,s,masterData,masterHeader,masterInd] = functionTuningDataExtraction(numUnits,numDBs,numFreqs,uniqueFreqs,s,masterData,masterHeader,masterInd,histBinVector,totalTrialNum,master,cluNames,calcWindow,histBinNum,whiteStatus);
 s.NonLaserOverall = overOut;
 for i = 1:numUnits
     fn = fieldnames(indivOut.(cluNames{i}));
