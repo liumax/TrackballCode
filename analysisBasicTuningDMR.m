@@ -1210,7 +1210,7 @@ for i = 1:numUnits
     %plot nonlinearity
     subplot(3,3,9)
     hold on
-    nl = pspk{i} .* pxspk{i} ./ px{i};
+    nl = pspk{i} .* pxspk{i} ./ px{i}; 
 
     maxmax = max(nl);
     plot(xbincenter, nl, 'ko-', 'markerfacecolor', 'k');
