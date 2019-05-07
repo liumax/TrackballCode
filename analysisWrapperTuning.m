@@ -301,6 +301,9 @@ for i = 1:length(respVect)
     crudeZHist(i,:) = (crudeHist(i,:) - meanVal)/stdVal;
 end
 
+%abandoning: 3 z score cutoff seems to ignore a bunch of actually good
+%data...
+
 % figure
 % for i = 1:200
 %     subplot(10,20,i)
@@ -1872,53 +1875,6 @@ tester = [-.2:0.0005:0.4];
 %really.
 
 
-
-%now lets plot out heatmaps?
-
-hFig = figure;
-set(hFig, 'Position', [10 80 1900 1000])
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
-plotWid = ceil(sqrt(length(tarPVs)));
-for i = 1:length(tarPVs)
-    subplot(plotWid,plotWid,i)
-    imagesc(binValBigStore(:,:,tarCells(tarPVs(i)))')
-    colormap('parula')
-    set(gca,'YTick',[]);
-    set(gca,'XTick',[]);
-    set(gca,'Ydir','reverse')
-end
-
-spikeGraphName = '5ValFSIBinStoreTuning';
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
-hFig = figure;
-set(hFig, 'Position', [10 80 1900 1000])
-subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
-plotWid = ceil(sqrt(length(tarMSNs)));
-for i = 1:length(tarMSNs)
-    subplot(plotWid,plotWid,i)
-    imagesc(binValBigStore(:,:,tarCells(tarMSNs(i)))')
-    colormap('parula')
-    set(gca,'YTick',[]);
-    set(gca,'XTick',[]);
-    set(gca,'Ydir','reverse')
-end
-
-spikeGraphName = '5ValMSNBinStoreTuning';
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
 %lets z score everything first
 tarHists = fineHist(tarCells,:);
 for i = 1:length(tarCells)
@@ -1927,6 +1883,17 @@ for i = 1:length(tarCells)
     stdVal = std(tarHists(i,1:401));
     zHists(i,:) = (tarHists(i,:) - meanVal)/stdVal;
 end
+
+
+% for i = 1:size(smoothZ,1);
+%     testData = smoothZ(i,:);
+%     try
+%         findFirst = find(testData(400:end) >= zcut,1,'first');
+%         latStore(i) = findFirst * binSize;
+%     catch
+%         latStore(i) = NaN;
+%     end
+% end
 
 hFig = figure;
 hold on
@@ -1977,8 +1944,7 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
-%we can also now try and do this for all units. lets z score everything
-%first
+%we can also now try and do this for selected frequencies
 % tarHists = fineHist;
 latFineHist(:,1) = 0;
 latFineHist(:,end) = 0;
@@ -1997,6 +1963,8 @@ for i = 1:length(tarCells)
     peakVals(i) = max(latFineHist(tarCells(i),401:601))-mean(latFineHist(tarCells(i),1:401));
     [pks maxInd(i)] = max(latFineHist(tarCells(i),401:601));
 end
+
+%plot out individual units and their progression up to cutoff. 
 
 specFind = find(toneSpikes(tarPVs)>0);
 hFig = figure;
@@ -2063,6 +2031,7 @@ for i = 1:size(smoothZ,1);
     end
 end
 
+ranksum(latStore(tarMSNs),latStore(tarPVs))
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -2080,7 +2049,7 @@ set(gca,'TickDir','out');
 title('FSI Latency Selected Freqs 5ms Smooth')
 % title('FSI Min Latency Pure Tone')
 
-spikeGraphName = '5ValPVMSNLatHist';
+spikeGraphName = '5ValPVMSNSelFreqLatHist';
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -2088,6 +2057,55 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+
+%now lets plot out heatmaps?
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotWid = ceil(sqrt(length(tarPVs)));
+for i = 1:length(tarPVs)
+    subplot(plotWid,plotWid,i)
+    imagesc(binValBigStore(:,:,tarCells(tarPVs(i)))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
+
+spikeGraphName = '5ValFSIBinStoreTuning';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotWid = ceil(sqrt(length(tarMSNs)));
+for i = 1:length(tarMSNs)
+    subplot(plotWid,plotWid,i)
+    imagesc(binValBigStore(:,:,tarCells(tarMSNs(i)))')
+    colormap('parula')
+    set(gca,'YTick',[]);
+    set(gca,'XTick',[]);
+    set(gca,'Ydir','reverse')
+end
+
+spikeGraphName = '5ValMSNBinStoreTuning';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
 
 
 %now lets pull the height based width values, and the centers of these
@@ -2417,8 +2435,271 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
  
 
 
+%% Lets make a nice summary figure
+
+%summary figure will need nine columns, which will be a bit complicated.
+%Maybe lets do 10 instead. We want to have 4 rows as well. 
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
+set(hFig, 'Position', [80 80 1600 1200])
+
+%Row 1, column 2: FSI-MSN separation
+subplot(4,5,2)
+hold on
+plot(bigMaster(:,indPkTr)*1000,halfWidth(:)*1000,'.','Color',[0.7 0.7 0.7])
+plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr)*1000,halfWidth(bigMaster(:,indCellType) == 0)*1000,'k.')
+plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr)*1000,halfWidth(bigMaster(:,indCellType) == 1)*1000,'r.')
+% plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),halfWidth(bigMaster(:,indCellType) == 2),'g.')
+xlabel('Peak Trough (ms)')
+ylabel('Half-Width (ms)')
+set(gca,'TickDir','out');
+
+%Row 1: column 3-5: some representation of responses of FSI vs MSN. 
+load('180622_ML180515D_R17_3300_secondfullTuning_split1FullTuningAnalysis.mat')
+tarMSN = 'nt2cluster1';
+tarFSI = 'nt16cluster1';
+
+%load frequency specific histograms to create wall of responses. 
+histBinVector = s.(tarMSN).HistBinVector;
+numDBs = s.SoundData.NumDBs;
+numFreqs = s.SoundData.NumFreqs - s.SoundData.WhiteNoise;
+
+%I want 0 before and 0.2 after
+targetVect(1) = find(histBinVector< 0,1,'last');
+targetVect(2) = find(histBinVector<0.2,1,'last');
+% binSize = 0.005;
+% reps = 36;
+smoothWindWall = 3;
+
+testData = s.(tarMSN);
+spacerLength = 10;
+histStoreMSN = [];
+
+lengthTrace = length([targetVect(1):targetVect(2)]);
+for i = 1:numDBs
+    counter = 1;
+    for j = 1+s.SoundData.WhiteNoise:s.SoundData.NumFreqs
+        histStoreMSN(counter:counter + lengthTrace - 1,i) = smooth(testData.FreqDBHistograms(j,i,[targetVect(1):targetVect(2)]),smoothWindWall);
+        counter = counter + lengthTrace;
+        histStoreMSN(counter:counter+10-1,i) = NaN;
+        counter = counter + 10;
+    end
+end
+
+maxVal = max(max(histStoreMSN));
+subplot(4,5,3)
+hold on
+for i = 1:numDBs
+    plot(histStoreMSN(:,i)/maxVal + i-1,'k')
+end
+title(maxVal)
+xlim([0 length(histStoreMSN)])
+set(gca,'TickDir','out');
+set(gca,'XTick',[]);
+set(gca,'YTickLabel',[]);
+ylim([-0.2 numDBs+0.2])
+
+testData = s.(tarFSI);
+spacerLength = 10;
+histStoreFSI = [];
+
+lengthTrace = length([targetVect(1):targetVect(2)]);
+for i = 1:numDBs
+    counter = 1;
+    for j = 1+s.SoundData.WhiteNoise:s.SoundData.NumFreqs
+        histStoreFSI(counter:counter + lengthTrace - 1,i) = smooth(testData.FreqDBHistograms(j,i,[targetVect(1):targetVect(2)]),smoothWindWall);
+        counter = counter + lengthTrace;
+        histStoreFSI(counter:counter+10-1,i) = NaN;
+        counter = counter + 10;
+    end
+end
+
+maxVal = max(max(histStoreFSI));
+subplot(4,5,4)
+hold on
+for i = 1:numDBs
+    plot(histStoreFSI(:,i)/maxVal + i-1,'r')
+end
+title(maxVal)
+xlim([0 length(histStoreFSI)])
+set(gca,'TickDir','out');
+set(gca,'XTick',[]);
+set(gca,'YTickLabel',[]);
+ylim([-0.2 numDBs+0.2])
 
 
+
+%plot overall histogram MSN
+subplot(6,10,9)
+meanHist = mean(s.(tarMSN).FrequencyHistograms(1+s.SoundData.WhiteNoise:end,:));
+plot(histBinVector,meanHist,'k')
+xlim([-0.2 0.4])
+set(gca,'TickDir','out');
+
+
+%plot overall histogram MSN
+subplot(6,10,10)
+meanHist = mean(s.(tarFSI).FrequencyHistograms(1+s.SoundData.WhiteNoise:end,:));
+plot(histBinVector,meanHist,'r')
+xlim([-0.2 0.4])
+set(gca,'TickDir','out');
+
+%plot waveform MSN
+tarWave = s.(tarMSN).AverageWaveForms(:,1);
+subplot(12,10,29)
+plot(tarWave,'k')
+ylim([min(tarWave) max(tarWave)])
+xlim([0 length(tarWave)])
+set(gca,'YDir','reverse')
+set(gca,'XTickLabel',[]);
+set(gca,'TickDir','out');
+
+%plot waveform FSI
+tarWave = s.(tarFSI).AverageWaveForms(:,1);
+subplot(12,10,30)
+plot(tarWave,'r')
+ylim([min(tarWave) max(tarWave)])
+xlim([0 length(tarWave)])
+set(gca,'YDir','reverse')
+set(gca,'XTickLabel',[]);
+set(gca,'TickDir','out');
+
+
+
+%Row 2/3, Column 1: plot out pie charts
+
+subplot(4,5,6)
+holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+det = hist(det,[-2:1:1]);
+pie(det)
+labels = {'Neg','Mix','None','Pos'};
+detZero = find(det == 0);
+% labels(detZero) = [];
+% legend(labels,'Location','eastoutside','Orientation','vertical')
+title(strcat('MSNs n=',num2str(length(findMSNs))))
+
+subplot(4,5,11)
+holder = bigMaster(findPVs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+det = hist(det,[-2:1:1]);
+pie(det)
+labels = {'Neg','Mix','None','Pos'};
+detZero = find(det == 0);
+% labels(detZero) = [];
+% legend(labels,'Location','eastoutside','Orientation','vertical')
+title(strcat('PVs n=',num2str(length(findPVs))))
+
+
+% Row 2/3 Column 2: pull out threshold
+
+threshMSN = hist(threshStoreMSN,[1:1:5]);
+threshFSI = hist(threshStorePV,[1:1:5]);
+
+ylimThresh = max([max(threshMSN),max(threshFSI)]);
+subplot(4,5,7)
+bar(threshMSN,'k')
+xlim([0.5 5.5])
+title(strcat('msnThresh u:',num2str(mean(threshStoreMSN))))
+ylabel('Number of Cells')
+set(gca,'XTickLabel',[]);
+ylim([0 ylimThresh])
+set(gca,'TickDir','out');
+
+subplot(4,5,12)
+bar(threshFSI,'r')
+xlim([0.5 5.5])
+ylim([0 ylimThresh])
+ylabel('Number of Cells')
+xlabel('Amplitude of Threshold Response (dB)')
+set(gca,'XTickLabel',{'<30','40','50','60','70'});
+title(strcat({'fsiThresh u:',num2str(mean(threshStorePV))},{'pval',num2str(ranksum(threshStorePV,threshStoreMSN))}))
+set(gca,'TickDir','out');
+
+%Row 2/3 Column 3: width
+widthMSN = hist(widthValsMSN,[1:1:16]);
+widthFSI = hist(widthValsPV,[1:1:16]);
+ylimWidth = max([max(widthMSN),max(widthFSI)]);
+
+subplot(4,5,8)
+bar(widthMSN,'k')
+xlim([0.5 16.5])
+ylim([0 ylimWidth])
+ylabel('Number of Cells')
+set(gca,'XTickLabel',[]);
+title(strcat('msnwidth u:',num2str(mean(widthValsMSN))))
+set(gca,'TickDir','out');
+
+
+subplot(4,5,13)
+bar(widthFSI,'r')
+xlim([0.5 16.5])
+ylim([0 ylimWidth])
+ylabel('Number of Cells')
+xlabel('Tuning Curve Width (0.2 octaves)')
+title(strcat({'fsiwidth u:',num2str(mean(widthValsPV))},{'pval',num2str(ranksum(widthValsPV,widthValsMSN))}))
+% title('Tuning Width (FSIs)')
+set(gca,'TickDir','out');
+
+%Row 2/3 Column 4: latency!
+latsMSN = hist(latStore(tarMSNs),latHistVect);
+latsFSI = hist(latStore(tarPVs),latHistVect);
+latEnd = 0.05;
+
+ylimLats = max([max(latsMSN),max(latsFSI)]);
+
+subplot(4,5,9)
+bar(latHistVect,latsMSN,'k')
+xlim([latHistVect(1) latEnd])
+ylim([0 ylimLats])
+set(gca,'TickDir','out');
+set(gca,'XTickLabel',[]);
+ylabel('Number of Cells')
+title(['msnLat u:',num2str(nanmean(latStore(tarMSNs)))])
+
+subplot(4,5,14)
+bar(latHistVect,latsFSI,'r')
+xlim([latHistVect(1) latEnd])
+ylim([0 ylimLats])
+set(gca,'TickDir','out');
+ylabel('Number of Cells')
+title(['fsiLat u:',num2str(nanmean(latStore(tarPVs)))])
+
+%Row 2/3 Column 5, BF
+bfsMSN = hist(bfStore(tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
+bfsFSI = hist(bfStore(tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
+bfsYlim = max([max(bfsMSN),max(bfsFSI)]);
+
+subplot(4,5,10)
+bar(bfsMSN,'k')
+xlim([0.5 16.5])
+ylim([0 bfsYlim])
+ylabel('Number of Cells')
+set(gca,'TickDir','out');
+set(gca,'XTickLabel',[]);
+title('msnBFs')
+
+subplot(4,5,15)
+bar(bfsFSI,'r')
+xlim([0.5 16.5])
+ylim([0 bfsYlim])
+ylabel('Number of Cells')
+set(gca,'TickDir','out');
+title('fsiBFs')
+
+
+spikeGraphName = 'NewBaselineOverallFigure';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+print(hFig,spikeGraphName,'-deps','-r0')
 
 
 
