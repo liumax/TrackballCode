@@ -141,9 +141,33 @@ dataTypeNBytes = numel(typecast(cast(0, 'int16'), 'uint8')); % determine number 
 nSamp = filenamestruct.bytes/(64*dataTypeNBytes);  % Number of samples per channel
 %get channel map
 chanMap = getfield(rez.ops,'chanMap');
+
+%now lets extract the biggest individual template per cluster. This avoids
+%issues that can arise from the averaging of multiple templates with
+%different timing. 
+for i = 1:length(goodClu)
+    %determine templates associated with goodClu
+    pullTemp = spTemp(spClu ==goodClu(i));
+    %save number of merges here!
+    numMerge = length(unique(pullTemp));
+    mergeStore(i) = numMerge;
+    
+    %if we have more than one template, want to isolate to the correct one!
+    if numMerge > 1
+        [C ia ic] = unique(pullTemp);
+        tempSpikeNums = hist(ic,[1:length(ia)]);
+        [maxVal maxFind] = max(tempSpikeNums);
+        tempStoreForWave(i) = C(maxFind);
+    else
+        tempStoreForWave(i) = unique(pullTemp);
+    end
+end
+
+tempStoreForWave = double(tempStoreForWave);
+
 %extract only the clusters I want
-tester = ismember(spClu,goodClu);
-newClu = spClu(tester);
+tester = ismember(spTemp,tempStoreForWave);
+newClu = spTemp(tester);
 % newST = spTimeSec(tester);
 newST = spTime(tester);
 
