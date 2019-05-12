@@ -291,38 +291,38 @@ end
 %accurate
 bigWidthSelWidth = bigWidthHeightStore(:,[1,3],:);
 
-
-%now lets try and plot out things!
-tarDB = 3;
-smoothWin = 3;
-counter = 1;
-for i = 1:length(bigMaster)
-    if ismember(i,[1,101,201,301,401,501,601])
-        hFig = figure;
-        counter = 1;
-    end
-    subplot(10,10,counter)
-%     plotData = squeeze(binValBigStore(:,5,i));
-    plotData = binValBigStore(:,:,i);
-    plotData = plotData(:,tarDB);
-    plotData = smooth(plotData,smoothWin);
-    
-    if ismember(i,findPVs)
-        plot(plotData,'r','LineWidth',2)
-    elseif ismember(i,findMSNs)
-        plot(plotData,'k','LineWidth',2)
-    else
-        plot(plotData,'Color',[0.7 0.7 0.7],'LineWidth',2)
-    end
-    hold on
-    plot([1 16],[0 0],'k')
-    plot([1 16],[bigWidthCutVal(tarDB,i) bigWidthCutVal(tarDB,i)],'c','LineWidth',2)
-    plot([bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i) bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i)],[0 max(plotData)],'g','LineWidth',2)
-    plot([bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i) bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i)],[0 max(plotData)],'g','LineWidth',2)
-    plot([bigWidthMaxPosStore(tarDB,i) bigWidthMaxPosStore(tarDB,i)],[0 max(plotData)],'m','LineWidth',2)
-    xlim([1 16])
-    counter = counter + 1;
-end
+% 
+% %now lets try and plot out things!
+% tarDB = 3;
+% smoothWin = 3;
+% counter = 1;
+% for i = 1:length(bigMaster)
+%     if ismember(i,[1,101,201,301,401,501,601])
+%         hFig = figure;
+%         counter = 1;
+%     end
+%     subplot(10,10,counter)
+% %     plotData = squeeze(binValBigStore(:,5,i));
+%     plotData = binValBigStore(:,:,i);
+%     plotData = plotData(:,tarDB);
+%     plotData = smooth(plotData,smoothWin);
+%     
+%     if ismember(i,findPVs)
+%         plot(plotData,'r','LineWidth',2)
+%     elseif ismember(i,findMSNs)
+%         plot(plotData,'k','LineWidth',2)
+%     else
+%         plot(plotData,'Color',[0.7 0.7 0.7],'LineWidth',2)
+%     end
+%     hold on
+%     plot([1 16],[0 0],'k')
+%     plot([1 16],[bigWidthCutVal(tarDB,i) bigWidthCutVal(tarDB,i)],'c','LineWidth',2)
+%     plot([bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i) bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i)],[0 max(plotData)],'g','LineWidth',2)
+%     plot([bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i) bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i)],[0 max(plotData)],'g','LineWidth',2)
+%     plot([bigWidthMaxPosStore(tarDB,i) bigWidthMaxPosStore(tarDB,i)],[0 max(plotData)],'m','LineWidth',2)
+%     xlim([1 16])
+%     counter = counter + 1;
+% end
 
 
 signStore = sign(binValBigStore);
@@ -486,15 +486,16 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 %% plot out STAs
 
 map = [0 0 1];
-for i = 2:21
-    if i < 11
+bands = 41;
+for i = 2:bands
+    if i < ceil(bands/2)
         map(i,:) = map(i-1,:);
-        map(i,1:2) = map(i,1:2) + 0.1;
-    elseif i == 11
+        map(i,1:2) = round(map(i,1:2),3) + round(1/((bands-1)/2),3);
+    elseif i == ceil(bands/2)
         map(i,:) = [1 1 1];
-    elseif i > 11
+    elseif i > ceil(bands/2)
         map(i,:) = map(i-1,:);
-        map(i,2:3) = map(i,2:3) - 0.1;
+        map(i,2:3) = round(map(i,2:3),3) - round(1/((bands-1)/2),3);
     end
 end
 
@@ -864,6 +865,49 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%Lets try extracting the number of bins for which there is a response
+%greater than the threshold
+
+toneCurves = squeeze(sum(binValBigStore(:,3:5,:),2));
+
+%STA is compWidthPos. Restrict to 32 kHz and below
+flim = 31;
+resCompWidthPos = compWidthPos(1:flim,:);
+
+%now go through and extract width values based on whatever cutoff. 
+cutoffs = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9];
+for i = 1:length(toneCurves)
+    %first, determine peak
+    [C maxInd] = max(toneCurves(:,i));
+    %determine cutoff
+    cutVals = C*cutoffs;
+    for j = 1:length(cutoffs)
+        cutWidthTone(i,j) = length(find(toneCurves(:,i) > cutVals(j)));
+    end
+    %Second, go through STA related! 
+    [C maxInd] = max(resCompWidthPos(:,i));
+    %determine cutoff
+    cutVals = C*cutoffs;
+    for j = 1:length(cutoffs)
+        cutWidthSTA(i,j) = length(find(resCompWidthPos(:,i) > cutVals(j)));
+    end
+end
+
+%because of differences in binning, need to adjust cutWidthSTA (by 50%)
+diffMat = cutWidthSTA*16/31 - cutWidthTone;
+
+
+for i = 1:length(cutoffs)
+    signRankResMSN(i) = signrank(cutWidthTone(dmrMSN,i),cutWidthSTA(dmrMSN,i)*16/31);
+    signRankResPV(i) = signrank(cutWidthTone(dmrPV,i),cutWidthSTA(dmrPV,i)*16/31);
+end
+mean(diffMat(dmrPV,:))
+signRankResPV
+mean(diffMat(dmrMSN,:))
+signRankResMSN
+
 
 %now lets calculate widths based on half height. 
 heightBench = 0.5;
@@ -1344,11 +1388,15 @@ title('MSN Population STA')
 stepSize = timeStep;
 timeSteps = 100;
 rtf = [];
+rtfStore = [];
+flipRTF = [];
+rtfModTemp = [];
+rtfModSpect = [];
 for i = 1:length(bigDBStore)
     [tmf, xmf, rtf] = sta2rtf(reshape(bigSTAstore(i,:),length(faxis),[]), [stepSize:stepSize:stepSize*100], faxis, 40, 4, 'n');
     rtfStore(:,:,i) = rtf;
-    temp1 = flip(rtf(:,1:16),2);
-    temp2 = rtf(:,16:end);
+    temp1 = flip(rtf(:,1:ceil(size(rtf,2)/2)),2);
+    temp2 = rtf(:,ceil(size(rtf,2)/2):end);
     flipRTF(:,:,i) = temp1 + temp2; %second dimension should be temporal mod. First dimension frequency mod. 
     rtfModTemp(:,i) = sum(flipRTF(:,:,i));
     rtfModSpect(:,i) = sum(flipRTF(:,:,i)');
@@ -1364,15 +1412,15 @@ end
 %     %make subplot
 %     subplot(3,1,1)
 %     imagesc(reshape(bigSTAstore(dmrPV(i),:),length(faxis),[]))
-%     colormap('parula')
+%     colormap(map)
 %     title('STA')
 %     subplot(3,1,2)
 %     imagesc(newSTA(:,:,dmrPV(i)))
-%     colormap('parula')
+%     colormap(map)
 %     title('STA Sig')
 %     subplot(3,1,3)
 %     imagesc(flipRTF(:,:,dmrPV(i)))
-%     colormap('parula')
+%     colormap(map)
 % end
 % 
 % 
@@ -1382,15 +1430,15 @@ end
 %     %make subplot
 %     subplot(3,1,1)
 %     imagesc(reshape(bigSTAstore(dmrMSN(i),:),length(faxis),[]))
-%     colormap('parula')
+%     colormap(map)
 %     title('STA')
 %     subplot(3,1,2)
 %     imagesc(newSTA(:,:,dmrMSN(i)))
-%     colormap('parula')
+%     colormap(map)
 %     title('STA Sig')
 %     subplot(3,1,3)
 %     imagesc(flipRTF(:,:,dmrMSN(i)))
-%     colormap('parula')
+%     colormap(map)
 % end
 
 
@@ -1402,7 +1450,7 @@ end
 %     subplot(axisVal,axisVal,i)
 %     imagesc(flipRTF(:,:,dmrPV(i)))
 %     set(gca, 'YDir', 'normal');
-%     colormap('parula')
+%     colormap(map)
 %     set(gca,'xtick',[])
 %     set(gca,'xticklabel',[])
 %     set(gca,'ytick',[])
@@ -1426,7 +1474,7 @@ end
 %     subplot(axisVal,axisVal,i)
 %     imagesc(flipRTF(:,:,dmrMSN(i)))
 %     set(gca, 'YDir', 'normal');
-%     colormap('parula')
+%     colormap(map)
 %     set(gca,'xtick',[])
 %     set(gca,'xticklabel',[])
 %     set(gca,'ytick',[])
@@ -1448,14 +1496,14 @@ end
 rtfFSI = zeros(size(flipRTF(:,:,1)));
 for i = 1:length(dmrPV)
     tempStore = flipRTF(:,:,dmrPV(i));
-    tempStore = tempStore/max(max(tempStore));
+    tempStore = tempStore/sum(sum(tempStore));
     rtfFSI = rtfFSI + tempStore;
 end
 
 rtfMSN = zeros(size(flipRTF(:,:,1)));
 for i = 1:length(dmrMSN)
     tempStore = flipRTF(:,:,dmrMSN(i));
-    tempStore = tempStore/max(max(tempStore));
+    tempStore = tempStore/sum(sum(tempStore));
     rtfMSN = rtfMSN + tempStore;
 end
 
@@ -1481,10 +1529,10 @@ imagesc(rtfMSN)
 colorbar
 set(gca, 'YDir', 'normal');
 colormap(map)
-set(gca,'xtick',[])
-set(gca,'xticklabel',[])
-set(gca,'ytick',[])
-set(gca,'yticklabel',[])
+% set(gca,'xtick',[])
+% set(gca,'xticklabel',[])
+% set(gca,'ytick',[])
+% set(gca,'yticklabel',[])
 title('MSN Population RTF')
 xlabel('TemporalMod')
 ylabel('SpectralMod')
@@ -1514,7 +1562,7 @@ ylabel('SpectralMod')
 % imagesc(rtfFSI)
 % colorbar
 % set(gca, 'YDir', 'normal');
-% colormap('parula')
+% colormap(map)
 % set(gca,'xtick',[])
 % set(gca,'xticklabel',[])
 % set(gca,'ytick',[])
@@ -1524,7 +1572,7 @@ ylabel('SpectralMod')
 % imagesc(rtfMSN)
 % colorbar
 % set(gca, 'YDir', 'normal');
-% colormap('parula')
+% colormap(map)
 % set(gca,'xtick',[])
 % set(gca,'xticklabel',[])
 % set(gca,'ytick',[])
@@ -1537,15 +1585,15 @@ ylabel('SpectralMod')
 %     %make subplot
 %     subplot(3,1,1)
 %     imagesc(reshape(bigSTAstore(dmrMSN(i),:),length(faxis),[]))
-%     colormap('parula')
+%     colormap(map)
 %     title('STA')
 %     subplot(3,1,2)
 %     imagesc(newSTA(:,:,dmrMSN(i)))
-%     colormap('parula')
+%     colormap(map)
 %     title('STA Sig')
 %     subplot(3,1,3)
 %     imagesc(flipRTF(:,:,dmrMSN(i)))
-%     colormap('parula')
+%     colormap(map)
 % end
 
 subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
@@ -1714,7 +1762,7 @@ set(hFig, 'Position', [80 80 1600 1200])
 %Row 1, columns 1-2 plot STA
 subplot(6,5,1)
 imagesc(stimulus(:,15000:25000))
-colormap('parula')
+colormap(map)
 set(gca,'XTick',[])
 set(gca,'YTick',[])
 
@@ -1728,13 +1776,17 @@ exampleFSIs = [1,3,9,21];
 exampleMSNs = [11,18,34,53];
 for i = 1:4
     subplot(8,10,2+i)
-    imagesc(reshape(bigSTASigstore(dmrMSN(exampleMSNs(i)),:),length(faxis),[]))
+    limVal = max(abs(bigSTASigstore(dmrMSN(exampleMSNs(i)),:)));
+    clims = [-1.05 * limVal,1.05 * limVal];
+    imagesc(reshape(bigSTASigstore(dmrMSN(exampleMSNs(i)),:),length(faxis),[]),clims)
     set(gca,'XTick',[])
     set(gca,'YTick',[])
 end
 for i = 1:4
     subplot(8,10,12+i)
-    imagesc(reshape(bigSTASigstore(dmrPV(exampleFSIs(i)),:),length(faxis),[]))
+    limVal = max(abs(bigSTASigstore(dmrPV(exampleFSIs(i)),:)));
+    clims = [-1.05 * limVal,1.05 * limVal];
+    imagesc(reshape(bigSTASigstore(dmrPV(exampleFSIs(i)),:),length(faxis),[]),clims)
     set(gca,'XTick',[])
     set(gca,'YTick',[])
 end
@@ -1827,13 +1879,15 @@ testData = binValBigStore(:,:,dmrMSN(55));
 %we need to stack in spaces for frequencies not represented
 testData(17:21,:) = 0;
 imagesc(testData)
-colormap('parula')
+colormap(map)
 set(gca,'XTick',[])
 set(gca,'YTick',[])
 
 subplot(4,6,8)
-imagesc(newSTA(:,:,dmrMSN(55)))
-colormap('parula')
+limVal = max(max(abs(newSTA(:,:,dmrMSN(55)))));
+clims = [-1.05 * limVal,1.05 * limVal];
+imagesc(newSTA(:,:,dmrMSN(55)),clims)
+colormap(map)
 set(gca,'XTick',[])
 set(gca,'YTick',[])
 
@@ -1842,13 +1896,15 @@ testData = binValBigStore(:,:,328);
 %we need to stack in spaces for frequencies not represented
 testData(17:21,:) = 0;
 imagesc(testData)
-colormap('parula')
+colormap(map)
 set(gca,'XTick',[])
 set(gca,'YTick',[])
 
 subplot(4,6,14)
-imagesc(newSTA(:,:,328))
-colormap('parula')
+limVal = max(max(abs(newSTA(:,:,328))));
+clims = [-1.05 * limVal,1.05 * limVal];
+imagesc(newSTA(:,:,328),clims)
+colormap(map)
 set(gca,'XTick',[])
 set(gca,'YTick',[])
 
@@ -1991,14 +2047,14 @@ axis square
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
 subplot(4,8,25)
 imagesc(newSTA(:,:,328))
-colormap('parula')
+colormap(map)
 set(gca,'XTick',[])
 set(gca,'YTick',[])
 
 subplot(4,8,26)
 imagesc(flipRTF(:,:,dmrPV(end)))
 set(gca, 'YDir', 'normal');
-colormap('parula')
+colormap(map)
 set(gca,'xticklabel',[])
 set(gca,'yticklabel',[])
 set(gca,'TickDir','out')
@@ -2011,14 +2067,14 @@ for i = 1:2
     subplot(8,8,50+i)
     imagesc(flipRTF(:,:,dmrMSN(targetMSNRTF(i))))
     set(gca, 'YDir', 'normal');
-    colormap('parula')
+    colormap(map)
     set(gca,'xticklabel',[])
     set(gca,'yticklabel',[])
     set(gca,'TickDir','out')
     subplot(8,8,58+i)
     imagesc(flipRTF(:,:,dmrPV(targetFSIRTF(i))))
     set(gca, 'YDir', 'normal');
-    colormap('parula')
+    colormap(map)
     set(gca,'xticklabel',[])
     set(gca,'yticklabel',[])
     set(gca,'TickDir','out')
@@ -2031,7 +2087,7 @@ subplot(4,8,29)
 imagesc(rtfMSN)
 colorbar
 set(gca, 'YDir', 'normal');
-colormap('parula')
+colormap(map)
 % set(gca,'xtick',[])
 set(gca,'xticklabel',[])
 % set(gca,'ytick',[])
@@ -2042,7 +2098,7 @@ subplot(4,8,30)
 imagesc(rtfFSI)
 colorbar
 set(gca, 'YDir', 'normal');
-colormap('parula')
+colormap(map)
 % set(gca,'xtick',[])
 set(gca,'xticklabel',[])
 % set(gca,'ytick',[])
