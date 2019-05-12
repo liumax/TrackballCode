@@ -28,11 +28,11 @@ FsT = 1/(taxis(3)-taxis(2));
 FsX = 1/log2(faxis(2)/faxis(1));
 
 
-dtf = MaxFM / 15; % Want 20 bins over the modulation range
+dtf = MaxFM / 50; % temporal modlation! 190512 adjusted Max for data
 ntbins = ceil(FsT / dtf); % sampling rate over temp res
 ntbins = ntbins + ~rem(ntbins,2); % add a bin if we have an even number
 
-dff = MaxRD / 15; % Want 20 bins over the modulation range
+dff = MaxRD / 100; % spectral modlation! 190512 adjusted Max for data
 nfbins = ceil(FsX / dff); % sampling rate over freq resolution
 nfbins = nfbins + ~rem(nfbins,2); % add a bin to get an odd number
 
