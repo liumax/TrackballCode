@@ -89,35 +89,8 @@ for i = 1:numFiles
         %store RPVs
         rpvStore(bigMasterInd + j -1) = s.(desigName{j}).RPVPercent;
         rpvNumStore(bigMasterInd + j -1) = s.(desigName{j}).RPVNumber;
-        %pull up cell average waveforms
-        cellWaves = s.(desigName{j}).AverageWaveForms;
-        %now pull up which one is biggest
-        waveMax = max(cellWaves);
-        [maxVal maxInd] = max(waveMax);
-        %now generate finely sampled version
-        chosenWave = cellWaves(:,maxInd);
-        interpVect = [1:0.1:40];
-        interpWave = interp1(1:40,chosenWave,interpVect,'spline');
-        %now find peak value
-        [pkVal pkInd] = max(interpWave(100:end));
-        pkInd = pkInd + 100 - 1;
-        %now we need to find the minimum following the peak
-        waveDiff = diff(interpWave);
-        
-        troughInd = find(waveDiff(pkInd:end) > 0,1,'first');
-        troughVal = interpWave(troughInd);
-        if isempty(troughInd)
-            [troughVal troughInd] = min(interpWave(pkInd:end));
-        end
-        pkTroughTime(j) = troughInd;
-        troughInd = troughInd + pkInd - 1;
-        pkTroughRatio(j) = pkVal/troughVal;
-        interpWaves(j,:) = interpWave;
-        %now get half-width
-        halfFirst = find(interpWave(1:pkInd) > pkVal/2,1,'first');
-        halfSecond = find(interpWave(halfFirst:end) < pkVal/2,1,'first');
-        halfWidthTime(j) = halfSecond;
-
+        %store number of spikes total
+        spikeNum(bigMasterInd + j - 1) = length(s.(desigName{j}).SpikeTimes);
         %pull out binned values for entire tone period, as well as
         %significance
         tempBinStore(:,:,j) = s.(desigName{j}).BinDiff(1+s.SoundData.WhiteNoise:end,end-5+1:end,2);
@@ -194,10 +167,6 @@ for i = 1:numFiles
         recNumStore(bigMasterInd+j-1) = i;
         unitStore{bigMasterInd + j -1} = desigName{j};
     end
-    halfWidthTimeStore(bigMasterInd:bigMasterInd + numUnits - 1) = halfWidthTime;
-    pkTroughTimeStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughTime;
-    pkTroughRatioStore(bigMasterInd:bigMasterInd + numUnits - 1) = pkTroughRatio;
-    interpWaveStore(bigMasterInd:bigMasterInd + numUnits - 1,:) = interpWaves;
     binValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempBinStore;
     sigValBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempSigStore;
     latMapBigStore(:,:,bigMasterInd:bigMasterInd + numUnits - 1) = tempLatStore;
@@ -1034,28 +1003,8 @@ end
 % xlim([-1 1])
 
 %% Lets look at the waveforms a bit more carefully
-for i = 1:size(interpWaveStore,1)
-    testWave = interpWaveStore(i,:);
-    [pks locs] = max(testWave(100:150));
-    maxPoint = locs+100-1;
-    diffWave = diff(testWave);
-    %get half-width
-    firstHalf = find(testWave(1:maxPoint) > pks/2,1,'first');
-    backHalf = find(testWave(firstHalf:end) < pks/2,1,'first');
-    halfWidth(i) = backHalf;
-    %get peak trough
-    try
-        minPoint = find(diffWave(maxPoint:end) > 0,1,'first');
-        widthVal(i) = minPoint;
-    catch
-        disp('No Zero Crossing')
-        [pks locs] = min(testWave(maxPoint:end));
-        widthVal(i) = locs;
-    end
-end
 
-figure
-stem3(widthVal/300000,halfWidth/300000,bigMaster(:,8))
+load('PeakTroughAndHalfWidthComp.mat') %column 1 is from filtered data, column 2 is from unfiltered broadband
 
 
 %% Find cell types
@@ -1068,15 +1017,25 @@ stem3(widthVal/300000,halfWidth/300000,bigMaster(:,8))
 % 
 % findMSNs = find(bigMaster(:,indCellType) == 0);
 
-findCHATs = find(bigMaster(:,5) > 0.0005 & bigMaster(:,6) < 1.1);
+findCHATs = find(peakTrough(:,2) > 0.0005 & bigMaster(:,6) < 1.1);
 
 
-findPVs = find(bigMaster(:,5) < 0.0004 & bigMaster(:,6) > 1.1);
-findMSNs = find(bigMaster(:,5) > 0.0005 & bigMaster(:,6) > 1.1); 
+findPVs = find(peakTrough(:,2) < 0.00055 & bigMaster(:,6) > 1.1);
+findMSNs = find(peakTrough(:,2) > 0.0006 & bigMaster(:,6) > 1.1); 
+
+%eliminate off bad RPVs
 badRPV = find(rpvStore > 0.5);
 findBads = intersect(findPVs,badRPV);
 findPVs(ismember(findPVs,findBads)) = [];
 findBads = intersect(findMSNs,badRPV);
+findMSNs(ismember(findMSNs,findBads)) = [];
+
+%also eliminate off bad number of spikes. 
+minSpikeNum = 250;
+badSpikes = find(spikeNum < minSpikeNum);
+findBads = intersect(findPVs,badSpikes);
+findPVs(ismember(findPVs,findBads)) = [];
+findBads = intersect(findMSNs,badSpikes);
 findMSNs(ismember(findMSNs,findBads)) = [];
 
 %% Pull tuning widths
@@ -1293,315 +1252,15 @@ condensedPV = infoStorePV(infoStorePV(:,5) == 1,:);
 widthHistVect = [0:1:40];
 
 %now lets generate half-width values
-
-for i = 1:length(bigMaster)
-    testWave = interpWaveStore(i,:);
-    %determine max
-    maxVal = max(testWave(1:150));
-    halfFirst = find(testWave(1:150) > maxVal/2,1,'first');
-    halfSecond = find(testWave(halfFirst:end) > maxVal/2,1,'last');
-    halfWidth(i) = halfSecond/300000;
-end
-
-%% first figure, OVERVIEW OF FIRING RATES AND PEAK TROUGH, RESPONSE TYPES ETC
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.1 0.1], [0.1 0.1]);
-hFig = figure;
-set(hFig, 'Position', [10 80 500 1000])
-
-%column 1 plot spike width vs coefficient of variation
-subplot(3,1,1)
-hold on
-
-plot(bigMaster(:,indPkTr),bigMaster(:,indISI),'.','Color',[0.7 0.7 0.7])
-plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indISI),'k.')
-plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indISI),'r.')
-plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indISI),'g.')
-xlabel('Peak Trough (ms)')
-ylabel('ISI Coefficient of Variation')
-set(gca,'TickDir','out');
-
-%now plot out spike width vs half width
-subplot(3,1,2)
-hold on
-
-plot(bigMaster(:,indPkTr),halfWidth(:),'.','Color',[0.7 0.7 0.7])
-plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),halfWidth(bigMaster(:,indCellType) == 0),'k.')
-plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),halfWidth(bigMaster(:,indCellType) == 1),'r.')
-plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),halfWidth(bigMaster(:,indCellType) == 2),'g.')
-xlabel('Peak Trough (ms)')
-ylabel('Half-Width (ms)')
-set(gca,'TickDir','out');
-
-%plot out spike width with FR
-subplot(3,1,3)
-hold on
-
-plot(bigMaster(:,indPkTr),bigMaster(:,indBaseFire),'.','Color',[0.7 0.7 0.7])
-plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indBaseFire),'k.')
-plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indBaseFire),'r.')
-plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indBaseFire),'g.')
-xlabel('Peak Trough (ms)')
-ylabel('Baseline Firing Rate')
-set(gca,'TickDir','out');
-
-spikeGraphName = 'WaveformAnalysis';
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
-
-
-
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
-hFig = figure;
-set(hFig, 'Position', [10 80 1000 1000])
-%plot out pie chart of difference cells
-
-cellDist = [length(findMSNs),length(findPVs),length(findCHATs)];
-pie(cellDist)
-labels = {strcat('MSNs(',num2str(length(findMSNs)),')'),strcat('PVs(',num2str(length(findPVs)),')'),strcat('ChATs(',num2str(length(findCHATs)),')')};
-detZero = find(cellDist == 0);
-labels(detZero) = [];
-legend(labels,'Location','eastoutside','Orientation','vertical')
-
-spikeGraphName = 'CellTypePieChart';
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
-
-%plot out MSN and FSI pie charts
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
-hFig = figure;
-set(hFig, 'Position', [10 80 1900 1000])
-
-subplot(2,2,1)
-hold on
-waveHolder = [];
-waveHolder = interpWaveStore(findMSNs,:);
-plot(waveHolder')
-title('MSN Waveforms')
-
-%plot distribution of response types
-subplot(2,2,3)
-holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
-holder(:,2) = holder(:,2) * -2;
-det = holder(:,1) + holder(:,2);
-det = hist(det,[-2:1:1]);
-pie(det)
-labels = {'Neg','Mix','None','Pos'};
-detZero = find(det == 0);
-labels(detZero) = [];
-legend(labels,'Location','eastoutside','Orientation','vertical')
-title(strcat('MSNs n=',num2str(length(findMSNs))))
-
-%plot out PV stuff
-
-subplot(2,2,2)
-hold on
-waveHolder = [];
-waveHolder = interpWaveStore(findPVs,:);
-plot(waveHolder')
-title('PV Waveforms')
-
-%plot distribution of response types
-subplot(2,2,4)
-holder = bigMaster(findPVs,[indPosSig,indNegSig]);
-holder(:,2) = holder(:,2) * -2;
-det = holder(:,1) + holder(:,2);
-det = hist(det,[-2:1:1]);
-pie(det)
-labels = {'Neg','Mix','None','Pos'};
-detZero = find(det == 0);
-labels(detZero) = [];
-legend(labels,'Location','eastoutside','Orientation','vertical')
-title(strcat('PVs n=',num2str(length(findPVs))))
-
-spikeGraphName = 'PVMSNPieCharts';
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
-
-
-
-
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.04], [0.03 0.05], [0.03 0.01]);
-hFig = figure;
-set(hFig, 'Position', [10 80 1900 1000])
-
-%column 1 plot spike width vs coefficient of variation
-subplot(4,4,1)
-hold on
-
-plot(bigMaster(:,indPkTr),bigMaster(:,indISI),'.','Color',[0.7 0.7 0.7])
-plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indISI),'k.')
-plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indISI),'r.')
-plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indISI),'g.')
-xlabel('Peak Trough (ms)')
-ylabel('ISI Coefficient of Variation')
-
-%now plot out spike width vs half width
-subplot(4,4,5)
-hold on
-
-plot(bigMaster(:,indPkTr),halfWidth(:),'.','Color',[0.7 0.7 0.7])
-plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),halfWidth(bigMaster(:,indCellType) == 0),'k.')
-plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),halfWidth(bigMaster(:,indCellType) == 1),'r.')
-plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),halfWidth(bigMaster(:,indCellType) == 2),'g.')
-xlabel('Peak Trough (ms)')
-ylabel('Half-Width (ms)')
-
-%plot out spike width with FR
-subplot(4,4,9)
-hold on
-
-plot(bigMaster(:,indPkTr),bigMaster(:,indBaseFire),'.','Color',[0.7 0.7 0.7])
-plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr),bigMaster(bigMaster(:,indCellType) == 0,indBaseFire),'k.')
-plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr),bigMaster(bigMaster(:,indCellType) == 1,indBaseFire),'r.')
-plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),bigMaster(bigMaster(:,indCellType) == 2,indBaseFire),'g.')
-xlabel('Peak Trough (ms)')
-ylabel('Baseline Firing Rate')
-
-%plot out pie chart of difference cells
-subplot(4,4,13)
-cellDist = [length(findMSNs),length(findPVs),length(findCHATs)];
-pie(cellDist)
-labels = {strcat('MSNs(',num2str(length(findMSNs)),')'),strcat('PVs(',num2str(length(findPVs)),')'),strcat('ChATs(',num2str(length(findCHATs)),')')};
-detZero = find(cellDist == 0);
-labels(detZero) = [];
-legend(labels,'Location','eastoutside','Orientation','vertical')
-
-%column 2, plot out pie charts of MSNs
-
-subplot(4,4,2)
-hold on
-waveHolder = [];
-waveHolder = interpWaveStore(findMSNs,:);
-plot(waveHolder')
-title('MSN Waveforms')
-
-%plot distribution of response types
-subplot(4,4,6)
-holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
-holder(:,2) = holder(:,2) * -2;
-det = holder(:,1) + holder(:,2);
-det = hist(det,[-2:1:1]);
-pie(det)
-labels = {'Neg','Mix','None','Pos'};
-detZero = find(det == 0);
-labels(detZero) = [];
-legend(labels,'Location','eastoutside','Orientation','vertical')
-title(strcat('MSNs n=',num2str(length(findMSNs))))
-
-%plot out integrals of response plots
-subplot(4,4,10)
-holder = intFastPos(findMSNs);
-hist(holder(holder > 0),widthHistVect)
-xlim([0 widthHistVect(end)])
-title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-
-
-subplot(4,4,14)
-hold on
-holder = intSlowPos(findMSNs);
-hist(holder(holder > 0),widthHistVect)
-xlim([0 widthHistVect(end)])
-title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-
-
-%column 3, plot out PV stuff
-
-subplot(4,4,3)
-hold on
-waveHolder = [];
-waveHolder = interpWaveStore(findPVs,:);
-plot(waveHolder')
-title('PV Waveforms')
-
-%plot distribution of response types
-subplot(4,4,7)
-holder = bigMaster(findPVs,[indPosSig,indNegSig]);
-holder(:,2) = holder(:,2) * -2;
-det = holder(:,1) + holder(:,2);
-det = hist(det,[-2:1:1]);
-pie(det)
-labels = {'Neg','Mix','None','Pos'};
-detZero = find(det == 0);
-labels(detZero) = [];
-legend(labels,'Location','eastoutside','Orientation','vertical')
-title(strcat('PVs n=',num2str(length(findPVs))))
-
-%plot out integrals of response plots
-subplot(4,4,11)
-holder = intFastPos(findPVs);
-hist(holder(holder > 0),widthHistVect)
-xlim([0 widthHistVect(end)])
-title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-
-subplot(4,4,15)
-hold on
-holder = intSlowPos(findPVs);
-hist(holder(holder > 0),widthHistVect)
-xlim([0 widthHistVect(end)])
-title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-
-%column 4, plot out pie charts of CHATs
-
-subplot(4,4,4)
-hold on
-waveHolder = [];
-waveHolder = interpWaveStore(findCHATs,:);
-plot(waveHolder')
-title('CHAT Waveforms')
-
-%plot distribution of response types
-subplot(4,4,8)
-holder = bigMaster(findCHATs,[indPosSig,indNegSig]);
-holder(:,2) = holder(:,2) * -2;
-det = holder(:,1) + holder(:,2);
-det = hist(det,[-2:1:1]);
-pie(det)
-labels = {'Neg','Mix','None','Pos'};
-detZero = find(det == 0);
-labels(detZero) = [];
-legend(labels,'Location','eastoutside','Orientation','vertical')
-title(strcat('CHATs n=',num2str(length(findCHATs))))
-
-%plot out integrals of response plots
-subplot(4,4,12)
-holder = intFastPos(findCHATs);
-hist(holder(holder > 0),widthHistVect)
-xlim([0 widthHistVect(end)])
-title(strcat('"int" fast pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-
-subplot(4,4,16)
-hold on
-holder = intSlowPos(findCHATs);
-hist(holder(holder > 0),widthHistVect)
-xlim([0 widthHistVect(end)])
-title(strcat('"int" slow pos, mean =',num2str(mean(holder(holder>0))),',n =',num2str(length(holder(holder>0)))))
-
-
-spikeGraphName = 'WrapperFigure1Overview';
-savefig(hFig,spikeGraphName);
-
-%save as PDF with correct name
-set(hFig,'Units','Inches');
-pos = get(hFig,'Position');
-set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-print(hFig,spikeGraphName,'-dpdf','-r0')
+% 
+% for i = 1:length(bigMaster)
+%     testWave = interpWaveStore(i,:);
+%     %determine max
+%     maxVal = max(testWave(1:150));
+%     halfFirst = find(testWave(1:150) > maxVal/2,1,'first');
+%     halfSecond = find(testWave(halfFirst:end) > maxVal/2,1,'last');
+%     halfWidth(i) = halfSecond/300000;
+% end
 
 
 %% Generate tuning curves that are step functions based on significance.
@@ -2447,16 +2106,16 @@ set(hFig, 'Position', [80 80 1600 1200])
 %Row 1, column 2: FSI-MSN separation
 subplot(4,5,2)
 hold on
-plot(bigMaster(:,indPkTr)*1000,halfWidth(:)*1000,'.','Color',[0.7 0.7 0.7])
-plot(bigMaster(bigMaster(:,indCellType) == 0,indPkTr)*1000,halfWidth(bigMaster(:,indCellType) == 0)*1000,'k.')
-plot(bigMaster(bigMaster(:,indCellType) == 1,indPkTr)*1000,halfWidth(bigMaster(:,indCellType) == 1)*1000,'r.')
+plot(peakTrough(:,2)*1000,halfWidth(:,2)*1000,'.','Color',[0.7 0.7 0.7])
+plot(peakTrough(findMSNs,2)*1000,halfWidth(findMSNs,2)*1000,'k.')
+plot(peakTrough(findPVs,2)*1000,halfWidth(findPVs,2)*1000,'r.')
 % plot(bigMaster(bigMaster(:,indCellType) == 2,indPkTr),halfWidth(bigMaster(:,indCellType) == 2),'g.')
 xlabel('Peak Trough (ms)')
 ylabel('Half-Width (ms)')
 set(gca,'TickDir','out');
 
 %Row 1: column 3-5: some representation of responses of FSI vs MSN. 
-load('180622_ML180515D_R17_3300_secondfullTuning_split1FullTuningAnalysis.mat')
+load('180622_ML180515D_R17_3300_secondfullTuningFullTuningAnalysis.mat')
 tarMSN = 'nt2cluster1';
 tarFSI = 'nt16cluster1';
 
