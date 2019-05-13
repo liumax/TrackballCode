@@ -1628,17 +1628,21 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05])
 
 %plot out temporal
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+% tmpPVTempMod = zeros(length(rtfModTemp(:,1)),1);
 figure
 plot(rtfModTemp(:,dmrPV)./max(rtfModTemp(:,dmrPV)))
+tmpPVTempMod = rtfModTemp(:,dmrPV)./max(rtfModTemp(:,dmrPV));
 
+% tmpMSNTempMod = zeros(length(rtfModTemp(:,1)),1);
 figure
 plot(rtfModTemp(:,dmrMSN)./max(rtfModTemp(:,dmrMSN)))
+tmpMSNTempMod = rtfModTemp(:,dmrMSN)./max(rtfModTemp(:,dmrMSN));
 
 for i = 1:length(bigMaster)
     [peakTempModVal(i) peakTempModInd(i)] = max(rtfModTemp(:,i));
 end
 
-tmfFold = tmf(16:end);
+tmfFold = tmf(ceil(size(rtf,2)/2):end);
 
 
 %plot out spectral
@@ -1760,113 +1764,99 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.04 0.04], [0.04 0.04])
 set(hFig, 'Position', [80 80 1600 1200])
 
 %Row 1, columns 1-2 plot STA
-subplot(6,5,1)
-imagesc(stimulus(:,15000:25000))
-colormap(map)
-set(gca,'XTick',[])
-set(gca,'YTick',[])
-
+% subplot(6,5,1)
+% imagesc(stimulus(:,15000:25000))
+% colormap(map)
+% set(gca,'XTick',[])
+% set(gca,'YTick',[])
 
 
 %Row 1, columns 3-6 examples!
 
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.01], [0.04 0.04], [0.04 0.04]);
 
-exampleFSIs = [1,3,9,21];
-exampleMSNs = [11,18,34,53];
-for i = 1:4
-    subplot(8,10,2+i)
-    limVal = max(abs(bigSTASigstore(dmrMSN(exampleMSNs(i)),:)));
-    clims = [-1.05 * limVal,1.05 * limVal];
-    imagesc(reshape(bigSTASigstore(dmrMSN(exampleMSNs(i)),:),length(faxis),[]),clims)
-    set(gca,'XTick',[])
-    set(gca,'YTick',[])
-end
-for i = 1:4
-    subplot(8,10,12+i)
+exampleFSIs = [1,3,4,9,10,21];
+exampleMSNs = [17,18,34,42,53,65];
+plotTars = [3,4,9,10,15,16];
+for i = 1:6
+    subplot(9,6,plotTars(i))
     limVal = max(abs(bigSTASigstore(dmrPV(exampleFSIs(i)),:)));
     clims = [-1.05 * limVal,1.05 * limVal];
     imagesc(reshape(bigSTASigstore(dmrPV(exampleFSIs(i)),:),length(faxis),[]),clims)
+    colormap(map)
     set(gca,'XTick',[])
     set(gca,'YTick',[])
 end
 
+plotTars = [5,6,11,12,17,18];
+
+for i = 1:6
+    subplot(9,6,plotTars(i))
+    limVal = max(abs(bigSTASigstore(dmrMSN(exampleMSNs(i)),:)));
+    clims = [-1.05 * limVal,1.05 * limVal];
+    imagesc(reshape(bigSTASigstore(dmrMSN(exampleMSNs(i)),:),length(faxis),[]),clims)
+    colormap(map)
+    set(gca,'XTick',[])
+    set(gca,'YTick',[])
+end
+
+
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
 
-%Row 1, column 7-10, rate, PLI, FSI, NonLineSkew
+% %Row 1, column 7-10, rate, PLI, FSI, NonLineSkew
 
-%Rate change
-histVectSpikeNum = [-1:0.1:1];
-rateModMSN = hist((dmrSpikeNum(dmrMSN)/(10*60)- bigMaster(dmrMSN,8)')./(dmrSpikeNum(dmrMSN)/(10*60)+ bigMaster(dmrMSN,8)'),histVectSpikeNum);
-rateModFSI = hist((dmrSpikeNum(dmrPV)/(10*60)- bigMaster(dmrPV,8)')./(dmrSpikeNum(dmrPV)/(10*60)+ bigMaster(dmrPV,8)'),histVectSpikeNum);
-ylimRateMod = max([max(rateModMSN),max(rateModFSI)]);
 
-subplot(8,10,7)
-bar(histVectSpikeNum,rateModMSN,'k')
-ylim([0 ylimRateMod])
-xlim([-1.05 1.05])
-set(gca,'TickDir','out')
-set(gca,'xticklabel',[])
-ylabel('#units')
 
-subplot(8,10,17)
-bar(histVectSpikeNum,rateModFSI,'r')
-ylim([0 ylimRateMod])
-xlim([-1.05 1.05])
-set(gca,'TickDir','out')
-ylabel('#units')
-xlabel('Modulation Index')
-
-%Phase Locking Index
-histVectSpikeNum = [0:0.05:1];
-pliMSN = hist(PLI(dmrMSN),histVectSpikeNum);
-pliFSI = hist(PLI(dmrPV),histVectSpikeNum);
-ylimPLI  = max([max(pliMSN),max(pliFSI)]);
-
-subplot(8,10,8)
-bar(histVectSpikeNum,pliMSN,'k')
-ylim([0 ylimPLI])
-xlim([histVectSpikeNum(1) histVectSpikeNum(end)])
-set(gca,'TickDir','out')
-set(gca,'xticklabel',[])
-ylabel('#units')
-
-subplot(8,10,18)
-bar(histVectSpikeNum,pliFSI,'r')
-ylim([0 ylimPLI])
-xlim([histVectSpikeNum(1) histVectSpikeNum(end)])
-set(gca,'TickDir','out')
-ylabel('#units')
-xlabel('Phase Lock Index')
+% %Phase Locking Index
+% histVectSpikeNum = [0:0.05:1];
+% pliMSN = hist(PLI(dmrMSN),histVectSpikeNum);
+% pliFSI = hist(PLI(dmrPV),histVectSpikeNum);
+% ylimPLI  = max([max(pliMSN),max(pliFSI)]);
+% 
+% subplot(8,10,8)
+% bar(histVectSpikeNum,pliMSN,'k')
+% ylim([0 ylimPLI])
+% xlim([histVectSpikeNum(1) histVectSpikeNum(end)])
+% set(gca,'TickDir','out')
+% set(gca,'xticklabel',[])
+% ylabel('#units')
+% 
+% subplot(8,10,18)
+% bar(histVectSpikeNum,pliFSI,'r')
+% ylim([0 ylimPLI])
+% xlim([histVectSpikeNum(1) histVectSpikeNum(end)])
+% set(gca,'TickDir','out')
+% ylabel('#units')
+% xlabel('Phase Lock Index')
 
 %FSI (feature selectivity index)
 
 
-%Skew (nonlinearity)
-skewVect = [0:0.2:3];
-skewMSN = hist(skewVal(dmrMSN),skewVect);
-skewFSI = hist(skewVal(dmrPV),skewVect);
-ylimSkew = max([max(skewMSN),max(skewFSI)]);
-
-subplot(8,10,10)
-bar(skewVect,skewMSN,'k')
-set(gca,'TickDir','out')
-set(gca,'xticklabel',[])
-ylim([0 ylimSkew])
-xlim([skewVect(1) skewVect(end)])
-% xlabel('Skew of Non-Linearity')
-ylabel('Number of Units')
-title('MSN Skew')
-
-subplot(8,10,20)
-bar(skewVect,skewFSI,'k')
-set(gca,'TickDir','out')
+% %Skew (nonlinearity)
+% skewVect = [0:0.2:3];
+% skewMSN = hist(skewVal(dmrMSN),skewVect);
+% skewFSI = hist(skewVal(dmrPV),skewVect);
+% ylimSkew = max([max(skewMSN),max(skewFSI)]);
+% 
+% subplot(8,10,10)
+% bar(skewVect,skewMSN,'k')
+% set(gca,'TickDir','out')
 % set(gca,'xticklabel',[])
-ylim([0 ylimSkew])
-xlim([skewVect(1) skewVect(end)])
-% xlabel('Skew of Non-Linearity')
-ylabel('Number of Units')
-title('FSI Skew')
+% ylim([0 ylimSkew])
+% xlim([skewVect(1) skewVect(end)])
+% % xlabel('Skew of Non-Linearity')
+% ylabel('Number of Units')
+% title('MSN Skew')
+% 
+% subplot(8,10,20)
+% bar(skewVect,skewFSI,'k')
+% set(gca,'TickDir','out')
+% % set(gca,'xticklabel',[])
+% ylim([0 ylimSkew])
+% xlim([skewVect(1) skewVect(end)])
+% % xlabel('Skew of Non-Linearity')
+% ylabel('Number of Units')
+% title('FSI Skew')
 
 
 
@@ -1982,7 +1972,7 @@ axis square
 
 subplot(4,6,16)
 hold on
-maxVal = max(max(widthCompFSI));
+% maxVal = max(max(widthCompFSI));
 plot(widthCompFSI(2,:),widthCompFSI(1,:),'r.')
 plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
 set(gca,'TickDir','out')
@@ -2017,36 +2007,38 @@ xlim([0 maxVal])
 ylim([0 maxVal])
 axis square
 
-%plot latencies
-
-subplot(4,6,12)
-hold on
-maxVal = max([max(peakTimePos(dmrMSN)) max(latStore(dmrMSN))]);
-plot(peakTimePos(dmrMSN),latStore(dmrMSN),'k.')
-plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
-set(gca,'TickDir','out')
-ylabel('ToneLat')
-xlim([0 maxVal])
-ylim([0 maxVal])
-axis square
-
-subplot(4,6,18)
-hold on
-maxVal = max([max(peakTimePos(dmrPV)) max(latStore(dmrPV))]);
-plot(peakTimePos(dmrPV),latStore(dmrPV),'r.')
-plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
-set(gca,'TickDir','out')
-ylabel('ToneLat')
-xlim([0 maxVal])
-ylim([0 maxVal])
-axis square
+% %plot latencies
+% 
+% subplot(4,6,12)
+% hold on
+% maxVal = max([max(peakTimePos(dmrMSN)) max(latStore(dmrMSN))]);
+% plot(peakTimePos(dmrMSN),latStore(dmrMSN),'k.')
+% plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+% set(gca,'TickDir','out')
+% ylabel('ToneLat')
+% xlim([0 maxVal])
+% ylim([0 maxVal])
+% axis square
+% 
+% subplot(4,6,18)
+% hold on
+% maxVal = max([max(peakTimePos(dmrPV)) max(latStore(dmrPV))]);
+% plot(peakTimePos(dmrPV),latStore(dmrPV),'r.')
+% plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+% set(gca,'TickDir','out')
+% ylabel('ToneLat')
+% xlim([0 maxVal])
+% ylim([0 maxVal])
+% axis square
 
 
 %Row 3, columns 1 and 2: STA to RTF transformation example. Again, use last
 %dmrPV
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
 subplot(4,8,25)
-imagesc(newSTA(:,:,328))
+limVal = max(abs(bigSTASigstore(328,:)));
+clims = [-1.05 * limVal,1.05 * limVal];
+imagesc(newSTA(:,:,328),clims)
 colormap(map)
 set(gca,'XTick',[])
 set(gca,'YTick',[])
@@ -2084,7 +2076,7 @@ end
 %Row 3 column 5-6, plot out population RTFs
 
 subplot(4,8,29)
-imagesc(rtfMSN)
+imagesc(rtfMSN(1:50,:))
 colorbar
 set(gca, 'YDir', 'normal');
 colormap(map)
@@ -2095,7 +2087,7 @@ set(gca,'yticklabel',[])
 title('MSN Population RTF')
 
 subplot(4,8,30)
-imagesc(rtfFSI)
+imagesc(rtfFSI(1:50,:))
 colorbar
 set(gca, 'YDir', 'normal');
 colormap(map)
