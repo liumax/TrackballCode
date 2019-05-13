@@ -1038,6 +1038,148 @@ findPVs(ismember(findPVs,findBads)) = [];
 findBads = intersect(findMSNs,badSpikes);
 findMSNs(ismember(findMSNs,findBads)) = [];
 
+%% Generate tuning curves that are step functions based on significance.
+%how lets look at sigValBigStore
+sigValConv = sigValBigStore;
+sigValConv(sigValConv <= 0.001) = 4;
+sigValConv(sigValConv <= 0.01) = 3;
+sigValConv(sigValConv <= 0.05) = 2;
+sigValConv(sigValConv <= 1) = 1;
+clims = [1 3];
+
+
+%% Try fitting gaussian?
+%first, lets just plot things! Lets just look at what the 70dB band looks
+%like
+
+%plot FSIs
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotLim = ceil(sqrt(length(findPVs)));
+figure
+for i = 1:length(findPVs)
+    subplot(plotLim,plotLim,i)
+    plot(squeeze(binValBigStore(:,:,findPVs(i))))
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
+
+%plot MSNs
+plotLim = ceil(sqrt(length(findMSNs)));
+figure
+for i = 1:length(findMSNs)
+    subplot(plotLim,plotLim,i)
+    plot(squeeze(binValBigStore(:,:,findMSNs(i))))
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
+
+%based on this, it looks like one simple amplitude cut might not be the
+%best way to do things...lets find the peak amplitude band and average that
+%with the one above it. 
+
+%store best amplitude band and extra amplitude band with it. 
+ampBand = zeros(length(bigMaster),1);
+tarAmpBands = zeros(length(bigMaster),2);
+tuneCurveStore = zeros(length(bigMaster),size(binValBigStore,1));
+for i = 1:length(bigMaster)
+    %find maximum values!
+    [C maxInd] =max(binValBigStore(:,:,i));
+    %check if all equal
+    if all(C == C(1))%case where all equal!
+        ampBand(i) = NaN;
+        tarAmpBands(i,:) = [NaN,NaN];
+    elseif all(C <= 0) %case where all negative
+        ampBand(i) = NaN;
+        tarAmpBands(i,:) = [NaN,NaN];
+    else %if neither of the above cases
+        [C2 ampBand(i)] = max(C);
+        if ampBand(i) <=4
+            tarAmpBands(i,:) = [ampBand(i),ampBand(i) + 1];
+        else
+            tarAmpBands(i,:) = [ampBand(i) - 1,ampBand(i)];
+        end
+        %now store data!
+        tuneCurveStore(i,:) = mean(binValBigStore(:,tarAmpBands(i,:),i)');
+    end 
+    
+end
+
+%plot to see how this looks
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotLim = ceil(sqrt(length(findPVs)));
+figure
+for i = 1:length(findPVs)
+    subplot(plotLim,plotLim,i)
+    plot(squeeze(tuneCurveStore(findPVs(i),:)))
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
+
+%plot MSNs
+plotLim = ceil(sqrt(length(findMSNs)));
+figure
+for i = 1:length(findMSNs)
+    subplot(plotLim,plotLim,i)
+    plot(squeeze(tuneCurveStore(findMSNs(i),:)))
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
+
+%looks good but isnt the most even. Lets try instead to use sigValConv and
+%the threshold amplitude. 
+
+ampBandThresh = zeros(length(bigMaster),1);
+for i = 1:length(bigMaster)
+    tester = sigValConv(2:end,:,i);
+    condTester = max(tester);
+    %find first value == 3
+    testFind = find(condTester >= 3,1,'first');
+    if testFind
+        ampBandThresh(i) = testFind;
+    end
+end
+
+%here, i've noticed that a subset of units have significant thresholds but
+%a weaker peak based purely on max detection. These units are no good and
+%should be eliminated. 
+
+ampBandElim = ampBand - ampBandThresh;
+ampBandThresh(ampBandElim<0) = 0;
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotLim = ceil(sqrt(length(findPVs)));
+figure
+for i = 1:length(findPVs)
+    subplot(plotLim,plotLim,i)
+    hold on
+    plot(squeeze(tuneCurveStore(findPVs(i),:)))
+    if ampBandThresh(findPVs(i)) > 0
+        plot(squeeze(binValBigStore(:,ampBandThresh(findPVs(i)),findPVs(i))))
+        
+    end
+    set(gca,'xtick',[])
+        set(gca,'ytick',[])
+end
+
+%plot MSNs
+plotLim = ceil(sqrt(length(findMSNs)));
+figure
+for i = 1:length(findMSNs)
+    subplot(plotLim,plotLim,i)
+    hold on
+    plot(squeeze(tuneCurveStore(findMSNs(i),:)))
+    if ampBandThresh(findMSNs(i)) > 0
+        plot(squeeze(binValBigStore(:,ampBandThresh(findMSNs(i)),findMSNs(i))))
+        
+    end
+    set(gca,'xtick',[])
+        set(gca,'ytick',[])
+end
+
+
+
+
+
 %% Pull tuning widths
 %pull widths
 pvWidths = widthStore(:,findPVs,:);
@@ -1263,14 +1405,7 @@ widthHistVect = [0:1:40];
 % end
 
 
-%% Generate tuning curves that are step functions based on significance.
-%how lets look at sigValBigStore
-sigValConv = sigValBigStore;
-sigValConv(sigValConv <= 0.001) = 4;
-sigValConv(sigValConv <= 0.01) = 3;
-sigValConv(sigValConv <= 0.05) = 2;
-sigValConv(sigValConv <= 1) = 1;
-clims = [1 3];
+
 
 %% Plot out tuning curves without white noise, actual values and step function significance
 %just do PVs
