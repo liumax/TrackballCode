@@ -5,7 +5,7 @@
 
 
 %for testing purposes
-fileName = '190405ML190307A_RAudStrPen1Rec1_3375TuningDMR'
+fileName = '190418ML190307G_RAudStrPen1Rec2_3546TuningDMR'
 % fileName = '190123ML181105E_RAudStr3526pen1rec1tuningAndDMR';
 % fileName = '190206ML181105F_RAudStr3633pen2rec1tuningDMR'
 % fileName = '190205ML181105C_RAudStr3667pen2rec1tuningDMR';
@@ -170,83 +170,7 @@ for i = 1:numUnits
     s.(cluNames{i}).SpikeTimes = spTimeSec(tarSpikes);
 end
 
-%determine peak channel for given cluster. remember that cluster names are
-%zero indexed!!
-
-s.PeakChanVals = cluPkChan(goodClu+1);
-
-%generate master array for 2-d storage of important values
-masterData = zeros(numUnits,10);
-masterHeader = cell(1,1);
-masterInd = 1;
-
-% datPath = strcat(fileName);
-datPath = strcat(fileName,'.phy.dat');
-% load(datPath)
-filenamestruct = dir(datPath);
-dataTypeNBytes = numel(typecast(cast(0, 'int16'), 'uint8')); % determine number of bytes per sample
-nSamp = filenamestruct.bytes/(64*dataTypeNBytes);  % Number of samples per channel
-%get channel map
-chanMap = getfield(rez.ops,'chanMap');
-%extract only the clusters I want
-tester = ismember(spClu,goodClu);
-newClu = spClu(tester);
-newST = spTime(tester);
-
-tarPath = strcat(pwd,'\',fileName,'.phy.dat');
-medWFs = extractMedianWFs(newClu, newST, 30000,tarPath, 'int16', [64,nSamp], chanMap, 1);
-
-
-
-
-
-%store the waveforms! also extract characteristics
-for i = 1:numUnits
-    tarWave = squeeze(medWFs(i,:,:));
-    s.(cluNames{i}).medianWave = tarWave;
-    %find minima for each wave. Note that waves are now downwards pointing
-    for j = 1:64
-        tarWave(j,:) = tarWave(j,:) - mean(tarWave(j,1:5));
-    end
-    [pks inds] = min(tarWave');
-    %find the minimal minima
-    [metpks metinds] = min(pks);
-    %lets pull the specific channel!
-    selWave = tarWave(metinds,:);
-    %generate smoothed version
-    selWaveInt = interp1([1:length(selWave)],selWave,[1:0.1:length(selWave)],'spline');
-    %now find minimum (peak)
-    [selpk selind] = min(selWaveInt(1:250));
-    %now find trough, which determines peak trough time
-    [trghpk trphind] = max(selWaveInt(selind:end));
-    pktrough = trphind/30000/10;
-    
-    %now lets determine half max width.
-    halfFront = find(selWaveInt(1:selind) < selpk/2,1,'first');
-    halfBack = find(selWaveInt(halfFront:end) > selpk/2,1,'first');
-    halfWidth = halfBack/30000/10;
-    masterData(i,masterInd) = pktrough;
-    masterHeader{masterInd} = 'PeakTroughms';
-    masterData(i,masterInd+1) = halfWidth;
-    masterHeader{masterInd+1} = 'HalfMaxms';
-    
-end
-
-masterInd = masterInd + 2;
-
-% %lets try plotting things
-% figure
-% hold on
-% for i = 1:32
-% plot([1:54],squeeze(medWFs(2,i,:))/max(max(medWFs(1,:,:)))-i)
-% end
-% for i = 33:64
-% plot([55:108],squeeze(medWFs(2,i,:))/max(max(medWFs(1,:,:)))-i+32)
-% end
-
-%extract the waveform properties from median waveforms. Use waveform with
-%largest amplitude. 
- 
+%% AT THIS TIME INTERRUPT TO GET DIO TIMES: THIS WILL ALLOW FOR SEPARATION OF DMR VS NON-DMR TIMES
 %% Extracts Sound Data from soundFile, including freq, db, reps.
 soundName = strcat(fileName,'.mat');
 soundFile = open(soundName);
@@ -606,6 +530,178 @@ for i = 1:numUnits
 end
 
 s.SoundData.DMRPulses = dmrDIO;
+
+%% Now return to waveform extraction. We can now pull first and last DIO times out too. 
+
+dioLimiter = [dmrDIO(1) dmrDIO(end)];
+spikeLimiter = [find(spTimeSec < dioLimiter(1),1,'last'),find(spTimeSec > dioLimiter(2),1,'first')];
+%determine peak channel for given cluster. remember that cluster names are
+%zero indexed!!
+
+s.PeakChanVals = cluPkChan(goodClu+1);
+
+%generate master array for 2-d storage of important values
+masterData = zeros(numUnits,10);
+masterHeader = cell(1,1);
+masterInd = 1;
+
+% datPath = strcat(fileName);
+datPath = strcat(fileName,'.phy.dat');
+% load(datPath)
+filenamestruct = dir(datPath);
+dataTypeNBytes = numel(typecast(cast(0, 'int16'), 'uint8')); % determine number of bytes per sample
+nSamp = filenamestruct.bytes/(64*dataTypeNBytes);  % Number of samples per channel
+%get channel map
+chanMap = getfield(rez.ops,'chanMap');
+
+
+%now lets extract the biggest individual template per cluster. This avoids
+%issues that can arise from the averaging of multiple templates with
+%different timing. 
+for i = 1:length(goodClu)
+    %determine templates associated with goodClu
+    pullTemp = spTemp(spClu ==goodClu(i));
+    %save number of merges here!
+    numMerge = length(unique(pullTemp));
+    mergeStore(i) = numMerge;
+    
+    %if we have more than one template, want to isolate to the correct one!
+    if numMerge > 1
+        [C ia ic] = unique(pullTemp);
+        tempSpikeNums = hist(ic,[1:length(ia)]);
+        [maxVal maxFind] = max(tempSpikeNums);
+        tempStoreForWave(i) = C(maxFind);
+    else
+        tempStoreForWave(i) = unique(pullTemp);
+    end
+end
+
+tempStoreForWave = double(tempStoreForWave);
+
+%% Now pull from non-DMR periods!
+%190514 Encountering error: if split clusters, then they are represented as
+%multiple templates. Therefore, I think the thing we need to do is to
+%basically go through and find the ones which are duplicates and remove
+%them. Then go through and use templates for the ones that I can, and do a
+%separate extraction for the others using their cluster identity. 
+[n, bin] = histc(tempStoreForWave, unique(tempStoreForWave));
+multiple = find(n > 1);
+index    = find(ismember(bin, multiple));
+revInd = [1:length(goodClu)];
+revInd(index) = [];
+
+tempStoreForWave(index) = [];
+[B I] = sort(tempStoreForWave);
+[B2 I2] = sort(I);
+%extract only the clusters I want
+truncSpTemp = spTemp;
+truncSpTemp(spikeLimiter(1):spikeLimiter(2)) = [];
+truncSpTime = spTime;
+truncSpTime(spikeLimiter(1):spikeLimiter(2)) = [];
+truncSpClu = spClu;
+truncSpClu(spikeLimiter(1):spikeLimiter(2)) = [];
+tester = ismember(truncSpTemp,tempStoreForWave);
+newClu = truncSpTemp(tester);
+newST = truncSpTime(tester);
+
+tarPath = strcat(pwd,'\',fileName,'.phy.dat');
+medWFsTemp = extractMedianWFs(newClu, newST, 30000,tarPath, 'int16', [64,nSamp], chanMap, 1);
+
+medWFs(revInd,:,:) = medWFsTemp(I2,:,:);
+
+%now we need to find the correct template numbers for the remaining
+%values.While it would be ideal to find the next best cluster for merges,
+%its too complicated. Instead, lets simply do those by their cluster
+%values. 
+remClu = goodClu(index);
+tester2 = ismember(truncSpClu,remClu);
+newClu = truncSpClu(tester2);
+newST = truncSpTime(tester2);
+
+medWFsSec = extractMedianWFs(newClu, newST, 30000,tarPath, 'int16', [64,nSamp], chanMap, 1);
+
+medWFs(index,:,:) = medWFsSec;
+
+%% NOW DO DMR TIMES
+
+%extract only the clusters I want
+truncSpTemp = spTemp(spikeLimiter(1):spikeLimiter(2));
+truncSpTime = spTime(spikeLimiter(1):spikeLimiter(2));
+truncSpClu = spClu(spikeLimiter(1):spikeLimiter(2));
+tester = ismember(truncSpTemp,tempStoreForWave);
+newClu = truncSpTemp(tester);
+newST = truncSpTime(tester);
+
+tarPath = strcat(pwd,'\',fileName,'.phy.dat');
+medWFsTemp = extractMedianWFs(newClu, newST, 30000,tarPath, 'int16', [64,nSamp], chanMap, 1);
+
+medWFsDMR(revInd,:,:) = medWFsTemp(I2,:,:);
+
+%now we need to find the correct template numbers for the remaining
+%values.While it would be ideal to find the next best cluster for merges,
+%its too complicated. Instead, lets simply do those by their cluster
+%values. 
+remClu = goodClu(index);
+tester2 = ismember(truncSpClu,remClu);
+newClu = truncSpClu(tester2);
+newST = truncSpTime(tester2);
+
+medWFsSec = extractMedianWFs(newClu, newST, 30000,tarPath, 'int16', [64,nSamp], chanMap, 1);
+
+medWFsDMR(index,:,:) = medWFsSec;
+
+
+%store the waveforms! also extract characteristics
+for i = 1:numUnits
+    tarWave = squeeze(medWFs(i,:,:));
+    s.(cluNames{i}).medianWave = tarWave;
+    tarWave2 = squeeze(medWFsDMR(i,:,:));
+    s.(cluNames{i}).medianWaveDMR = tarWave2;
+    %find minima for each wave. Note that waves are now downwards pointing
+    for j = 1:64
+        tarWave(j,:) = tarWave(j,:) - mean(tarWave(j,1:5));
+    end
+    [pks inds] = min(tarWave');
+    %find the minimal minima
+    [metpks metinds] = min(pks);
+    %lets pull the specific channel!
+    selWave = tarWave(metinds,:);
+    %generate smoothed version
+    selWaveInt = interp1([1:length(selWave)],selWave,[1:0.1:length(selWave)],'spline');
+    %now find minimum (peak)
+    [selpk selind] = min(selWaveInt(1:250));
+    %now find trough, which determines peak trough time
+    [trghpk trphind] = max(selWaveInt(selind:end));
+    pktrough = trphind/30000/10;
+    
+    %now lets determine half max width.
+    halfFront = find(selWaveInt(1:selind) < selpk/2,1,'first');
+    halfBack = find(selWaveInt(halfFront:end) > selpk/2,1,'first');
+    halfWidth = halfBack/30000/10;
+    masterData(i,masterInd) = pktrough;
+    masterHeader{masterInd} = 'PeakTroughms';
+    masterData(i,masterInd+1) = halfWidth;
+    masterHeader{masterInd+1} = 'HalfMaxms';
+    
+end
+
+masterInd = masterInd + 2;
+
+% %lets try plotting things
+% figure
+% hold on
+% for i = 1:32
+% plot([1:54],squeeze(medWFs(2,i,:))/max(max(medWFs(1,:,:)))-i)
+% end
+% for i = 33:64
+% plot([55:108],squeeze(medWFs(2,i,:))/max(max(medWFs(1,:,:)))-i+32)
+% end
+
+%extract the waveform properties from median waveforms. Use waveform with
+%largest amplitude. 
+ 
+
+
 
 %% Generate master
 %form master matrix
@@ -1453,6 +1549,7 @@ for i = 1:numUnits
     hold on
     if s.PeakChanVals(i) <=32
         for j = 1:32
+            plot(plotVect,s.(cluNames{i}).medianWaveDMR(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 1 0]);
             if masterData(i,indPkTr) < s.Parameters.PVLim(1) %is FSI
                 plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[1 0 0]);
             elseif masterData(i,indPkTr) > s.Parameters.PVLim(2) %is MSN
@@ -1466,6 +1563,7 @@ for i = 1:numUnits
         title(strcat('Shank1-AvRate:',num2str(s.(cluNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
     else
         for j = 1:32
+            plot(plotVect,s.(cluNames{i}).medianWaveDMR(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 1 0]);
             if masterData(i,indPkTr) < s.Parameters.PVLim(1) %is FSI
                 plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[1 0 0]);
             elseif masterData(i,indPkTr) > s.Parameters.PVLim(2) %is MSN
