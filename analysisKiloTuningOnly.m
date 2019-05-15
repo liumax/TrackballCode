@@ -165,14 +165,44 @@ end
 
 tempStoreForWave = double(tempStoreForWave);
 
-%extract only the clusters I want
+
+[n, bin] = histc(tempStoreForWave, unique(tempStoreForWave));
+multiple = find(n > 1);
+index    = find(ismember(bin, multiple));
+revInd = [1:length(goodClu)];
+revInd(index) = [];
+
+tempStoreForWave(index) = [];
+[B I] = sort(tempStoreForWave);
+[B2 I2] = sort(I);
+% %extract only the clusters I want
+% truncSpTemp = spTemp;
+% % truncSpTemp(spikeLimiter(1):spikeLimiter(2)) = [];
+% truncSpTime = spTime;
+% % truncSpTime(spikeLimiter(1):spikeLimiter(2)) = [];
+% truncSpClu = spClu;
+% % truncSpClu(spikeLimiter(1):spikeLimiter(2)) = [];
 tester = ismember(spTemp,tempStoreForWave);
 newClu = spTemp(tester);
-% newST = spTimeSec(tester);
 newST = spTime(tester);
 
 tarPath = strcat(pwd,'\',fileName,'.phy.dat');
-medWFs = extractMedianWFs(newClu, newST, 30000,tarPath, 'int16', [64,nSamp], chanMap, 1);
+medWFsTemp = extractMedianWFs(newClu, newST, 30000,tarPath, 'int16', [64,nSamp], chanMap, 1);
+
+medWFs(revInd,:,:) = medWFsTemp(I2,:,:);
+
+%now we need to find the correct template numbers for the remaining
+%values.While it would be ideal to find the next best cluster for merges,
+%its too complicated. Instead, lets simply do those by their cluster
+%values. 
+remClu = goodClu(index);
+tester2 = ismember(spClu,remClu);
+newClu = spClu(tester2);
+newST = spTime(tester2);
+
+medWFsSec = extractMedianWFs(newClu, newST, 30000,tarPath, 'int16', [64,nSamp], chanMap, 1);
+
+medWFs(index,:,:) = medWFsSec;
 
 %store the waveforms! also extract characteristics
 for i = 1:numUnits
