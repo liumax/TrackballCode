@@ -5,7 +5,7 @@
 
 
 %for testing purposes
-fileName = '190418ML190307G_RAudStrPen1Rec2_3546TuningDMR'
+fileName = '190409ML190307E_RAudStrPen1Rec1_3570TuningDMR'
 % fileName = '190123ML181105E_RAudStr3526pen1rec1tuningAndDMR';
 % fileName = '190206ML181105F_RAudStr3633pen2rec1tuningDMR'
 % fileName = '190205ML181105C_RAudStr3667pen2rec1tuningDMR';
@@ -117,9 +117,9 @@ pname = pwd;
 
 %% Establishes folders
 homeFolder = pwd;
-subFolders = genpath(homeFolder);
-addpath(subFolders)
-subFoldersCell = strsplit(subFolders,';')';
+% subFolders = genpath(homeFolder);
+% addpath(subFolders)
+% subFoldersCell = strsplit(subFolders,';')';
 
 %% Extract files from kilosort. 
 
@@ -661,7 +661,7 @@ for i = 1:numUnits
     for j = 1:64
         tarWave(j,:) = tarWave(j,:) - mean(tarWave(j,1:5));
     end
-    [pks inds] = min(tarWave');
+    [pks inds] = min(tarWave(:,10:20)');
     %find the minimal minima
     [metpks metinds] = min(pks);
     %lets pull the specific channel!
