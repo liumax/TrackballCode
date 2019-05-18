@@ -1568,13 +1568,13 @@ for i = 1:numUnits
     hold on
     if s.PeakChanVals(i) <=32
         for j = 1:32
-            plot(plotVect,s.(cluNames{i}).medianWaveDMR(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 1 0]);
+            plot(plotVect,s.(cluNames{i}).medianWaveDMR(j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[0 1 0]);
             if masterData(i,indPkTr) < s.Parameters.PVLim(1) %is FSI
-                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[1 0 0]);
+                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[1 0 0]);
             elseif masterData(i,indPkTr) > s.Parameters.PVLim(2) %is MSN
-                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 0 0]);
+                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[0 0 0]);
             else %unknown
-                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
+                plot(plotVect,s.(cluNames{i}).medianWave(j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
             end
         end
         ylim([-33 1])
@@ -1582,13 +1582,13 @@ for i = 1:numUnits
         title(strcat('Shank1-AvRate:',num2str(s.(cluNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
     else
         for j = 1:32
-            plot(plotVect,s.(cluNames{i}).medianWaveDMR(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 1 0]);
+            plot(plotVect,s.(cluNames{i}).medianWaveDMR(32+j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[0 1 0]);
             if masterData(i,indPkTr) < s.Parameters.PVLim(1) %is FSI
-                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[1 0 0]);
+                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[1 0 0]);
             elseif masterData(i,indPkTr) > s.Parameters.PVLim(2) %is MSN
-                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[0 0 0]);
+                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[0 0 0]);
             else %unknown
-                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/max(max(s.(cluNames{i}).medianWave)) - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
+                plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
             end
         end
         ylim([-33 1])
