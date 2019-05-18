@@ -5,7 +5,7 @@
 
 
 %for testing purposes
-fileName = '190409ML190307E_RAudStrPen1Rec1_3570TuningDMR'
+fileName = '190418ML190307G_RAudStrPen1Rec2_3546TuningDMR'
 % fileName = '190123ML181105E_RAudStr3526pen1rec1tuningAndDMR';
 % fileName = '190206ML181105F_RAudStr3633pen2rec1tuningDMR'
 % fileName = '190205ML181105C_RAudStr3667pen2rec1tuningDMR';
@@ -164,6 +164,9 @@ for i=1:length(cluPkChan)
       cluPkChan(i)=tempPkChan(tempPerClu(i)+1); 
    end
 end
+
+%190518 We need to do cleanup of data, not all ISIs are great. Lets remove
+%anything with greater 
 
 
 %This outputs a bunch of spikes and their designations. we need to
@@ -1564,7 +1567,7 @@ for i = 1:numUnits
     subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.02 0.02], [0.01 0.01]);
     % Column 1
     %plots average waveform
-    subplot(1,4,1)
+    subplot(1,8,1)
     hold on
     if s.PeakChanVals(i) <=32
         for j = 1:32
@@ -1577,7 +1580,7 @@ for i = 1:numUnits
                 plot(plotVect,s.(cluNames{i}).medianWave(j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
             end
         end
-        ylim([-33 1])
+        ylim([-33 2])
         xlim([plotVect(1) plotVect(end)])
         title(strcat('Shank1-AvRate:',num2str(s.(cluNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
     else
@@ -1591,10 +1594,28 @@ for i = 1:numUnits
                 plot(plotVect,s.(cluNames{i}).medianWave(32+j,:)/min(min(s.(cluNames{i}).medianWave))*2 - j + 1,'LineWidth',2,'Color',[.7 .7 .7]);
             end
         end
-        ylim([-33 1])
+        ylim([-33 2])
         xlim([plotVect(1) plotVect(end)])
         title(strcat('Shank2-AvRate:',num2str(s.(cluNames{i}).AverageRate),'Tuning',num2str(numTuningSpikes(i)),'DMR',num2str(numDMRSpikes(i))))
     end
+    %next plot ISIs
+    subplot(4,8,2)
+    smallVect = [0:0.0005:0.025];
+    tmpISI = hist(diff(s.(cluNames{i}).SpikeTimes),smallVect);
+    bar(smallVect,tmpISI)
+    xlim([smallVect(1) smallVect(end)])
+    ylim([0 max(tmpISI(1:end-1))])
+    rpvs = sum(tmpISI(1:5));
+    title(['RPVs:',num2str(rpvs),'/',num2str(length(s.(cluNames{i}).SpikeTimes)),'aka',num2str(rpvs/length(s.(cluNames{i}).SpikeTimes)*100),'%'])
+    
+    subplot(4,8,10)
+    bigVect = [0:0.001:0.1];
+    tmpISI = hist(diff(s.(cluNames{i}).SpikeTimes),bigVect);
+    bar(bigVect,tmpISI)
+    xlim([bigVect(1) bigVect(end)])
+    ylim([0 max(tmpISI(1:end-1))])
+    
+    
     %Column 2
     %plot FR and velocity
     subplot(4,4,2)
