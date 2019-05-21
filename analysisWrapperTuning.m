@@ -1543,6 +1543,8 @@ tarCells(nanFind) = [];
 [C,tarPVs,ib] = intersect(tarCells,findPVs);
 [C,tarMSNs,ib] = intersect(tarCells,findMSNs);
 
+%% NOW LOOK AT LATENCY
+
 latHistVect = [0:0.001:0.1];
 
 hFig = figure;
@@ -1721,6 +1723,124 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 hFig = figure;
 hold on
+allZFSI = zHists((tarPVs),:)./max(zHists((tarPVs),:)')';
+allZMSN = zHists((tarMSNs),:)./max(zHists((tarMSNs),:)')';
+
+%smooth them
+for i = 1:length(tarPVs)
+    allZFSI(i,:) = smooth(allZFSI(i,:),3);
+end
+
+for i = 1:length(tarMSNs)
+    allZMSN(i,:) = smooth(allZMSN(i,:),3);
+end
+
+allZFSISTD = std(allZFSI)/sqrt(length(tarPVs));
+allZMSNFTD = std(allZMSN)/sqrt(length(tarMSNs));
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI)),'r','LineWidth',2)
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI))+allZFSISTD,'r','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI))-allZFSISTD,'r','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN)),'k','LineWidth',2)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN))-allZMSNFTD,'k','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN))+allZMSNFTD,'k','LineWidth',1)
+set(gca,'TickDir','out');
+% xlim([-0.02 0.05])
+xlim([0 0.02])
+spikeGraphName = '5ValAverageZPlotsMSNrFSIbZOOMNORMALIZED';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+hFig = figure;
+hold on
+
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI)),'r','LineWidth',2)
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI))+allZFSISTD,'r','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI))-allZFSISTD,'r','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN)),'k','LineWidth',2)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN))-allZMSNFTD,'k','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN))+allZMSNFTD,'k','LineWidth',1)
+
+set(gca,'TickDir','out');
+% xlim([-0.02 0.05])
+xlim([-0.1 0.2])
+spikeGraphName = '5ValAverageZPlotsMSNrFSIbNORMALIZED';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+% PLOT WITH STD instead of SEM 
+
+hFig = figure;
+hold on
+allZFSI = zHists((tarPVs),:)./max(zHists((tarPVs),:)')';
+allZMSN = zHists((tarMSNs),:)./max(zHists((tarMSNs),:)')';
+
+%smooth them
+for i = 1:length(tarPVs)
+    allZFSI(i,:) = smooth(allZFSI(i,:),3);
+end
+
+for i = 1:length(tarMSNs)
+    allZMSN(i,:) = smooth(allZMSN(i,:),3);
+end
+
+allZFSISTD = std(allZFSI);
+allZMSNFTD = std(allZMSN);
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI)),'r','LineWidth',2)
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI))+allZFSISTD,'r','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI))-allZFSISTD,'r','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN)),'k','LineWidth',2)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN))-allZMSNFTD,'k','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN))+allZMSNFTD,'k','LineWidth',1)
+set(gca,'TickDir','out');
+% xlim([-0.02 0.05])
+xlim([0 0.02])
+spikeGraphName = '5ValAverageZPlotsMSNrFSIbZOOMNORMALIZEDDSTD';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+hFig = figure;
+hold on
+
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI)),'r','LineWidth',2)
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI))+allZFSISTD,'r','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZFSI)/max(mean(allZFSI))-allZFSISTD,'r','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN)),'k','LineWidth',2)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN))-allZMSNFTD,'k','LineWidth',1)
+plot([-.2:0.0005:0.4],mean(allZMSN)/max(mean(allZMSN))+allZMSNFTD,'k','LineWidth',1)
+
+set(gca,'TickDir','out');
+% xlim([-0.02 0.05])
+xlim([-0.1 0.2])
+spikeGraphName = '5ValAverageZPlotsMSNrFSIbNORMALIZEDSTD';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+
+hFig = figure;
+hold on
 for i = 1:length(tarPVs)
     plot([-.2:0.0005:0.4],zHists((tarPVs(i)),:),'r')
 end
@@ -1852,8 +1972,40 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
+%plot as cumulative distribution?
+msnLatDist = hist(latStore(tarMSNs),latHistVect);
+fsiLatDist = hist(latStore(tarPVs),latHistVect);
+
+msnLatDist = cumsum(msnLatDist);
+fsiLatDist = cumsum(fsiLatDist);
+
+latDistNumMSN = msnLatDist(end);
+latDistNumFSI = fsiLatDist(end);
+
+msnLatDist = msnLatDist/msnLatDist(end);
+fsiLatDist = fsiLatDist/fsiLatDist(end);
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+hold on
+plot(latHistVect,msnLatDist,'k')
+plot(latHistVect,fsiLatDist,'r')
+
+set(gca,'TickDir','out');
+title(['MSN vs FSI Lat Cum Dist-',num2str(latDistNumMSN),'-fSI-',num2str(latDistNumFSI)])
+
+spikeGraphName = '5ValPVMSNSelFreqLatCumDist';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
+
+%% Now plot heatmaps of target cells
 %now lets plot out heatmaps?
 
 hFig = figure;
@@ -1901,7 +2053,7 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-
+%% NOW CALCULATE WIDTHS
 %now lets pull the height based width values, and the centers of these
 %"responses"
 % pvHeightWidth = bigWidthSelWidth(:,:,tarCells(tarPVs));
@@ -1968,7 +2120,7 @@ histValPV = hist(widthValsPV,widthHistVect);
 histValMSN = hist(widthValsMSN,widthHistVect);
 
 
-% now lets try and plot out width, threshold, with the width of 3 setup.
+%% now lets try and plot out width, threshold, with the width of 3 setup.
 %first do PVs.
 threshStorePV = [];
 for i = 1:length(tarPVs)
@@ -2137,8 +2289,32 @@ set(hFig, 'Position', [80 80 1900 1000])
 targetThresh = 1;
 finderPV = find(threshStorePV == targetThresh);
 finderMSN = find(threshStoreMSN == targetThresh);
-ylims = [0 13];
-xlims = [0 16];
+
+xlims = [-0.5 17];
+
+trueMax = 10;
+for i = 1:5
+    
+    if finderPV
+        testHold = hist(sigWidthPV(i,finderPV),[1:1:16]);
+        maxVal = max(testHold);
+        if maxVal > trueMax
+            trueMax = maxVal;
+        end
+    end
+    
+    if finderMSN
+        testHold = hist(sigWidthMSN(i,finderMSN),[1:1:16]);
+        maxVal = max(testHold);
+        if maxVal > trueMax
+            trueMax = maxVal;
+        end
+    end
+end
+
+ylims = [0 trueMax + 1;];
+
+
 
 for i = 1:5
     subplot(2,5,i)
@@ -2191,6 +2367,8 @@ errorbar(mean(sigWidthPV(:,finderPV)'),std(sigWidthPV(:,finderPV)')/sqrt(length(
 errorbar(mean(sigWidthMSN(:,finderMSN)'),std(sigWidthMSN(:,finderMSN)')/sqrt(length(finderMSN)),'k','LineWidth',2);
 set(gca,'TickDir','out');
 
+xlim([0.5 5.5])
+
 spikeGraphName = '5ValPlotMeanWidthChangeAcrossDBs';
 savefig(hFig,spikeGraphName);
 
@@ -2201,7 +2379,7 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-%now lets plot BF vs width.
+%% now lets plot BF vs width.
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [80 80 1900 1000])
@@ -2496,7 +2674,33 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 print(hFig,spikeGraphName,'-deps','-r0')
 
 
+%% Supplemental figure: PSTH examples!
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
+set(hFig, 'Position', [80 80 1600 1200])
+
+subplot(2,3,1)
+plot(crudeVect,smooth(crudeHist(findPVs(1),:),5))
+xlim([-0.15 0.35])
+subplot(2,3,2)
+plot(crudeVect,smooth(crudeHist(findPVs(81),:),5))
+xlim([-0.15 0.35])
+subplot(2,3,5)
+plot(crudeVect,smooth(crudeHist(findPVs(83),:),5))
+xlim([-0.15 0.35])
+subplot(2,3,3)
+plot(crudeVect,smooth(crudeHist(tarCells(tarPVs(10)),:),5))
+xlim([-0.15 0.35])
 
 
+spikeGraphName = 'ExamplePSTHs';
+savefig(hFig,spikeGraphName);
 
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+print(hFig,spikeGraphName,'-deps','-r0')
 
