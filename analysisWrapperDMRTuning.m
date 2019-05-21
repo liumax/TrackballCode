@@ -271,15 +271,17 @@ findCHATs = find(bigMaster(:,indCellType) == 2);
 findPVs = find(bigMaster(:,5) < 0.0004 & bigMaster(:,6) > 1.1);
 findMSNs = find(bigMaster(:,5) > 0.0005 & bigMaster(:,6) > 1.1); 
 
-%% Pull tuning widths
+%% Pull tuning widths to find units I want?
 
 
 %calculate widths with height based system
+widthCut = 0.5;
+widthSmoothWind = 3;
 bigWidthHeightStore = [];
 for i = 1:length(bigMaster)
     testValues = squeeze(binValBigStore(:,:,i));
     for j = 1:size(testValues,2)
-        [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues(:,j),0.1,3);
+        [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues(:,j),widthCut,widthSmoothWind);
         bigWidthHeightStore(j,:,i) = widthVals;
         bigWidthMaxPosStore(j,i) = maxPos;
         bigWidthMaxValStore(j,i) = maxVal;
@@ -290,40 +292,6 @@ end
 %now lets just pull out the outward search, since this looks to be far more
 %accurate
 bigWidthSelWidth = bigWidthHeightStore(:,[1,3],:);
-
-% 
-% %now lets try and plot out things!
-% tarDB = 3;
-% smoothWin = 3;
-% counter = 1;
-% for i = 1:length(bigMaster)
-%     if ismember(i,[1,101,201,301,401,501,601])
-%         hFig = figure;
-%         counter = 1;
-%     end
-%     subplot(10,10,counter)
-% %     plotData = squeeze(binValBigStore(:,5,i));
-%     plotData = binValBigStore(:,:,i);
-%     plotData = plotData(:,tarDB);
-%     plotData = smooth(plotData,smoothWin);
-%     
-%     if ismember(i,findPVs)
-%         plot(plotData,'r','LineWidth',2)
-%     elseif ismember(i,findMSNs)
-%         plot(plotData,'k','LineWidth',2)
-%     else
-%         plot(plotData,'Color',[0.7 0.7 0.7],'LineWidth',2)
-%     end
-%     hold on
-%     plot([1 16],[0 0],'k')
-%     plot([1 16],[bigWidthCutVal(tarDB,i) bigWidthCutVal(tarDB,i)],'c','LineWidth',2)
-%     plot([bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i) bigWidthMaxPosStore(tarDB,i) - bigWidthSelWidth(tarDB,1,i)],[0 max(plotData)],'g','LineWidth',2)
-%     plot([bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i) bigWidthMaxPosStore(tarDB,i) + bigWidthSelWidth(tarDB,2,i)],[0 max(plotData)],'g','LineWidth',2)
-%     plot([bigWidthMaxPosStore(tarDB,i) bigWidthMaxPosStore(tarDB,i)],[0 max(plotData)],'m','LineWidth',2)
-%     xlim([1 16])
-%     counter = counter + 1;
-% end
-
 
 signStore = sign(binValBigStore);
 signSigStore = sigValBigStore.*signStore;
@@ -336,14 +304,8 @@ end
 tarCells = [1:length(bigMaster)];
 tarPVs = findPVs;
 tarMSNs = findMSNs;
-%now lets pull the height based width values, and the centers of these
-%"responses"
-% pvHeightWidth = bigWidthSelWidth(:,:,tarCells(tarPVs));
-% msnHeightWidth = bigWidthSelWidth(:,:,tarCells(tarMSNs));
-tarCellHeightWidth = bigWidthSelWidth(:,:,tarCells);
 
-% pvMaxPos = bigWidthMaxPosStore(:,tarCells(tarPVs));
-% msnMaxPos = bigWidthMaxPosStore(:,tarCells(tarMSNs));
+tarCellHeightWidth = bigWidthSelWidth(:,:,tarCells);
 tarCellMaxPos = bigWidthMaxPosStore(:,tarCells);
 
 %now lets determine whether significant values exist at each DB level.
@@ -564,17 +526,15 @@ for i = 1:length(bigDBStore)
 end
 
 %% to determine BF, lets compress along time axis. 
-smoothWind = 7;
+% smoothWind = 7; %190513 USE WIDTHSMOOTHWIND
 % smoothWind = 1;
 for i = 1:length(bigDBStore)
     compTimingPos(:,i) = sum(posSTA(:,:,i));
     compTimingNeg(:,i) =  sum(negSTA(:,:,i));
-    compWidthPos(:,i) = smooth(sum(posSTA(:,:,i)'),smoothWind);
-    compWidthNeg(:,i) = smooth(sum(negSTA(:,:,i)'),smoothWind);
+    compWidthPos(:,i) = smooth(sum(posSTA(:,:,i)'),widthSmoothWind);
+    compWidthNeg(:,i) = smooth(sum(negSTA(:,:,i)'),widthSmoothWind);
     
 end
-
-
 
 %Lets examine BFs. Restrict search to below 32 kHz
 limiter = [1 31];
@@ -649,45 +609,115 @@ xlabel('STA BF (Neg) (Hz)')
 ylabel('STA BF (Pos) (Hz)')
 title('MSN STA BF Comparison')
 
-% 
-% figure
-% hold on
-% for i = 1:length(bigDBStore)
-%     plot(compWidthPos(:,i))
-%     plot(smooth(compWidthPos(:,i),5),'r')
-%     
-% end
-% 
-% %peak to peak distance for old datasets seems to be 5. Lets keep a 5
-% %smoothing for these. 
 
 %% Look at widths 
 dmrWidthPos = [];
 dmrBFPos = [];
 dmrWidthNeg = [];
 dmrBFNeg = [];
-widthPer = 0.5;
+% widthPer = 0.5; USING WIDTH CUT
+% smoothWind = 3;
+flim = 31;%limiter for calculating width for DMR. 
+modFaxis = faxis(1:flim);
 for i = 1:length(bigDBStore)
     %pull peak modulation timing. 
     [maxVal dmrTimePos(i)] = max(compTimingPos(:,i));
     [minVal dmrTimeNeg(i)] = min(compTimingPos(:,i));
     %pull widths from STA
-    [dmrWidthPos(i,1:4),dmrBFPos(i),maxVal,cutVal] = functionHeightBasedTuningWidth(compWidthPos(:,i),widthPer,1);
-    [dmrWidthNeg(i,1:4),dmrBFNeg(i),maxVal,cutVal] = functionHeightBasedTuningWidth(-1*compWidthNeg(:,i),widthPer,1);
+    [dmrWidthPos(i,1:4),dmrBFPos(i),maxVal,cutVal] = functionHeightBasedTuningWidth(compWidthPos(1:flim,i),widthCut,1); %no smoothing necessary, already applied to compWidthPos. 
+    [dmrWidthNeg(i,1:4),dmrBFNeg(i),maxVal,cutVal] = functionHeightBasedTuningWidth(-1*compWidthNeg(1:flim,i),widthCut,1);
     %pull width from tuning
     toneWidth = binValBigStore(:,:,i);
     toneWidth = mean(toneWidth(:,end-2:end)');
     %extract width!
-    [toneWidthPos(i,1:4),toneBFPos(i),maxVal,cutVal] = functionHeightBasedTuningWidth(toneWidth,widthPer,1);
+    [toneWidthPos(i,1:4),toneBFPos(i),maxVal,cutVal] = functionHeightBasedTuningWidth(toneWidth,widthCut,widthSmoothWind);
 end
 
 dmrWidthPos (:,[2,4]) = [];
 dmrWidthNeg (:,[2,4]) = [];
 toneWidthPos (:,[2,4]) = [];
 
+%now extract width data to make actual width values. Start with pure tone
+%data.
+
+sigWidthStoreMean = [];
+sideWarnLowMean = [];
+sideWarnHiMean = [];
+for i = 1:length(toneWidthPos)
+    if isnan(toneWidthPos(i,1))
+        lowWidth = toneBFPos(i);
+        sideWarnLowMean(i) = 1;
+    else
+        lowWidth = toneWidthPos(i,1);
+    end
+    if isnan(toneWidthPos(i,2))
+        hiWidth = 16 - toneBFPos(i);
+        sideWarnHiMean(i) = 1;
+    else
+        hiWidth = toneWidthPos(i,2);
+    end
+    sigWidthStoreMean(i) = hiWidth + lowWidth;
+end
+
+%now positive STA
+sigWidthStoreSTAPos = [];
+sideWarnLowSTAPos = [];
+sideWarnHiSTAPos = [];
+tarCellHeightWidth = dmrWidthPos';
+tarCellMaxPos = dmrBFPos;
+
+for i = 1:length(dmrWidthPos)
+    %now check for width values. If NaN on either side, determine
+    %edge.
+    %start with lower edge. 
+    if isnan(tarCellHeightWidth(1,i))
+        lowWidth = tarCellMaxPos(i);
+        sideWarnLowSTAPos(i) = 1;
+    else
+        lowWidth = tarCellHeightWidth(1,i);
+    end
+    if isnan(tarCellHeightWidth(2,i))
+        hiWidth = length(modFaxis) - tarCellMaxPos(i);
+        sideWarnHiSTAPos(i) = 1;
+    else
+        hiWidth = tarCellHeightWidth(2,i);
+    end
+    sigWidthStoreSTAPos(i) = hiWidth + lowWidth;
+end
+
+%now negative
+
+sigWidthStoreSTANeg = [];
+sideWarnLowSTANeg = [];
+sideWarnHiSTANeg = [];
+
+tarCellHeightWidth = dmrWidthNeg';
+tarCellMaxNeg = dmrBFNeg;
+
+for i = 1:length(dmrWidthPos)
+    %now check for width values. If NaN on either side, determine
+    %edge.
+    %start with lower edge. 
+    if isnan(tarCellHeightWidth(1,i))
+        lowWidth = tarCellMaxNeg(i);
+        sideWarnLowSTANeg(i) = 1;
+    else
+        lowWidth = tarCellHeightWidth(1,i);
+    end
+    if isnan(tarCellHeightWidth(2,i))
+        hiWidth = length(modFaxis) - tarCellMaxNeg(i);
+        sideWarnHiSTANeg(i) = 1;
+    else
+        hiWidth = tarCellHeightWidth(2,i);
+    end
+    sigWidthStoreSTANeg(i) = hiWidth + lowWidth;
+end
+
 
 %first, lets just make plots of tuning curves of pure tones vs DMR.
 %start with PVs
+
+
 axisDef = ceil(sqrt(length(dmrPV)));
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -726,16 +756,16 @@ for i = 1:length(dmrPV)
     %plot out width!
     if ~isnan(dmrWidthPos(dmrPV(i),1))
         width1 = dmrBFPos(dmrPV(i)) - dmrWidthPos(dmrPV(i),1);
-        width1 = interp1([1:40],faxis,width1);
+        width1 = interp1([1:flim],modFaxis,width1);
     else
-        width1 = faxis(1);
+        width1 = modFaxis(1);
     end
     
     if ~isnan(dmrWidthPos(dmrPV(i),2))
         width2 = dmrBFPos(dmrPV(i)) + dmrWidthPos(dmrPV(i),2);
-        width2 = interp1([1:40],faxis,width2);
+        width2 = interp1([1:flim],modFaxis,width2);
     else
-        width2 = faxis(end);
+        width2 = modFaxis(end);
     end
     plot([width1 width2],[0.4 0.4],'g','LineWidth',2)
     %plot negative!
@@ -745,20 +775,20 @@ for i = 1:length(dmrPV)
     %plot width!
     if ~isnan(dmrWidthNeg(dmrPV(i),1))
         width1 = dmrBFNeg(dmrPV(i)) - dmrWidthNeg(dmrPV(i),1);
-        width1 = interp1([1:40],faxis,width1);
+        width1 = interp1([1:flim],modFaxis,width1);
     else
-        width1 = faxis(1);
+        width1 = modFaxis(1);
     end
     
     if ~isnan(dmrWidthNeg(dmrPV(i),2))
         width2 = dmrBFNeg(dmrPV(i)) + dmrWidthNeg(dmrPV(i),2);
-        width2 = interp1([1:40],faxis,width2);
+        width2 = interp1([1:flim],modFaxis,width2);
     else
-        width2 = faxis(end);
+        width2 = modFaxis(end);
     end
     plot([width1 width2],[-0.4 -0.4],'g','LineWidth',2)
     
-    xlim([faxis(1) faxis(end)])
+    xlim([modFaxis(1) modFaxis(end)])
     set(gca, 'XScale', 'log')
     set(gca,'xtick',[])
     set(gca,'xticklabel',[])
@@ -776,6 +806,8 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %Then MSNs
+
+modFaxis = faxis(1:flim);
 axisDef = ceil(sqrt(length(dmrMSN)));
 hFig = figure;
 set(hFig, 'Position', [10 80 1900 1000])
@@ -788,10 +820,10 @@ for i = 1:length(dmrMSN)
     subplot(axisDef,axisDef,i)
     hold on
     %plot tone information. General curve
-    plot(toneFreqs,toneWidth/max(toneWidth),'k')
-    %plot out peak value
     if ~isnan(toneBFPos(dmrMSN(i)))
-        plot(toneFreqs(round(toneBFPos(dmrMSN(i)))),toneWidth(round(toneBFPos(dmrMSN(i))))/max(toneWidth),'r*')
+        plot(toneFreqs,toneWidth/max(toneWidth),'k')
+        %plot out peak value
+        plot(toneFreqs(toneBFPos(dmrMSN(i))),toneWidth(toneBFPos(dmrMSN(i)))/max(toneWidth),'r*')
         %plot out width
         if ~isnan(toneWidthPos(dmrMSN(i),1))
             width1 = toneBFPos(dmrMSN(i)) - toneWidthPos(dmrMSN(i),1);
@@ -809,7 +841,6 @@ for i = 1:length(dmrMSN)
         plot([width1 width2],[0.5 0.5],'r','LineWidth',2)
     end
     
-    
     %now plot STA info!    
     plot(faxis,compWidthPos(:,dmrMSN(i))/max(compWidthPos(:,dmrMSN(i))),'r')
     %plot out BF
@@ -817,16 +848,16 @@ for i = 1:length(dmrMSN)
     %plot out width!
     if ~isnan(dmrWidthPos(dmrMSN(i),1))
         width1 = dmrBFPos(dmrMSN(i)) - dmrWidthPos(dmrMSN(i),1);
-        width1 = interp1([1:40],faxis,width1);
+        width1 = interp1([1:flim],modFaxis,width1);
     else
-        width1 = faxis(1);
+        width1 = modFaxis(1);
     end
     
     if ~isnan(dmrWidthPos(dmrMSN(i),2))
         width2 = dmrBFPos(dmrMSN(i)) + dmrWidthPos(dmrMSN(i),2);
-        width2 = interp1([1:40],faxis,width2);
+        width2 = interp1([1:flim],modFaxis,width2);
     else
-        width2 = faxis(end);
+        width2 = modFaxis(end);
     end
     plot([width1 width2],[0.4 0.4],'g','LineWidth',2)
     %plot negative!
@@ -836,26 +867,27 @@ for i = 1:length(dmrMSN)
     %plot width!
     if ~isnan(dmrWidthNeg(dmrMSN(i),1))
         width1 = dmrBFNeg(dmrMSN(i)) - dmrWidthNeg(dmrMSN(i),1);
-        width1 = interp1([1:40],faxis,width1);
+        width1 = interp1([1:flim],modFaxis,width1);
     else
-        width1 = faxis(1);
+        width1 = modFaxis(1);
     end
     
     if ~isnan(dmrWidthNeg(dmrMSN(i),2))
         width2 = dmrBFNeg(dmrMSN(i)) + dmrWidthNeg(dmrMSN(i),2);
-        width2 = interp1([1:40],faxis,width2);
+        width2 = interp1([1:flim],modFaxis,width2);
     else
-        width2 = faxis(end);
+        width2 = modFaxis(end);
     end
     plot([width1 width2],[-0.4 -0.4],'g','LineWidth',2)
     
-    xlim([faxis(1) faxis(end)])
+    xlim([modFaxis(1) modFaxis(end)])
     set(gca, 'XScale', 'log')
     set(gca,'xtick',[])
     set(gca,'xticklabel',[])
     set(gca,'ytick',[])
     set(gca,'yticklabel',[])
 end
+
 
 spikeGraphName = 'MSNFreqWidths';
 savefig(hFig,spikeGraphName);
@@ -867,7 +899,7 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-%Lets try extracting the number of bins for which there is a response
+%% WIDTH ANALYSIS: Lets try extracting the number of bins for which there is a response
 %greater than the threshold
 
 toneCurves = squeeze(sum(binValBigStore(:,3:5,:),2));
@@ -875,6 +907,7 @@ toneCurves = squeeze(sum(binValBigStore(:,3:5,:),2));
 %STA is compWidthPos. Restrict to 32 kHz and below
 flim = 31;
 resCompWidthPos = compWidthPos(1:flim,:);
+resCompWidthNeg = compWidthNeg(1:flim,:);
 
 %now go through and extract width values based on whatever cutoff. 
 cutoffs = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9];
@@ -909,115 +942,72 @@ mean(diffMat(dmrMSN,:))
 signRankResMSN
 
 
-%now lets calculate widths based on half height. 
-heightBench = 0.5;
-%From pure tone:
 
-%calculate widths with height based system
-bigWidthHeightStore = [];
-for i = 1:length(bigMaster)
-    testValues = squeeze(binValBigStore(:,:,i));
-    for j = 1:size(testValues,2)
-        [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues(:,j),heightBench,3);
-        bigWidthHeightStore(j,:,i) = widthVals;
-        bigWidthMaxPosStore(j,i) = maxPos;
-        bigWidthMaxValStore(j,i) = maxVal;
-        bigWidthCutVal(j,i) = cutVal;
-    end
-end
+%% compare width at specific level for pure tones to STAs
 
-%now lets just pull out the outward search, since this looks to be far more
-%accurate
-bigWidthSelWidth = bigWidthHeightStore(:,[1,3],:);
-tarCells = [1:length(bigMaster)];
-tarPVs = findPVs;
-tarMSNs = findMSNs;
-%now lets pull the height based width values, and the centers of these
-%"responses"
-tarCellHeightWidth = bigWidthSelWidth(:,:,tarCells);
-tarCellMaxPos = bigWidthMaxPosStore(:,tarCells);
-
-
-sigWidthStore = [];
-sideWarnLow = [];
-sideWarnHi = [];
-for i = 1:length(tarCells)
-    for j = 1:size(tarCellHeightWidth,1)
-        %now check for width values. If NaN on either side, determine
-        %edge.
-        %start with lower edge. 
-        if isnan(tarCellHeightWidth(j,1,i))
-            lowWidth = tarCellMaxPos(j,i);
-            sideWarnLow(j,i) = 1;
-        else
-            lowWidth = tarCellHeightWidth(j,1,i);
-        end
-        if isnan(tarCellHeightWidth(j,2,i))
-            hiWidth = 16 - tarCellMaxPos(j,i);
-            sideWarnHi(j,i) = 1;
-        else
-            hiWidth = tarCellHeightWidth(j,2,i);
-        end
-        sigWidthStore(j,i) = hiWidth + lowWidth;
-    end
-end
-
-
-bigStoreSTAPosWidth = [];
-for i = 1:length(bigMaster)
-    testValues = squeeze(compWidthPos(:,i));
-    [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues,heightBench,3);
-    bigStoreSTAPosWidth(:,i) = widthVals;
-    bigStoreSTAPosWidthPeakFreq(i) = maxPos;
-    bigStoreSTAPosWidthPeakVal(i) = maxVal;
-    bigStoreSTAPosWidthCutVal(i) = cutVal;
-end
-
-%now lets just pull out the outward search, since this looks to be far more
-%accurate
-bigStoreSTAPosWidthSel = bigStoreSTAPosWidth([1,3],:);
-
-tarCells = [1:length(bigMaster)];
-tarPVs = findPVs;
-tarMSNs = findMSNs;
-%now lets pull the height based width values, and the centers of these
-%"responses"
-tarCellHeightWidth = bigStoreSTAPosWidthSel(:,tarCells);
-tarCellMaxPos = bigStoreSTAPosWidthPeakFreq(tarCells);
-
-
-sigWidthStoreSTAPos = [];
-sideWarnLowSTAPos = [];
-sideWarnHiSTAPos = [];
-for i = 1:length(tarCells)
-    %now check for width values. If NaN on either side, determine
-    %edge.
-    %start with lower edge. 
-    if isnan(tarCellHeightWidth(1,i))
-        lowWidth = tarCellMaxPos(i);
-        sideWarnLowSTAPos(i) = 1;
-    else
-        lowWidth = tarCellHeightWidth(1,i);
-    end
-    if isnan(tarCellHeightWidth(2,i))
-        hiWidth = length(faxis) - tarCellMaxPos(i);
-        sideWarnHiSTAPos(i) = 1;
-    else
-        hiWidth = tarCellHeightWidth(2,i);
-    end
-    sigWidthStoreSTAPos(i) = hiWidth + lowWidth;
-end
-
-%compare max amplitude pure tones to STAs
-
-ampTar = 5;
+ampTar = 2;
 
 %octaves per step??
 unitsTone = 0.2;
-unitsSTA = 4/39;
+unitsSTA = 3/31;
 
-widthCompFSI = [sigWidthStore(ampTar,dmrPV)*unitsTone;sigWidthStoreSTAPos(dmrPV)*unitsSTA];
-widthCompMSN = [sigWidthStore(ampTar,dmrMSN)*unitsTone;sigWidthStoreSTAPos(dmrMSN)*unitsSTA];
+% widthSub = sigWidthStoreSTAPos(:)*16/32-sigWidthStore(ampTar,:);
+
+% widthCompFSI = [(sigWidthStore(ampTar,dmrPV)-1)*unitsTone;sigWidthStoreSTAPos(dmrPV)*unitsSTA];
+% widthCompMSN = [(sigWidthStore(ampTar,dmrMSN)-1)*unitsTone;sigWidthStoreSTAPos(dmrMSN)*unitsSTA];
+
+widthCompFSINeg = [(sigWidthStore(ampTar,dmrPV)-1)*unitsTone;sigWidthStoreSTANeg(dmrPV)*unitsSTA];
+widthCompMSNNeg = [(sigWidthStore(ampTar,dmrMSN)-1)*unitsTone;sigWidthStoreSTANeg(dmrMSN)*unitsSTA];
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1000 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
+for j = 1:5
+    
+    ampTar = j;
+    
+    widthCompFSI = [(sigWidthStore(ampTar,dmrPV)-1)*unitsTone;sigWidthStoreSTAPos(dmrPV)*unitsSTA];
+    widthCompMSN = [(sigWidthStore(ampTar,dmrMSN)-1)*unitsTone;sigWidthStoreSTAPos(dmrMSN)*unitsSTA];
+    
+    subplot(2,5,j)
+    hold on
+    for i = 1:length(dmrPV)
+        plot([1 2],[widthCompFSI(1,i) widthCompFSI(2,i)],'Color',[0.7 0.7 0.7])
+    end
+    errorbar([1 2],[nanmean(widthCompFSI(1,:)) nanmean(widthCompFSI(2,:))],[nanstd(widthCompFSI(1,:))/sqrt(length(dmrPV)) nanstd(widthCompFSI(2,:))/sqrt(length(dmrPV))],'k','LineWidth',2)
+    xlim([0.5 2.5])
+    ylim([-0.5 3])
+    set(gca,'TickDir','out');
+    title(['Change in FSI HalfWidth at Amp',num2str(j)])
+
+    subplot(2,5,5+j)
+    hold on
+    for i = 1:length(dmrMSN)
+        plot([1 2],[widthCompMSN(1,i) widthCompMSN(2,i)],'Color',[0.7 0.7 0.7])
+    end
+    errorbar([1 2],[nanmean(widthCompMSN(1,:)) nanmean(widthCompMSN(2,:))],[nanstd(widthCompMSN(1,:))/sqrt(length(dmrMSN)) nanstd(widthCompMSN(2,:))/sqrt(length(dmrMSN))],'k','LineWidth',2)
+    xlim([0.5 2.5])
+    ylim([-0.5 3])
+    set(gca,'TickDir','out');
+    title('Change in MSN HalfWidth')
+end
+
+spikeGraphName = strcat('width-',num2str(widthCut),'-STAvsPureTone');
+savefig(hFig,strcat(spikeGraphName,'.fig'));
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+%Lets also try with averages of 50-70 dB
+
+widthCompFSI = [(sigWidthStoreMean(dmrPV)-1)*unitsTone;sigWidthStoreSTAPos(dmrPV)*unitsSTA];
+widthCompMSN = [(sigWidthStoreMean(dmrMSN)-1)*unitsTone;sigWidthStoreSTAPos(dmrMSN)*unitsSTA];
+
+widthCompFSINeg = [(sigWidthStoreMean(dmrPV)-1)*unitsTone;sigWidthStoreSTANeg(dmrPV)*unitsSTA];
+widthCompMSNNeg = [(sigWidthStoreMean(dmrMSN)-1)*unitsTone;sigWidthStoreSTANeg(dmrMSN)*unitsSTA];
 
 hFig = figure;
 set(hFig, 'Position', [10 80 1000 1000])
@@ -1032,6 +1022,7 @@ errorbar([1 2],[nanmean(widthCompFSI(1,:)) nanmean(widthCompFSI(2,:))],[nanstd(w
 xlim([0.5 2.5])
 set(gca,'TickDir','out');
 title('Change in FSI HalfWidth')
+
 subplot(2,1,2)
 hold on
 for i = 1:length(dmrMSN)
@@ -1042,7 +1033,7 @@ xlim([0.5 2.5])
 set(gca,'TickDir','out');
 title('Change in MSN HalfWidth')
 
-spikeGraphName = 'HalfWidthSTAvsPureTone';
+spikeGraphName = 'HalfWidthSTAvsPureTone50-70dB';
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -1050,154 +1041,6 @@ set(hFig,'Units','Inches');
 pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
-
-
-% %Now lets go to 0.2 of height
-% %now lets calculate widths based on half height. 
-% heightBench = 0.2;
-% %From pure tone:
-% 
-% %calculate widths with height based system
-% bigWidthHeightStore = [];
-% for i = 1:length(bigMaster)
-%     testValues = squeeze(binValBigStore(:,:,i));
-%     for j = 1:size(testValues,2)
-%         [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues(:,j),heightBench,3);
-%         bigWidthHeightStore(j,:,i) = widthVals;
-%         bigWidthMaxPosStore(j,i) = maxPos;
-%         bigWidthMaxValStore(j,i) = maxVal;
-%         bigWidthCutVal(j,i) = cutVal;
-%     end
-% end
-% 
-% %now lets just pull out the outward search, since this looks to be far more
-% %accurate
-% bigWidthSelWidth = bigWidthHeightStore(:,[1,3],:);
-% tarCells = [1:length(bigMaster)];
-% tarPVs = findPVs;
-% tarMSNs = findMSNs;
-% %now lets pull the height based width values, and the centers of these
-% %"responses"
-% tarCellHeightWidth = bigWidthSelWidth(:,:,tarCells);
-% tarCellMaxPos = bigWidthMaxPosStore(:,tarCells);
-% 
-% 
-% sigWidthStore = [];
-% sideWarnLow = [];
-% sideWarnHi = [];
-% for i = 1:length(tarCells)
-%     for j = 1:size(tarCellHeightWidth,1)
-%         %now check for width values. If NaN on either side, determine
-%         %edge.
-%         %start with lower edge. 
-%         if isnan(tarCellHeightWidth(j,1,i))
-%             lowWidth = tarCellMaxPos(j,i);
-%             sideWarnLow(j,i) = 1;
-%         else
-%             lowWidth = tarCellHeightWidth(j,1,i);
-%         end
-%         if isnan(tarCellHeightWidth(j,2,i))
-%             hiWidth = 16 - tarCellMaxPos(j,i);
-%             sideWarnHi(j,i) = 1;
-%         else
-%             hiWidth = tarCellHeightWidth(j,2,i);
-%         end
-%         sigWidthStore(j,i) = hiWidth + lowWidth;
-%     end
-% end
-% 
-% 
-% bigStoreSTAPosWidth = [];
-% for i = 1:length(bigMaster)
-%     testValues = squeeze(compWidthPos(:,i));
-%     [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues,heightBench,3);
-%     bigStoreSTAPosWidth(:,i) = widthVals;
-%     bigStoreSTAPosWidthPeakFreq(i) = maxPos;
-%     bigStoreSTAPosWidthPeakVal(i) = maxVal;
-%     bigStoreSTAPosWidthCutVal(i) = cutVal;
-% end
-% 
-% %now lets just pull out the outward search, since this looks to be far more
-% %accurate
-% bigStoreSTAPosWidthSel = bigStoreSTAPosWidth([1,3],:);
-% 
-% tarCells = [1:length(bigMaster)];
-% tarPVs = findPVs;
-% tarMSNs = findMSNs;
-% %now lets pull the height based width values, and the centers of these
-% %"responses"
-% tarCellHeightWidth = bigStoreSTAPosWidthSel(:,tarCells);
-% tarCellMaxPos = bigStoreSTAPosWidthPeakFreq(tarCells);
-% 
-% 
-% sigWidthStoreSTAPos = [];
-% sideWarnLowSTAPos = [];
-% sideWarnHiSTAPos = [];
-% for i = 1:length(tarCells)
-%     %now check for width values. If NaN on either side, determine
-%     %edge.
-%     %start with lower edge. 
-%     if isnan(tarCellHeightWidth(1,i))
-%         lowWidth = tarCellMaxPos(i);
-%         sideWarnLowSTAPos(i) = 1;
-%     else
-%         lowWidth = tarCellHeightWidth(1,i);
-%     end
-%     if isnan(tarCellHeightWidth(2,i))
-%         hiWidth = length(faxis) - tarCellMaxPos(i);
-%         sideWarnHiSTAPos(i) = 1;
-%     else
-%         hiWidth = tarCellHeightWidth(2,i);
-%     end
-%     sigWidthStoreSTAPos(i) = hiWidth + lowWidth;
-% end
-% 
-% %compare max amplitude pure tones to STAs
-% 
-% ampTar = 5;
-% 
-% %octaves per step??
-% unitsTone = 0.2;
-% unitsSTA = 4/39;
-% 
-% widthCompFSI = [sigWidthStore(ampTar,dmrPV)*unitsTone;sigWidthStoreSTAPos(dmrPV)*unitsSTA];
-% widthCompMSN = [sigWidthStore(ampTar,dmrMSN)*unitsTone;sigWidthStoreSTAPos(dmrMSN)*unitsSTA];
-% 
-% hFig = figure;
-% set(hFig, 'Position', [10 80 1000 1000])
-% subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
-% 
-% subplot(2,1,1)
-% hold on
-% for i = 1:length(dmrPV)
-%     plot([1 2],[widthCompFSI(1,i) widthCompFSI(2,i)],'Color',[0.7 0.7 0.7])
-% end
-% errorbar([1 2],[nanmean(widthCompFSI(1,:)) nanmean(widthCompFSI(2,:))],[nanstd(widthCompFSI(1,:))/sqrt(length(dmrPV)) nanstd(widthCompFSI(2,:))/sqrt(length(dmrPV))],'k','LineWidth',2)
-% xlim([0.5 2.5])
-% set(gca,'TickDir','out');
-% title('Change in FSI 20% Width')
-% subplot(2,1,2)
-% hold on
-% for i = 1:length(dmrMSN)
-%     plot([1 2],[widthCompMSN(1,i) widthCompMSN(2,i)],'Color',[0.7 0.7 0.7])
-% end
-% errorbar([1 2],[nanmean(widthCompMSN(1,:)) nanmean(widthCompMSN(2,:))],[nanstd(widthCompMSN(1,:))/sqrt(length(dmrMSN)) nanstd(widthCompMSN(2,:))/sqrt(length(dmrMSN))],'k','LineWidth',2)
-% xlim([0.5 2.5])
-% set(gca,'TickDir','out');
-% title('Change in MSN 20% Width')
-% 
-% spikeGraphName = 'Width20%STAvsPureTone';
-% savefig(hFig,spikeGraphName);
-% 
-% %save as PDF with correct name
-% set(hFig,'Units','Inches');
-% pos = get(hFig,'Position');
-% set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-% print(hFig,spikeGraphName,'-dpdf','-r0')
-
-
-
-
 
 
 %% now lets plot out temporal information. 
@@ -1226,9 +1069,6 @@ for i = 1:size(smoothZ,1);
         latStore(i) = NaN;
     end
 end
-
-
-
 
 smoothWind = 6;
 timeStep = 9.9800e-04;
@@ -1402,93 +1242,55 @@ for i = 1:length(bigDBStore)
     rtfModSpect(:,i) = sum(flipRTF(:,:,i)');
 end
 
-%plot out STA, STA SIG, and RTF
-%FSI first
-% axisDef = ceil(sqrt(length(dmrPV)));
-
-% for i = 1:length(dmrPV)
-%     hFig = figure;
-%     set(hFig, 'Position', [10 10 500 1000])
-%     %make subplot
-%     subplot(3,1,1)
-%     imagesc(reshape(bigSTAstore(dmrPV(i),:),length(faxis),[]))
-%     colormap(map)
-%     title('STA')
-%     subplot(3,1,2)
-%     imagesc(newSTA(:,:,dmrPV(i)))
-%     colormap(map)
-%     title('STA Sig')
-%     subplot(3,1,3)
-%     imagesc(flipRTF(:,:,dmrPV(i)))
-%     colormap(map)
-% end
-% 
-% 
-% for i = 1:length(dmrMSN)
-%     hFig = figure;
-%     set(hFig, 'Position', [10 10 500 1000])
-%     %make subplot
-%     subplot(3,1,1)
-%     imagesc(reshape(bigSTAstore(dmrMSN(i),:),length(faxis),[]))
-%     colormap(map)
-%     title('STA')
-%     subplot(3,1,2)
-%     imagesc(newSTA(:,:,dmrMSN(i)))
-%     colormap(map)
-%     title('STA Sig')
-%     subplot(3,1,3)
-%     imagesc(flipRTF(:,:,dmrMSN(i)))
-%     colormap(map)
-% end
 
 
-% hFig = figure;
-% set(hFig, 'Position', [10 80 1900 1000])
-% subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
-% axisVal = ceil(sqrt(length(dmrPV)));
-% for i = 1:length(dmrPV)
-%     subplot(axisVal,axisVal,i)
-%     imagesc(flipRTF(:,:,dmrPV(i)))
-%     set(gca, 'YDir', 'normal');
-%     colormap(map)
-%     set(gca,'xtick',[])
-%     set(gca,'xticklabel',[])
-%     set(gca,'ytick',[])
-%     set(gca,'yticklabel',[])
-% end
-% 
-% spikeGraphName = 'fsiRTFs';
-% savefig(hFig,spikeGraphName);
-% 
-% %save as PDF with correct name
-% set(hFig,'Units','Inches');
-% pos = get(hFig,'Position');
-% set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-% print(hFig,spikeGraphName,'-dpdf','-r0')
-% 
-% hFig = figure;
-% set(hFig, 'Position', [10 80 1900 1000])
-% subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
-% axisVal = ceil(sqrt(length(dmrMSN)));
-% for i = 1:length(dmrMSN)
-%     subplot(axisVal,axisVal,i)
-%     imagesc(flipRTF(:,:,dmrMSN(i)))
-%     set(gca, 'YDir', 'normal');
-%     colormap(map)
-%     set(gca,'xtick',[])
-%     set(gca,'xticklabel',[])
-%     set(gca,'ytick',[])
-%     set(gca,'yticklabel',[])
-% end
-% 
-% spikeGraphName = 'msnRTFs';
-% savefig(hFig,spikeGraphName);
-% 
-% %save as PDF with correct name
-% set(hFig,'Units','Inches');
-% pos = get(hFig,'Position');
-% set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-% print(hFig,spikeGraphName,'-dpdf','-r0')
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
+axisVal = ceil(sqrt(length(dmrPV)));
+for i = 1:length(dmrPV)
+    subplot(axisVal,axisVal,i)
+    imagesc(flipRTF(:,:,dmrPV(i)))
+    set(gca, 'YDir', 'normal');
+    colormap(map)
+    set(gca,'xtick',[])
+    set(gca,'xticklabel',[])
+    set(gca,'ytick',[])
+    set(gca,'yticklabel',[])
+end
+
+spikeGraphName = 'fsiRTFs';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+hFig = figure;
+set(hFig, 'Position', [10 80 1900 1000])
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
+axisVal = ceil(sqrt(length(dmrMSN)));
+for i = 1:length(dmrMSN)
+    subplot(axisVal,axisVal,i)
+    imagesc(flipRTF(:,:,dmrMSN(i)))
+    set(gca, 'YDir', 'normal');
+    colormap(map)
+    set(gca,'xtick',[])
+    set(gca,'xticklabel',[])
+    set(gca,'ytick',[])
+    set(gca,'yticklabel',[])
+end
+
+spikeGraphName = 'msnRTFs';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
 
@@ -1537,95 +1339,7 @@ title('MSN Population RTF')
 xlabel('TemporalMod')
 ylabel('SpectralMod')
 
-
-% %lets generate population average RTFs
-% rtfFSI = zeros(size(rtfStore(:,:,1)));
-% for i = 1:length(dmrPV)
-%     tempStore = rtfStore(:,:,dmrPV(i));
-%     tempStore = tempStore/max(max(tempStore));
-%     rtfFSI = rtfFSI + tempStore;
-% end
-% 
-% rtfMSN = zeros(size(rtfStore(:,:,1)));
-% for i = 1:length(dmrMSN)
-%     tempStore = rtfStore(:,:,dmrMSN(i));
-%     tempStore = tempStore/max(max(tempStore));
-%     rtfMSN = rtfMSN + tempStore;
-% end
-% 
-% 
-% rtfFSI = rtfFSI/max(max(rtfFSI));
-% rtfMSN = rtfMSN/max(max(rtfMSN));
-% 
-% figure
-% subplot(2,1,1)
-% imagesc(rtfFSI)
-% colorbar
-% set(gca, 'YDir', 'normal');
-% colormap(map)
-% set(gca,'xtick',[])
-% set(gca,'xticklabel',[])
-% set(gca,'ytick',[])
-% set(gca,'yticklabel',[])
-% title('FSI Population RTF')
-% subplot(2,1,2)
-% imagesc(rtfMSN)
-% colorbar
-% set(gca, 'YDir', 'normal');
-% colormap(map)
-% set(gca,'xtick',[])
-% set(gca,'xticklabel',[])
-% set(gca,'ytick',[])
-% set(gca,'yticklabel',[])
-% title('MSN Population RTF')
-% 
-% for i = 1:length(dmrMSN)
-%     hFig = figure;
-%     set(hFig, 'Position', [10 10 500 1000])
-%     %make subplot
-%     subplot(3,1,1)
-%     imagesc(reshape(bigSTAstore(dmrMSN(i),:),length(faxis),[]))
-%     colormap(map)
-%     title('STA')
-%     subplot(3,1,2)
-%     imagesc(newSTA(:,:,dmrMSN(i)))
-%     colormap(map)
-%     title('STA Sig')
-%     subplot(3,1,3)
-%     imagesc(flipRTF(:,:,dmrMSN(i)))
-%     colormap(map)
-% end
-
-subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.01 0.01], [0.05 0.05]);
-% axisDef = ceil(sqrt(length(bigDBStore)));
-% figure
-% for i = 1:length(bigDBStore)
-%     subplot(axisDef,axisDef,i)
-%     if ismember(i,dmrPV)
-%         plot(rtfModTemp(:,i),'r')
-%     elseif ismember(i,dmrMSN)
-%         plot(rtfModTemp(:,i),'k')
-%     else
-%         plot(rtfModTemp(:,i),'Color',[0.7 0.7 0.7])
-%     end
-% %     plot(rtfModTemp(:,i))
-% end
-
-
-
-% axisDef = ceil(sqrt(length(bigDBStore)));
-% figure
-% for i = 1:length(bigDBStore)
-%     subplot(axisDef,axisDef,i)
-%     if ismember(i,dmrPV)
-%         plot(rtfModSpect(:,i),'r')
-%     elseif ismember(i,dmrMSN)
-%         plot(rtfModSpect(:,i),'k')
-%     else
-%         plot(rtfModSpect(:,i),'Color',[0.7 0.7 0.7])
-%     end
-% end
-
+%% Plot out individual components.
 %plot out temporal
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.05], [0.05 0.05], [0.05 0.05]);
 % tmpPVTempMod = zeros(length(rtfModTemp(:,1)),1);
@@ -1757,19 +1471,61 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
-%% Generate a summary figure
+%% Generate a summary figure Part 1: Explanation of STA, STAs, and STA properties
+
+
+%files for example STRF
+load('190419ML190307J_RAudStrPen1Rec1_3585TuningDMRDMRData.mat')
+load('190419ML190307J_RAudStrPen1Rec1_3585TuningDMRFullTuningAnalysis.mat')
+%looking at Nt5 Cluster 2, which is number 17 for spike array. 
 
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.04 0.04], [0.04 0.04]);
-set(hFig, 'Position', [80 80 1600 1200])
+set(hFig, 'Position', [80 80 800 1200])
 
-%Row 1, columns 1-2 plot STA
-% subplot(6,5,1)
-% imagesc(stimulus(:,15000:25000))
-% colormap(map)
-% set(gca,'XTick',[])
-% set(gca,'YTick',[])
+%Row 1, columns 1-2 DMR + spiking to explain STRF
 
+testData = spikeArray(17,:);
+findOnes = find(testData == 1);
+findOnes(findOnes < 10000) = [];
+%gonna go with 481-484, since these are well spaced for the kind of thing
+%I want to do. 
+% findDiff = diff(findOnes);
+lineTar = findOnes(481:2:488)-findOnes(481);
+firstVal = findOnes(481) - 150;
+
+subplot(6,3,1)
+imagesc(stimulus(:,firstVal:firstVal + 1000))
+set(gca,'TickDir','out')
+set(gca,'YTick',[])
+
+hold on
+% plot([200 200],[0 40],'g','LineWidth',2)
+% plot([100 100],[20 40],'g','LineWidth',2)
+for i = 1:length(lineTar)
+    plot([200+lineTar(i) 200+lineTar(i)],[0 40],'g','LineWidth',2)
+    plot([100+lineTar(i) 100+lineTar(i)],[20 40],'g','LineWidth',2)
+end
+set(gca, 'YDir', 'normal');
+
+%plot resulting STA
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.04 0.04], [0.04 0.04]);
+subplot(6,6,7)
+limVal = max(abs(bigSTASigstore(dmrPV(end),:)));
+clims = [-1.05 * limVal,1.05 * limVal];
+imagesc(reshape(bigSTASigstore(dmrPV(end),:),length(faxis),[]),clims)
+colormap(map)
+set(gca,'XTick',[])
+set(gca,'YTick',[])
+set(gca, 'YDir', 'normal');
+
+%plot tuning curve resulting from that STA
+subplot(6,6,8)
+hold on
+plot(compWidthPos(:,dmrPV(end))/max(compWidthPos(:,dmrPV(end))),faxis,'r')
+plot(compWidthNeg(:,dmrPV(end))/max(compWidthPos(:,dmrPV(end))),faxis,'b')
+ylim([faxis(1) faxis(end)])
+set(gca, 'YScale', 'log')
 
 %Row 1, columns 3-6 examples!
 
@@ -1786,6 +1542,7 @@ for i = 1:6
     colormap(map)
     set(gca,'XTick',[])
     set(gca,'YTick',[])
+    set(gca, 'YDir', 'normal');
 end
 
 plotTars = [5,6,11,12,17,18];
@@ -1798,110 +1555,13 @@ for i = 1:6
     colormap(map)
     set(gca,'XTick',[])
     set(gca,'YTick',[])
+    set(gca, 'YDir', 'normal');
 end
 
 
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
 
-% %Row 1, column 7-10, rate, PLI, FSI, NonLineSkew
-
-
-
-% %Phase Locking Index
-% histVectSpikeNum = [0:0.05:1];
-% pliMSN = hist(PLI(dmrMSN),histVectSpikeNum);
-% pliFSI = hist(PLI(dmrPV),histVectSpikeNum);
-% ylimPLI  = max([max(pliMSN),max(pliFSI)]);
-% 
-% subplot(8,10,8)
-% bar(histVectSpikeNum,pliMSN,'k')
-% ylim([0 ylimPLI])
-% xlim([histVectSpikeNum(1) histVectSpikeNum(end)])
-% set(gca,'TickDir','out')
-% set(gca,'xticklabel',[])
-% ylabel('#units')
-% 
-% subplot(8,10,18)
-% bar(histVectSpikeNum,pliFSI,'r')
-% ylim([0 ylimPLI])
-% xlim([histVectSpikeNum(1) histVectSpikeNum(end)])
-% set(gca,'TickDir','out')
-% ylabel('#units')
-% xlabel('Phase Lock Index')
-
-%FSI (feature selectivity index)
-
-
-% %Skew (nonlinearity)
-% skewVect = [0:0.2:3];
-% skewMSN = hist(skewVal(dmrMSN),skewVect);
-% skewFSI = hist(skewVal(dmrPV),skewVect);
-% ylimSkew = max([max(skewMSN),max(skewFSI)]);
-% 
-% subplot(8,10,10)
-% bar(skewVect,skewMSN,'k')
-% set(gca,'TickDir','out')
-% set(gca,'xticklabel',[])
-% ylim([0 ylimSkew])
-% xlim([skewVect(1) skewVect(end)])
-% % xlabel('Skew of Non-Linearity')
-% ylabel('Number of Units')
-% title('MSN Skew')
-% 
-% subplot(8,10,20)
-% bar(skewVect,skewFSI,'k')
-% set(gca,'TickDir','out')
-% % set(gca,'xticklabel',[])
-% ylim([0 ylimSkew])
-% xlim([skewVect(1) skewVect(end)])
-% % xlabel('Skew of Non-Linearity')
-% ylabel('Number of Units')
-% title('FSI Skew')
-
-
-
-%Row 2, columns 1, 2 plot tuning curve and STA
-
-subplot = @(m,n,p) subtightplot (m, n, p, [0.03 0.03], [0.04 0.04], [0.04 0.04]);
-%last FSI is a pretty good example
-subplot(4,6,7)
-testData = binValBigStore(:,:,dmrMSN(55));
-%we need to stack in spaces for frequencies not represented
-testData(17:21,:) = 0;
-imagesc(testData)
-colormap(map)
-set(gca,'XTick',[])
-set(gca,'YTick',[])
-
-subplot(4,6,8)
-limVal = max(max(abs(newSTA(:,:,dmrMSN(55)))));
-clims = [-1.05 * limVal,1.05 * limVal];
-imagesc(newSTA(:,:,dmrMSN(55)),clims)
-colormap(map)
-set(gca,'XTick',[])
-set(gca,'YTick',[])
-
-subplot(4,6,13)
-testData = binValBigStore(:,:,328);
-%we need to stack in spaces for frequencies not represented
-testData(17:21,:) = 0;
-imagesc(testData)
-colormap(map)
-set(gca,'XTick',[])
-set(gca,'YTick',[])
-
-subplot(4,6,14)
-limVal = max(max(abs(newSTA(:,:,328))));
-clims = [-1.05 * limVal,1.05 * limVal];
-imagesc(newSTA(:,:,328),clims)
-colormap(map)
-set(gca,'XTick',[])
-set(gca,'YTick',[])
-
-
-subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
-
-%Row 2 column 3:  plot pie charts of significant tone response vs STA response. 
+%Row 2: Column 1, pie charts.
 indPosSig = 9;
 indNegSig = 10;
 holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
@@ -1950,42 +1610,46 @@ combDetFSI = basicDetFSI;
 combDetFSI(justDMRFSI) = combDetFSI(justDMRFSI) + 2;
 combDetHistFSI = hist(combDetFSI,[0:3]);
 
-subplot(4,6,9)
-pie(combDetHistMSN)
-
-subplot(4,6,15)
+subplot(6,5,11)
 pie(combDetHistFSI)
 
-subplot = @(m,n,p) subtightplot (m, n, p, [0.06 0.03], [0.04 0.04], [0.04 0.04]);
-%Row 2, column 4-6, now we make plots for width/latency/bf?
-subplot(4,6,10)
-hold on
-maxVal = max(max(widthCompMSN));
-plot(widthCompMSN(2,:),widthCompMSN(1,:),'k.')
-plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+subplot(6,5,16)
+pie(combDetHistMSN)
+
+
+%Row 2, column 2, modulation index.
+
+%Rate change
+histVectSpikeNum = [-1:0.1:1];
+rateModMSN = hist((dmrSpikeNum(dmrMSN)/(10*60)- bigMaster(dmrMSN,8)')./(dmrSpikeNum(dmrMSN)/(10*60)+ bigMaster(dmrMSN,8)'),histVectSpikeNum);
+rateModFSI = hist((dmrSpikeNum(dmrPV)/(10*60)- bigMaster(dmrPV,8)')./(dmrSpikeNum(dmrPV)/(10*60)+ bigMaster(dmrPV,8)'),histVectSpikeNum);
+ylimRateMod = max([max(rateModMSN),max(rateModFSI)]);
+
+subplot(6,5,12)
+bar(histVectSpikeNum,rateModFSI,'r')
+ylim([0 ylimRateMod])
+xlim([-1.05 1.05])
 set(gca,'TickDir','out')
+ylabel('#units')
 set(gca,'xticklabel',[])
-xlim([0 maxVal])
-ylim([0 maxVal])
-axis square
-
-
-subplot(4,6,16)
-hold on
-% maxVal = max(max(widthCompFSI));
-plot(widthCompFSI(2,:),widthCompFSI(1,:),'r.')
-plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+xlabel('Modulation Index')
+ 
+subplot(6,5,17)
+bar(histVectSpikeNum,rateModMSN,'k')
+ylim([0 ylimRateMod])
+xlim([-1.05 1.05])
 set(gca,'TickDir','out')
-xlim([0 maxVal])
-ylim([0 maxVal])
-axis square
 
+ylabel('#units')
 
+subplot = @(m,n,p) subtightplot (m, n, p, [0.06 0.03], [0.04 0.04], [0.04 0.04]);
+
+%Row 2 column 3, BFs
 %plot BFs
 maxVal = 32000;
-subplot(4,6,11)
+subplot(6,5,13)
 hold on
-loglog(staBFPos(dmrMSN),toneBF(dmrMSN),'k.')
+loglog(staBFPos(dmrPV),toneBF(dmrPV),'r.')
 plot([4000 64000],[4000 64000],'Color',[0.7 0.7 0.7])
 set(gca,'TickDir','out')
 set(gca,'xticklabel',[])
@@ -1996,10 +1660,11 @@ ylim([0 maxVal])
 axis square
 
 
-subplot(4,6,17)
+subplot(6,5,18)
 hold on
-loglog(staBFPos(dmrPV),toneBF(dmrPV),'r.')
+loglog(staBFPos(dmrMSN),toneBF(dmrMSN),'k.')
 plot([4000 64000],[4000 64000],'Color',[0.7 0.7 0.7])
+
 set(gca,'TickDir','out')
 xlabel('STA BF (Hz)')
 ylabel('Pure Tone BF (Hz)')
@@ -2007,141 +1672,145 @@ xlim([0 maxVal])
 ylim([0 maxVal])
 axis square
 
-% %plot latencies
-% 
-% subplot(4,6,12)
-% hold on
-% maxVal = max([max(peakTimePos(dmrMSN)) max(latStore(dmrMSN))]);
-% plot(peakTimePos(dmrMSN),latStore(dmrMSN),'k.')
-% plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
-% set(gca,'TickDir','out')
-% ylabel('ToneLat')
-% xlim([0 maxVal])
-% ylim([0 maxVal])
-% axis square
-% 
-% subplot(4,6,18)
-% hold on
-% maxVal = max([max(peakTimePos(dmrPV)) max(latStore(dmrPV))]);
-% plot(peakTimePos(dmrPV),latStore(dmrPV),'r.')
-% plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
-% set(gca,'TickDir','out')
-% ylabel('ToneLat')
-% xlim([0 maxVal])
-% ylim([0 maxVal])
-% axis square
-
-
-%Row 3, columns 1 and 2: STA to RTF transformation example. Again, use last
-%dmrPV
-subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
-subplot(4,8,25)
-limVal = max(abs(bigSTASigstore(328,:)));
-clims = [-1.05 * limVal,1.05 * limVal];
-imagesc(newSTA(:,:,328),clims)
-colormap(map)
-set(gca,'XTick',[])
-set(gca,'YTick',[])
-
-subplot(4,8,26)
-imagesc(flipRTF(:,:,dmrPV(end)))
-set(gca, 'YDir', 'normal');
-colormap(map)
+%Row 2 column 4, Widths
+subplot(6,5,14)
+hold on
+maxVal = max(max(widthCompMSN));
+plot(widthCompFSI(2,:),widthCompFSI(1,:),'r.')
+plot(nanmean(widthCompFSI(2,:)),nanmean(widthCompFSI(1,:)),'g*')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
 set(gca,'xticklabel',[])
-set(gca,'yticklabel',[])
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+
+
+subplot(6,5,19)
+hold on
+% maxVal = max(max(widthCompFSI));
+plot(widthCompMSN(2,:),widthCompMSN(1,:),'k.')
+plot(nanmean(widthCompMSN(2,:)),nanmean(widthCompMSN(1,:)),'g*')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
 set(gca,'TickDir','out')
+xlim([0 maxVal])
+ylim([0 maxVal])
+xlabel('width')
+axis square
 
-%Row 3 columns 3 and 4: example RTFs
-targetMSNRTF = [5,42];
-targetFSIRTF = [16,18];
-subplot = @(m,n,p) subtightplot (m, n, p, [0.03 0.01], [0.04 0.04], [0.04 0.04]);
-for i = 1:2
-    subplot(8,8,50+i)
-    imagesc(flipRTF(:,:,dmrMSN(targetMSNRTF(i))))
-    set(gca, 'YDir', 'normal');
-    colormap(map)
-    set(gca,'xticklabel',[])
-    set(gca,'yticklabel',[])
-    set(gca,'TickDir','out')
-    subplot(8,8,58+i)
-    imagesc(flipRTF(:,:,dmrPV(targetFSIRTF(i))))
-    set(gca, 'YDir', 'normal');
-    colormap(map)
-    set(gca,'xticklabel',[])
-    set(gca,'yticklabel',[])
-    set(gca,'TickDir','out')
-    
-end
+%NOW PLOT ONLY UNITS THAT HAVE THRESHOLDS AT THE BOTTOM
+sigFinder = sum(sigStore5Val);
+fsiFinder = find(sigFinder(dmrPV) == 5);
+msnFinder = find(sigFinder(dmrMSN) == 5);
 
-%Row 3 column 5-6, plot out population RTFs
-
-subplot(4,8,29)
-imagesc(rtfMSN(1:50,:))
-colorbar
-set(gca, 'YDir', 'normal');
-colormap(map)
-% set(gca,'xtick',[])
+subplot(6,5,15)
+hold on
+maxVal = max(max(widthCompMSN));
+plot(widthCompFSI(2,fsiFinder),widthCompFSI(1,fsiFinder),'r.')
+plot(nanmean(widthCompFSI(2,fsiFinder)),nanmean(widthCompFSI(1,fsiFinder)),'g*')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
 set(gca,'xticklabel',[])
-% set(gca,'ytick',[])
-set(gca,'yticklabel',[])
-title('MSN Population RTF')
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+title('JustBotThresh')
 
-subplot(4,8,30)
-imagesc(rtfFSI(1:50,:))
-colorbar
-set(gca, 'YDir', 'normal');
-colormap(map)
-% set(gca,'xtick',[])
+
+subplot(6,5,20)
+hold on
+% maxVal = max(max(widthCompFSI));
+plot(widthCompMSN(2,msnFinder),widthCompMSN(1,msnFinder),'k.')
+plot(nanmean(widthCompMSN(2,msnFinder)),nanmean(widthCompMSN(1,msnFinder)),'g*')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+xlim([0 maxVal])
+ylim([0 maxVal])
+xlabel('width')
+axis square
+
+
+%Do the same for negatives
+%Row 2 column 3, BFs
+%plot BFs
+maxVal = 32000;
+subplot(6,5,23)
+hold on
+loglog(staBFNeg(dmrPV),toneBF(dmrPV),'r.')
+plot([4000 64000],[4000 64000],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
 set(gca,'xticklabel',[])
-% set(gca,'ytick',[])
-set(gca,'yticklabel',[])
-title('FSI Population RTF')
+% xlabel('STA BF (Hz)')
+% ylabel('Pure Tone BF (Hz)')
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
 
-%Row 3, column 7-8
 
-tempModHistMSN = hist(tmfFold(peakTempModInd(dmrMSN)),[0:mean(diff(tmfFold)):tmfFold(end)]);
-tempModHistFSI = hist(tmfFold(peakTempModInd(dmrPV)),[0:mean(diff(tmfFold)):tmfFold(end)]);
-ylimTempMod = max([max(tempModHistMSN),max(tempModHistFSI)]);
+subplot(6,5,28)
+hold on
+loglog(staBFNeg(dmrMSN),toneBF(dmrMSN),'k.')
+plot([4000 64000],[4000 64000],'Color',[0.7 0.7 0.7])
 
-subplot(8,8,55)
-bar([0:mean(diff(tmfFold)):tmfFold(end)],tempModHistMSN,'k')
 set(gca,'TickDir','out')
-% xlabel('Temporal BMF (cyc/sec)')
-ylabel('Number of Units')
-ylim([0 ylimTempMod])
-title('MSN Temporal Best Mod Freq')
+xlabel('STA BF (Hz)')
+ylabel('Pure Tone BF (Hz)')
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
 
-subplot(8,8,63)
-bar([0:mean(diff(tmfFold)):tmfFold(end)],tempModHistFSI,'r')
+%Row 2 column 4, Widths
+subplot(6,5,24)
+hold on
+maxVal = max(max(widthCompMSN));
+plot(widthCompFSINeg(2,:),widthCompFSINeg(1,:),'r.')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
 set(gca,'TickDir','out')
-xlabel('Temporal BMF (cyc/sec)')
-ylabel('Number of Units')
-ylim([0 ylimTempMod])
-title('FSI Temporal Best Mod Freq')
+set(gca,'xticklabel',[])
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
 
-spectModHistMSN = hist(xmf(peakSpectModInd(dmrMSN)),[0:mean(diff(xmf)):xmf(end)]);
-spectModHistFSI = hist(xmf(peakSpectModInd(dmrPV)),[0:mean(diff(xmf)):xmf(end)]);
-ylimSpectMod = max([max(spectModHistMSN),max(spectModHistFSI)]);
 
-subplot(8,8,56)
-bar([0:mean(diff(xmf)):xmf(end)],spectModHistMSN,'k')
+subplot(6,5,29)
+hold on
+% maxVal = max(max(widthCompFSI));
+plot(widthCompMSNNeg(2,:),widthCompMSNNeg(1,:),'k.')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
 set(gca,'TickDir','out')
-ylim([0 ylimSpectMod])
-% xlabel('Spectral BMF (cyc/octave)')
-% ylabel('Number of Units')
-title('MSN Spectral Best Mod Freq')
+xlim([0 maxVal])
+ylim([0 maxVal])
+xlabel('width')
+axis square
 
-subplot(8,8,64)
-bar([0:mean(diff(xmf)):xmf(end)],spectModHistFSI,'r')
+%NOW GOING BACK TO POSITIVES, PLOT FSIS AT 30 DB BELOW TOP
+subplot(6,5,25)
+hold on
+maxVal = max(max(widthCompMSN));
+plot(widthCompFSINeg(2,fsiFinder),widthCompFSINeg(1,fsiFinder),'r.')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
 set(gca,'TickDir','out')
-ylim([0 ylimSpectMod])
-xlabel('Spectral BMF (cyc/octave)')
-% ylabel('Number of Units')
-title('FSI Spectral Best Mod Freq')
+set(gca,'xticklabel',[])
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+title('JustBotThresh')
+
+subplot(6,5,30)
+hold on
+% maxVal = max(max(widthCompFSI));
+plot(widthCompMSNNeg(2,msnFinder),widthCompMSNNeg(1,msnFinder),'k.')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+xlim([0 maxVal])
+ylim([0 maxVal])
+xlabel('width')
+axis square
 
 
 
-spikeGraphName = 'DMRSummaryPlot';
+
+spikeGraphName = 'DMRSummaryPlotPart1';
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -2152,7 +1821,670 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 print(hFig,spikeGraphName,'-deps','-r0')
 
 
+%% Summary Figure Part 2: show RTF data. 
 
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.04 0.04], [0.04 0.04]);
+set(hFig, 'Position', [80 80 800 1200])
+targetExample = 17;
+
+%Row 1, columns 1-2 STRF example
+subplot(6,3,1)
+limVal = max(abs(bigSTASigstore(dmrMSN(targetExample),:)));
+clims = [-1.05 * limVal,1.05 * limVal];
+imagesc(reshape(bigSTASigstore(dmrMSN(targetExample),:),length(faxis),[]),clims)
+set(gca,'TickDir','out')
+set(gca,'YTick',[])
+set(gca, 'YDir', 'normal');
+
+%plot resulting rtf
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.04 0.04], [0.04 0.04]);
+subplot(6,6,7)
+imagesc(flipRTF(:,:,dmrMSN(targetExample))/max(max(flipRTF(:,:,dmrMSN(targetExample)))))
+colormap(map)
+set(gca,'XTick',[])
+set(gca,'YTick',[])
+set(gca, 'YDir', 'normal');
+
+%plot spectral and temporal values. 
+subplot(12,6,14)
+plot(rtfModTemp(:,dmrMSN(targetExample)))
+title('tempMod')
+subplot(12,6,20)
+plot(rtfModSpect(:,dmrMSN(targetExample)))
+title('spectMod')
+
+%Row 1, FSI examples
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.01], [0.04 0.04], [0.04 0.04]);
+
+exampleFSIs = [1,3,4,9,10,21];
+exampleMSNs = [17,18,34,42,53,65];
+plotTars = [3,4,9,10,15,16];
+for i = 1:6
+    subplot(9,6,plotTars(i))
+    imagesc(flipRTF(:,:,dmrPV(exampleFSIs(i)))/max(max(flipRTF(:,:,dmrPV(exampleFSIs(i))))))
+    colormap(map)
+    set(gca,'XTick',[])
+    set(gca,'YTick',[])
+    set(gca, 'YDir', 'normal');
+end
+
+plotTars = [5,6,11,12,17,18];
+
+for i = 1:6
+    subplot(9,6,plotTars(i))
+    imagesc(flipRTF(:,:,dmrMSN(exampleMSNs(i)))/max(max(flipRTF(:,:,dmrMSN(exampleMSNs(i))))))
+    colormap(map)
+    set(gca,'XTick',[])
+    set(gca,'YTick',[])
+    set(gca, 'YDir', 'normal');
+end
+
+%Row 2, Column 1: population RTF FSI
+subplot(3,3,4)
+clims = [0 1];
+imagesc(rtfFSI,clims)
+colorbar
+set(gca, 'YDir', 'normal');
+colormap(map)
+set(gca,'xtick',[])
+set(gca,'xticklabel',[])
+set(gca,'ytick',[])
+set(gca,'yticklabel',[])
+title('FSI poprtf')
+
+%Row 2, Column 2: distributions of best mod. 
+
+maxValTemp = max([max(hist(tmfFold(peakTempModInd(dmrPV)),[0:mean(diff(tmfFold)):tmfFold(end)])),max(hist(tmfFold(peakTempModInd(dmrMSN)),[0:mean(diff(tmfFold)):tmfFold(end)]))]);
+maxValSpect = max([max(hist(xmf(peakSpectModInd(dmrPV)),[0:mean(diff(xmf)):xmf(end)])),max(hist(xmf(peakSpectModInd(dmrMSN)),[0:mean(diff(xmf)):xmf(end)]))]);
+
+subplot(6,6,15)
+hist(tmfFold(peakTempModInd(dmrPV)),[0:mean(diff(tmfFold)):tmfFold(end)])
+set(gca,'TickDir','out')
+xlabel('Temporal (cyc/sec)')
+title('FSItempBest')
+
+subplot(6,6,21)
+hist(xmf(peakSpectModInd(dmrPV)),[0:mean(diff(xmf)):xmf(end)])
+set(gca,'TickDir','out')
+xlabel('Spectral (cyc/octave)')
+title('FSIspectBest')
+
+subplot(6,6,16)
+hist(tmfFold(peakTempModInd(dmrMSN)),[0:mean(diff(tmfFold)):tmfFold(end)])
+set(gca,'TickDir','out')
+xlabel('Temporal(cyc/sec)')
+title('MSNtempBest')
+
+subplot(6,6,22)
+hist(xmf(peakSpectModInd(dmrMSN)),[0:mean(diff(xmf)):xmf(end)])
+set(gca,'TickDir','out')
+xlabel('Spectral(cyc/octave)')
+title('MSNspectBest')
+
+
+%Row 2, Column 4: population RTF FSI
+subplot(3,3,6)
+clims = [0 1];
+imagesc(rtfMSN,clims)
+colorbar
+set(gca, 'YDir', 'normal');
+colormap(map)
+set(gca,'xtick',[])
+set(gca,'xticklabel',[])
+set(gca,'ytick',[])
+set(gca,'yticklabel',[])
+title('MSN poprtf')
+
+
+spikeGraphName = 'DMRSummaryPlotPart2';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+print(hFig,spikeGraphName,'-deps','-r0')
+
+
+%% Now combine old and new data.
+
+load('oldDataOutputStruct.mat')
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.04 0.04], [0.04 0.04]);
+set(hFig, 'Position', [80 80 800 1200])
+
+%Row 1, columns 1-2 DMR + spiking to explain STRF
+
+testData = spikeArray(17,:);
+findOnes = find(testData == 1);
+findOnes(findOnes < 10000) = [];
+%gonna go with 481-484, since these are well spaced for the kind of thing
+%I want to do. 
+% findDiff = diff(findOnes);
+lineTar = findOnes(481:2:488)-findOnes(481);
+firstVal = findOnes(481) - 150;
+
+subplot(6,3,1)
+imagesc(stimulus(:,firstVal:firstVal + 1000))
+set(gca,'TickDir','out')
+set(gca,'YTick',[])
+
+hold on
+% plot([200 200],[0 40],'g','LineWidth',2)
+% plot([100 100],[20 40],'g','LineWidth',2)
+for i = 1:length(lineTar)
+    plot([200+lineTar(i) 200+lineTar(i)],[0 40],'g','LineWidth',2)
+    plot([100+lineTar(i) 100+lineTar(i)],[20 40],'g','LineWidth',2)
+end
+set(gca, 'YDir', 'normal');
+
+%plot resulting STA
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.04 0.04], [0.04 0.04]);
+subplot(6,6,7)
+limVal = max(abs(bigSTASigstore(dmrPV(end),:)));
+clims = [-1.05 * limVal,1.05 * limVal];
+imagesc(reshape(bigSTASigstore(dmrPV(end),:),length(faxis),[]),clims)
+colormap(map)
+set(gca,'XTick',[])
+set(gca,'YTick',[])
+set(gca, 'YDir', 'normal');
+
+%plot tuning curve resulting from that STA
+subplot(6,6,8)
+hold on
+plot(compWidthPos(:,dmrPV(end))/max(compWidthPos(:,dmrPV(end))),faxis,'r')
+plot(compWidthNeg(:,dmrPV(end))/max(compWidthPos(:,dmrPV(end))),faxis,'b')
+ylim([faxis(1) faxis(end)])
+set(gca, 'YScale', 'log')
+
+%Row 1, columns 3-6 examples!
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.01], [0.04 0.04], [0.04 0.04]);
+
+exampleFSIs = [1,3,4,9,10,21];
+exampleMSNs = [17,18,34,42,53,65];
+plotTars = [3,4,9,10,15,16];
+for i = 1:6
+    subplot(9,6,plotTars(i))
+    limVal = max(abs(bigSTASigstore(dmrPV(exampleFSIs(i)),:)));
+    clims = [-1.05 * limVal,1.05 * limVal];
+    imagesc(reshape(bigSTASigstore(dmrPV(exampleFSIs(i)),:),length(faxis),[]),clims)
+    colormap(map)
+    set(gca,'XTick',[])
+    set(gca,'YTick',[])
+    set(gca, 'YDir', 'normal');
+end
+
+plotTars = [5,6,11,12,17,18];
+
+for i = 1:6
+    subplot(9,6,plotTars(i))
+    limVal = max(abs(bigSTASigstore(dmrMSN(exampleMSNs(i)),:)));
+    clims = [-1.05 * limVal,1.05 * limVal];
+    imagesc(reshape(bigSTASigstore(dmrMSN(exampleMSNs(i)),:),length(faxis),[]),clims)
+    colormap(map)
+    set(gca,'XTick',[])
+    set(gca,'YTick',[])
+    set(gca, 'YDir', 'normal');
+end
+
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
+
+%Row 2: Column 1, pie charts.
+indPosSig = 9;
+indNegSig = 10;
+holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+detMSN = holder(:,1) + holder(:,2);
+detMSNHist = hist(detMSN,[-2:1:1]);
+
+% pie(detMSNHist)
+% labels = {'Neg','Mix','None','Pos'};
+% detZero = find(det == 0);
+% labels(detZero) = [];
+
+holder = bigMaster(findPVs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+detFSI = holder(:,1) + holder(:,2);
+detFSIHist = hist(detFSI,[-2:1:1]);
+
+% pie(detFSIHist)
+% labels = {'Neg','Mix','None','Pos'};
+% detZero = find(det == 0);
+% labels(detZero) = [];
+
+%basically, just going to compare for non-zero values. 
+basicDetMSN = detMSN;
+basicDetMSN(basicDetMSN ~=0) = 1;
+
+basicDetFSI = detFSI;
+basicDetFSI(basicDetFSI ~=0) = 1;
+
+
+justDMRMSN = findMSNs;
+justDMRMSN(ismember(justDMRMSN,fewSpikes)) = [];
+justDMRMSN = intersect(justDMRMSN,sigUnitPrct);
+[C ia justDMRMSN] = intersect(justDMRMSN,findMSNs);
+
+justDMRFSI= findPVs;
+justDMRFSI(ismember(justDMRFSI,fewSpikes)) = [];
+justDMRFSI = intersect(justDMRFSI,sigUnitPrct);
+[C ia justDMRFSI] = intersect(justDMRFSI,findPVs);
+
+combDetMSN = basicDetMSN;
+combDetMSN(justDMRMSN) = combDetMSN(justDMRMSN) + 2;
+combDetHistMSN = hist(combDetMSN,[0:3]);
+combDetHistMSN = combDetHistMSN + n.combDetHistMSN; %ADD OLD VALUES
+
+combDetFSI = basicDetFSI;
+combDetFSI(justDMRFSI) = combDetFSI(justDMRFSI) + 2;
+combDetHistFSI = hist(combDetFSI,[0:3]);
+combDetHistFSI = combDetHistFSI + n.combDetHistFSI;%ADD OLD VALUES
+
+subplot(6,5,11)
+pie(combDetHistFSI)
+title(num2str(sum(combDetHistFSI)))
+
+subplot(6,5,16)
+pie(combDetHistMSN)
+title(num2str(sum(combDetHistMSN)))
+
+%Row 2, column 2, modulation index.
+
+%Rate change
+histVectSpikeNum = [-1:0.1:1];
+rateModMSN = hist((dmrSpikeNum(dmrMSN)/(10*60)- bigMaster(dmrMSN,8)')./(dmrSpikeNum(dmrMSN)/(10*60)+ bigMaster(dmrMSN,8)'),histVectSpikeNum);
+rateModFSI = hist((dmrSpikeNum(dmrPV)/(10*60)- bigMaster(dmrPV,8)')./(dmrSpikeNum(dmrPV)/(10*60)+ bigMaster(dmrPV,8)'),histVectSpikeNum);
+%ADD OLD VALUES
+rateModMSN = rateModMSN + n.rateModMSN;
+rateModFSI = rateModFSI + n.rateModFSI;
+
+
+ylimRateMod = max([max(rateModMSN),max(rateModFSI)]);
+
+subplot(6,5,12)
+bar(histVectSpikeNum,rateModFSI,'r')
+ylim([0 ylimRateMod])
+xlim([-1.05 1.05])
+set(gca,'TickDir','out')
+ylabel('#units')
+set(gca,'xticklabel',[])
+xlabel('Modulation Index')
+ 
+subplot(6,5,17)
+bar(histVectSpikeNum,rateModMSN,'k')
+ylim([0 ylimRateMod])
+xlim([-1.05 1.05])
+set(gca,'TickDir','out')
+
+ylabel('#units')
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.06 0.03], [0.04 0.04], [0.04 0.04]);
+
+%Row 2 column 3, BFs
+%plot BFs
+maxVal = 32000;
+subplot(6,5,13)
+hold on
+loglog(staBFPos(dmrPV),toneBF(dmrPV),'r.')
+loglog(n.staBFPos(n.dmrPV),n.toneBF(n.dmrPV),'r.')
+plot([4000 64000],[4000 64000],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+set(gca,'xticklabel',[])
+% xlabel('STA BF (Hz)')
+% ylabel('Pure Tone BF (Hz)')
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+
+
+subplot(6,5,18)
+hold on
+loglog(staBFPos(dmrMSN),toneBF(dmrMSN),'k.')
+loglog(n.staBFPos(n.dmrMSN),n.toneBF(n.dmrMSN),'k.')
+plot([4000 64000],[4000 64000],'Color',[0.7 0.7 0.7])
+
+set(gca,'TickDir','out')
+xlabel('STA BF (Hz)')
+ylabel('Pure Tone BF (Hz)')
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+
+%Row 2 column 4, Widths
+subplot(6,5,14)
+hold on
+newWidthCompFSI = [widthCompFSI,n.widthCompFSI];
+maxVal = 3;
+plot(newWidthCompFSI(2,:),newWidthCompFSI(1,:),'r.')
+plot(nanmean(newWidthCompFSI(2,:)),nanmean(newWidthCompFSI(1,:)),'g*')
+plot(nanmean(widthCompFSI(2,:)),nanmean(widthCompFSI(1,:)),'g.')
+plot(nanmean(n.widthCompFSI(2,:)),nanmean(n.widthCompFSI(1,:)),'go')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+set(gca,'xticklabel',[])
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+title(num2str(length(newWidthCompFSI)))
+
+
+subplot(6,5,19)
+hold on
+newWidthCompMSN = [widthCompMSN,n.widthCompMSN];
+plot(newWidthCompMSN(2,:),newWidthCompMSN(1,:),'k.')
+plot(nanmean(newWidthCompMSN(2,:)),nanmean(newWidthCompMSN(1,:)),'g*')
+plot(nanmean(widthCompMSN(2,:)),nanmean(widthCompMSN(1,:)),'g.')
+plot(nanmean(n.widthCompMSN(2,:)),nanmean(n.widthCompMSN(1,:)),'go')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+xlim([0 maxVal])
+ylim([0 maxVal])
+xlabel('width')
+axis square
+title(num2str(length(newWidthCompMSN)))
+
+%NOW PLOT ONLY UNITS THAT HAVE THRESHOLDS AT THE BOTTOM
+
+sigFinder = sum(sigStore5Val);
+fsiFinder = find(sigFinder(dmrPV) == 5);
+msnFinder = find(sigFinder(dmrMSN) == 5);
+
+nsigFinder = sum(n.sigStore5Val);
+nfsiFinder = find(nsigFinder(n.dmrPV) == 5);
+nmsnFinder = find(nsigFinder(n.dmrMSN) == 5);
+
+subplot(6,5,15)
+hold on
+maxVal = 3;
+plot(widthCompFSI(2,fsiFinder),widthCompFSI(1,fsiFinder),'r.')
+plot(n.widthCompFSI(2,nfsiFinder),n.widthCompFSI(1,nfsiFinder),'r.')
+plot(nanmean(widthCompFSI(2,fsiFinder)),nanmean(widthCompFSI(1,fsiFinder)),'g.')
+plot(nanmean(n.widthCompFSI(2,nfsiFinder)),nanmean(n.widthCompFSI(1,nfsiFinder)),'go')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+set(gca,'xticklabel',[])
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+title(['JustBotThresh',num2str(length(fsiFinder) + length(nfsiFinder))])
+
+
+subplot(6,5,20)
+hold on
+
+plot(widthCompMSN(2,msnFinder),widthCompMSN(1,msnFinder),'k.')
+plot(n.widthCompMSN(2,nmsnFinder),n.widthCompMSN(1,nmsnFinder),'k.')
+plot(nanmean(widthCompMSN(2,msnFinder)),nanmean(widthCompMSN(1,msnFinder)),'g.')
+plot(nanmean(n.widthCompMSN(2,nmsnFinder)),nanmean(n.widthCompMSN(1,nmsnFinder)),'go')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+xlim([0 maxVal])
+ylim([0 maxVal])
+xlabel('width')
+axis square
+title(['JustBotThresh',num2str(length(msnFinder) + length(nmsnFinder))])
+
+
+%Do the same for negatives
+%Row 2 column 3, BFs
+%plot BFs
+maxVal = 32000;
+subplot(6,5,23)
+hold on
+loglog(staBFNeg(dmrPV),toneBF(dmrPV),'r.')
+loglog(n.staBFNeg(n.dmrPV),n.toneBF(n.dmrPV),'r.')
+plot([4000 64000],[4000 64000],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+set(gca,'xticklabel',[])
+% xlabel('STA BF (Hz)')
+% ylabel('Pure Tone BF (Hz)')
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+
+
+subplot(6,5,28)
+hold on
+loglog(staBFNeg(dmrMSN),toneBF(dmrMSN),'k.')
+loglog(n.staBFNeg(n.dmrMSN),n.toneBF(n.dmrMSN),'k.')
+plot([4000 64000],[4000 64000],'Color',[0.7 0.7 0.7])
+
+set(gca,'TickDir','out')
+xlabel('STA BF (Hz)')
+ylabel('Pure Tone BF (Hz)')
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+
+%Row 2 column 4, Widths
+subplot(6,5,24)
+maxVal = 3;
+hold on
+newWidthCompFSINeg = [widthCompFSINeg,n.widthCompFSINeg];
+plot(newWidthCompFSINeg(2,:),newWidthCompFSINeg(1,:),'r.')
+plot(nanmean(newWidthCompFSINeg(2,:)),nanmean(newWidthCompFSINeg(1,:)),'g*')
+plot(nanmean(widthCompFSINeg(2,:)),nanmean(widthCompFSINeg(1,:)),'g.')
+plot(nanmean(n.widthCompFSINeg(2,:)),nanmean(n.widthCompFSINeg(1,:)),'go')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+set(gca,'xticklabel',[])
+xlim([0 maxVal])
+ylim([0 maxVal])
+axis square
+
+
+subplot(6,5,29)
+hold on
+newWidthCompMSNNeg = [widthCompMSNNeg,n.widthCompMSNNeg];
+plot(newWidthCompMSNNeg(2,:),newWidthCompMSNNeg(1,:),'k.')
+plot(nanmean(newWidthCompMSNNeg(2,:)),nanmean(newWidthCompMSNNeg(1,:)),'g*')
+plot(nanmean(widthCompMSNNeg(2,:)),nanmean(widthCompMSNNeg(1,:)),'g.')
+plot(nanmean(n.widthCompMSNNeg(2,:)),nanmean(n.widthCompMSNNeg(1,:)),'go')
+plot([0 maxVal],[0 maxVal],'Color',[0.7 0.7 0.7])
+set(gca,'TickDir','out')
+xlim([0 maxVal])
+ylim([0 maxVal])
+xlabel('width')
+axis square
+
+
+
+spikeGraphName = 'DMRSummaryPlotPart1OldAndNew';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+print(hFig,spikeGraphName,'-deps','-r0')
+
+
+%% Summary Figure Part 2: show RTF data. 
+
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.04 0.04], [0.04 0.04]);
+set(hFig, 'Position', [80 80 800 1200])
+targetExample = 17;
+
+%Row 1, columns 1-2 STRF example
+subplot(6,3,1)
+limVal = max(abs(bigSTASigstore(dmrMSN(targetExample),:)));
+clims = [-1.05 * limVal,1.05 * limVal];
+imagesc(reshape(bigSTASigstore(dmrMSN(targetExample),:),length(faxis),[]),clims)
+set(gca,'TickDir','out')
+set(gca,'YTick',[])
+set(gca, 'YDir', 'normal');
+
+%plot resulting rtf
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.04 0.04], [0.04 0.04]);
+subplot(6,6,7)
+imagesc(flipRTF(:,:,dmrMSN(targetExample))/max(max(flipRTF(:,:,dmrMSN(targetExample)))))
+colormap(map)
+set(gca,'XTick',[])
+set(gca,'YTick',[])
+set(gca, 'YDir', 'normal');
+
+%plot spectral and temporal values. 
+subplot(12,6,14)
+plot(rtfModTemp(:,dmrMSN(targetExample)))
+title('tempMod')
+subplot(12,6,20)
+plot(rtfModSpect(:,dmrMSN(targetExample)))
+title('spectMod')
+
+%Row 1, FSI examples
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.01], [0.04 0.04], [0.04 0.04]);
+
+exampleFSIs = [1,3,4,9,10,21];
+exampleMSNs = [17,18,34,42,53,65];
+plotTars = [3,4,9,10,15,16];
+for i = 1:6
+    subplot(9,6,plotTars(i))
+    imagesc(flipRTF(:,:,dmrPV(exampleFSIs(i)))/max(max(flipRTF(:,:,dmrPV(exampleFSIs(i))))))
+    colormap(map)
+    set(gca,'XTick',[])
+    set(gca,'YTick',[])
+    set(gca, 'YDir', 'normal');
+end
+
+plotTars = [5,6,11,12,17,18];
+
+for i = 1:6
+    subplot(9,6,plotTars(i))
+    imagesc(flipRTF(:,:,dmrMSN(exampleMSNs(i)))/max(max(flipRTF(:,:,dmrMSN(exampleMSNs(i))))))
+    colormap(map)
+    set(gca,'XTick',[])
+    set(gca,'YTick',[])
+    set(gca, 'YDir', 'normal');
+end
+
+%Row 2, Column 1: population RTF FSI
+
+%we need to recalulate population rtfs. 
+nrtfFSI = zeros(size(n.flipRTF(:,:,1)));
+for i = 1:length(n.dmrPV)
+    tempStore = n.flipRTF(:,:,n.dmrPV(i));
+    tempStore = tempStore/sum(sum(tempStore));
+    nrtfFSI = nrtfFSI + tempStore;
+end
+
+rtfFSI = zeros(size(flipRTF(:,:,1)));
+for i = 1:length(dmrPV)
+    tempStore = flipRTF(:,:,dmrPV(i));
+    tempStore = tempStore/sum(sum(tempStore));
+    rtfFSI = rtfFSI + tempStore;
+end
+
+nrtfMSN = zeros(size(n.flipRTF(:,:,1)));
+for i = 1:length(n.dmrMSN)
+    tempStore = n.flipRTF(:,:,n.dmrMSN(i));
+    tempStore = tempStore/sum(sum(tempStore));
+    nrtfMSN = nrtfMSN + tempStore;
+end
+
+rtfMSN = zeros(size(flipRTF(:,:,1)));
+for i = 1:length(dmrMSN)
+    tempStore = flipRTF(:,:,dmrMSN(i));
+    tempStore = tempStore/sum(sum(tempStore));
+    rtfMSN = rtfMSN + tempStore;
+end
+
+%since each rtf is just an addition of summed RTFs, can just add!
+combRTFfsi = nrtfFSI + rtfFSI;
+combRTFmsn = nrtfMSN + rtfMSN;
+
+combRTFfsi = combRTFfsi/max(max(combRTFfsi));
+combRTFmsn = combRTFmsn/max(max(combRTFmsn));
+
+subplot(3,3,4)
+clims = [0 1];
+hold on
+imagesc(combRTFfsi,clims)
+contour(combRTFfsi,10,'g')
+colorbar
+set(gca, 'YDir', 'normal');
+colormap(map)
+set(gca,'xtick',[])
+set(gca,'xticklabel',[])
+set(gca,'ytick',[])
+set(gca,'yticklabel',[])
+title('FSI poprtf')
+
+%Row 2, Column 2: distributions of best mod. 
+
+tempHistFSI = hist(tmfFold(peakTempModInd(dmrPV)),[0:mean(diff(tmfFold)):tmfFold(end)]) + hist(tmfFold(n.peakTempModInd(n.dmrPV)),[0:mean(diff(tmfFold)):tmfFold(end)]);
+tempHistMSN = hist(tmfFold(peakTempModInd(dmrMSN)),[0:mean(diff(tmfFold)):tmfFold(end)]) + hist(tmfFold(n.peakTempModInd(n.dmrMSN)),[0:mean(diff(tmfFold)):tmfFold(end)]);
+spectHistFSI = hist(xmf(peakSpectModInd(dmrPV)),[0:mean(diff(xmf)):xmf(end)]) + hist(xmf(n.peakSpectModInd(n.dmrPV)),[0:mean(diff(xmf)):xmf(end)]);
+spectHistMSN = hist(xmf(peakSpectModInd(dmrMSN)),[0:mean(diff(xmf)):xmf(end)]) + hist(xmf(n.peakSpectModInd(n.dmrMSN)),[0:mean(diff(xmf)):xmf(end)]);
+
+maxValTemp = max([tempHistFSI,tempHistMSN]);
+maxValSpect = max([spectHistFSI,spectHistMSN]);
+
+nextMaxTemp = max([tempHistFSI(2:end),tempHistMSN(2:end)]);
+nextMaxSpect = max([spectHistFSI(2:end),spectHistMSN(2:end)]);
+
+subplot(6,6,15)
+bar([0:mean(diff(tmfFold)):tmfFold(end)],tempHistFSI)
+set(gca,'TickDir','out')
+% xlabel('Temporal (cyc/sec)')
+title(['FSItempBest',num2str(max(tempHistFSI))])
+ylim([0 nextMaxTemp])
+
+subplot(6,6,21)
+bar([0:mean(diff(xmf)):xmf(end)],spectHistFSI)
+set(gca,'TickDir','out')
+% xlabel('Spectral (cyc/octave)')
+title(['FSIspectBest',num2str(max(spectHistFSI))])
+ylim([0 nextMaxSpect])
+
+subplot(6,6,16)
+bar([0:mean(diff(tmfFold)):tmfFold(end)],tempHistMSN)
+set(gca,'TickDir','out')
+% xlabel('Temporal(cyc/sec)')
+title(['MSNtempBest',num2str(max(tempHistMSN))])
+ylim([0 nextMaxTemp])
+
+subplot(6,6,22)
+bar([0:mean(diff(xmf)):xmf(end)],spectHistMSN)
+set(gca,'TickDir','out')
+% xlabel('Spectral(cyc/octave)')
+title(['MSNspectBest',num2str(max(spectHistMSN))])
+ylim([0 nextMaxSpect])
+
+
+%Row 2, Column 4: population RTF FSI
+subplot(3,3,6)
+clims = [0 1];
+hold on
+imagesc(combRTFmsn,clims)
+contour(combRTFmsn,10,'g')
+colorbar
+set(gca, 'YDir', 'normal');
+colormap(map)
+set(gca,'xtick',[])
+set(gca,'xticklabel',[])
+set(gca,'ytick',[])
+set(gca,'yticklabel',[])
+title('MSN poprtf')
+
+
+spikeGraphName = 'DMRSummaryPlotPart2OldandNew';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+print(hFig,spikeGraphName,'-deps','-r0')
 
 
 
