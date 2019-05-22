@@ -228,7 +228,7 @@ findPVs = find(bigMaster(:,7) == 1);
 % 
 
 %% calculate widths with height based system
-widthPercent = 0.2;
+widthPercent = 0.5;
 
 bigWidthHeightStore = [];
 for i = 1:length(bigMaster)
@@ -429,10 +429,35 @@ for i = 1:length(binValBigStoreLaser)
     testData = binValBigStoreLaser{i} - binValBigStore{i};
     changeDir(i) = sign(mean(mean(testData)));
     sigAmpStore(i,2) = signrank(reshape(testData,1,[]));
-    
 end
 
-tarCells = find(sigAmpStore(:,1) < 0.05);
+
+
+%also pull cells that have significant number of responses at baseline.
+cutVal5 = 0.01;
+cutValNum = 1;
+for i = 1:length(binValBigStore)
+    tmpData = sigValBigStore{i}; 
+    tmpSign = sign(binValBigStore{i});
+    tmpData = tmpData.*tmpSign;
+    tmpData(tmpData <= 0) = 10;
+    lengthSig(i) = length(find(tmpData <= cutVal5));
+end
+
+for i = 1:length(binValBigStoreLaser)
+    tmpData = sigValBigStoreLaser{i}; 
+    tmpSign = sign(binValBigStoreLaser{i});
+    tmpData = tmpData.*tmpSign;
+    tmpData(tmpData <= 0) = 10;
+    lengthSigLaser(i) = length(find(tmpData <= cutVal5));
+end
+
+%select units
+tarCellsLight = find(sigAmpStore(:,1) < 0.05);
+% tarCells = find(lengthSig > 5);
+tarCells = find(lengthSig > cutValNum | lengthSigLaser > cutValNum);
+tarCells = intersect(tarCells,tarCellsLight);
+
 tarPVs = intersect(tarCells,findPVs);
 tarPVsDown = tarPVs;
 tarPVsDown(changeDir(tarPVs)>0) = [];
@@ -440,7 +465,14 @@ tarMSNs = intersect(tarCells,findMSNs);
 tarMSNsUp = tarMSNs;
 tarMSNsUp(changeDir(tarMSNs) < 1) = [];
 
-signrank(width70DB(tarMSNs),width70DBLaser(tarMSNs));
+figure
+axisLim = ceil(sqrt(length(tarMSNs)));
+for i = 1:length(tarMSNs)
+subplot(axisLim,axisLim,i)
+plot(smooth(fineHist(tarMSNs(i),:),21))
+end
+
+% signrank(width70DB(tarMSNs),width70DBLaser(tarMSNs))
 
 %% now try extracting from multiple DB bands. 
 
@@ -460,15 +492,19 @@ for i = 1:length(sigWidthStoreLaser)
     end
 end
 
+nanmean(widths(tarMSNs,1) - widthsLaser(tarMSNs,1))
 signrank(widths(tarMSNs,1),widthsLaser(tarMSNs,1))
+nanmean(widths(tarMSNs,2) - widthsLaser(tarMSNs,2))
 signrank(widths(tarMSNs,2),widthsLaser(tarMSNs,2))
+nanmean(widths(tarMSNs,3) - widthsLaser(tarMSNs,3))
 signrank(widths(tarMSNs,3),widthsLaser(tarMSNs,3))
 
 signrank(widths(tarPVs,1),widthsLaser(tarPVs,1))
 signrank(widths(tarPVs,2),widthsLaser(tarPVs,2))
 signrank(widths(tarPVs,3),widthsLaser(tarPVs,3))
 
-%all significant. 
+%FSI effect significant. MSN effects significant if only selecting for
+%response to light. 
 
 %% Now lets look at the time course of inhibition? First, lets just get the entire population average in Hz
 
@@ -482,6 +518,8 @@ plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findMS
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findMSNs,:))+std(fineHistLaser(findMSNs,:))/sqrt(length(findMSNs)),21),'g','LineWidth',1)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findMSNs,:))-std(fineHistLaser(findMSNs,:))/sqrt(length(findMSNs)),21),'g','LineWidth',1)
 title('Smooth MSN Hz Hist')
+xlim([-0.5 0.3])
+set(gca,'TickDir','out')
 subplot(2,1,2)
 hold on
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHist(findPVs,:)),21),'k','LineWidth',2)
@@ -491,7 +529,8 @@ plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findPV
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findPVs,:))+ std(fineHistLaser(findPVs,:))/sqrt(length(findPVs)),21),'g','LineWidth',2)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findPVs,:))- std(fineHistLaser(findPVs,:))/sqrt(length(findPVs)),21),'g','LineWidth',2)
 title('Smooth PV Hz Hist')
-
+xlim([-0.5 0.3])
+set(gca,'TickDir','out')
 spikeGraphName = 'histHzAllPVMSN';
 savefig(hFig,spikeGraphName);
 
@@ -513,6 +552,8 @@ plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarMSN
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarMSNs,:))+std(fineHistLaser(tarMSNs,:))/sqrt(length(tarMSNs)),21),'g','LineWidth',1)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarMSNs,:))-std(fineHistLaser(tarMSNs,:))/sqrt(length(tarMSNs)),21),'g','LineWidth',1)
 title('Smooth Selected MSN Hz Hist')
+xlim([-0.5 0.3])
+set(gca,'TickDir','out')
 subplot(2,1,2)
 hold on
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHist(tarPVs,:)),21),'k','LineWidth',2)
@@ -522,7 +563,8 @@ plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarPVs
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarPVs,:))+ std(fineHistLaser(tarPVs,:))/sqrt(length(tarPVs)),21),'g','LineWidth',2)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarPVs,:))- std(fineHistLaser(tarPVs,:))/sqrt(length(tarPVs)),21),'g','LineWidth',2)
 title('Smooth Selected PV Hz Hist')
-
+xlim([-0.5 0.3])
+set(gca,'TickDir','out')
 spikeGraphName = 'histHzSelPVMSN';
 savefig(hFig,spikeGraphName);
 
@@ -540,12 +582,16 @@ plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findMS
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findMSNs,:) - fineHist(findMSNs,:)) + std(fineHistLaser(findMSNs,:) - fineHist(findMSNs,:))/sqrt(length(findMSNs)),21),'k','LineWidth',1)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findMSNs,:) - fineHist(findMSNs,:)) - std(fineHistLaser(findMSNs,:) - fineHist(findMSNs,:))/sqrt(length(findMSNs)),21),'k','LineWidth',1)
 title('Smooth MSN Hz Diff Hist')
+xlim([-0.5 0.3])
+set(gca,'TickDir','out')
 subplot(2,1,2)
 hold on
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findPVs,:) - fineHist(findPVs,:)),21),'k','LineWidth',2)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findPVs,:) - fineHist(findPVs,:)) + std(fineHistLaser(findPVs,:) - fineHist(findPVs,:))/sqrt(length(findPVs)),21),'k','LineWidth',1)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(findPVs,:) - fineHist(findPVs,:)) - std(fineHistLaser(findPVs,:) - fineHist(findPVs,:))/sqrt(length(findPVs)),21),'k','LineWidth',1)
 title('Smooth PV Hz Hist')
+xlim([-0.5 0.3])
+set(gca,'TickDir','out')
 
 spikeGraphName = 'histHzSubtractionAllPVMSN';
 savefig(hFig,spikeGraphName);
@@ -565,12 +611,16 @@ plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarMSN
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarMSNs,:) - fineHist(tarMSNs,:)) + std(fineHistLaser(tarMSNs,:) - fineHist(tarMSNs,:))/sqrt(length(tarMSNs)),21),'k','LineWidth',1)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarMSNs,:) - fineHist(tarMSNs,:)) - std(fineHistLaser(tarMSNs,:) - fineHist(tarMSNs,:))/sqrt(length(tarMSNs)),21),'k','LineWidth',1)
 title('Smooth MSN Hz Diff Hist')
+xlim([-0.5 0.3])
+set(gca,'TickDir','out')
 subplot(2,1,2)
 hold on
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarPVs,:) - fineHist(tarPVs,:)),21),'k','LineWidth',2)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarPVs,:) - fineHist(tarPVs,:)) + std(fineHistLaser(tarPVs,:) - fineHist(tarPVs,:))/sqrt(length(tarPVs)),21),'k','LineWidth',1)
 plot([boundsLatHist(1):0.0005:boundsLatHist(2)],smooth(mean(fineHistLaser(tarPVs,:) - fineHist(tarPVs,:)) - std(fineHistLaser(tarPVs,:) - fineHist(tarPVs,:))/sqrt(length(tarPVs)),21),'k','LineWidth',1)
 title('Smooth PV Hz Hist')
+xlim([-0.5 0.3])
+set(gca,'TickDir','out')
 
 spikeGraphName = 'histHzSubtractionSelPVMSN';
 savefig(hFig,spikeGraphName);
@@ -582,11 +632,79 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
+%% Lets calculate the modulation index for the baseline period.
+
+%want period from -0.3 to 0. This is 601:1201.
+
+fineHistVect = [-0.6:0.0005:0.4];
+modPV = -1*(mean(fineHist(findPVs,[600:1201])')- mean(fineHistLaser(findPVs,[600:1201])'))./(mean(fineHist(findPVs,[600:1201])')+ mean(fineHistLaser(findPVs,[600:1201])'));
+modMSN = -1*(mean(fineHist(findMSNs,[600:1201])')- mean(fineHistLaser(findMSNs,[600:1201])'))./(mean(fineHist(findMSNs,[600:1201])')+ mean(fineHistLaser(findMSNs,[600:1201])'));
+modTonePV = -1*(mean(fineHist(findPVs,[1201:1401])')- mean(fineHistLaser(findPVs,[1201:1401])'))./(mean(fineHist(findPVs,[1201:1401])')+ mean(fineHistLaser(findPVs,[1201:1401])'));
+modToneMSN = -1*(mean(fineHist(findMSNs,[1201:1401])')- mean(fineHistLaser(findMSNs,[1201:1401])'))./(mean(fineHist(findMSNs,[1201:1401])')+ mean(fineHistLaser(findMSNs,[1201:1401])'));
 
 
+hFig = figure;
+subplot(2,1,1)
+hist(modPV,[-1:0.1:1])
+title('PV Modulation Index')
+xlim([-1.05 1.05])
+set(gca,'TickDir','out')
+subplot(2,1,2)
+hist(modMSN,[-1:0.1:1])
+title('MSN Modulation Index')
+xlim([-1.05 1.05])
+set(gca,'TickDir','out')
+
+spikeGraphName = 'modIndexBaseline';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
+hFig = figure;
+subplot(2,1,1)
+hist(modTonePV,[-1:0.1:1])
+title('PV Modulation Index')
+xlim([-1.05 1.05])
+set(gca,'TickDir','out')
+subplot(2,1,2)
+hist(modToneMSN,[-1:0.1:1])
+title('MSN Modulation Index')
+xlim([-1.05 1.05])
+set(gca,'TickDir','out')
 
+spikeGraphName = 'modIndexTone';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+
+%plot scatter
+hFig = figure;
+hold on
+plot(modMSN,modToneMSN,'k.')
+plot([-1 1],[-1 1],'r')
+title('Scatter of Mod Index, X base Y tone')
+set(gca,'TickDir','out')
+
+spikeGraphName = 'modScatter';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+
+tester = modToneMSN- modMSN;
 
 
 %% now lets plot scatters of width. 
@@ -604,7 +722,30 @@ for i = 1:3
     plot(tester,test2,'r.')
     hold on
     plot([0 max(tester)],[0 max(tester)],'k')
-    spikeGraphName = strcat('ScatterWidthFor',num2str(i));
+    set(gca,'TickDir','out')
+    spikeGraphName = strcat('ScatterWidthFor',num2str(i),'NoZero');
+    savefig(hFig,spikeGraphName);
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
+end
+
+for i = 1:3
+    tarDB = i;
+    
+    tester = widths(tarMSNs,tarDB);
+    test2 = widthsLaser(tarMSNs,tarDB);
+    
+    signrank(tester,test2)
+    hFig = figure;
+    plot(tester,test2,'r.')
+    hold on
+    plot([0 max(tester)],[0 max(tester)],'k')
+    set(gca,'TickDir','out')
+    spikeGraphName = strcat('ScatterWidthFor',num2str(i),'WithZero');
     savefig(hFig,spikeGraphName);
 
     %save as PDF with correct name
@@ -622,105 +763,266 @@ end
 %This uses a scaling factor of 20 to align all datapoints from multiple
 %datasets.
 scaleNum = 20;
-bigStoreMSN = NaN(length(tarMSNs),41*scaleNum);
-bigStoreLaserMSN = NaN(length(tarMSNs),41*scaleNum);
+widthPer = widthPercent;
 
-tarDB = 2;
-dbDecoder = [1,5,9];
-for i = 1:length(tarMSNs)
-    %first, get the right DB stuff out
-    if numDBUnit(tarMSNs(i)) == 3
-        tmpDB = tarDB;
-    else
-        tmpDB = dbDecoder(tarDB);
+for bigInd = 1:3
+    tarDB = bigInd;
+
+    bigStoreMSN = NaN(length(tarMSNs),41*scaleNum);
+    bigStoreLaserMSN = NaN(length(tarMSNs),41*scaleNum);
+
+
+    dbDecoder = [1,5,9];
+    for i = 1:length(tarMSNs)
+        %first, get the right DB stuff out
+        if numDBUnit(tarMSNs(i)) == 3
+            tmpDB = tarDB;
+        else
+            tmpDB = dbDecoder(tarDB);
+        end
+        %second, we need to figure out the proper increment.
+        tmpInc = 3/(numFreqUnit(tarMSNs(i))-1);
+        %pull curves
+        tmp1 = binValBigStore{tarMSNs(i)}(:,tmpDB);
+        tmp2 = binValBigStoreLaser{tarMSNs(i)}(:,tmpDB);
+        %scale curves to match proper scaling.
+        tmpScale = [0:tmpInc*scaleNum:(tmpInc*scaleNum)*(numFreqUnit(tarMSNs(i))-1)];
+        tmp1Int = interp1(tmpScale,tmp1,[1:(tmpScale(end))]);
+        tmp2Int = interp1(tmpScale,tmp2,[1:(tmpScale(end))]);
+        %find relative maxes. 
+        [maxVal1 maxInd1] = max(tmp1Int);
+        [maxVal2 maxInd2] = max(tmp2Int);
+        [maxmaxVal maxmaxInd] = max([maxVal1 maxVal2]);
+        bfSave(i,:) = [maxInd1,maxInd2];
+        %divide by maximum value
+        if maxVal1 > 0
+            bigStoreMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp1Int/maxVal1;
+            bigStoreLaserMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp2Int/maxVal1;
+        end
+
     end
-    %second, we need to figure out the proper increment.
-    tmpInc = 3/(numFreqUnit(tarMSNs(i))-1);
-    %pull curves
-    tmp1 = binValBigStore{tarMSNs(i)}(:,tmpDB);
-    tmp2 = binValBigStoreLaser{tarMSNs(i)}(:,tmpDB);
-    %scale curves to match proper scaling.
-    tmpScale = [0:tmpInc*scaleNum:(tmpInc*scaleNum)*(numFreqUnit(tarMSNs(i))-1)];
-    tmp1Int = interp1(tmpScale,tmp1,[1:(tmpScale(end))]);
-    tmp2Int = interp1(tmpScale,tmp2,[1:(tmpScale(end))]);
-    %find relative maxes. 
-    [maxVal1 maxInd1] = max(tmp1Int);
-    [maxVal2 maxInd2] = max(tmp2Int);
-    [maxmaxVal maxmaxInd] = max([maxVal1 maxVal2]);
-    bfSave(i,:) = [maxInd1,maxInd2];
-    %divide by maximum value
-    if maxVal1 > 0
-        bigStoreMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp1Int/maxVal1;
-        bigStoreLaserMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp2Int/maxVal1;
+
+    hFig = figure;
+    subplot(3,1,1)
+    plot(nanmean(bigStoreMSN),'k')
+    hold on
+    plot(nanmean(bigStoreLaserMSN),'g')
+    tester = nanmean(bigStoreMSN);
+    find1 = find(tester(1:420) <= widthPer,1,'last');
+    widthNorm = find(tester(find1+1:end) <= widthPer,1,'first');
+    tester = nanmean(bigStoreLaserMSN);
+    find1 = find(tester(1:420) <= widthPer,1,'last');
+    widthLaser = find(tester(find1+1:end) <= widthPer,1,'first');
+    %find width at specified percentage
+    title(['AvAlignedToBaseAtDB-',num2str(tarDB),'WidthBase:',num2str(widthNorm),'WidthLaser:',num2str(widthLaser)])
+    set(gca,'TickDir','out')
+    xlim([360 480])
+    subplot(3,1,2)
+    hold on
+    tester = ~isnan(bigStoreMSN);
+    test = sum(tester);
+    plot(test,'k')
+    tester = ~isnan(bigStoreLaserMSN);
+    test = sum(tester);
+    plot(test,'g')
+    xlim([360 480])
+    title('Number of Data Points')
+    set(gca,'TickDir','out')
+    subplot(3,1,3)
+    hold on
+    for i = 1:length(bfSave)
+        plot([1,2],[bfSave(i,1),bfSave(i,2)],'k')
+    end
+    plot([1,2],mean(bfSave),'r','LineWidth',2)
+    title(['signrank-',num2str(signrank(bfSave(:,1),bfSave(:,2))),'~meandiff-',num2str(mean(bfSave(:,1) - mean(bfSave(:,2)))),'-std-',num2str(std(bfSave(:,1) - bfSave(:,2)))])
+    spikeGraphName = strcat(['AverageTuningAlignedToBaseAtDB-',num2str(tarDB)]);
+    savefig(hFig,spikeGraphName);
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
+
+    % %try smoothing
+    % tmpSmoothWind = 5;
+    % figure
+    % plot(smooth(nanmean(bigStoreMSN),tmpSmoothWind))
+    % hold on
+    % plot(smooth(nanmean(bigStoreLaserMSN),tmpSmoothWind),'r')
+    % xlim([(21 - 5)*scaleNum,(21 + 5)*scaleNum])
+
+
+    bigStoreMSN = NaN(length(tarMSNs),41*scaleNum);
+    bigStoreLaserMSN = NaN(length(tarMSNs),41*scaleNum);
+
+    % tarDB = 2;
+    dbDecoder = [1,5,9];
+    for i = 1:length(tarMSNs)
+        %first, get the right DB stuff out
+        if numDBUnit(tarMSNs(i)) == 3
+            tmpDB = tarDB;
+        else
+            tmpDB = dbDecoder(tarDB);
+        end
+        %second, we need to figure out the proper increment.
+        tmpInc = 3/(numFreqUnit(tarMSNs(i))-1);
+        %pull curves
+        tmp1 = binValBigStore{tarMSNs(i)}(:,tmpDB);
+        tmp2 = binValBigStoreLaser{tarMSNs(i)}(:,tmpDB);
+        %scale curves to match proper scaling.
+        tmpScale = [0:tmpInc*scaleNum:(tmpInc*scaleNum)*(numFreqUnit(tarMSNs(i))-1)];
+        tmp1Int = interp1(tmpScale,tmp1,[1:(tmpScale(end))]);
+        tmp2Int = interp1(tmpScale,tmp2,[1:(tmpScale(end))]);
+        %find relative maxes. 
+        [maxVal1 maxInd1] = max(tmp1Int);
+        [maxVal2 maxInd2] = max(tmp2Int);
+        [maxmaxVal maxmaxInd] = max([maxVal1 maxVal2]);
+        bfSave(i,:) = [maxInd1,maxInd2];
+        %divide by maximum value
+        if maxVal1 > 0
+            bigStoreMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp1Int/maxVal1;
+
+        end
+        if maxVal2 > 0
+            bigStoreLaserMSN(i,21*scaleNum-maxInd2+1:21*scaleNum-maxInd2+length(tmp1Int)) = tmp2Int/maxVal2;
+        end
+
     end
     
-end
-
-figure
-plot(nanmean(bigStoreMSN))
-hold on
-plot(nanmean(bigStoreLaserMSN),'r')
-
-%try smoothing
-tmpSmoothWind = 5;
-figure
-plot(smooth(nanmean(bigStoreMSN),tmpSmoothWind))
-hold on
-plot(smooth(nanmean(bigStoreLaserMSN),tmpSmoothWind),'r')
-xlim([(21 - 5)*scaleNum,(21 + 5)*scaleNum])
-
-
-scaleNum = 20;
-bigStoreMSN = NaN(length(tarMSNs),41*scaleNum);
-bigStoreLaserMSN = NaN(length(tarMSNs),41*scaleNum);
-
-% tarDB = 2;
-dbDecoder = [1,5,9];
-for i = 1:length(tarMSNs)
-    %first, get the right DB stuff out
-    if numDBUnit(tarMSNs(i)) == 3
-        tmpDB = tarDB;
-    else
-        tmpDB = dbDecoder(tarDB);
+    hFig = figure;
+    subplot(3,1,1)
+    plot(nanmean(bigStoreMSN),'k')
+    hold on
+    plot(nanmean(bigStoreLaserMSN),'g')
+    tester = nanmean(bigStoreMSN);
+    find1 = find(tester(1:420) <= widthPer,1,'last');
+    widthNorm = find(tester(find1+1:end) <= widthPer,1,'first');
+    tester = nanmean(bigStoreLaserMSN);
+    find1 = find(tester(1:420) <= widthPer,1,'last');
+    widthLaser = find(tester(find1+1:end) <= widthPer,1,'first');
+    %find width at specified percentage
+    title(['AvAlignedToEachAtDB-',num2str(tarDB),'WidthBase:',num2str(widthNorm),'WidthLaser:',num2str(widthLaser)])
+    xlim([360 480])
+    set(gca,'TickDir','out')
+    subplot(3,1,2)
+    hold on
+    tester = ~isnan(bigStoreMSN);
+    test = sum(tester);
+    plot(test,'k')
+    tester = ~isnan(bigStoreLaserMSN);
+    test = sum(tester);
+    plot(test,'g')
+    xlim([360 480])
+    set(gca,'TickDir','out')
+    title('Number of Data Points')
+    subplot(3,1,3)
+    hold on
+    for i = 1:length(bfSave)
+        plot([1,2],[bfSave(i,1),bfSave(i,2)],'k')
     end
-    %second, we need to figure out the proper increment.
-    tmpInc = 3/(numFreqUnit(tarMSNs(i))-1);
-    %pull curves
-    tmp1 = binValBigStore{tarMSNs(i)}(:,tmpDB);
-    tmp2 = binValBigStoreLaser{tarMSNs(i)}(:,tmpDB);
-    %scale curves to match proper scaling.
-    tmpScale = [0:tmpInc*scaleNum:(tmpInc*scaleNum)*(numFreqUnit(tarMSNs(i))-1)];
-    tmp1Int = interp1(tmpScale,tmp1,[1:(tmpScale(end))]);
-    tmp2Int = interp1(tmpScale,tmp2,[1:(tmpScale(end))]);
-    %find relative maxes. 
-    [maxVal1 maxInd1] = max(tmp1Int);
-    [maxVal2 maxInd2] = max(tmp2Int);
-    [maxmaxVal maxmaxInd] = max([maxVal1 maxVal2]);
-    bfSave(i,:) = [maxInd1,maxInd2];
-    %divide by maximum value
-    if maxVal1 > 0
-        bigStoreMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp1Int/maxVal1;
-        
-    end
-    if maxVal2 > 0
-        bigStoreLaserMSN(i,21*scaleNum-maxInd2+1:21*scaleNum-maxInd2+length(tmp1Int)) = tmp2Int/maxVal2;
+    plot([1,2],mean(bfSave),'r','LineWidth',2)
+    title(['signrank-',num2str(signrank(bfSave(:,1),bfSave(:,2))),'~meandiff-',num2str(mean(bfSave(:,1) - mean(bfSave(:,2)))),'-std-',num2str(std(bfSave(:,1) - bfSave(:,2)))])
+    
+    spikeGraphName = strcat(['AverageTuningAlignedToEach-',num2str(tarDB)]);
+    savefig(hFig,spikeGraphName);
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
+    
+    
+    
+    bigStoreMSN = NaN(length(tarMSNs),41*scaleNum);
+    bigStoreLaserMSN = NaN(length(tarMSNs),41*scaleNum);
+
+    % tarDB = 2;
+    dbDecoder = [1,5,9];
+    for i = 1:length(tarMSNs)
+        %first, get the right DB stuff out
+        if numDBUnit(tarMSNs(i)) == 3
+            tmpDB = tarDB;
+        else
+            tmpDB = dbDecoder(tarDB);
+        end
+        %second, we need to figure out the proper increment.
+        tmpInc = 3/(numFreqUnit(tarMSNs(i))-1);
+        %pull curves
+        tmp1 = binValBigStore{tarMSNs(i)}(:,tmpDB);
+        tmp2 = binValBigStoreLaser{tarMSNs(i)}(:,tmpDB);
+        %scale curves to match proper scaling.
+        tmpScale = [0:tmpInc*scaleNum:(tmpInc*scaleNum)*(numFreqUnit(tarMSNs(i))-1)];
+        tmp1Int = interp1(tmpScale,tmp1,[1:(tmpScale(end))]);
+        tmp2Int = interp1(tmpScale,tmp2,[1:(tmpScale(end))]);
+        %find relative maxes. 
+        [maxVal1 maxInd1] = max(tmp1Int);
+        [maxVal2 maxInd2] = max(tmp2Int);
+        [maxmaxVal maxmaxInd] = max([maxVal1 maxVal2]);
+        bfSave(i,:) = [maxInd1,maxInd2];
+        %divide by maximum value
+        if maxVal1 > 0 & maxVal2 > 0
+            bigStoreMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp1Int/maxVal1;
+            bigStoreLaserMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp2Int/maxVal2;
+
+        end
+
+
     end
     
+    hFig = figure;
+    subplot(3,1,1)
+    plot(nanmean(bigStoreMSN),'k')
+    hold on
+    plot(nanmean(bigStoreLaserMSN),'g')
+    tester = nanmean(bigStoreMSN);
+    find1 = find(tester(1:420) <= widthPer,1,'last');
+    widthNorm = find(tester(find1+1:end) <= widthPer,1,'first');
+    tester = nanmean(bigStoreLaserMSN);
+    find1 = find(tester(1:420) <= widthPer,1,'last');
+    widthLaser = find(tester(find1+1:end) <= widthPer,1,'first');
+    %find width at specified percentage
+    title(['AvAlignedToEachAtDB-',num2str(tarDB),'WidthBase:',num2str(widthNorm),'WidthLaser:',num2str(widthLaser)])
+    xlim([360 480])
+    set(gca,'TickDir','out')
+    subplot(3,1,2)
+    hold on
+    tester = ~isnan(bigStoreMSN);
+    test = sum(tester);
+    plot(test,'k')
+    tester = ~isnan(bigStoreLaserMSN);
+    test = sum(tester);
+    plot(test,'g')
+    xlim([360 480])
+    set(gca,'TickDir','out')
+    title('Number of Data Points')
+    subplot(3,1,3)
+    hold on
+    for i = 1:length(bfSave)
+        plot([1,2],[bfSave(i,1),bfSave(i,2)],'k')
+    end
+    plot([1,2],mean(bfSave),'r','LineWidth',2)
+    title(['signrank-',num2str(signrank(bfSave(:,1),bfSave(:,2))),'~meandiff-',num2str(mean(bfSave(:,1) - mean(bfSave(:,2)))),'-std-',num2str(std(bfSave(:,1) - bfSave(:,2)))])
+    
+    spikeGraphName = strcat(['AverageTuningAlignedToBaseDiffNorm-',num2str(tarDB)]);
+    savefig(hFig,spikeGraphName);
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
 end
 
-figure
-plot(nanmean(bigStoreMSN))
-hold on
-plot(nanmean(bigStoreLaserMSN),'r')
 
-
-%try smoothing
-tmpSmoothWind = 5;
-figure
-plot(smooth(nanmean(bigStoreMSN),tmpSmoothWind))
-hold on
-plot(smooth(nanmean(bigStoreLaserMSN),tmpSmoothWind),'r')
-xlim([(21 - 5)*scaleNum,(21 + 5)*scaleNum])
+% %try smoothing
+% tmpSmoothWind = 5;
+% figure
+% plot(smooth(nanmean(bigStoreMSN),tmpSmoothWind))
+% hold on
+% plot(smooth(nanmean(bigStoreLaserMSN),tmpSmoothWind),'r')
+% xlim([(21 - 5)*scaleNum,(21 + 5)*scaleNum])
 
 
 
