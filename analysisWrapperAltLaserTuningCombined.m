@@ -452,6 +452,21 @@ for i = 1:length(binValBigStoreLaser)
     lengthSigLaser(i) = length(find(tmpData <= cutVal5));
 end
 
+%now lets determine the presence of significance at a particular dB level. 
+cutVal5 = 0.01;
+for i = 1:length(binValBigStoreLaser)
+    if numDBUnit(i) == 3
+        tmpSig = sigValBigStore{i};
+    else
+        tmpSig = sigValBigStore{i}(:,[1,5,9]);
+    end
+    tmpSig = min(tmpSig);
+    tmpSig(tmpSig <= cutVal5) = 1;
+    tmpSig(tmpSig < 1) = 0;
+    tmpSig(isnan(tmpSig)) = 0;
+    sigDBStore(:,i) = tmpSig;
+end
+
 %select units
 tarCellsLight = find(sigAmpStore(:,1) < 0.05);
 % tarCells = find(lengthSig > 5);
@@ -935,94 +950,85 @@ for bigInd = 1:3
     
     
     
-    bigStoreMSN = NaN(length(tarMSNs),41*scaleNum);
-    bigStoreLaserMSN = NaN(length(tarMSNs),41*scaleNum);
-
-    % tarDB = 2;
-    dbDecoder = [1,5,9];
-    for i = 1:length(tarMSNs)
-        %first, get the right DB stuff out
-        if numDBUnit(tarMSNs(i)) == 3
-            tmpDB = tarDB;
-        else
-            tmpDB = dbDecoder(tarDB);
-        end
-        %second, we need to figure out the proper increment.
-        tmpInc = 3/(numFreqUnit(tarMSNs(i))-1);
-        %pull curves
-        tmp1 = binValBigStore{tarMSNs(i)}(:,tmpDB);
-        tmp2 = binValBigStoreLaser{tarMSNs(i)}(:,tmpDB);
-        %scale curves to match proper scaling.
-        tmpScale = [0:tmpInc*scaleNum:(tmpInc*scaleNum)*(numFreqUnit(tarMSNs(i))-1)];
-        tmp1Int = interp1(tmpScale,tmp1,[1:(tmpScale(end))]);
-        tmp2Int = interp1(tmpScale,tmp2,[1:(tmpScale(end))]);
-        %find relative maxes. 
-        [maxVal1 maxInd1] = max(tmp1Int);
-        [maxVal2 maxInd2] = max(tmp2Int);
-        [maxmaxVal maxmaxInd] = max([maxVal1 maxVal2]);
-        bfSave(i,:) = [maxInd1,maxInd2];
-        %divide by maximum value
-        if maxVal1 > 0 & maxVal2 > 0
-            bigStoreMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp1Int/maxVal1;
-            bigStoreLaserMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp2Int/maxVal2;
-
-        end
-
-
-    end
-    
-    hFig = figure;
-    subplot(3,1,1)
-    plot(nanmean(bigStoreMSN),'k')
-    hold on
-    plot(nanmean(bigStoreLaserMSN),'g')
-    tester = nanmean(bigStoreMSN);
-    find1 = find(tester(1:420) <= widthPer,1,'last');
-    widthNorm = find(tester(find1+1:end) <= widthPer,1,'first');
-    tester = nanmean(bigStoreLaserMSN);
-    find1 = find(tester(1:420) <= widthPer,1,'last');
-    widthLaser = find(tester(find1+1:end) <= widthPer,1,'first');
-    %find width at specified percentage
-    title(['AvAlignedToEachAtDB-',num2str(tarDB),'WidthBase:',num2str(widthNorm),'WidthLaser:',num2str(widthLaser)])
-    xlim([360 480])
-    set(gca,'TickDir','out')
-    subplot(3,1,2)
-    hold on
-    tester = ~isnan(bigStoreMSN);
-    test = sum(tester);
-    plot(test,'k')
-    tester = ~isnan(bigStoreLaserMSN);
-    test = sum(tester);
-    plot(test,'g')
-    xlim([360 480])
-    set(gca,'TickDir','out')
-    title('Number of Data Points')
-    subplot(3,1,3)
-    hold on
-    for i = 1:length(bfSave)
-        plot([1,2],[bfSave(i,1),bfSave(i,2)],'k')
-    end
-    plot([1,2],mean(bfSave),'r','LineWidth',2)
-    title(['signrank-',num2str(signrank(bfSave(:,1),bfSave(:,2))),'~meandiff-',num2str(mean(bfSave(:,1) - mean(bfSave(:,2)))),'-std-',num2str(std(bfSave(:,1) - bfSave(:,2)))])
-    
-    spikeGraphName = strcat(['AverageTuningAlignedToBaseDiffNorm-',num2str(tarDB)]);
-    savefig(hFig,spikeGraphName);
-
-    %save as PDF with correct name
-    set(hFig,'Units','Inches');
-    pos = get(hFig,'Position');
-    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
-    print(hFig,spikeGraphName,'-dpdf','-r0')
+%     bigStoreMSN = NaN(length(tarMSNs),41*scaleNum);
+%     bigStoreLaserMSN = NaN(length(tarMSNs),41*scaleNum);
+% 
+%     % tarDB = 2;
+%     dbDecoder = [1,5,9];
+%     for i = 1:length(tarMSNs)
+%         %first, get the right DB stuff out
+%         if numDBUnit(tarMSNs(i)) == 3
+%             tmpDB = tarDB;
+%         else
+%             tmpDB = dbDecoder(tarDB);
+%         end
+%         %second, we need to figure out the proper increment.
+%         tmpInc = 3/(numFreqUnit(tarMSNs(i))-1);
+%         %pull curves
+%         tmp1 = binValBigStore{tarMSNs(i)}(:,tmpDB);
+%         tmp2 = binValBigStoreLaser{tarMSNs(i)}(:,tmpDB);
+%         %scale curves to match proper scaling.
+%         tmpScale = [0:tmpInc*scaleNum:(tmpInc*scaleNum)*(numFreqUnit(tarMSNs(i))-1)];
+%         tmp1Int = interp1(tmpScale,tmp1,[1:(tmpScale(end))]);
+%         tmp2Int = interp1(tmpScale,tmp2,[1:(tmpScale(end))]);
+%         %find relative maxes. 
+%         [maxVal1 maxInd1] = max(tmp1Int);
+%         [maxVal2 maxInd2] = max(tmp2Int);
+%         [maxmaxVal maxmaxInd] = max([maxVal1 maxVal2]);
+%         bfSave(i,:) = [maxInd1,maxInd2];
+%         %divide by maximum value
+%         if maxVal1 > 0 & maxVal2 > 0
+%             bigStoreMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp1Int/maxVal1;
+%             bigStoreLaserMSN(i,21*scaleNum-maxInd1+1:21*scaleNum-maxInd1+length(tmp1Int)) = tmp2Int/maxVal2;
+% 
+%         end
+% 
+% 
+%     end
+%     
+%     hFig = figure;
+%     subplot(3,1,1)
+%     plot(nanmean(bigStoreMSN),'k')
+%     hold on
+%     plot(nanmean(bigStoreLaserMSN),'g')
+%     tester = nanmean(bigStoreMSN);
+%     find1 = find(tester(1:420) <= widthPer,1,'last');
+%     widthNorm = find(tester(find1+1:end) <= widthPer,1,'first');
+%     tester = nanmean(bigStoreLaserMSN);
+%     find1 = find(tester(1:420) <= widthPer,1,'last');
+%     widthLaser = find(tester(find1+1:end) <= widthPer,1,'first');
+%     %find width at specified percentage
+%     title(['AvAlignedToEachAtDB-',num2str(tarDB),'WidthBase:',num2str(widthNorm),'WidthLaser:',num2str(widthLaser)])
+%     xlim([360 480])
+%     set(gca,'TickDir','out')
+%     subplot(3,1,2)
+%     hold on
+%     tester = ~isnan(bigStoreMSN);
+%     test = sum(tester);
+%     plot(test,'k')
+%     tester = ~isnan(bigStoreLaserMSN);
+%     test = sum(tester);
+%     plot(test,'g')
+%     xlim([360 480])
+%     set(gca,'TickDir','out')
+%     title('Number of Data Points')
+%     subplot(3,1,3)
+%     hold on
+%     for i = 1:length(bfSave)
+%         plot([1,2],[bfSave(i,1),bfSave(i,2)],'k')
+%     end
+%     plot([1,2],mean(bfSave),'r','LineWidth',2)
+%     title(['signrank-',num2str(signrank(bfSave(:,1),bfSave(:,2))),'~meandiff-',num2str(mean(bfSave(:,1) - mean(bfSave(:,2)))),'-std-',num2str(std(bfSave(:,1) - bfSave(:,2)))])
+%     
+%     spikeGraphName = strcat(['AverageTuningAlignedToBaseDiffNorm-',num2str(tarDB)]);
+%     savefig(hFig,spikeGraphName);
+% 
+%     %save as PDF with correct name
+%     set(hFig,'Units','Inches');
+%     pos = get(hFig,'Position');
+%     set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+%     print(hFig,spikeGraphName,'-dpdf','-r0')
 end
-
-
-% %try smoothing
-% tmpSmoothWind = 5;
-% figure
-% plot(smooth(nanmean(bigStoreMSN),tmpSmoothWind))
-% hold on
-% plot(smooth(nanmean(bigStoreLaserMSN),tmpSmoothWind),'r')
-% xlim([(21 - 5)*scaleNum,(21 + 5)*scaleNum])
 
 
 
