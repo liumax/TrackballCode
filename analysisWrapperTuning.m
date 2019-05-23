@@ -310,6 +310,37 @@ set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), p
 print(hFig,spikeGraphName,'-dpdf','-r0')
 
 
+%% Now lets re-calculate BFs based on binVals
+uniqueFreqs = [4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000];
+newBFs = zeros(size(binValBigStore,2),length(binValBigStore));
+bestBF = zeros(length(binValBigStore),1);
+for i = 1:length(binValBigStore)
+    for j = 1:size(binValBigStore,2)
+        [maxVal maxInd] = max(binValBigStore(:,j,i));
+        %determine if max is positive
+        if maxVal > 0
+            newBFs(j,i) = maxInd;
+        end
+        maxValStore(j) = maxVal;
+    end
+    %determine best amplitude. 
+    [maxValOver maxIndOver] = max(maxValStore);
+    if maxVal > 0
+        bestBF(i) = newBFs(maxIndOver,i);
+    end
+end
+newBFBack = newBFs;
+zeroFind = find(newBFs == 0);
+newBFs(zeroFind) = 1;
+newBFs = uniqueFreqs(newBFs);
+newBFs(zeroFind) = NaN;
+
+bestBFBack = bestBF;
+zeroFind = find(bestBF == 0);
+bestBF(zeroFind) = 1;
+bestBF = uniqueFreqs(bestBF);
+bestBF(zeroFind) = NaN;
+
 %% Generate tuning curves that are step functions based on significance.
 %how lets look at sigValBigStore
 sigValConv = sigValBigStore;
@@ -1481,7 +1512,7 @@ ylims = [0 15];
 subplot = @(m,n,p) subtightplot (m, n, p, [0.07 0.07], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [10 80 1900 1000])
 subplot(2,1,1)
-hist(bfStore(tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000],'r')
+hist(bestBF(tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000],'r')
 set(gca,'xscale','log')
 xlim(xlims)
 ylim(ylims)
@@ -1493,7 +1524,7 @@ title('BFs (FSIs)')
 set(gca,'TickDir','out');
 
 subplot(2,1,2)
-hist(bfStore(tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000],'k')
+hist(bestBF(tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000],'k')
 set(gca,'xscale','log')
 xlim(xlims)
 ylim(ylims)
@@ -1656,13 +1687,13 @@ hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.04], [0.07 0.07], [0.07 0.07]);
 set(hFig, 'Position', [80 80 1900 1000])
 subplot(2,1,1)
-plot(bfStore(tarCells(tarPVs)),sigWidthPV(5,:),'k.')
+plot(bestBF(tarCells(tarPVs)),sigWidthPV(5,:),'k.')
 xlabel('BF')
 ylabel('Tuning Width')
 title('FSI Width vs BF')
 set(gca,'TickDir','out');
 subplot(2,1,2)
-plot(bfStore(tarCells(tarMSNs)),sigWidthMSN(5,:),'k.')
+plot(bestBF(tarCells(tarMSNs)),sigWidthMSN(5,:),'k.')
 xlabel('BF')
 ylabel('Tuning Width')
 title('MSN Width vs BF')
@@ -1913,8 +1944,8 @@ ylabel('Number of Cells')
 title(['fsiLat u:',num2str(nanmean(latStore(tarPVs)))])
 
 %Row 2/3 Column 5, BF
-bfsMSN = hist(bfStore(tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
-bfsFSI = hist(bfStore(tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
+bfsMSN = hist(bestBF(tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
+bfsFSI = hist(bestBF(tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
 bfsYlim = max([max(bfsMSN),max(bfsFSI)]);
 
 subplot(4,5,10)
@@ -1975,4 +2006,80 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 print(hFig,spikeGraphName,'-deps','-r0')
+
+
+
+%% Generate population tuning curves
+widthPer = 0.5;
+
+for bigInd = 1:5
+    tmpDB = bigInd;
+
+    bigStoreMSN = NaN(length(tarMSNs),41);
+    bigStoreFSI = NaN(length(tarPVs),41);
+
+    for i = 1:length(tarMSNs)
+        %pull curves
+        tmp1 = binValBigStore(:,tmpDB,tarCells(tarMSNs(i)));
+        %determine relative max.
+        [maxVal1 maxInd1] = max(tmp1);
+        %save max index. 
+        bfSaveMSN(i,bigInd) = maxInd1;
+        %divide by maximum value
+        if maxVal1 > 0
+            bigStoreMSN(i,21-maxInd1+1:21-maxInd1+length(tmp1)) = tmp1/maxVal1;
+        end
+    end
+    
+    for i = 1:length(tarPVs)
+        %pull curves
+        tmp1 = binValBigStore(:,tmpDB,tarCells(tarPVs(i)));
+        %determine relative max.
+        [maxVal1 maxInd1] = max(tmp1);
+        %save max index. 
+        bfSaveFSI(i,bigInd) = maxInd1;
+        %divide by maximum value
+        if maxVal1 > 0
+            bigStoreFSI(i,21-maxInd1+1:21-maxInd1+length(tmp1)) = tmp1/maxVal1;
+        end
+    end
+
+    hFig = figure;
+    subplot(2,1,1)
+    plot(nanmean(bigStoreMSN),'k')
+    hold on
+    plot(nanmean(bigStoreFSI),'r')
+    tester = nanmean(bigStoreMSN);
+    find1 = find(tester(1:21) <= widthPer,1,'last');
+    widthMSN = find(tester(find1+1:end) <= widthPer,1,'first');
+    tester = nanmean(bigStoreFSI);
+    find1 = find(tester(1:21) <= widthPer,1,'last');
+    widthFSI = find(tester(find1+1:end) <= widthPer,1,'first');
+    %find width at specified percentage
+    title(['AvAlignedToBaseAtDB-',num2str(tmpDB),'widthMSN:',num2str(widthMSN),'widthFSI:',num2str(widthFSI)])
+    set(gca,'TickDir','out')
+    xlim([1 41])
+    
+    
+    subplot(2,1,2)
+    hold on
+    tester = ~isnan(bigStoreMSN);
+    test = sum(tester);
+    plot(test,'k')
+    tester = ~isnan(bigStoreFSI);
+    test = sum(tester);
+    plot(test,'g')
+    xlim([1 41])
+    title('Number of Data Points')
+    set(gca,'TickDir','out')
+    
+    spikeGraphName = strcat(['AverageTuningAlignedToBaseAtDB-',num2str(tmpDB)]);
+    savefig(hFig,spikeGraphName);
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
+end
 
