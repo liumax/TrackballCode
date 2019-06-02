@@ -162,7 +162,7 @@ for i = 1:numFiles
         tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,s.TrialMatrix(toneFinder,1),[-0.2 0.4]);
         
         fineHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:binSize:0.4])/binSize/length(toneFinder);
-        crudeHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:0.005:0.4])/binSize/length(toneFinder);
+        crudeHist(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:0.005:0.4])/0.005/length(toneFinder);
         nameStore{bigMasterInd + j -1} = targetFiles{i};
         recNumStore(bigMasterInd+j-1) = i;
         unitStore{bigMasterInd + j -1} = desigName{j};
@@ -1944,8 +1944,8 @@ ylabel('Number of Cells')
 title(['fsiLat u:',num2str(nanmean(latStore(tarPVs)))])
 
 %Row 2/3 Column 5, BF
-bfsMSN = hist(bestBF(tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
-bfsFSI = hist(bestBF(tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
+bfsMSN = hist(newBFs(5,tarCells(tarMSNs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
+bfsFSI = hist(newBFs(5,tarCells(tarPVs)),[4000;4594.79342000000;5278.03164300000;6062.86626600000;6964.40450600000;8000;9189.58684000000;10556.0632900000;12125.7325300000;13928.8090100000;16000;18379.1736800000;21112.1265700000;24251.4650600000;27857.6180300000;32000]);
 bfsYlim = max([max(bfsMSN),max(bfsFSI)]);
 
 subplot(4,5,10)
@@ -1979,25 +1979,126 @@ print(hFig,spikeGraphName,'-deps','-r0')
 
 %% Supplemental figure: PSTH examples!
 
+%generate for just FSIs.
+holder = bigMaster(findPVs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+
+negCells = findPVs(det == -2);
+mixCells = findPVs(det == -1);
+posCells = findPVs(det == 1);
+
+
+figure
+for i = 1:15
+subplot(3,5,i)
+plot(crudeVect,crudeHist(negCells(i),:))
+end
+%6 look good. 
+
+figure
+for i = 1:15
+subplot(3,5,i)
+plot(crudeVect,crudeHist(mixCells(i),:))
+end
+%14  work
+
+figure
+for i = 1:15
+subplot(3,5,i)
+plot(crudeVect,crudeHist(posCells(i),:))
+end
+%1, 24, 25 look good. 
+
 hFig = figure;
 subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
 set(hFig, 'Position', [80 80 1600 1200])
 
-subplot(2,3,1)
+subplot(1,3,1)
 plot(crudeVect,smooth(crudeHist(findPVs(1),:),5))
 xlim([-0.15 0.35])
-subplot(2,3,2)
+subplot(1,3,2)
 plot(crudeVect,smooth(crudeHist(findPVs(81),:),5))
 xlim([-0.15 0.35])
-subplot(2,3,5)
-plot(crudeVect,smooth(crudeHist(findPVs(83),:),5))
-xlim([-0.15 0.35])
-subplot(2,3,3)
+subplot(1,3,3)
 plot(crudeVect,smooth(crudeHist(tarCells(tarPVs(10)),:),5))
 xlim([-0.15 0.35])
 
 
 spikeGraphName = 'ExamplePSTHs';
+savefig(hFig,spikeGraphName);
+
+%save as PDF with correct name
+set(hFig,'Units','Inches');
+pos = get(hFig,'Position');
+set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+print(hFig,spikeGraphName,'-dpdf','-r0')
+print(hFig,spikeGraphName,'-deps','-r0')
+
+
+%generate from just MSNs. 
+
+holder = bigMaster(findMSNs,[indPosSig,indNegSig]);
+holder(:,2) = holder(:,2) * -2;
+det = holder(:,1) + holder(:,2);
+
+nonCells = findMSNs(det == 0);
+negCells = findMSNs(det == -2);
+mixCells = findMSNs(det == -1);
+posCells = findMSNs(det == 1);
+
+
+figure
+for i = 1:25
+subplot(5,5,i)
+plot(crudeVect,crudeHist(negCells(i),:))
+end
+%21, 23, 24 look good. 
+
+figure
+for i = 1:25
+subplot(5,5,i)
+plot(crudeVect,crudeHist(mixCells(i),:))
+end
+%11 and 12 both work
+
+figure
+for i = 1:25
+subplot(5,5,i)
+plot(crudeVect,crudeHist(posCells(i),:))
+end
+%11, 19, 25 look good. 
+
+
+
+hFig = figure;
+subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.03], [0.04 0.04], [0.04 0.04]);
+set(hFig, 'Position', [80 80 1600 1200])
+subplot(2,2,1)
+plot(crudeVect,smooth(crudeHist(nonCells(9),:),5))
+xlim([-0.15 0.35])
+ylim([0 2.5])
+set(gca,'TickDir','out')
+subplot(2,2,2) %positive
+plot(crudeVect,smooth(crudeHist(posCells(11),:),5))
+
+xlim([-0.15 0.35])
+ylim([0 2.5])
+set(gca,'TickDir','out')
+subplot(2,2,3) %negative
+plot(crudeVect,smooth(crudeHist(negCells(21),:),5))
+
+xlim([-0.15 0.35])
+ylim([0 2.5])
+set(gca,'TickDir','out')
+subplot(2,2,4) %mixed
+plot(crudeVect,smooth(crudeHist(mixCells(11),:),5))
+xlim([-0.15 0.35])
+ylim([0 2.5])
+set(gca,'TickDir','out')
+
+
+spikeGraphName = 'ExamplePSTHsMSN';
 savefig(hFig,spikeGraphName);
 
 %save as PDF with correct name
@@ -2082,4 +2183,102 @@ for bigInd = 1:5
     set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
     print(hFig,spikeGraphName,'-dpdf','-r0')
 end
+
+
+%% Now apply this restricted analysis to FSIs. May not change much. 
+
+for bigInd = 1:5
+    tmpDB = bigInd;
+
+    bigStoreMSN = NaN(length(tarMSNs),41);
+    bigStoreFSI = NaN(length(tarPVs),41);
+
+    for i = 1:length(tarMSNs)
+        if sigStore5Val(bigInd,(tarMSNs(i))) == 1
+            %pull curves
+            tmp1 = binValBigStore(:,tmpDB,tarCells(tarMSNs(i)));
+            %determine relative max.
+            [maxVal1 maxInd1] = max(tmp1);
+            %save max index. 
+            bfSaveMSN(i,bigInd) = maxInd1;
+            %divide by maximum value
+            if maxVal1 > 0
+                bigStoreMSN(i,21-maxInd1+1:21-maxInd1+length(tmp1)) = tmp1/maxVal1;
+            end
+        end
+    end
+    
+    for i = 1:length(tarPVs)
+        if sigStore5Val(bigInd,(tarPVs(i))) == 1
+            %pull curves
+            tmp1 = binValBigStore(:,tmpDB,tarCells(tarPVs(i)));
+            %determine relative max.
+            [maxVal1 maxInd1] = max(tmp1);
+            %save max index. 
+            bfSaveFSI(i,bigInd) = maxInd1;
+            %divide by maximum value
+            if maxVal1 > 0
+                bigStoreFSI(i,21-maxInd1+1:21-maxInd1+length(tmp1)) = tmp1/maxVal1;
+            end
+        end
+    end
+
+    hFig = figure;
+    subplot(2,1,1)
+    hold on
+    plot(nanmean(bigStoreMSN),'k','LineWidth',2)
+    plot(nanmean(bigStoreMSN) + nanstd(bigStoreMSN)/sqrt(length(tarMSNs)),'k','LineWidth',1)
+    plot(nanmean(bigStoreMSN) - nanstd(bigStoreMSN)/sqrt(length(tarMSNs)),'k','LineWidth',1)
+    plot(nanmean(bigStoreFSI),'r')
+    plot(nanmean(bigStoreFSI) + nanstd(bigStoreFSI)/sqrt(length(tarPVs)),'r','LineWidth',1)
+    plot(nanmean(bigStoreFSI) - nanstd(bigStoreFSI)/sqrt(length(tarPVs)),'r','LineWidth',1)
+    tester = nanmean(bigStoreMSN);
+    find1 = find(tester(1:21) <= widthPer,1,'last');
+    widthMSN = find(tester(find1+1:end) <= widthPer,1,'first');
+    tester = nanmean(bigStoreFSI);
+    find1 = find(tester(1:21) <= widthPer,1,'last');
+    widthFSI = find(tester(find1+1:end) <= widthPer,1,'first');
+    %find width at specified percentage
+    title(['AvAlignedToBaseAtDB-',num2str(tmpDB),'widthMSN:',num2str(widthMSN),'widthFSI:',num2str(widthFSI)])
+    set(gca,'TickDir','out')
+    xlim([1 41])
+    
+    
+    subplot(2,1,2)
+    hold on
+    tester = ~isnan(bigStoreMSN);
+    test = sum(tester);
+    plot(test,'k')
+    tester = ~isnan(bigStoreFSI);
+    test = sum(tester);
+    plot(test,'g')
+    xlim([1 41])
+    title('Number of Data Points')
+    set(gca,'TickDir','out')
+    
+    spikeGraphName = strcat(['AverageRestrictedTuningAlignedToBaseAtDB-',num2str(tmpDB)]);
+    savefig(hFig,spikeGraphName);
+
+    %save as PDF with correct name
+    set(hFig,'Units','Inches');
+    pos = get(hFig,'Position');
+    set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
+    print(hFig,spikeGraphName,'-dpdf','-r0')
+end
+
+%% Generate population tuning curve?
+
+
+
+popNormTuningMSN
+popNormTuningFSI
+
+
+
+
+
+
+
+
+
 
