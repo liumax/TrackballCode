@@ -1080,6 +1080,68 @@ doubleSigFSIs = intersect(sigSlopeFSIs,sigIntFSIs);
 justSlopeMSNs = setdiff(sigSlopeMSNs,doubleSigMSNs);
 justIntMSNs = setdiff(sigIntMSNs,doubleSigMSNs);
 
+justSlopeFSIs = setdiff(sigSlopeFSIs,doubleSigFSIs);
+justIntFSIs = setdiff(sigIntFSIs,doubleSigFSIs);
+
+noRespMSNs = setdiff(msns,sigSlopeMSNs);
+noRespMSNs = setdiff(noRespMSNs,sigIntMSNs);
+noRespFSIs = setdiff(fsis,sigSlopeFSIs);
+noRespFSIs = setdiff(noRespFSIs,sigIntFSIs);
+
+%make matrices
+%want to make a 3x3 matrix. center will be all ns cells. 
+linMatMSN = zeros(3,3);
+linMatFSI = zeros(3,3);
+
+linMatMSN(2,2) = length(noRespMSNs);
+linMatFSI(2,2) = length(noRespFSIs);
+
+%now lets just do simple addition/subtraction values
+
+%Just subtraction/addition
+%pull actual slope values!
+findNeg = length(find(intStore(justIntMSNs) < 0));
+findPos = length(find(intStore(justIntMSNs) > 0));
+linMatMSN(1,2) = findNeg;
+linMatMSN(3,2) = findPos;
+
+findNeg = length(find(intStore(justIntFSIs) < 0));
+findPos = length(find(intStore(justIntFSIs) > 0));
+linMatFSI(1,2) = findNeg;
+linMatFSI(3,2) = findPos;
+
+%just mult/div!
+findNeg = length(find(slopeStore(justSlopeMSNs)-1 < 0));
+findPos = length(find(slopeStore(justSlopeMSNs)-1 > 0));
+linMatMSN(2,1) = findNeg; %divisive
+linMatMSN(2,3) = findPos; %mult
+
+findNeg = length(find(slopeStore(justSlopeFSIs)-1 < 0));
+findPos = length(find(slopeStore(justSlopeFSIs)-1 > 0));
+linMatFSI(2,1) = findNeg; %divisive
+linMatFSI(2,3) = findPos; %mult
+
+%now look for both sig
+findIntNegSlopeNeg = length(find(slopeStore(doubleSigMSNs)-1 < 0 & intStore(doubleSigMSNs) < 0));
+findIntNegSlopePos = length(find(slopeStore(doubleSigMSNs)-1 > 0 & intStore(doubleSigMSNs) < 0));
+findIntPosSlopePos = length(find(slopeStore(doubleSigMSNs)-1 > 0 & intStore(doubleSigMSNs) > 0));
+findIntPosSlopeNeg = length(find(slopeStore(doubleSigMSNs)-1 < 0 & intStore(doubleSigMSNs) > 0));
+linMatMSN(1,1) = findIntNegSlopeNeg;
+linMatMSN(1,3) = findIntNegSlopePos;
+linMatMSN(3,1) = findIntPosSlopeNeg;
+linMatMSN(3,3) = findIntPosSlopePos;
+
+findIntNegSlopeNeg = length(find(slopeStore(doubleSigFSIs)-1 < 0 & intStore(doubleSigFSIs) < 0));
+findIntNegSlopePos = length(find(slopeStore(doubleSigFSIs)-1 > 0 & intStore(doubleSigFSIs) < 0));
+findIntPosSlopePos = length(find(slopeStore(doubleSigFSIs)-1 > 0 & intStore(doubleSigFSIs) > 0));
+findIntPosSlopeNeg = length(find(slopeStore(doubleSigFSIs)-1 < 0 & intStore(doubleSigFSIs) > 0));
+linMatFSI(1,1) = findIntNegSlopeNeg;
+linMatFSI(1,3) = findIntNegSlopePos;
+linMatFSI(3,1) = findIntPosSlopeNeg;
+linMatFSI(3,3) = findIntPosSlopePos;
+
+
+
 barSlopeBase = slopeStore(msns);
 barSlopeSig = slopeStore(sigSlopeMSNs);
 barIntBase = intStore(msns);
