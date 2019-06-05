@@ -479,6 +479,90 @@ for i = 1:length(findMSNs)
         set(gca,'ytick',[])
 end
 
+%Okay, lets fit gaussians to tuneCurveStore
+
+for i = 1:length(tuneCurveStore)
+    try
+        [fitobject,gof] = fit([1:16]',tuneCurveStore(i,:)','gauss1');
+        rSquareStore(i) = gof.rsquare;
+    catch
+        rSquareStore(i) = 0;
+    end
+end
+
+% https://www.nature.com/articles/s41467-019-08350-7#Sec9 Chen et al 2019
+% use R2 of 0.4. Lets use that here as well. As coincidence detector, use
+% big overall significance value (masterData(:,9)) 
+
+findGoodR = find(rSquareStore > 0.4);
+findOverSig = find(bigMaster(:,9) == 1);
+
+findGoodRSig = intersect(findGoodR,findOverSig);
+
+%check this!
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotLim = ceil(sqrt(length(findPVs)));
+figure
+for i = 1:length(findPVs)
+    subplot(plotLim,plotLim,i)
+    hold on
+    plot(squeeze(tuneCurveStore(findPVs(i),:)))
+    if ismember(findPVs(i),findGoodRSig)
+        plot(squeeze(tuneCurveStore(findPVs(i),:)),'r')
+    end
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
+
+%plot MSNs
+plotLim = ceil(sqrt(length(findMSNs)));
+figure
+for i = 1:length(findMSNs)
+    subplot(plotLim,plotLim,i)
+    hold on
+    plot(squeeze(tuneCurveStore(findMSNs(i),:)))
+    if ismember(findMSNs(i),findGoodRSig)
+        plot(squeeze(tuneCurveStore(findMSNs(i),:)),'r')
+    end
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
+
+%now lets do something with this??
+
+altPVs = intersect(findPVs,findGoodRSig);
+altMSNs = intersect(findMSNs,findGoodRSig);
+
+%try plotting histograms to see how bad things are.
+
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotLim = ceil(sqrt(length(findPVs)));
+figure
+for i = 1:length(findPVs)
+    subplot(plotLim,plotLim,i)
+    hold on
+    plot(squeeze(crudeHist(findPVs(i),:)))
+    if ismember(findPVs(i),findGoodRSig)
+        plot(squeeze(crudeHist(findPVs(i),:)),'r')
+    end
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
+
+%plot MSNs
+plotLim = ceil(sqrt(length(findMSNs)));
+figure
+for i = 1:length(findMSNs)
+    subplot(plotLim,plotLim,i)
+    hold on
+    plot(squeeze(crudeHist(findMSNs(i),:)))
+    if ismember(findMSNs(i),findGoodRSig)
+        plot(squeeze(crudeHist(findMSNs(i),:)),'r')
+    end
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
 
 
 
@@ -845,6 +929,34 @@ tarCells(nanFind) = [];
 
 [C,tarPVs,ib] = intersect(tarCells,findPVs);
 [C,tarMSNs,ib] = intersect(tarCells,findMSNs);
+
+subplot = @(m,n,p) subtightplot (m, n, p, [0.005 0.005], [0.005 0.005], [0.005 0.005]);
+plotLim = ceil(sqrt(length(findPVs)));
+figure
+for i = 1:length(findPVs)
+    subplot(plotLim,plotLim,i)
+    hold on
+    plot(squeeze(crudeHist(findPVs(i),:)))
+    if ismember(findPVs(i),tarCells)
+        plot(squeeze(crudeHist(findPVs(i),:)),'r')
+    end
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
+
+%plot MSNs
+plotLim = ceil(sqrt(length(findMSNs)));
+figure
+for i = 1:length(findMSNs)
+    subplot(plotLim,plotLim,i)
+    hold on
+    plot(squeeze(crudeHist(findMSNs(i),:)))
+    if ismember(findMSNs(i),tarCells)
+        plot(squeeze(crudeHist(findMSNs(i),:)),'r')
+    end
+    set(gca,'xtick',[])
+    set(gca,'ytick',[])
+end
 
 %% NOW LOOK AT LATENCY
 
@@ -1975,6 +2087,8 @@ pos = get(hFig,'Position');
 set(hFig,'PaperPositionMode','Auto','PaperUnits','Inches','PaperSize',[pos(3), pos(4)])
 print(hFig,spikeGraphName,'-dpdf','-r0')
 print(hFig,spikeGraphName,'-deps','-r0')
+
+
 
 
 %% Supplemental figure: PSTH examples!
