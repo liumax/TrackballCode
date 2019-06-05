@@ -304,7 +304,7 @@ findGood = [1:length(orderFile)];
 findGood(findBad) = [];
 
 %manual annotation
-manBad = [4,6,9,11,12,13,38];
+manBad = [4,6,11,12,13,38];
 manGood = [1:length(orderFile)];
 manGood(manBad) = [];
 
@@ -730,13 +730,15 @@ print(hFig,spikeGraphName,'-dpdf','-r0')
 
 %% lets look at tuning curve correlations
 figure
-hist(binRespCorrTone,[-1:0.1:1])
-
-figure
+subplot(3,1,1)
 hist(binRespCorrFast,[-1:0.1:1])
-
-figure
+title('Tuning Correlations Fast')
+subplot(3,1,2)
+hist(binRespCorrTone,[-1:0.1:1])
+title('Tuning Correlations Tone')
+subplot(3,1,3)
 hist(binRespCorrSlow,[-1:0.1:1])
+title('Tuning Correlations Slow')
 
 
 % figure
