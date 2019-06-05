@@ -20,7 +20,7 @@ numFiles = length(targetFiles);
 sigThresh = 5; %minimum number of significant responses at 0.05 p threshold. 
 sigWin = 2; %minimum width for entry to analysis. 
 tarWin = 2; %target window of analysis. 1 = fast, 2 = tone, 3 = gen. 
-boundsLatHist = [-0.2 0.4];
+boundsLatHist = [-0.6 0.4];
 
 %counter of number of cells I'm keeping
 fullCounter = 1;
@@ -83,6 +83,16 @@ for i = 1:numFiles
     %generate a finder for non-white noise tones
     toneFinderLaser = find(s.SoundData.TrialMatrixPaired(:,2) ~= 0);
     
+    %now we need to clean up tone time data. 
+    gapFind = find(s.SoundData.ToneTimeDiff < 0.1);
+    gapFindPlus = gapFind + 1;
+    fullGap = [gapFind;gapFindPlus];
+    %generate new tone thing. 
+    newSound = s.SoundData.ToneTimes;
+    newSound(fullGap) = [];
+    newSoundNon = newSound(2:2:end);
+    newSoundLaser = newSound(1:2:end);
+    
     uniqueDBs = s.SoundData.UniqueDBs;
     
     %now go through individual units to extract information
@@ -119,13 +129,13 @@ for i = 1:numFiles
         ind1 = s.SoundData.NumDBs - 1;
         ind2 = s.SoundData.NumDBs;
         [pk ind] = max(tarVals);
-        if ind >=2 & ind <= 12 %these are non-edge cases
+        if ind >=2 & ind <= length(s.SoundData.UniqueFrequencies) - s.SoundData.WhiteNoise - 1 %these are non-edge cases
             tarCols = [ind1,ind1,ind1,ind2,ind2,ind2];
             tarRows = [ind-1+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise,ind+1+s.SoundData.WhiteNoise,ind-1+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise,ind+1+s.SoundData.WhiteNoise];
-        elseif ind < 2
+        elseif ind < 2 %edge cases. 
             tarCols = [ind1,ind1,ind1,ind2,ind2,ind2];
             tarRows = [ind+s.SoundData.WhiteNoise,ind+1+s.SoundData.WhiteNoise,ind+2+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise,ind+1+s.SoundData.WhiteNoise,ind+2+s.SoundData.WhiteNoise];
-        elseif ind > 12
+        elseif ind > length(s.SoundData.UniqueFrequencies) - s.SoundData.WhiteNoise - 1
             tarCols = [ind1,ind1,ind1,ind2,ind2,ind2];
             tarRows = [ind-2+s.SoundData.WhiteNoise,ind-1+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise,ind-2+s.SoundData.WhiteNoise,ind-1+s.SoundData.WhiteNoise,ind+s.SoundData.WhiteNoise];
         end
@@ -141,16 +151,20 @@ for i = 1:numFiles
         tarStore = sort(tarStore);
         %now pull correct raster data!
         binSize = 0.0005;
-        findRast = ismember(s.(desigName{j}).AllRasters(:,2),tarStore);
-        tarSpikes = s.(desigName{j}).AllRasters(findRast,1);
+        makeRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,newSoundNon(tarStore),boundsLatHist);
+        tarSpikes = makeRast(:,1);
+%         findRast = ismember(s.(desigName{j}).AllRasters(:,2),tarStore);
+%         tarSpikes = s.(desigName{j}).AllRasters(findRast,1);
         tarSpikes(tarSpikes < boundsLatHist(1)) = [];
         tarSpikes(tarSpikes > boundsLatHist(2)) = [];
         latFineHist(bigMasterInd + j - 1,:) = hist(tarSpikes,[boundsLatHist(1):binSize:boundsLatHist(2)])/binSize/length(tarStore);
 
         disp('About to do fine overall histogram')
         %generate a finer scale histogram across all tones
-        findTars = find(ismember(s.(desigName{j}).AllRasters(:,2),toneFinder));
-        tarSpikes = s.(desigName{j}).AllRasters(findTars,1);
+        makeRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,newSoundNon(toneFinder),boundsLatHist);
+        tarSpikes = makeRast(:,1);
+%         findTars = find(ismember(s.(desigName{j}).AllRasters(:,2),toneFinder));
+%         tarSpikes = s.(desigName{j}).AllRasters(findTars,1);
         tarSpikes(tarSpikes < boundsLatHist(1)) = [];
         tarSpikes(tarSpikes > boundsLatHist(2)) = [];
         fineHist(bigMasterInd + j - 1,:) = hist(tarSpikes,[boundsLatHist(1):binSize:boundsLatHist(2)])/binSize/length(toneFinder);
@@ -166,15 +180,23 @@ for i = 1:numFiles
         tarStore = sort(tarStore);
         %now pull correct raster data!
         binSize = 0.0005;
-        findRast = ismember(s.(desigName{j}).AllRastersLaser(:,2),tarStore);
-        tarSpikes = s.(desigName{j}).AllRastersLaser(findRast,1);
-        latFineHistLaser(bigMasterInd + j - 1,:) = hist(tarSpikes,[-0.2:binSize:0.4])/binSize/length(tarStore);
+        makeRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,newSoundLaser(tarStore),boundsLatHist);
+        tarSpikes = makeRast(:,1);
+%         findRast = ismember(s.(desigName{j}).AllRastersLaser(:,2),tarStore);
+%         tarSpikes = s.(desigName{j}).AllRastersLaser(findRast,1);
+        latFineHistLaser(bigMasterInd + j - 1,:) = hist(tarSpikes,[boundsLatHist(1):binSize:boundsLatHist(2)])/binSize/length(tarStore);
 
         disp('About to do fine overall histogram LASER')
         %generate a finer scale histogram across all tones
-        tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,trialMatrixLaser(toneFinderLaser,1),[-0.2 0.4]);
+        makeRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,newSoundLaser(toneFinderLaser),boundsLatHist);
+        tarSpikes = makeRast(:,1);
+%         findTars = find(ismember(s.(desigName{j}).AllRastersLaser(:,2),toneFinderLaser));
+%         tarSpikes = s.(desigName{j}).AllRastersLaser(findTars,1);
+        tarSpikes(tarSpikes < boundsLatHist(1)) = [];
+        tarSpikes(tarSpikes > boundsLatHist(2)) = [];
+%         tempFineRast = functionBasicRaster(s.(desigName{j}).SpikeTimes,trialMatrixLaser(toneFinderLaser,1),[-0.2 0.4]);
         
-        fineHistLaser(bigMasterInd + j - 1,:) = hist(tempFineRast(:,1),[-0.2:binSize:0.4])/binSize/length(toneFinderLaser);
+        fineHistLaser(bigMasterInd + j - 1,:) = hist(tarSpikes,[boundsLatHist(1):binSize:boundsLatHist(2)])/binSize/length(toneFinderLaser);
         
         nameStore{bigMasterInd + j -1} = targetFiles{i};
         unitStore{bigMasterInd + j -1} = desigName{j};
@@ -189,50 +211,50 @@ for i = 1:numFiles
     bigFreqStore(bigMasterInd:bigMasterInd + numUnits - 1) = freqStore;
     %now lets pull the correlation coefficients from tuning curves. 
     
-    
-    %now lets try to get corrcoef from binDiff values (tempBinStore)
-    shuffBinDiffCorrVals = [];
-    binDiffCorrVals = [];
-    binDiffCorrValSig = [];
-    for j = 1:numUnits
-        val1 = reshape(squeeze(tempBinStore(:,:,j)),1,[]);
-        for k = 1:numUnits
-            val2 = reshape(squeeze(tempBinStore(:,:,k)),1,[]);
-            tempCorrVal = corrcoef(val1,val2);
-            binDiffCorrVals(j,k) = tempCorrVal(2);
-            %now do shuffled versions
-            numShuff = 1000;
-            for l = 1:numShuff
-                shuffVal = randperm(length(val2));
-                shuffVal = val2(shuffVal);
-                tempCorrVal = corrcoef(val1,shuffVal);
-                shuffBinDiffCorrVals(l) = tempCorrVal(2);
-            end
-            %calculate percentile
-            prctileVals = prctile(shuffBinDiffCorrVals,[0.5 99.5]);
-            if binDiffCorrVals(j,k) < prctileVals(1) || binDiffCorrVals(j,k) > prctileVals(2)
-                binDiffCorrValSig(j,k) = 1;
-            else
-                binDiffCorrValSig(j,k) = 0;
-            end
-            shuffBinDiffCorrVals = [];
-            %also calculate distances between units
-            distVal(j,k) = sqrt(((floor(masterData(j,1)) - floor(masterData(k,1)))*25)^2 + ((masterData(j,2) - masterData(k,2))*250)^2);
-        end
-    end
-    findPVs = find(masterData(:,5) < 0.0004 & masterData(:,6) > 1.1);
-    findMSNs = find(masterData(:,5) > 0.0005 & masterData(:,6) > 1.1); 
-    findCHATs = find(masterData(:,6) < 1.1);
-    corrCoefData.CorrCoefs = binDiffCorrVals;
-    corrCoefData.CorrCoefSig = binDiffCorrValSig;
-    corrCoefData.CellType = NaN(numUnits,1);
-    corrCoefData.CellType(findPVs) = 1;
-    corrCoefData.CellType(findMSNs) = 0;
-    corrCoefData.CellType(findCHATs) = 4;
-    corrCoefData.Distance = distVal;
-    bigCorrStore{i} = corrCoefData;
-    corrCoefData = [];
-    distVal = [];
+%     
+%     %now lets try to get corrcoef from binDiff values (tempBinStore)
+%     shuffBinDiffCorrVals = [];
+%     binDiffCorrVals = [];
+%     binDiffCorrValSig = [];
+%     for j = 1:numUnits
+%         val1 = reshape(squeeze(tempBinStore(:,:,j)),1,[]);
+%         for k = 1:numUnits
+%             val2 = reshape(squeeze(tempBinStore(:,:,k)),1,[]);
+%             tempCorrVal = corrcoef(val1,val2);
+%             binDiffCorrVals(j,k) = tempCorrVal(2);
+%             %now do shuffled versions
+%             numShuff = 1000;
+%             for l = 1:numShuff
+%                 shuffVal = randperm(length(val2));
+%                 shuffVal = val2(shuffVal);
+%                 tempCorrVal = corrcoef(val1,shuffVal);
+%                 shuffBinDiffCorrVals(l) = tempCorrVal(2);
+%             end
+%             %calculate percentile
+%             prctileVals = prctile(shuffBinDiffCorrVals,[0.5 99.5]);
+%             if binDiffCorrVals(j,k) < prctileVals(1) || binDiffCorrVals(j,k) > prctileVals(2)
+%                 binDiffCorrValSig(j,k) = 1;
+%             else
+%                 binDiffCorrValSig(j,k) = 0;
+%             end
+%             shuffBinDiffCorrVals = [];
+%             %also calculate distances between units
+%             distVal(j,k) = sqrt(((floor(masterData(j,1)) - floor(masterData(k,1)))*25)^2 + ((masterData(j,2) - masterData(k,2))*250)^2);
+%         end
+%     end
+%     findPVs = find(masterData(:,5) < 0.0004 & masterData(:,6) > 1.1);
+%     findMSNs = find(masterData(:,5) > 0.0005 & masterData(:,6) > 1.1); 
+%     findCHATs = find(masterData(:,6) < 1.1);
+%     corrCoefData.CorrCoefs = binDiffCorrVals;
+%     corrCoefData.CorrCoefSig = binDiffCorrValSig;
+%     corrCoefData.CellType = NaN(numUnits,1);
+%     corrCoefData.CellType(findPVs) = 1;
+%     corrCoefData.CellType(findMSNs) = 0;
+%     corrCoefData.CellType(findCHATs) = 4;
+%     corrCoefData.Distance = distVal;
+%     bigCorrStore{i} = corrCoefData;
+%     corrCoefData = [];
+%     distVal = [];
     
     bigMasterInd = bigMasterInd + numUnits;
 end
@@ -241,551 +263,550 @@ findMSNs = find(bigMaster(:,7) == 0);
 findPVs = find(bigMaster(:,7) == 1);
 
 
-
 %% now lets march through the correlation coefficient data and see what we pull out. First things first, I want to remove all the excess values, since I dont want double counting. 
 %lets define interactions! There are three cell types, and therefore six
 %interactions: FSI-MSN, FSI-ChAT, FSI-FSI, MSN-ChAT, MSN-MSN, ChAT-ChAT. 
-
-%lets number these. I want the most common first, going up into the less
-%common. so:
-
-% MSN-MSN: 0
-% MSN-FSI: 1
-% FSI-FSI: 2
-% MSN-ChAT: 4
-% FSI-ChAT: 5
-% ChAT-ChAT: 8
-
-
-corrCount = 1;
-cellCount = 1;
-for i = 1:length(bigCorrStore)
-    dataset = bigCorrStore{i};
-    %now lets try and linearize this dataset. 
-    numUnits = length(dataset.CellType);
-    for j = 1:numUnits
-        corrValStore(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefs(j,j+1:end);
-        distValStore(corrCount:corrCount + numUnits - j - 1) = dataset.Distance(j,j+1:end);
-        interTypeStore(corrCount:corrCount + numUnits - j - 1) = dataset.CellType(j)+ dataset.CellType(j+1:end);
-        corrValSigStore(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefSig(j,j+1:end);
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,1) = i;
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,2) = j+cellCount-1;
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,3) = cellCount + (j+1:numUnits) - 1;
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,4) = dataset.CellType(j);
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,5) = dataset.CellType(j+1:numUnits);
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,6) = bigMaster(j+cellCount-1,2);
-        cellTrackerStore(corrCount:corrCount + numUnits - j - 1,7) = bigMaster(cellCount + (j+1:numUnits) - 1,2);
-        
-        corrCount = corrCount + numUnits - j;
-    end
-    cellCount = cellCount + numUnits;
-end
-
-%now lets clean up the dataset. Remove all NaNs. 
-corrValStore(isnan(interTypeStore)) = [];
-distValStore(isnan(interTypeStore)) = [];
-cellTrackerStore(isnan(interTypeStore),:) = [];
-corrValSigStore(isnan(interTypeStore)) = [];
-interTypeStore(isnan(interTypeStore)) = [];
-
-%lets look in general at within neuron corrcoefs. 
-corrHistVect = [-1:0.05:1];
-
-%just MSNs, close
-selDist = 150;
-selInterType = 0;
-
-findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
-corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
-sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
-corrValmsnmsnSig = hist(corrValStore(sigInt),corrHistVect);
-hold on
-bar(corrHistVect,corrValmsnmsn)
-bar(corrHistVect,corrValmsnmsnSig,'k')
-% hist(corrValStore(findTarCorr),corrHistVect)
-xlim([-1 1])
+% 
+% %lets number these. I want the most common first, going up into the less
+% %common. so:
+% 
+% % MSN-MSN: 0
+% % MSN-FSI: 1
+% % FSI-FSI: 2
+% % MSN-ChAT: 4
+% % FSI-ChAT: 5
+% % ChAT-ChAT: 8
+% 
+% 
+% corrCount = 1;
+% cellCount = 1;
+% for i = 1:length(bigCorrStore)
+%     dataset = bigCorrStore{i};
+%     %now lets try and linearize this dataset. 
+%     numUnits = length(dataset.CellType);
+%     for j = 1:numUnits
+%         corrValStore(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefs(j,j+1:end);
+%         distValStore(corrCount:corrCount + numUnits - j - 1) = dataset.Distance(j,j+1:end);
+%         interTypeStore(corrCount:corrCount + numUnits - j - 1) = dataset.CellType(j)+ dataset.CellType(j+1:end);
+%         corrValSigStore(corrCount:corrCount + numUnits - j - 1) = dataset.CorrCoefSig(j,j+1:end);
+%         cellTrackerStore(corrCount:corrCount + numUnits - j - 1,1) = i;
+%         cellTrackerStore(corrCount:corrCount + numUnits - j - 1,2) = j+cellCount-1;
+%         cellTrackerStore(corrCount:corrCount + numUnits - j - 1,3) = cellCount + (j+1:numUnits) - 1;
+%         cellTrackerStore(corrCount:corrCount + numUnits - j - 1,4) = dataset.CellType(j);
+%         cellTrackerStore(corrCount:corrCount + numUnits - j - 1,5) = dataset.CellType(j+1:numUnits);
+%         cellTrackerStore(corrCount:corrCount + numUnits - j - 1,6) = bigMaster(j+cellCount-1,2);
+%         cellTrackerStore(corrCount:corrCount + numUnits - j - 1,7) = bigMaster(cellCount + (j+1:numUnits) - 1,2);
+%         
+%         corrCount = corrCount + numUnits - j;
+%     end
+%     cellCount = cellCount + numUnits;
+% end
+% 
+% %now lets clean up the dataset. Remove all NaNs. 
+% corrValStore(isnan(interTypeStore)) = [];
+% distValStore(isnan(interTypeStore)) = [];
+% cellTrackerStore(isnan(interTypeStore),:) = [];
+% corrValSigStore(isnan(interTypeStore)) = [];
+% interTypeStore(isnan(interTypeStore)) = [];
+% 
+% %lets look in general at within neuron corrcoefs. 
+% corrHistVect = [-1:0.05:1];
+% 
+% %just MSNs, close
+% selDist = 150;
+% selInterType = 0;
+% 
+% findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+% figure
 % corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
-
-%just FSIs, close
-selDist = 150;
-selInterType = 2;
-
-
-findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
-corrValfsifsi = hist(corrValStore(findTarCorr),corrHistVect);
-sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
-corrValfsifsiSig = hist(corrValStore(sigInt),corrHistVect);
-hold on
-bar(corrHistVect,corrValfsifsi)
-bar(corrHistVect,corrValfsifsiSig,'k')
-% hist(corrValStore(findTarCorr),corrHistVect)
-xlim([-1 1])
-
-
-%MSN vs FSI, close
-selDist = 150;
-selInterType = 1;
-
-
-findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
-corrValfsimsn = hist(corrValStore(findTarCorr),corrHistVect);
-sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
-corrValfsimsnSig = hist(corrValStore(sigInt),corrHistVect);
-hold on
-bar(corrHistVect,corrValfsimsn)
-bar(corrHistVect,corrValfsimsnSig,'k')
-% hist(corrValStore(findTarCorr),corrHistVect)
-xlim([-1 1])
-
-%MSN vs ChAT, close
-selDist = 150;
-selInterType = 5;
-
-
-findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
-figure
-corrValmsnchat = hist(corrValStore(findTarCorr),corrHistVect);
-sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
-corrValmsnchatSig = hist(corrValStore(sigInt),corrHistVect);
-hold on
-bar(corrHistVect,corrValmsnchat)
-bar(corrHistVect,corrValmsnchatSig,'k')
-xlim([-1 1])
-    
-
-%plot cumdists?
-figure
-hold on
-plot(corrHistVect,cumsum(corrValmsnmsn)/sum(corrValmsnmsn),'k')
-plot(corrHistVect,cumsum(corrValfsifsi)/sum(corrValfsifsi),'c')
-plot(corrHistVect,cumsum(corrValfsimsn)/sum(corrValfsimsn),'r')
-
-%try plotting by distance for first 150. 
-selInterType = 1;
-for i = 1:9
-    selDist = (i-1)*25;
-    tempTar = intersect(find(distValStore == selDist),find(interTypeStore == selInterType));
-    distCorrHistStore(:,i) = hist(corrValStore(tempTar),corrHistVect);
-    normDistCorrHistStore(:,i) = distCorrHistStore(:,i)/max(distCorrHistStore(:,i));
-end
-
-figure
-for i = 1:9
-    subplot(9,1,i)
-    plot(corrHistVect,normDistCorrHistStore(:,i));
-end
-
-%now lets try and dig into the units that I'm pulling out. Lets pull out
-%significant MSN-FSI and split between negative and positive. 
-selInterType = 1;
-selDist = 200;
-findSigCorrNeg = find(corrValSigStore == 1 & interTypeStore == selInterType & corrValStore < 0 & distValStore < selDist);
-findSigCorrPos = find(corrValSigStore == 1 & interTypeStore == selInterType & corrValStore > 0 & distValStore < selDist);
-
-
-%now we need to look at cellTrackerStore and extract the MSNs
-for i = 1:length(findSigCorrNeg)
-    testCells = cellTrackerStore(findSigCorrNeg(i),:);
-    if testCells(4) == 0
-        sigCorrNegCells(i) = testCells(2);
-    elseif testCells(5) == 0
-        sigCorrNegCells(i) = testCells(3);
-    end
-end
-
-for i = 1:length(findSigCorrPos)
-    testCells = cellTrackerStore(findSigCorrPos(i),:);
-    if testCells(4) == 0
-        sigCorrPosCells(i) = testCells(2);
-    elseif testCells(5) == 0
-        sigCorrPosCells(i) = testCells(3);
-    end
-end
-%this process can generate duplicates if a single cell has multiple
-%negative correlations with neighboring FSIs. Eliminate duplicates. 
-sigCorrNegCells = unique(sigCorrNegCells);
-sigCorrPosCells = unique(sigCorrPosCells);
-
-
-%now lets plot out tuning curves
-hFig = figure;
-subplot = @(m,n,p) subtightplot (m, n, p, [0.02 0.02], [0.03 0.03], [0.03 0.03]);
-axisSize = ceil(sqrt(length(sigCorrNegCells)));
-for i = 1:length(sigCorrNegCells)
-    subplot(axisSize,axisSize,i)
-    imagesc(binValBigStore{sigCorrNegCells(i)}')
-    colormap('parula')
-end
-
-hFig = figure;
-axisSize = ceil(sqrt(length(sigCorrPosCells)));
-for i = 1:length(sigCorrPosCells)
-    subplot(axisSize,axisSize,i)
-    imagesc(binValBigStore{sigCorrPosCells(i)}')
-    colormap('parula')
-end
-
-%now lets look at the MSN-MSN interactions of the targeted cells. 
-selDist = 200;
-selType = 0;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-counter = 1;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(cellTrackerStore(:,2) == sigCorrNegCells(i));
-    findRow2 = find(cellTrackerStore(:,3) == sigCorrNegCells(i));
-    
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(cellTrackerStore(:,2) == sigCorrPosCells(i));
-    findRow2 = find(cellTrackerStore(:,3) == sigCorrPosCells(i));
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
-
-%now lets do the same, but eliminate possibility for double counting
-%interactions, which may exist now. 
-selDist = 200;
-selType = 0;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-counter = 1;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
-    findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
-    findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
-
-%now lets try and do it only for cells within the same group. 
-selDist = 200;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-counter = 1;
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(ismember(otherVals,sigCorrNegCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(ismember(otherVals,sigCorrNegCells));
-        findRow2 = findRow2(otherVals);
-    end
-    
-    
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-tempTrack = cellTrackerStore;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(ismember(otherVals,sigCorrPosCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(ismember(otherVals,sigCorrPosCells));
-        findRow2 = findRow2(otherVals);
-    end
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
-
-%now lets try and do it only for cells not in the same group. 
-selDist = 200;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-counter = 1;
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(ismember(otherVals,sigCorrPosCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(ismember(otherVals,sigCorrPosCells));
-        findRow2 = findRow2(otherVals);
-    end
-    
-    
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-tempTrack = cellTrackerStore;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(ismember(otherVals,sigCorrNegCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(ismember(otherVals,sigCorrNegCells));
-        findRow2 = findRow2(otherVals);
-    end
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
-
-%now lets try and do it only for cells not in either group. 
-selDist = 200;
-negCellmsnCorr = [];
-negCellmsnCorrSig = [];
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-tempTrack = cellTrackerStore;
-counter = 1;
-for i = 1:length(sigCorrNegCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
-        findRow2 = findRow2(otherVals);
-    end
-    
-    
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-counter = 1;
-posCellmsnCorr = [];
-posCellmsnCorrSig = [];
-tempTrack = cellTrackerStore;
-findRow3 = find(distValStore < selDist)';
-findRow4 = find(interTypeStore == selType)';
-findRow3 = intersect(findRow3,findRow4);
-for i = 1:length(sigCorrPosCells)
-    findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
-    if findRow1
-        otherVals = tempTrack(findRow1,3);
-        otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
-        findRow1 = findRow1(otherVals);
-    end
-    
-    
-    findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
-    if findRow2
-        otherVals = tempTrack(findRow2,2);
-        otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
-        findRow2 = findRow2(otherVals);
-    end
-%     findRow3 = find(distValStore < selDist)';
-    allFinds = sort([findRow1;findRow2]);
-    allFinds = intersect(allFinds,findRow3);
-    tempTrack(allFinds,:) = 0;
-    posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
-    posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
-    counter = counter + length(allFinds);
-end
-
-hFig = figure;
-hold on
-negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
-negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,negCellBarPlot)
-bar(corrHistVect,negCellSigBarPlot,'k')
-xlim([-1 1])
-
-hFig = figure;
-hold on
-posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
-posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
-bar(corrHistVect,posCellBarPlot)
-bar(corrHistVect,posCellSigBarPlot,'k')
-xlim([-1 1])
-
-
+% sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
+% corrValmsnmsnSig = hist(corrValStore(sigInt),corrHistVect);
+% hold on
+% bar(corrHistVect,corrValmsnmsn)
+% bar(corrHistVect,corrValmsnmsnSig,'k')
+% % hist(corrValStore(findTarCorr),corrHistVect)
+% xlim([-1 1])
+% % corrValmsnmsn = hist(corrValStore(findTarCorr),corrHistVect);
+% 
+% %just FSIs, close
+% selDist = 150;
+% selInterType = 2;
+% 
+% 
+% findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+% figure
+% corrValfsifsi = hist(corrValStore(findTarCorr),corrHistVect);
+% sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
+% corrValfsifsiSig = hist(corrValStore(sigInt),corrHistVect);
+% hold on
+% bar(corrHistVect,corrValfsifsi)
+% bar(corrHistVect,corrValfsifsiSig,'k')
+% % hist(corrValStore(findTarCorr),corrHistVect)
+% xlim([-1 1])
+% 
+% 
+% %MSN vs FSI, close
+% selDist = 150;
+% selInterType = 1;
+% 
+% 
+% findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+% figure
+% corrValfsimsn = hist(corrValStore(findTarCorr),corrHistVect);
+% sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
+% corrValfsimsnSig = hist(corrValStore(sigInt),corrHistVect);
+% hold on
+% bar(corrHistVect,corrValfsimsn)
+% bar(corrHistVect,corrValfsimsnSig,'k')
+% % hist(corrValStore(findTarCorr),corrHistVect)
+% xlim([-1 1])
+% 
+% %MSN vs ChAT, close
+% selDist = 150;
+% selInterType = 5;
+% 
+% 
+% findTarCorr = intersect(find(distValStore <= selDist),find(interTypeStore == selInterType));
+% figure
+% corrValmsnchat = hist(corrValStore(findTarCorr),corrHistVect);
+% sigInt = intersect(findTarCorr,find(corrValSigStore == 1));
+% corrValmsnchatSig = hist(corrValStore(sigInt),corrHistVect);
+% hold on
+% bar(corrHistVect,corrValmsnchat)
+% bar(corrHistVect,corrValmsnchatSig,'k')
+% xlim([-1 1])
+%     
+% 
+% %plot cumdists?
+% figure
+% hold on
+% plot(corrHistVect,cumsum(corrValmsnmsn)/sum(corrValmsnmsn),'k')
+% plot(corrHistVect,cumsum(corrValfsifsi)/sum(corrValfsifsi),'c')
+% plot(corrHistVect,cumsum(corrValfsimsn)/sum(corrValfsimsn),'r')
+% 
+% %try plotting by distance for first 150. 
+% selInterType = 1;
+% for i = 1:9
+%     selDist = (i-1)*25;
+%     tempTar = intersect(find(distValStore == selDist),find(interTypeStore == selInterType));
+%     distCorrHistStore(:,i) = hist(corrValStore(tempTar),corrHistVect);
+%     normDistCorrHistStore(:,i) = distCorrHistStore(:,i)/max(distCorrHistStore(:,i));
+% end
+% 
+% figure
+% for i = 1:9
+%     subplot(9,1,i)
+%     plot(corrHistVect,normDistCorrHistStore(:,i));
+% end
+% 
+% %now lets try and dig into the units that I'm pulling out. Lets pull out
+% %significant MSN-FSI and split between negative and positive. 
+% selInterType = 1;
+% selDist = 200;
+% findSigCorrNeg = find(corrValSigStore == 1 & interTypeStore == selInterType & corrValStore < 0 & distValStore < selDist);
+% findSigCorrPos = find(corrValSigStore == 1 & interTypeStore == selInterType & corrValStore > 0 & distValStore < selDist);
+% 
+% 
+% %now we need to look at cellTrackerStore and extract the MSNs
+% for i = 1:length(findSigCorrNeg)
+%     testCells = cellTrackerStore(findSigCorrNeg(i),:);
+%     if testCells(4) == 0
+%         sigCorrNegCells(i) = testCells(2);
+%     elseif testCells(5) == 0
+%         sigCorrNegCells(i) = testCells(3);
+%     end
+% end
+% 
+% for i = 1:length(findSigCorrPos)
+%     testCells = cellTrackerStore(findSigCorrPos(i),:);
+%     if testCells(4) == 0
+%         sigCorrPosCells(i) = testCells(2);
+%     elseif testCells(5) == 0
+%         sigCorrPosCells(i) = testCells(3);
+%     end
+% end
+% %this process can generate duplicates if a single cell has multiple
+% %negative correlations with neighboring FSIs. Eliminate duplicates. 
+% sigCorrNegCells = unique(sigCorrNegCells);
+% sigCorrPosCells = unique(sigCorrPosCells);
+% 
+% 
+% %now lets plot out tuning curves
+% hFig = figure;
+% subplot = @(m,n,p) subtightplot (m, n, p, [0.02 0.02], [0.03 0.03], [0.03 0.03]);
+% axisSize = ceil(sqrt(length(sigCorrNegCells)));
+% for i = 1:length(sigCorrNegCells)
+%     subplot(axisSize,axisSize,i)
+%     imagesc(binValBigStore{sigCorrNegCells(i)}')
+%     colormap('parula')
+% end
+% 
+% hFig = figure;
+% axisSize = ceil(sqrt(length(sigCorrPosCells)));
+% for i = 1:length(sigCorrPosCells)
+%     subplot(axisSize,axisSize,i)
+%     imagesc(binValBigStore{sigCorrPosCells(i)}')
+%     colormap('parula')
+% end
+% 
+% %now lets look at the MSN-MSN interactions of the targeted cells. 
+% selDist = 200;
+% selType = 0;
+% negCellmsnCorr = [];
+% negCellmsnCorrSig = [];
+% counter = 1;
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% for i = 1:length(sigCorrNegCells)
+%     findRow1 = find(cellTrackerStore(:,2) == sigCorrNegCells(i));
+%     findRow2 = find(cellTrackerStore(:,3) == sigCorrNegCells(i));
+%     
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% counter = 1;
+% posCellmsnCorr = [];
+% posCellmsnCorrSig = [];
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% for i = 1:length(sigCorrPosCells)
+%     findRow1 = find(cellTrackerStore(:,2) == sigCorrPosCells(i));
+%     findRow2 = find(cellTrackerStore(:,3) == sigCorrPosCells(i));
+% %     findRow3 = find(distValStore < selDist)';
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% hFig = figure;
+% hold on
+% negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
+% negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,negCellBarPlot)
+% bar(corrHistVect,negCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% hFig = figure;
+% hold on
+% posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
+% posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,posCellBarPlot)
+% bar(corrHistVect,posCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% %now lets do the same, but eliminate possibility for double counting
+% %interactions, which may exist now. 
+% selDist = 200;
+% selType = 0;
+% negCellmsnCorr = [];
+% negCellmsnCorrSig = [];
+% counter = 1;
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% tempTrack = cellTrackerStore;
+% for i = 1:length(sigCorrNegCells)
+%     findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
+%     findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
+% %     findRow3 = find(distValStore < selDist)';
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     tempTrack(allFinds,:) = 0;
+%     negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% counter = 1;
+% posCellmsnCorr = [];
+% posCellmsnCorrSig = [];
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% tempTrack = cellTrackerStore;
+% for i = 1:length(sigCorrPosCells)
+%     findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
+%     findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
+% %     findRow3 = find(distValStore < selDist)';
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     tempTrack(allFinds,:) = 0;
+%     posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% hFig = figure;
+% hold on
+% negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
+% negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,negCellBarPlot)
+% bar(corrHistVect,negCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% hFig = figure;
+% hold on
+% posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
+% posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,posCellBarPlot)
+% bar(corrHistVect,posCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% %now lets try and do it only for cells within the same group. 
+% selDist = 200;
+% negCellmsnCorr = [];
+% negCellmsnCorrSig = [];
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% tempTrack = cellTrackerStore;
+% counter = 1;
+% for i = 1:length(sigCorrNegCells)
+%     findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
+%     if findRow1
+%         otherVals = tempTrack(findRow1,3);
+%         otherVals = find(ismember(otherVals,sigCorrNegCells));
+%         findRow1 = findRow1(otherVals);
+%     end
+%     
+%     
+%     findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
+%     if findRow2
+%         otherVals = tempTrack(findRow2,2);
+%         otherVals = find(ismember(otherVals,sigCorrNegCells));
+%         findRow2 = findRow2(otherVals);
+%     end
+%     
+%     
+% %     findRow3 = find(distValStore < selDist)';
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     tempTrack(allFinds,:) = 0;
+%     negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% counter = 1;
+% posCellmsnCorr = [];
+% posCellmsnCorrSig = [];
+% tempTrack = cellTrackerStore;
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% for i = 1:length(sigCorrPosCells)
+%     findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
+%     if findRow1
+%         otherVals = tempTrack(findRow1,3);
+%         otherVals = find(ismember(otherVals,sigCorrPosCells));
+%         findRow1 = findRow1(otherVals);
+%     end
+%     
+%     
+%     findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
+%     if findRow2
+%         otherVals = tempTrack(findRow2,2);
+%         otherVals = find(ismember(otherVals,sigCorrPosCells));
+%         findRow2 = findRow2(otherVals);
+%     end
+% %     findRow3 = find(distValStore < selDist)';
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     tempTrack(allFinds,:) = 0;
+%     posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% hFig = figure;
+% hold on
+% negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
+% negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,negCellBarPlot)
+% bar(corrHistVect,negCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% hFig = figure;
+% hold on
+% posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
+% posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,posCellBarPlot)
+% bar(corrHistVect,posCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% %now lets try and do it only for cells not in the same group. 
+% selDist = 200;
+% negCellmsnCorr = [];
+% negCellmsnCorrSig = [];
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% tempTrack = cellTrackerStore;
+% counter = 1;
+% for i = 1:length(sigCorrNegCells)
+%     findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
+%     if findRow1
+%         otherVals = tempTrack(findRow1,3);
+%         otherVals = find(ismember(otherVals,sigCorrPosCells));
+%         findRow1 = findRow1(otherVals);
+%     end
+%     
+%     
+%     findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
+%     if findRow2
+%         otherVals = tempTrack(findRow2,2);
+%         otherVals = find(ismember(otherVals,sigCorrPosCells));
+%         findRow2 = findRow2(otherVals);
+%     end
+%     
+%     
+% %     findRow3 = find(distValStore < selDist)';
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     tempTrack(allFinds,:) = 0;
+%     negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% counter = 1;
+% posCellmsnCorr = [];
+% posCellmsnCorrSig = [];
+% tempTrack = cellTrackerStore;
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% for i = 1:length(sigCorrPosCells)
+%     findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
+%     if findRow1
+%         otherVals = tempTrack(findRow1,3);
+%         otherVals = find(ismember(otherVals,sigCorrNegCells));
+%         findRow1 = findRow1(otherVals);
+%     end
+%     
+%     
+%     findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
+%     if findRow2
+%         otherVals = tempTrack(findRow2,2);
+%         otherVals = find(ismember(otherVals,sigCorrNegCells));
+%         findRow2 = findRow2(otherVals);
+%     end
+% %     findRow3 = find(distValStore < selDist)';
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     tempTrack(allFinds,:) = 0;
+%     posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% hFig = figure;
+% hold on
+% negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
+% negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,negCellBarPlot)
+% bar(corrHistVect,negCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% hFig = figure;
+% hold on
+% posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
+% posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,posCellBarPlot)
+% bar(corrHistVect,posCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% %now lets try and do it only for cells not in either group. 
+% selDist = 200;
+% negCellmsnCorr = [];
+% negCellmsnCorrSig = [];
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% tempTrack = cellTrackerStore;
+% counter = 1;
+% for i = 1:length(sigCorrNegCells)
+%     findRow1 = find(tempTrack(:,2) == sigCorrNegCells(i));
+%     if findRow1
+%         otherVals = tempTrack(findRow1,3);
+%         otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
+%         findRow1 = findRow1(otherVals);
+%     end
+%     
+%     
+%     findRow2 = find(tempTrack(:,3) == sigCorrNegCells(i));
+%     if findRow2
+%         otherVals = tempTrack(findRow2,2);
+%         otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
+%         findRow2 = findRow2(otherVals);
+%     end
+%     
+%     
+% %     findRow3 = find(distValStore < selDist)';
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     tempTrack(allFinds,:) = 0;
+%     negCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     negCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% counter = 1;
+% posCellmsnCorr = [];
+% posCellmsnCorrSig = [];
+% tempTrack = cellTrackerStore;
+% findRow3 = find(distValStore < selDist)';
+% findRow4 = find(interTypeStore == selType)';
+% findRow3 = intersect(findRow3,findRow4);
+% for i = 1:length(sigCorrPosCells)
+%     findRow1 = find(tempTrack(:,2) == sigCorrPosCells(i));
+%     if findRow1
+%         otherVals = tempTrack(findRow1,3);
+%         otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
+%         findRow1 = findRow1(otherVals);
+%     end
+%     
+%     
+%     findRow2 = find(tempTrack(:,3) == sigCorrPosCells(i));
+%     if findRow2
+%         otherVals = tempTrack(findRow2,2);
+%         otherVals = find(~ismember(otherVals,sigCorrPosCells) & ~ismember(otherVals,sigCorrNegCells));
+%         findRow2 = findRow2(otherVals);
+%     end
+% %     findRow3 = find(distValStore < selDist)';
+%     allFinds = sort([findRow1;findRow2]);
+%     allFinds = intersect(allFinds,findRow3);
+%     tempTrack(allFinds,:) = 0;
+%     posCellmsnCorr(counter:counter + length(allFinds) - 1) = corrValStore(allFinds);
+%     posCellmsnCorrSig(counter:counter + length(allFinds) - 1) = corrValSigStore(allFinds);
+%     counter = counter + length(allFinds);
+% end
+% 
+% hFig = figure;
+% hold on
+% negCellBarPlot = hist(negCellmsnCorr,corrHistVect);
+% negCellSigBarPlot = hist(negCellmsnCorr(negCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,negCellBarPlot)
+% bar(corrHistVect,negCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% hFig = figure;
+% hold on
+% posCellBarPlot = hist(posCellmsnCorr,corrHistVect);
+% posCellSigBarPlot = hist(posCellmsnCorr(posCellmsnCorrSig==1),corrHistVect);
+% bar(corrHistVect,posCellBarPlot)
+% bar(corrHistVect,posCellSigBarPlot,'k')
+% xlim([-1 1])
+% 
+% 
 
 %% calculate widths with height based system
 widthPercent = 0.5;
@@ -793,6 +814,7 @@ widthPercent = 0.5;
 bigWidthHeightStore = [];
 for i = 1:length(bigMaster)
     testValues = binValBigStore{i};
+    dbStep(i) = 3/size(binValBigStore{i},1);
     for j = 1:size(testValues,2)
         [widthVals,maxPos,maxVal,cutVal] = functionHeightBasedTuningWidth(testValues(:,j),widthPercent,3);
         bigWidthHeightStore(j,:,i) = widthVals;
@@ -1069,6 +1091,33 @@ signrank(sigWidthStore(1,tarMSNs),sigWidthStoreLaser(1,tarMSNs))
 signrank(sigWidthStore(2,tarMSNs),sigWidthStoreLaser(2,tarMSNs))
 signrank(sigWidthStore(3,tarMSNs),sigWidthStoreLaser(3,tarMSNs))
 
+%plot out selected time histograms. 
+for i = 1:length(tarMSNs)
+figure
+subplot(2,1,1)
+hold on
+plot(smooth(fineHist(tarMSNs(i),:),11),'k')
+plot(smooth(fineHistLaser(tarMSNs(i),:),11),'g')
+subplot(2,1,2)
+plot(smooth(fineHistLaser(tarMSNs(i),:) - fineHist(tarMSNs(i),:),11))
+end
+
+%plot out all MSNs subtraction
+figure
+for i = 1:length(findMSNs)
+    subplot(14,14,i)
+    plot(smooth(fineHistLaser(findMSNs(i),:) - fineHist(findMSNs(i),:),21))
+end
+
+
+
+figure
+hold on
+tarDB = 3;
+for i = 1:length(tarMSNs)
+    plot([1,2],[sigWidthStore(tarDB,tarMSNs(i)) sigWidthStoreLaser(tarDB,tarMSNs(i))])
+end
+
 
 tarDB = 2;
 for i = 1:3
@@ -1146,6 +1195,72 @@ plot(sigWidthMSN(3,:),sigWidthMSNLaser(3,:),'m.')
 tester = find(sigWidthMSN(1,:) == 0);
 test2 = find(sigWidthMSNLaser(1,:) > 0);
 growCells = intersect(tester,test2);
+
+
+
+%% Now lets try looking at aligning tuning curves
+
+
+%BF readings from master data are very suspect. Instead, lets go through
+%binValBigStore
+
+bigStoreMSN = NaN(length(tarMSNs),41);
+bigStoreLaserMSN = NaN(length(tarMSNs),41);
+
+tarDB = 2;
+for i = 1:length(tarMSNs)
+    %pull curves
+    tmp1 = binValBigStore{tarMSNs(i)}(:,tarDB);
+    tmp2 = binValBigStoreLaser{tarMSNs(i)}(:,tarDB);
+    %find relative maxes. 
+    [maxVal1 maxInd1] = max(tmp1);
+    [maxVal2 maxInd2] = max(tmp2);
+    [maxmaxVal maxmaxInd] = max([maxVal1 maxVal2]);
+    bfSave(i,:) = [maxInd1,maxInd2];
+    %divide by maximum value
+    if maxVal1 > 0
+        bigStoreMSN(i,21-maxInd1+1:21-maxInd1+length(tmp1)) = tmp1/maxVal1;
+        bigStoreLaserMSN(i,21-maxInd1+1:21-maxInd1+length(tmp1)) = tmp2/maxVal1;
+    end
+    
+end
+
+figure
+plot(nanmean(bigStoreMSN))
+hold on
+plot(nanmean(bigStoreLaserMSN),'r')
+
+
+%target each one separately
+
+
+bigStoreMSN = NaN(length(tarMSNs),41);
+bigStoreLaserMSN = NaN(length(tarMSNs),41);
+
+% tarDB = 2;
+for i = 1:length(tarMSNs)
+    %pull curves
+    tmp1 = binValBigStore{tarMSNs(i)}(:,tarDB);
+    tmp2 = binValBigStoreLaser{tarMSNs(i)}(:,tarDB);
+    %find relative maxes. 
+    [maxVal1 maxInd1] = max(tmp1);
+    [maxVal2 maxInd2] = max(tmp2);
+    [maxmaxVal maxmaxInd] = max([maxVal1 maxVal2]);
+    
+    %divide by maximum value
+    if maxVal1 > 0
+        bigStoreMSN(i,21-maxInd1+1:21-maxInd1+length(tmp1)) = tmp1/maxVal1;
+        
+    end
+    if maxVal2 > 0
+        bigStoreLaserMSN(i,21-maxInd2+1:21-maxInd2+length(tmp1)) = tmp2/maxVal2;
+    end
+end
+
+figure
+plot(nanmean(bigStoreMSN))
+hold on
+plot(nanmean(bigStoreLaserMSN),'r')
 
 
 
